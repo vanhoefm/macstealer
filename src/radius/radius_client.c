@@ -7,6 +7,7 @@
  */
 
 #include "includes.h"
+#include <net/if.h>
 
 #include "common.h"
 #include "radius.h"
@@ -1168,6 +1169,29 @@ radius_change_server(struct radius_client_data *radius,
 		return -1;
 	}
 
+	/* Force a reconnect by disconnecting the socket first */
+	if (connect(sel_sock, (struct sockaddr *) &disconnect_addr,
+		    sizeof(disconnect_addr)) < 0)
+		wpa_printf(MSG_INFO, "disconnect[radius]: %s", strerror(errno));
+
+#ifdef __linux__
+	if (conf->force_client_dev && conf->force_client_dev[0]) {
+		if (setsockopt(sel_sock, SOL_SOCKET, SO_BINDTODEVICE,
+			       conf->force_client_dev,
+			       os_strlen(conf->force_client_dev)) < 0) {
+			wpa_printf(MSG_ERROR,
+				   "RADIUS: setsockopt[SO_BINDTODEVICE]: %s",
+				   strerror(errno));
+			/* Probably not a critical error; continue on and hope
+			 * for the best. */
+		} else {
+			wpa_printf(MSG_DEBUG,
+				   "RADIUS: Bound client socket to device: %s",
+				   conf->force_client_dev);
+		}
+	}
+#endif /* __linux__ */
+
 	if (conf->force_client_addr) {
 		switch (conf->client_addr.af) {
 		case AF_INET:
@@ -1199,11 +1223,6 @@ radius_change_server(struct radius_client_data *radius,
 			return -1;
 		}
 	}
-
-	/* Force a reconnect by disconnecting the socket first */
-	if (connect(sel_sock, (struct sockaddr *) &disconnect_addr,
-		    sizeof(disconnect_addr)) < 0)
-		wpa_printf(MSG_INFO, "disconnect[radius]: %s", strerror(errno));
 
 	if (connect(sel_sock, addr, addrlen) < 0) {
 		wpa_printf(MSG_INFO, "connect[radius]: %s", strerror(errno));

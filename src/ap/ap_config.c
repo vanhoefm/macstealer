@@ -779,6 +779,7 @@ void hostapd_config_free_bss(struct hostapd_bss_config *conf)
 					   conf->radius->num_auth_servers);
 		hostapd_config_free_radius(conf->radius->acct_servers,
 					   conf->radius->num_acct_servers);
+		os_free(conf->radius->force_client_dev);
 	}
 	hostapd_config_free_radius_attr(conf->radius_auth_req_attr);
 	hostapd_config_free_radius_attr(conf->radius_acct_req_attr);
