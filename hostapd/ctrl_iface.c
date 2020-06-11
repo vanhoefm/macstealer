@@ -2680,9 +2680,9 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
 
 	for (i = 0; i < iface->num_bss; i++) {
 
-		/* Save CHAN_SWITCH VHT config */
-		hostapd_chan_switch_vht_config(
-			iface->bss[i], settings.freq_params.vht_enabled);
+		/* Save CHAN_SWITCH VHT and HE config */
+		hostapd_chan_switch_config(iface->bss[i],
+					   &settings.freq_params);
 
 		ret = hostapd_switch_channel(iface->bss[i], &settings);
 		if (ret) {

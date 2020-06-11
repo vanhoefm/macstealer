@@ -3557,15 +3557,23 @@ void hostapd_cleanup_cs_params(struct hostapd_data *hapd)
 }
 
 
-void hostapd_chan_switch_vht_config(struct hostapd_data *hapd, int vht_enabled)
+void hostapd_chan_switch_config(struct hostapd_data *hapd,
+				struct hostapd_freq_params *freq_params)
 {
-	if (vht_enabled)
+	if (freq_params->he_enabled)
+		hapd->iconf->ch_switch_he_config |= CH_SWITCH_HE_ENABLED;
+	else
+		hapd->iconf->ch_switch_he_config |= CH_SWITCH_HE_DISABLED;
+
+	if (freq_params->vht_enabled)
 		hapd->iconf->ch_switch_vht_config |= CH_SWITCH_VHT_ENABLED;
 	else
 		hapd->iconf->ch_switch_vht_config |= CH_SWITCH_VHT_DISABLED;
 
 	hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
-		       HOSTAPD_LEVEL_INFO, "CHAN_SWITCH VHT CONFIG 0x%x",
+		       HOSTAPD_LEVEL_INFO,
+		       "CHAN_SWITCH HE config 0x%x VHT config 0x%x",
+		       hapd->iconf->ch_switch_he_config,
 		       hapd->iconf->ch_switch_vht_config);
 }
 
