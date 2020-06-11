@@ -909,6 +909,7 @@ int hostapd_parse_csa_settings(const char *pos,
 	SET_CSA_SETTING(sec_channel_offset);
 	settings->freq_params.ht_enabled = !!os_strstr(pos, " ht");
 	settings->freq_params.vht_enabled = !!os_strstr(pos, " vht");
+	settings->freq_params.he_enabled = !!os_strstr(pos, " he");
 	settings->block_tx = !!os_strstr(pos, " blocktx");
 #undef SET_CSA_SETTING
 

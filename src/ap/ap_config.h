@@ -1049,6 +1049,11 @@ struct hostapd_config {
 #define CH_SWITCH_VHT_DISABLED BIT(1)
 	unsigned int ch_switch_vht_config;
 
+	/* HE enable/disable config from CHAN_SWITCH */
+#define CH_SWITCH_HE_ENABLED BIT(0)
+#define CH_SWITCH_HE_DISABLED BIT(1)
+	unsigned int ch_switch_he_config;
+
 	int rssi_reject_assoc_rssi;
 	int rssi_reject_assoc_timeout;
 	int rssi_ignore_probe_request;
