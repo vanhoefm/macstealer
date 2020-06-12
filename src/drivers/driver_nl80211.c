@@ -27,6 +27,7 @@
 #include "eloop.h"
 #include "common/qca-vendor.h"
 #include "common/qca-vendor-attr.h"
+#include "common/brcm_vendor.h"
 #include "common/ieee802_11_defs.h"
 #include "common/ieee802_11_common.h"
 #include "common/wpa_common.h"
@@ -11605,6 +11606,60 @@ fail:
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 
 
+#ifdef CONFIG_DRIVER_NL80211_BRCM
+static int wpa_driver_do_broadcom_acs(void *priv, struct drv_acs_params *params)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	struct nl_msg *msg;
+	struct nlattr *data;
+	int freq_list_len;
+	int ret = -1;
+
+	freq_list_len = int_array_len(params->freq_list);
+	wpa_printf(MSG_DEBUG, "%s: freq_list_len=%d",
+		   __func__, freq_list_len);
+
+	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR);
+	if (!msg ||
+	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_BRCM) ||
+	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
+			BRCM_VENDOR_SCMD_ACS) ||
+	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
+	    nla_put_u8(msg, BRCM_VENDOR_ATTR_ACS_HW_MODE, params->hw_mode) ||
+	    nla_put_u8(msg, BRCM_VENDOR_ATTR_ACS_HT_ENABLED,
+		       params->ht_enabled) ||
+	    nla_put_u8(msg, BRCM_VENDOR_ATTR_ACS_HT40_ENABLED,
+		       params->ht40_enabled) ||
+	    nla_put_u8(msg, BRCM_VENDOR_ATTR_ACS_VHT_ENABLED,
+		       params->vht_enabled) ||
+	    nla_put_u16(msg, BRCM_VENDOR_ATTR_ACS_CHWIDTH, params->ch_width) ||
+	    (freq_list_len > 0 &&
+	     nla_put(msg, BRCM_VENDOR_ATTR_ACS_FREQ_LIST,
+		     sizeof(int) * freq_list_len, params->freq_list)))
+		goto fail;
+	nla_nest_end(msg, data);
+
+	wpa_printf(MSG_DEBUG,
+		   "nl80211: ACS Params: HW_MODE: %d HT: %d HT40: %d VHT: %d BW: %d",
+		   params->hw_mode, params->ht_enabled, params->ht40_enabled,
+		   params->vht_enabled, params->ch_width);
+
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
+	if (ret) {
+		wpa_printf(MSG_ERROR,
+			   "nl80211: BRCM Failed to invoke driver ACS function: %s",
+			   strerror(errno));
+	}
+
+	msg = NULL;
+fail:
+	nlmsg_free(msg);
+	return ret;
+}
+#endif /* CONFIG_DRIVER_NL80211_BRCM */
+
+
 static int nl80211_write_to_file(const char *name, unsigned int val)
 {
 	int fd, len;
@@ -12050,6 +12105,9 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.set_bssid_tmp_disallow = nl80211_set_bssid_tmp_disallow,
 	.add_sta_node = nl80211_add_sta_node,
 #endif /* CONFIG_DRIVER_NL80211_QCA */
+#ifdef CONFIG_DRIVER_NL80211_BRCM
+	.do_acs = wpa_driver_do_broadcom_acs,
+#endif /* CONFIG_DRIVER_NL80211_BRCM */
 	.configure_data_frame_filters = nl80211_configure_data_frame_filters,
 	.get_ext_capab = nl80211_get_ext_capab,
 	.update_connect_params = nl80211_update_connection_params,

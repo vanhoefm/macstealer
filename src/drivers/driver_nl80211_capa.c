@@ -16,6 +16,7 @@
 #include "common/wpa_common.h"
 #include "common/qca-vendor.h"
 #include "common/qca-vendor-attr.h"
+#include "common/brcm_vendor.h"
 #include "driver_nl80211.h"
 
 
@@ -1019,6 +1020,16 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 					break;
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 				}
+#ifdef CONFIG_DRIVER_NL80211_BRCM
+			} else if (vinfo->vendor_id == OUI_BRCM) {
+				switch (vinfo->subcmd) {
+				case BRCM_VENDOR_SCMD_ACS:
+					drv->capa.flags |=
+						WPA_DRIVER_FLAGS_ACS_OFFLOAD;
+					wpa_printf(MSG_DEBUG,
+						   "Enabled BRCM ACS");
+				}
+#endif /* CONFIG_DRIVER_NL80211_BRCM */
 			}
 
 			wpa_printf(MSG_DEBUG, "nl80211: Supported vendor command: vendor_id=0x%x subcmd=%u",
