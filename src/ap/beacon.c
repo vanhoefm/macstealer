@@ -1124,6 +1124,23 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
 #endif /* NEED_AP_MLME */
 
 
+#ifdef CONFIG_IEEE80211AX
+/* Unsolicited broadcast Probe Response transmission, 6 GHz only */
+static u8 * hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
+					   struct wpa_driver_ap_params *params)
+{
+	if (!is_6ghz_op_class(hapd->iconf->op_class))
+		return NULL;
+
+	params->unsol_bcast_probe_resp_interval =
+		hapd->conf->unsol_bcast_probe_resp_interval;
+
+	return hostapd_gen_probe_resp(hapd, NULL, 0,
+				      &params->unsol_bcast_probe_resp_tmpl_len);
+}
+#endif /* CONFIG_IEEE80211AX */
+
+
 void sta_track_del(struct hostapd_sta_info *info)
 {
 #ifdef CONFIG_TAXONOMY
@@ -1719,6 +1736,10 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
 	os_free(params->fd_frame_tmpl);
 	params->fd_frame_tmpl = NULL;
 #endif /* CONFIG_FILS */
+#ifdef CONFIG_IEEE80211AX
+	os_free(params->unsol_bcast_probe_resp_tmpl);
+	params->unsol_bcast_probe_resp_tmpl = NULL;
+#endif /* CONFIG_IEEE80211AX */
 }
 
 
@@ -1769,6 +1790,8 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
 	params.he_bss_color = hapd->iface->conf->he_op.he_bss_color;
 	params.twt_responder = hostapd_get_he_twt_responder(hapd,
 							    IEEE80211_MODE_AP);
+	params.unsol_bcast_probe_resp_tmpl =
+		hostapd_unsol_bcast_probe_resp(hapd, &params);
 #endif /* CONFIG_IEEE80211AX */
 	hapd->reenable_beacon = 0;
 #ifdef CONFIG_SAE

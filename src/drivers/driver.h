@@ -1561,6 +1561,21 @@ struct wpa_driver_ap_params {
 	 * FILS Discovery frame template length
 	 */
 	size_t fd_frame_tmpl_len;
+
+	/**
+	 * Unsolicited broadcast Probe Response interval in TUs
+	 */
+	unsigned int unsol_bcast_probe_resp_interval;
+
+	/**
+	 * Unsolicited broadcast Probe Response template data
+	 */
+	u8 *unsol_bcast_probe_resp_tmpl;
+
+	/**
+	 * Unsolicited broadcast Probe Response template length
+	 */
+	size_t unsol_bcast_probe_resp_tmpl_len;
 };
 
 struct wpa_driver_mesh_bss_params {

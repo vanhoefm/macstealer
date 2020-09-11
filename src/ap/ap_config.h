@@ -878,6 +878,8 @@ struct hostapd_bss_config {
 
 	int *pasn_groups;
 #endif /* CONFIG_PASN */
+
+	unsigned int unsol_bcast_probe_resp_interval;
 };
 
 /**
