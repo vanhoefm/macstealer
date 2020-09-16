@@ -2430,6 +2430,8 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 	if (!mode)
 		return;
 
+	freq->channel = channel;
+
 	is_24ghz = hw_mode == HOSTAPD_MODE_IEEE80211G ||
 		hw_mode == HOSTAPD_MODE_IEEE80211B;
 
