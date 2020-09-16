@@ -4969,6 +4969,16 @@ static int wpa_driver_nl80211_sta_add(void *priv,
 				goto fail;
 		}
 
+		if (params->he_6ghz_capab) {
+			wpa_hexdump(MSG_DEBUG, "  * he_6ghz_capab",
+				    params->he_6ghz_capab,
+				    sizeof(*params->he_6ghz_capab));
+			if (nla_put(msg, NL80211_ATTR_HE_6GHZ_CAPABILITY,
+				    sizeof(*params->he_6ghz_capab),
+				    params->he_6ghz_capab))
+				goto fail;
+		}
+
 		if (params->ext_capab) {
 			wpa_hexdump(MSG_DEBUG, "  * ext_capab",
 				    params->ext_capab, params->ext_capab_len);
