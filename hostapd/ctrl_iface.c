@@ -3690,6 +3690,8 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 				    &hapd->conf->accept_mac,
 				    &hapd->conf->num_accept_mac, buf + 19))
 				hostapd_disassoc_accept_mac(hapd);
+			else
+				reply_len = -1;
 		} else if (os_strcmp(buf + 11, "SHOW") == 0) {
 			reply_len = hostapd_ctrl_iface_acl_show_mac(
 				hapd->conf->accept_mac,
@@ -3706,10 +3708,13 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 				    &hapd->conf->deny_mac,
 				    &hapd->conf->num_deny_mac, buf + 17))
 				hostapd_disassoc_deny_mac(hapd);
+			else
+				reply_len = -1;
 		} else if (os_strncmp(buf + 9, "DEL_MAC ", 8) == 0) {
-			hostapd_ctrl_iface_acl_del_mac(
-				&hapd->conf->deny_mac,
-				&hapd->conf->num_deny_mac, buf + 17);
+			if (hostapd_ctrl_iface_acl_del_mac(
+				    &hapd->conf->deny_mac,
+				    &hapd->conf->num_deny_mac, buf + 17))
+				reply_len = -1;
 		} else if (os_strcmp(buf + 9, "SHOW") == 0) {
 			reply_len = hostapd_ctrl_iface_acl_show_mac(
 				hapd->conf->deny_mac,
