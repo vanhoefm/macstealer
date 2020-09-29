@@ -3681,16 +3681,15 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 		eloop_terminate();
 	} else if (os_strncmp(buf, "ACCEPT_ACL ", 11) == 0) {
 		if (os_strncmp(buf + 11, "ADD_MAC ", 8) == 0) {
-			if (!hostapd_ctrl_iface_acl_add_mac(
+			if (hostapd_ctrl_iface_acl_add_mac(
+				    &hapd->conf->accept_mac,
+				    &hapd->conf->num_accept_mac, buf + 19))
+				reply_len = -1;
+		} else if (os_strncmp((buf + 11), "DEL_MAC ", 8) == 0) {
+			if (!hostapd_ctrl_iface_acl_del_mac(
 				    &hapd->conf->accept_mac,
 				    &hapd->conf->num_accept_mac, buf + 19))
 				hostapd_disassoc_accept_mac(hapd);
-			else
-				reply_len = -1;
-		} else if (os_strncmp((buf + 11), "DEL_MAC ", 8) == 0) {
-			hostapd_ctrl_iface_acl_del_mac(
-				&hapd->conf->accept_mac,
-				&hapd->conf->num_accept_mac, buf + 19);
 		} else if (os_strcmp(buf + 11, "SHOW") == 0) {
 			reply_len = hostapd_ctrl_iface_acl_show_mac(
 				hapd->conf->accept_mac,
@@ -3699,6 +3698,7 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 			hostapd_ctrl_iface_acl_clear_list(
 				&hapd->conf->accept_mac,
 				&hapd->conf->num_accept_mac);
+			hostapd_disassoc_accept_mac(hapd);
 		}
 	} else if (os_strncmp(buf, "DENY_ACL ", 9) == 0) {
 		if (os_strncmp(buf + 9, "ADD_MAC ", 8) == 0) {
