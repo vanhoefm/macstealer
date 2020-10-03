@@ -4219,7 +4219,10 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, const u64 flags,
 		band = nla_nest_start(msg, NL80211_BAND_2GHZ);
 		break;
 	case HOSTAPD_MODE_IEEE80211A:
-		band = nla_nest_start(msg, NL80211_BAND_5GHZ);
+		if (is_6ghz_freq(params->freq->freq))
+			band = nla_nest_start(msg, NL80211_BAND_6GHZ);
+		else
+			band = nla_nest_start(msg, NL80211_BAND_5GHZ);
 		break;
 	case HOSTAPD_MODE_IEEE80211AD:
 		band = nla_nest_start(msg, NL80211_BAND_60GHZ);
