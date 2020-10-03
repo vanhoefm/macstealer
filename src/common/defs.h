@@ -405,7 +405,8 @@ enum wpa_radio_work_band {
 enum beacon_rate_type {
 	BEACON_RATE_LEGACY,
 	BEACON_RATE_HT,
-	BEACON_RATE_VHT
+	BEACON_RATE_VHT,
+	BEACON_RATE_HE
 };
 
 enum eap_proxy_sim_state {

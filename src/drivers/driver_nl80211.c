@@ -4198,11 +4198,12 @@ static int nl80211_set_mesh_config(void *priv,
 #endif /* CONFIG_MESH */
 
 
-static int nl80211_put_beacon_rate(struct nl_msg *msg, const u64 flags,
+static int nl80211_put_beacon_rate(struct nl_msg *msg, u64 flags, u64 flags2,
 				   struct wpa_driver_ap_params *params)
 {
 	struct nlattr *bands, *band;
 	struct nl80211_txrate_vht vht_rate;
+	struct nl80211_txrate_he he_rate;
 
 	if (!params->freq ||
 	    (params->beacon_rate == 0 &&
@@ -4235,6 +4236,7 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, const u64 flags,
 		return -1;
 
 	os_memset(&vht_rate, 0, sizeof(vht_rate));
+	os_memset(&he_rate, 0, sizeof(he_rate));
 
 	switch (params->rate_type) {
 	case BEACON_RATE_LEGACY:
@@ -4285,6 +4287,22 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, const u64 flags,
 			    &vht_rate))
 			return -1;
 		wpa_printf(MSG_DEBUG, " * beacon_rate = VHT-MCS %u",
+			   params->beacon_rate);
+		break;
+	case BEACON_RATE_HE:
+		if (!(flags2 & WPA_DRIVER_FLAGS2_BEACON_RATE_HE)) {
+			wpa_printf(MSG_INFO,
+				   "nl80211: Driver does not support setting Beacon frame rate (HE)");
+			return -1;
+		}
+		he_rate.mcs[0] = BIT(params->beacon_rate);
+		if (nla_put(msg, NL80211_TXRATE_LEGACY, 0, NULL) ||
+		    nla_put(msg, NL80211_TXRATE_HT, 0, NULL) ||
+		    nla_put(msg, NL80211_TXRATE_VHT, sizeof(vht_rate),
+			    &vht_rate) ||
+		    nla_put(msg, NL80211_TXRATE_HE, sizeof(he_rate), &he_rate))
+			return -1;
+		wpa_printf(MSG_DEBUG, " * beacon_rate = HE-MCS %u",
 			   params->beacon_rate);
 		break;
 	}
@@ -4409,7 +4427,8 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 	    nla_put(msg, NL80211_ATTR_BEACON_TAIL, params->tail_len,
 		    params->tail) ||
 	    nl80211_put_beacon_int(msg, params->beacon_int) ||
-	    nl80211_put_beacon_rate(msg, drv->capa.flags, params) ||
+	    nl80211_put_beacon_rate(msg, drv->capa.flags, drv->capa.flags2,
+				    params) ||
 	    nl80211_put_dtim_period(msg, params->dtim_period) ||
 	    nla_put(msg, NL80211_ATTR_SSID, params->ssid_len, params->ssid))
 		goto fail;

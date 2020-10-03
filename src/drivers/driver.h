@@ -1264,14 +1264,14 @@ struct wpa_driver_ap_params {
 	 *
 	 * This parameter can be used to set a specific Beacon frame data rate
 	 * for the BSS. The interpretation of this value depends on the
-	 * rate_type (legacy: in 100 kbps units, HT: HT-MCS, VHT: VHT-MCS). If
-	 * beacon_rate == 0 and rate_type == 0 (BEACON_RATE_LEGACY), the default
-	 * Beacon frame data rate is used.
+	 * rate_type (legacy: in 100 kbps units, HT: HT-MCS, VHT: VHT-MCS,
+	 * HE: HE-MCS). If beacon_rate == 0 and rate_type == 0
+	 * (BEACON_RATE_LEGACY), the default Beacon frame data rate is used.
 	 */
 	unsigned int beacon_rate;
 
 	/**
-	 * beacon_rate_type: Beacon data rate type (legacy/HT/VHT)
+	 * beacon_rate_type: Beacon data rate type (legacy/HT/VHT/HE)
 	 */
 	enum beacon_rate_type rate_type;
 
@@ -1959,6 +1959,8 @@ struct wpa_driver_capa {
  * frames
  */
 #define WPA_DRIVER_FLAGS2_PROT_RANGE_NEG	0x0000000000000010ULL
+/** Driver supports Beacon frame TX rate configuration (HE rates) */
+#define WPA_DRIVER_FLAGS2_BEACON_RATE_HE	0x0000000000000020ULL
 	u64 flags2;
 
 #define FULL_AP_CLIENT_STATE_SUPP(drv_flags) \
