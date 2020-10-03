@@ -1220,6 +1220,32 @@ static u8 set_he_cap(int val, u8 mask)
 	return (u8) (mask & (val << find_bit_offset(mask)));
 }
 
+
+static int hostapd_parse_he_srg_bitmap(u8 *bitmap, char *val)
+{
+	int bitpos;
+	char *pos, *end;
+
+	os_memset(bitmap, 0, 8);
+	pos = val;
+	while (*pos != '\0') {
+		end = os_strchr(pos, ' ');
+		if (end)
+			*end = '\0';
+
+		bitpos = atoi(pos);
+		if (bitpos < 0 || bitpos > 64)
+			return -1;
+
+		bitmap[bitpos / 8] |= BIT(bitpos % 8);
+		if (!end)
+			break;
+		pos = end + 1;
+	}
+
+	return 0;
+}
+
 #endif /* CONFIG_IEEE80211AX */
 
 
@@ -3554,13 +3580,29 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		conf->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_TIMER_IDX] =
 			atoi(pos) & 0xff;
 	} else if (os_strcmp(buf, "he_spr_sr_control") == 0) {
-		conf->spr.sr_control = atoi(pos) & 0xff;
+		conf->spr.sr_control = atoi(pos) & 0x1f;
 	} else if (os_strcmp(buf, "he_spr_non_srg_obss_pd_max_offset") == 0) {
 		conf->spr.non_srg_obss_pd_max_offset = atoi(pos);
 	} else if (os_strcmp(buf, "he_spr_srg_obss_pd_min_offset") == 0) {
 		conf->spr.srg_obss_pd_min_offset = atoi(pos);
 	} else if (os_strcmp(buf, "he_spr_srg_obss_pd_max_offset") == 0) {
 		conf->spr.srg_obss_pd_max_offset = atoi(pos);
+	} else if (os_strcmp(buf, "he_spr_srg_bss_colors") == 0) {
+		if (hostapd_parse_he_srg_bitmap(
+			conf->spr.srg_bss_color_bitmap, pos)) {
+			wpa_printf(MSG_ERROR,
+				   "Line %d: Invalid srg bss colors list '%s'",
+				   line, pos);
+			return 1;
+		}
+	} else if (os_strcmp(buf, "he_spr_srg_partial_bssid") == 0) {
+		if (hostapd_parse_he_srg_bitmap(
+			conf->spr.srg_partial_bssid_bitmap, pos)) {
+			wpa_printf(MSG_ERROR,
+				   "Line %d: Invalid srg partial bssid list '%s'",
+				   line, pos);
+			return 1;
+		}
 	} else if (os_strcmp(buf, "he_oper_chwidth") == 0) {
 		conf->he_oper_chwidth = atoi(pos);
 	} else if (os_strcmp(buf, "he_oper_centr_freq_seg0_idx") == 0) {

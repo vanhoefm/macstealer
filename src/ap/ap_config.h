@@ -908,8 +908,8 @@ struct spatial_reuse {
 	u8 non_srg_obss_pd_max_offset;
 	u8 srg_obss_pd_min_offset;
 	u8 srg_obss_pd_max_offset;
-	u8 srg_obss_color_bitmap;
-	u8 srg_obss_color_partial_bitmap;
+	u8 srg_bss_color_bitmap[8];
+	u8 srg_partial_bssid_bitmap[8];
 };
 
 /**

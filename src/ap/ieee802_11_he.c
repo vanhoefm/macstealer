@@ -304,6 +304,11 @@ u8 * hostapd_eid_spatial_reuse(struct hostapd_data *hapd, u8 *eid)
 	if (spr->sr_ctrl & SPATIAL_REUSE_SRG_INFORMATION_PRESENT) {
 		*spr_param++ = hapd->iface->conf->spr.srg_obss_pd_min_offset;
 		*spr_param++ = hapd->iface->conf->spr.srg_obss_pd_max_offset;
+		os_memcpy(spr_param,
+			  hapd->iface->conf->spr.srg_bss_color_bitmap, 8);
+		spr_param += 8;
+		os_memcpy(spr_param,
+			  hapd->iface->conf->spr.srg_partial_bssid_bitmap, 8);
 		pos += 18;
 	}
 

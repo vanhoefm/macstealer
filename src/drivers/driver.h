@@ -1483,19 +1483,36 @@ struct wpa_driver_ap_params {
 	const struct wpabuf *civic;
 
 	/**
-	 * he_spr - Whether Spatial Reuse is enabled
+	 * he_spr_ctrl - Spatial Reuse control field of SPR element
 	 */
-	 int he_spr;
+	u8 he_spr_ctrl;
+
+	/**
+	 * he_spr_non_srg_obss_pd_max_offset - Non-SRG Maximum TX power offset
+	 */
+	u8 he_spr_non_srg_obss_pd_max_offset;
 
 	/**
 	 * he_spr_srg_obss_pd_min_offset - Minimum TX power offset
 	 */
-	 int he_spr_srg_obss_pd_min_offset;
+	u8 he_spr_srg_obss_pd_min_offset;
 
 	/**
 	 * he_spr_srg_obss_pd_max_offset - Maximum TX power offset
 	 */
-	 int he_spr_srg_obss_pd_max_offset;
+	u8 he_spr_srg_obss_pd_max_offset;
+
+	/**
+	 * he_spr_bss_color_bitmap - BSS color values used by members of the
+	 * SRG.
+	 */
+	u8 he_spr_bss_color_bitmap[8];
+
+	/**
+	 * he_spr_partial_bssid_bitmap - Partial BSSID values used by members
+	 * of the SRG.
+	 */
+	u8 he_spr_partial_bssid_bitmap[8];
 
 	/**
 	 * he_bss_color - Whether the BSS Color is disabled

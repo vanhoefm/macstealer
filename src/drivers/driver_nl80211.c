@@ -4606,17 +4606,34 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 	}
 
 #ifdef CONFIG_IEEE80211AX
-	if (params->he_spr) {
+	if (params->he_spr_ctrl) {
 		struct nlattr *spr;
 
 		spr = nla_nest_start(msg, NL80211_ATTR_HE_OBSS_PD);
-		wpa_printf(MSG_DEBUG, "nl80211: he_spr=%d", params->he_spr);
+		wpa_printf(MSG_DEBUG, "nl80211: he_spr_ctrl=0x%x",
+			   params->he_spr_ctrl);
 
 		if (!spr ||
-		    nla_put_u8(msg, NL80211_HE_OBSS_PD_ATTR_MIN_OFFSET,
-			       params->he_spr_srg_obss_pd_min_offset) ||
-		    nla_put_u8(msg, NL80211_HE_OBSS_PD_ATTR_MAX_OFFSET,
-			       params->he_spr_srg_obss_pd_max_offset))
+		    nla_put_u8(msg, NL80211_HE_OBSS_PD_ATTR_SR_CTRL,
+			       params->he_spr_ctrl) ||
+		    ((params->he_spr_ctrl &
+		      SPATIAL_REUSE_NON_SRG_OFFSET_PRESENT) &&
+		     nla_put_u8(msg, NL80211_HE_OBSS_PD_ATTR_NON_SRG_MAX_OFFSET,
+				params->he_spr_non_srg_obss_pd_max_offset)))
+			goto fail;
+
+		if ((params->he_spr_ctrl &
+		     SPATIAL_REUSE_SRG_INFORMATION_PRESENT) &&
+		    (nla_put_u8(msg, NL80211_HE_OBSS_PD_ATTR_MIN_OFFSET,
+				params->he_spr_srg_obss_pd_min_offset) ||
+		     nla_put_u8(msg, NL80211_HE_OBSS_PD_ATTR_MAX_OFFSET,
+				params->he_spr_srg_obss_pd_max_offset) ||
+		     nla_put(msg, NL80211_HE_OBSS_PD_ATTR_BSS_COLOR_BITMAP,
+			     sizeof(params->he_spr_bss_color_bitmap),
+			     params->he_spr_bss_color_bitmap) ||
+		     nla_put(msg, NL80211_HE_OBSS_PD_ATTR_PARTIAL_BSSID_BITMAP,
+			     sizeof(params->he_spr_partial_bssid_bitmap),
+			     params->he_spr_partial_bssid_bitmap)))
 			goto fail;
 
 		nla_nest_end(msg, spr);

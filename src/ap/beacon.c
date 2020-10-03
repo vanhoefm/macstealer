@@ -1497,11 +1497,17 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
 	params.assocresp_ies = assocresp;
 	params.reenable = hapd->reenable_beacon;
 #ifdef CONFIG_IEEE80211AX
-	params.he_spr = !!hapd->iface->conf->spr.sr_control;
+	params.he_spr_ctrl = hapd->iface->conf->spr.sr_control;
+	params.he_spr_non_srg_obss_pd_max_offset =
+		hapd->iface->conf->spr.non_srg_obss_pd_max_offset;
 	params.he_spr_srg_obss_pd_min_offset =
 		hapd->iface->conf->spr.srg_obss_pd_min_offset;
 	params.he_spr_srg_obss_pd_max_offset =
 		hapd->iface->conf->spr.srg_obss_pd_max_offset;
+	os_memcpy(params.he_spr_bss_color_bitmap,
+		  hapd->iface->conf->spr.srg_bss_color_bitmap, 8);
+	os_memcpy(params.he_spr_partial_bssid_bitmap,
+		  hapd->iface->conf->spr.srg_partial_bssid_bitmap, 8);
 	params.he_bss_color_disabled =
 		hapd->iface->conf->he_op.he_bss_color_disabled;
 	params.he_bss_color_partial =
