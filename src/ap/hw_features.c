@@ -732,6 +732,51 @@ int hostapd_check_edmg_capab(struct hostapd_iface *iface)
 }
 
 
+int hostapd_check_he_6ghz_capab(struct hostapd_iface *iface)
+{
+#ifdef CONFIG_IEEE80211AX
+	struct he_capabilities *he_cap;
+	u16 hw;
+
+	if (!iface->current_mode || !is_6ghz_freq(iface->freq))
+		return 0;
+
+	he_cap = &iface->current_mode->he_capab[IEEE80211_MODE_AP];
+	hw = he_cap->he_6ghz_capa;
+	if (iface->conf->he_6ghz_max_mpdu >
+	    ((hw & HE_6GHZ_BAND_CAP_MAX_MPDU_LEN_MASK) >>
+	     HE_6GHZ_BAND_CAP_MAX_MPDU_LEN_SHIFT)) {
+		wpa_printf(MSG_ERROR,
+			   "The driver does not support the configured HE 6 GHz Max MPDU length");
+		return -1;
+	}
+
+	if (iface->conf->he_6ghz_max_ampdu_len_exp >
+	    ((hw & HE_6GHZ_BAND_CAP_MAX_AMPDU_LEN_EXP_MASK) >>
+	     HE_6GHZ_BAND_CAP_MAX_AMPDU_LEN_EXP_SHIFT)) {
+		wpa_printf(MSG_ERROR,
+			   "The driver does not support the configured HE 6 GHz Max AMPDU Length Exponent");
+		return -1;
+	}
+
+	if (iface->conf->he_6ghz_rx_ant_pat &&
+	    !(hw & HE_6GHZ_BAND_CAP_RX_ANTPAT_CONS)) {
+		wpa_printf(MSG_ERROR,
+			   "The driver does not support the configured HE 6 GHz Rx Antenna Pattern");
+		return -1;
+	}
+
+	if (iface->conf->he_6ghz_tx_ant_pat &&
+	    !(hw & HE_6GHZ_BAND_CAP_TX_ANTPAT_CONS)) {
+		wpa_printf(MSG_ERROR,
+			   "The driver does not support the configured HE 6 GHz Tx Antenna Pattern");
+		return -1;
+	}
+#endif /* CONFIG_IEEE80211AX */
+	return 0;
+}
+
+
 static int hostapd_is_usable_chan(struct hostapd_iface *iface,
 				  int frequency, int primary)
 {

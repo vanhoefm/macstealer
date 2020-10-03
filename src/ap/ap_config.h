@@ -1044,6 +1044,10 @@ struct hostapd_config {
 	u8 he_oper_chwidth;
 	u8 he_oper_centr_freq_seg0_idx;
 	u8 he_oper_centr_freq_seg1_idx;
+	u8 he_6ghz_max_mpdu;
+	u8 he_6ghz_max_ampdu_len_exp;
+	u8 he_6ghz_rx_ant_pat;
+	u8 he_6ghz_tx_ant_pat;
 #endif /* CONFIG_IEEE80211AX */
 
 	/* VHT enable/disable config from CHAN_SWITCH */

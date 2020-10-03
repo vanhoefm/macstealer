@@ -268,6 +268,10 @@ struct hostapd_config * hostapd_config_defaults(void)
 	conf->he_op.he_bss_color_disabled = 1;
 	conf->he_op.he_bss_color_partial = 0;
 	conf->he_op.he_bss_color = 1;
+	conf->he_6ghz_max_mpdu = 2;
+	conf->he_6ghz_max_ampdu_len_exp = 7;
+	conf->he_6ghz_rx_ant_pat = 1;
+	conf->he_6ghz_tx_ant_pat = 1;
 #endif /* CONFIG_IEEE80211AX */
 
 	/* The third octet of the country string uses an ASCII space character

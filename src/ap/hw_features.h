@@ -22,6 +22,7 @@ int hostapd_hw_get_freq(struct hostapd_data *hapd, int chan);
 int hostapd_hw_get_channel(struct hostapd_data *hapd, int freq);
 int hostapd_check_ht_capab(struct hostapd_iface *iface);
 int hostapd_check_edmg_capab(struct hostapd_iface *iface);
+int hostapd_check_he_6ghz_capab(struct hostapd_iface *iface);
 int hostapd_prepare_rates(struct hostapd_iface *iface,
 			  struct hostapd_hw_modes *mode);
 void hostapd_stop_setup_timers(struct hostapd_iface *iface);
@@ -81,6 +82,11 @@ static inline void hostapd_stop_setup_timers(struct hostapd_iface *iface)
 
 static inline int hostapd_hw_skip_mode(struct hostapd_iface *iface,
 				       struct hostapd_hw_modes *mode)
+{
+	return 0;
+}
+
+static inline int hostapd_check_he_6ghz_capab(struct hostapd_iface *iface)
 {
 	return 0;
 }

@@ -3557,6 +3557,14 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		conf->he_oper_centr_freq_seg0_idx = atoi(pos);
 	} else if (os_strcmp(buf, "he_oper_centr_freq_seg1_idx") == 0) {
 		conf->he_oper_centr_freq_seg1_idx = atoi(pos);
+	} else if (os_strcmp(buf, "he_6ghz_max_mpdu") == 0) {
+		conf->he_6ghz_max_mpdu = atoi(pos);
+	} else if (os_strcmp(buf, "he_6ghz_max_ampdu_len_exp") == 0) {
+		conf->he_6ghz_max_ampdu_len_exp = atoi(pos);
+	} else if (os_strcmp(buf, "he_6ghz_rx_ant_pat") == 0) {
+		conf->he_6ghz_rx_ant_pat = atoi(pos);
+	} else if (os_strcmp(buf, "he_6ghz_tx_ant_pat") == 0) {
+		conf->he_6ghz_tx_ant_pat = atoi(pos);
 #endif /* CONFIG_IEEE80211AX */
 	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
 		bss->max_listen_interval = atoi(pos);

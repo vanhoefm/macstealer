@@ -1703,6 +1703,9 @@ static int setup_interface2(struct hostapd_iface *iface)
 		ret = hostapd_check_edmg_capab(iface);
 		if (ret < 0)
 			goto fail;
+		ret = hostapd_check_he_6ghz_capab(iface);
+		if (ret < 0)
+			goto fail;
 		ret = hostapd_check_ht_capab(iface);
 		if (ret < 0)
 			goto fail;
