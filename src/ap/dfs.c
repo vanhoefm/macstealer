@@ -1348,12 +1348,16 @@ int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
 		if (!(chan->flag & HOSTAPD_CHAN_RADAR))
 			continue;
 
+		if ((chan->flag & HOSTAPD_CHAN_DFS_MASK) ==
+		    HOSTAPD_CHAN_DFS_AVAILABLE)
+			continue;
+
 		if (center_freq - chan->freq < half_width &&
 		    chan->freq - center_freq < half_width)
 			res++;
 	}
 
-	wpa_printf(MSG_DEBUG, "DFS: (%d, %d): in range: %s",
+	wpa_printf(MSG_DEBUG, "DFS CAC required: (%d, %d): in range: %s",
 		   center_freq - half_width, center_freq + half_width,
 		   res ? "yes" : "no");
 
