@@ -694,3 +694,74 @@ def test_dfs_no_available_channel(dev, apdev):
             raise Exception("AP was not disabled")
     finally:
         clear_regdom(hapd, dev)
+
+def dfs_chan_switch_precac(dev, apdev, country):
+    """DFS channel switch pre CAC"""
+    try:
+        hapd = None
+
+        # Toggle regulatory - clean all preCAC
+        hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', 'US'])
+
+        hapd = start_dfs_ap(apdev[0], country=country)
+
+        ev = wait_dfs_event(hapd, "DFS-CAC-COMPLETED", 70)
+        if "success=1" not in ev:
+            raise Exception("CAC failed")
+        if "freq=5260" not in ev:
+            raise Exception("Unexpected DFS freq result")
+        ev = hapd.wait_event(["AP-ENABLED"], timeout=5)
+        if not ev:
+            raise Exception("AP setup timed out")
+        freq = hapd.get_status_field("freq")
+        if freq != "5260":
+            raise Exception("Unexpected frequency")
+
+        # TODO add/connect station here
+        # Today skip this step while dev[0].connect()
+        # for some reason toggle regulatory to US
+        # and clean preCAC
+
+        # Back to non DFS channel
+        if "OK" not in hapd.request("CHAN_SWITCH 5 5180 ht"):
+            raise Exception("CHAN_SWITCH 5180 failed")
+
+        ev = hapd.wait_event(["AP-CSA-FINISHED"], timeout=5)
+        if not ev:
+            raise Exception("No CSA finished event - 5180")
+        freq = hapd.get_status_field("freq")
+        if freq != "5180":
+            raise Exception("Unexpected frequency")
+
+        # Today cfg80211 first send AP-CSA-FINISHED and next
+        # DFS-PRE-CAC-EXPIRED
+        ev = hapd.wait_event(["DFS-PRE-CAC-EXPIRED"], timeout=3)
+        if not ev and country == 'US':
+            raise Exception("US - no CAC-EXPIRED event")
+
+	# Back again to DFS channel (CAC passed)
+        if "OK" not in hapd.request("CHAN_SWITCH 5 5260 ht"):
+            raise Exception("CHAN_SWITCH 5260 failed")
+
+        if country == 'US':
+            # For non EU we should start CAC again
+            ev = wait_dfs_event(hapd, "DFS-CAC-START", 5)
+            if not ev:
+                raise Exception("No DFS CAC start event")
+        else:
+            # For EU preCAC should be used
+            ev = wait_dfs_event(hapd, "AP-CSA-FINISHED", 5)
+            if not ev:
+                raise Exception("No CSA finished event - 5260")
+    finally:
+        clear_regdom(hapd, dev)
+
+@long_duration_test
+def test_dfs_eu_chan_switch_precac(dev, apdev):
+    """DFS channel switch pre CAC - ETSI domain"""
+    dfs_chan_switch_precac(dev, apdev, 'PL')
+
+@long_duration_test
+def test_dfs_us_chan_switch_precac(dev, apdev):
+    """DFS channel switch pre CAC - FCC domain"""
+    dfs_chan_switch_precac(dev, apdev, 'US')
