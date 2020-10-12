@@ -6067,10 +6067,32 @@ static int wpas_p2p_select_go_freq(struct wpa_supplicant *wpa_s, int freq)
 			wpa_printf(MSG_DEBUG, "P2P: Use best 5 GHz band "
 				   "channel: %d MHz", freq);
 		} else {
+			const int freqs[] = {
+				/* operating class 115 */
+				5180, 5200, 5220, 5240,
+				/* operating class 124 */
+				5745, 5765, 5785, 5805,
+			};
+			unsigned int i, num_freqs = ARRAY_SIZE(freqs);
+
 			if (os_get_random((u8 *) &r, sizeof(r)) < 0)
 				return -1;
-			freq = 5180 + (r % 4) * 20;
-			if (!p2p_supported_freq_go(wpa_s->global->p2p, freq)) {
+
+			/*
+			 * Most of the 5 GHz channels require DFS. Only
+			 * operating classes 115 and 124 are available possibly
+			 * without that requirement. Check these for
+			 * availability starting from a randomly picked
+			 * position.
+			 */
+			for (i = 0; i < num_freqs; i++, r++) {
+				freq = freqs[r % num_freqs];
+				if (p2p_supported_freq_go(wpa_s->global->p2p,
+							  freq))
+					break;
+			}
+
+			if (i >= num_freqs) {
 				wpa_printf(MSG_DEBUG, "P2P: Could not select "
 					   "5 GHz channel for P2P group");
 				return -1;
