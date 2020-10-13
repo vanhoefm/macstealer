@@ -63,7 +63,7 @@ def test_multi_ap_fronthaul_on_ap(dev, apdev):
     if "CTRL-EVENT-DISCONNECTED" not in ev:
         raise Exception("Unexpected connection result")
 
-def run_multi_ap_wps(dev, apdev, params, multi_ap_bssid=None):
+def run_multi_ap_wps(dev, apdev, params, params_backhaul=None):
     """Helper for running Multi-AP WPS tests
 
     dev[0] does multi_ap WPS, dev[1] does normal WPS. apdev[0] is the fronthaul
@@ -72,8 +72,12 @@ def run_multi_ap_wps(dev, apdev, params, multi_ap_bssid=None):
     the WPS parameters. multi_ap_bssid must be given if it is not equal to the
     fronthaul BSSID."""
 
-    if multi_ap_bssid is None:
+    if params_backhaul:
+        hapd_backhaul = hostapd.add_ap(apdev[1], params_backhaul)
+        multi_ap_bssid =  hapd_backhaul.own_addr()
+    else:
         multi_ap_bssid = apdev[0]['bssid']
+
     params.update({"wps_state": "2", "eap_server": "1"})
 
     # WPS with multi-ap station dev[0]
@@ -163,9 +167,8 @@ def test_multi_ap_wps_split(dev, apdev):
     params_backhaul = hostapd.wpa2_params(ssid=backhaul_ssid,
                                           passphrase=backhaul_passphrase)
     params_backhaul.update({"multi_ap": "1"})
-    hapd_backhaul = hostapd.add_ap(apdev[1], params_backhaul)
 
-    run_multi_ap_wps(dev, apdev, params, hapd_backhaul.own_addr())
+    run_multi_ap_wps(dev, apdev, params, params_backhaul)
 
 def test_multi_ap_wps_split_psk(dev, apdev):
     """WPS on split fronthaul and backhaul AP"""
@@ -178,9 +181,8 @@ def test_multi_ap_wps_split_psk(dev, apdev):
                    "multi_ap_backhaul_wpa_psk": backhaul_psk})
     params_backhaul = hostapd.wpa2_params(ssid=backhaul_ssid)
     params_backhaul.update({"multi_ap": "1", "wpa_psk": backhaul_psk})
-    hapd_backhaul = hostapd.add_ap(apdev[1], params_backhaul)
 
-    run_multi_ap_wps(dev, apdev, params, hapd_backhaul.own_addr())
+    run_multi_ap_wps(dev, apdev, params, params_backhaul)
 
 def test_multi_ap_wps_split_mixed(dev, apdev):
     """WPS on split fronthaul and backhaul AP with mixed-mode fronthaul"""
@@ -195,9 +197,8 @@ def test_multi_ap_wps_split_mixed(dev, apdev):
     params_backhaul = hostapd.wpa2_params(ssid=backhaul_ssid,
                                           passphrase=backhaul_passphrase)
     params_backhaul.update({"multi_ap": "1"})
-    hapd_backhaul = hostapd.add_ap(apdev[1], params_backhaul)
 
-    run_multi_ap_wps(dev, apdev, params, hapd_backhaul.own_addr())
+    run_multi_ap_wps(dev, apdev, params, params_backhaul)
 
 def test_multi_ap_wps_split_open(dev, apdev):
     """WPS on split fronthaul and backhaul AP with open fronthaul"""
@@ -209,9 +210,8 @@ def test_multi_ap_wps_split_open(dev, apdev):
     params_backhaul = hostapd.wpa2_params(ssid=backhaul_ssid,
                                           passphrase=backhaul_passphrase)
     params_backhaul.update({"multi_ap": "1"})
-    hapd_backhaul = hostapd.add_ap(apdev[1], params_backhaul)
 
-    run_multi_ap_wps(dev, apdev, params, hapd_backhaul.own_addr())
+    run_multi_ap_wps(dev, apdev, params, params_backhaul)
 
 def test_multi_ap_wps_fail_non_multi_ap(dev, apdev):
     """Multi-AP WPS on non-WPS AP fails"""
