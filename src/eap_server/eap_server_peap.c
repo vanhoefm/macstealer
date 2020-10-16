@@ -512,7 +512,25 @@ static struct wpabuf * eap_peap_build_phase2_term(struct eap_sm *sm,
 	encr_req = eap_server_tls_encrypt(sm, &data->ssl, &msgbuf);
 	os_free(hdr);
 
-	return encr_req;
+	if (!data->ssl.tls_v13 ||
+	    !tls_connection_resumed(sm->cfg->ssl_ctx, data->ssl.conn)) {
+		wpabuf_free(data->ssl.tls_out);
+		data->ssl.tls_out_pos = 0;
+		return encr_req;
+	}
+
+	if (wpabuf_resize(&data->ssl.tls_out, wpabuf_len(encr_req)) < 0) {
+		wpa_printf(MSG_INFO,
+			   "EAP-PEAP: Failed to resize output buffer");
+		wpabuf_free(encr_req);
+		return NULL;
+	}
+	wpabuf_put_buf(data->ssl.tls_out, encr_req);
+	wpa_hexdump_buf(MSG_DEBUG,
+			"EAP-PEAP: Data appended to the message", encr_req);
+	os_free(encr_req);
+
+	return data->ssl.tls_out;
 }
 
 
@@ -561,8 +579,6 @@ static struct wpabuf * eap_peap_buildReq(struct eap_sm *sm, void *priv, u8 id)
 		data->ssl.tls_out = eap_peap_build_phase2_tlv(sm, data, id);
 		break;
 	case SUCCESS_REQ:
-		wpabuf_free(data->ssl.tls_out);
-		data->ssl.tls_out_pos = 0;
 		data->ssl.tls_out = eap_peap_build_phase2_term(sm, data, id,
 							       1);
 		break;

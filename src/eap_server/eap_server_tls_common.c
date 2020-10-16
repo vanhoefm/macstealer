@@ -366,6 +366,56 @@ int eap_server_tls_phase1(struct eap_sm *sm, struct eap_ssl_data *data)
 		sm->serial_num = tls_connection_peer_serial_num(
 			sm->cfg->ssl_ctx, data->conn);
 
+	/*
+	 * https://tools.ietf.org/html/draft-ietf-emu-eap-tls13#section-2.5
+	 *
+	 * We need to signal the other end that TLS negotiation is done. We
+	 * can't send a zero-length application data message, so we send
+	 * application data which is one byte of zero.
+	 *
+	 * Note this is only done for when there is no application data to be
+	 * sent. So this is done always for EAP-TLS but notibly not for PEAP
+	 * even on resumption.
+	 */
+	if (data->tls_v13 &&
+	    tls_connection_established(sm->cfg->ssl_ctx, data->conn)) {
+		struct wpabuf *plain, *encr;
+
+		switch (sm->currentMethod) {
+		case EAP_TYPE_PEAP:
+			break;
+		default:
+			if (!tls_connection_resumed(sm->cfg->ssl_ctx,
+						    data->conn))
+				break;
+			/* fallthrough */
+		case EAP_TYPE_TLS:
+			wpa_printf(MSG_DEBUG,
+				   "EAP-TLS: Send Commitment Message");
+
+			plain = wpabuf_alloc(1);
+			if (!plain)
+				return -1;
+			wpabuf_put_u8(plain, 0);
+			encr = eap_server_tls_encrypt(sm, data, plain);
+			wpabuf_free(plain);
+			if (!encr)
+				return -1;
+			if (wpabuf_resize(&data->tls_out, wpabuf_len(encr)) < 0)
+			{
+				wpa_printf(MSG_INFO,
+					   "EAP-TLS: Failed to resize output buffer");
+				wpabuf_free(encr);
+				return -1;
+			}
+			wpabuf_put_buf(data->tls_out, encr);
+			wpa_hexdump_buf(MSG_DEBUG,
+					"EAP-TLS: Data appended to the message",
+					encr);
+			wpabuf_free(encr);
+		}
+	}
+
 	return 0;
 }
 
