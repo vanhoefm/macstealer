@@ -1271,13 +1271,25 @@ static u8 * eap_ttls_getKey(struct eap_sm *sm, void *priv, size_t *len)
 {
 	struct eap_ttls_data *data = priv;
 	u8 *eapKeyData;
+	const char *label;
+	const u8 eap_tls13_context[1] = { EAP_TYPE_TTLS };
+	const u8 *context = NULL;
+	size_t context_len = 0;
 
 	if (data->state != SUCCESS)
 		return NULL;
 
+	if (data->ssl.tls_v13) {
+		label = "EXPORTER_EAP_TLS_Key_Material";
+		context = eap_tls13_context;
+		context_len = sizeof(eap_tls13_context);
+	} else {
+		label = "ttls keying material";
+	}
+
 	eapKeyData = eap_server_tls_derive_key(sm, &data->ssl,
-					       "ttls keying material", NULL, 0,
-					       EAP_TLS_KEY_LEN);
+					       label, context, context_len,
+					       EAP_TLS_KEY_LEN + EAP_EMSK_LEN);
 	if (eapKeyData) {
 		*len = EAP_TLS_KEY_LEN;
 		wpa_hexdump_key(MSG_DEBUG, "EAP-TTLS: Derived key",
@@ -1313,12 +1325,24 @@ static u8 * eap_ttls_get_emsk(struct eap_sm *sm, void *priv, size_t *len)
 {
 	struct eap_ttls_data *data = priv;
 	u8 *eapKeyData, *emsk;
+	const char *label;
+	const u8 eap_tls13_context[1] = { EAP_TYPE_TTLS };
+	const u8 *context = NULL;
+	size_t context_len = 0;
 
 	if (data->state != SUCCESS)
 		return NULL;
 
+	if (data->ssl.tls_v13) {
+		label = "EXPORTER_EAP_TLS_Key_Material";
+		context = eap_tls13_context;
+		context_len = sizeof(eap_tls13_context);
+	} else {
+		label = "ttls keying material";
+	}
+
 	eapKeyData = eap_server_tls_derive_key(sm, &data->ssl,
-					       "ttls keying material", NULL, 0,
+					       label, context, context_len,
 					       EAP_TLS_KEY_LEN + EAP_EMSK_LEN);
 	if (eapKeyData) {
 		emsk = os_malloc(EAP_EMSK_LEN);
