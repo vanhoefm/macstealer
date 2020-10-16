@@ -1085,7 +1085,11 @@ static struct wpabuf * eap_peap_process(struct eap_sm *sm, void *priv,
 		}
 
 		if (tls_connection_established(sm->ssl_ctx, data->ssl.conn)) {
-			char *label;
+			const char *label;
+			const u8 eap_tls13_context[1] = { EAP_TYPE_PEAP };
+			const u8 *context = NULL;
+			size_t context_len = 0;
+
 			wpa_printf(MSG_DEBUG,
 				   "EAP-PEAP: TLS done, proceed to Phase 2");
 			eap_peap_free_key(data);
@@ -1095,16 +1099,25 @@ static struct wpabuf * eap_peap_process(struct eap_sm *sm, void *priv,
 			 * PEAPv1 implementations seem to be using the old
 			 * label, "client EAP encryption", instead. Use the old
 			 * label by default, but allow it to be configured with
-			 * phase1 parameter peaplabel=1. */
-			if (data->force_new_label)
+			 * phase1 parameter peaplabel=1.
+			 *
+			 * When using TLS 1.3, draft-ietf-emu-tls-eap-types
+			 * defines a new set of label and context parameters.
+			 */
+			if (data->ssl.tls_v13) {
+				label = "EXPORTER_EAP_TLS_Key_Material";
+				context = eap_tls13_context;
+				context_len = sizeof(eap_tls13_context);
+			} else if (data->force_new_label) {
 				label = "client PEAP encryption";
-			else
+			} else {
 				label = "client EAP encryption";
+			}
 			wpa_printf(MSG_DEBUG, "EAP-PEAP: using label '%s' in "
 				   "key derivation", label);
 			data->key_data =
 				eap_peer_tls_derive_key(sm, &data->ssl, label,
-							NULL, 0,
+							context, context_len,
 							EAP_TLS_KEY_LEN +
 							EAP_EMSK_LEN);
 			if (data->key_data) {
