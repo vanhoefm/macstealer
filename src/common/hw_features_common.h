@@ -15,6 +15,9 @@
 struct hostapd_channel_data * hw_get_channel_chan(struct hostapd_hw_modes *mode,
 						  int chan, int *freq);
 struct hostapd_channel_data *
+hw_mode_get_channel(struct hostapd_hw_modes *mode, int freq, int *chan);
+
+struct hostapd_channel_data *
 hw_get_channel_freq(enum hostapd_hw_mode mode, int freq, int *chan,
 		    struct hostapd_hw_modes *hw_features, int num_hw_features);
 

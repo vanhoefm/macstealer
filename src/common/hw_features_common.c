@@ -41,10 +41,30 @@ struct hostapd_channel_data * hw_get_channel_chan(struct hostapd_hw_modes *mode,
 
 
 struct hostapd_channel_data *
+hw_mode_get_channel(struct hostapd_hw_modes *mode, int freq, int *chan)
+{
+	int i;
+
+	for (i = 0; i < mode->num_channels; i++) {
+		struct hostapd_channel_data *ch = &mode->channels[i];
+
+		if (ch->freq == freq) {
+			if (chan)
+				*chan = ch->chan;
+			return ch;
+		}
+	}
+
+	return NULL;
+}
+
+
+struct hostapd_channel_data *
 hw_get_channel_freq(enum hostapd_hw_mode mode, int freq, int *chan,
 		    struct hostapd_hw_modes *hw_features, int num_hw_features)
 {
-	int i, j;
+	struct hostapd_channel_data *chan_data;
+	int i;
 
 	if (chan)
 		*chan = 0;
@@ -52,21 +72,15 @@ hw_get_channel_freq(enum hostapd_hw_mode mode, int freq, int *chan,
 	if (!hw_features)
 		return NULL;
 
-	for (j = 0; j < num_hw_features; j++) {
-		struct hostapd_hw_modes *curr_mode = &hw_features[j];
+	for (i = 0; i < num_hw_features; i++) {
+		struct hostapd_hw_modes *curr_mode = &hw_features[i];
 
 		if (curr_mode->mode != mode)
 			continue;
-		for (i = 0; i < curr_mode->num_channels; i++) {
-			struct hostapd_channel_data *ch =
-				&curr_mode->channels[i];
 
-			if (ch->freq == freq) {
-				if (chan)
-					*chan = ch->chan;
-				return ch;
-			}
-		}
+		chan_data = hw_mode_get_channel(curr_mode, freq, chan);
+		if (chan_data)
+			return chan_data;
 	}
 
 	return NULL;

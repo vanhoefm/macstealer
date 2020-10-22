@@ -1074,12 +1074,13 @@ int hostapd_select_hw_mode(struct hostapd_iface *iface)
 	iface->current_mode = NULL;
 	for (i = 0; i < iface->num_hw_features; i++) {
 		struct hostapd_hw_modes *mode = &iface->hw_features[i];
+		int chan;
+
 		if (mode->mode == iface->conf->hw_mode) {
 			if (iface->freq > 0 &&
-			    !hw_get_chan(mode->mode, iface->freq,
-					 iface->hw_features,
-					 iface->num_hw_features))
+			    !hw_mode_get_channel(mode, iface->freq, &chan))
 				continue;
+
 			iface->current_mode = mode;
 			break;
 		}
