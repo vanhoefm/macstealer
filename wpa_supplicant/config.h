@@ -45,6 +45,7 @@
 #define DEFAULT_DISASSOC_IMMINENT_RSSI_THRESHOLD -75
 #define DEFAULT_OCE_SUPPORT OCE_STA
 #define DEFAULT_EXTENDED_KEY_ID 0
+#define DEFAULT_SCAN_RES_VALID_FOR_CONNECT 5
 
 #include "config_ssid.h"
 #include "wps/wps.h"
@@ -936,6 +937,15 @@ struct wpa_config {
 	 * VIFs on this radio are already associated on a particular channel.
 	 */
 	int scan_cur_freq;
+
+	/**
+	 * scan_res_valid_for_connect - Seconds scans are valid for association
+	 *
+	 * This configures the number of seconds old scan results are considered
+	 * valid for association. When scan results are older than this value
+	 * a new scan is triggered prior to the association.
+	 */
+	int scan_res_valid_for_connect;
 
 	/**
 	 * changed_parameters - Bitmap of changed parameters since last update

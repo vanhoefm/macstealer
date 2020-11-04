@@ -2449,7 +2449,7 @@ int wpa_supplicant_fast_associate(struct wpa_supplicant *wpa_s)
 
 	os_get_reltime(&now);
 	if (os_reltime_expired(&now, &wpa_s->last_scan,
-			       SCAN_RES_VALID_FOR_CONNECT)) {
+			       wpa_s->conf->scan_res_valid_for_connect)) {
 		wpa_printf(MSG_DEBUG, "Fast associate: Old scan results");
 		return -1;
 	}
@@ -5313,13 +5313,13 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		}
 		wpa_supplicant_mark_disassoc(wpa_s);
 		os_reltime_age(&wpa_s->last_scan, &age);
-		if (age.sec >= SCAN_RES_VALID_FOR_CONNECT) {
-			clear_at.sec = SCAN_RES_VALID_FOR_CONNECT;
+		if (age.sec >= wpa_s->conf->scan_res_valid_for_connect) {
+			clear_at.sec = wpa_s->conf->scan_res_valid_for_connect;
 			clear_at.usec = 0;
 		} else {
 			struct os_reltime tmp;
 
-			tmp.sec = SCAN_RES_VALID_FOR_CONNECT;
+			tmp.sec = wpa_s->conf->scan_res_valid_for_connect;
 			tmp.usec = 0;
 			os_reltime_sub(&tmp, &age, &clear_at);
 		}

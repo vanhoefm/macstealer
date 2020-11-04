@@ -49,9 +49,6 @@ struct ctrl_iface_global_priv;
 struct wpas_dbus_priv;
 struct wpas_binder_priv;
 
-/* How many seconds to consider old scan results valid for association. */
-#define SCAN_RES_VALID_FOR_CONNECT 5
-
 /**
  * struct wpa_interface - Parameters for wpa_supplicant_add_iface()
  */

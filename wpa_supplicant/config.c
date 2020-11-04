@@ -4309,6 +4309,7 @@ struct wpa_config * wpa_config_alloc_empty(const char *ctrl_interface,
 	config->ap_isolate = DEFAULT_AP_ISOLATE;
 	config->access_network_type = DEFAULT_ACCESS_NETWORK_TYPE;
 	config->scan_cur_freq = DEFAULT_SCAN_CUR_FREQ;
+	config->scan_res_valid_for_connect = DEFAULT_SCAN_RES_VALID_FOR_CONNECT;
 	config->wmm_ac_params[0] = ac_be;
 	config->wmm_ac_params[1] = ac_bk;
 	config->wmm_ac_params[2] = ac_vi;
@@ -5105,6 +5106,7 @@ static const struct global_parse_data global_fields[] = {
 	{ FUNC(freq_list), 0 },
 	{ FUNC(initial_freq_list), 0},
 	{ INT(scan_cur_freq), 0 },
+	{ INT(scan_res_valid_for_connect), 0},
 	{ INT(sched_scan_interval), 0 },
 	{ INT(sched_scan_start_delay), 0 },
 	{ INT(tdls_external_control), 0},
