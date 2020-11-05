@@ -964,7 +964,7 @@ static inline int wpa_drv_setband(struct wpa_supplicant *wpa_s,
 static inline int wpa_drv_get_pref_freq_list(struct wpa_supplicant *wpa_s,
 					     enum wpa_driver_if_type if_type,
 					     unsigned int *num,
-					     unsigned int *freq_list)
+					     struct weighted_pcl *freq_list)
 {
 #ifdef CONFIG_TESTING_OPTIONS
 	if (wpa_s->get_pref_freq_list_override)

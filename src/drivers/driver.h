@@ -2602,6 +2602,24 @@ enum nested_attr {
 	NESTED_ATTR_UNSPECIFIED = 2,
 };
 
+/* Preferred channel list information */
+
+/* GO role */
+#define WEIGHTED_PCL_GO BIT(0)
+/* P2P Client role */
+#define WEIGHTED_PCL_CLI BIT(1)
+/* Must be considered for operating channel */
+#define WEIGHTED_PCL_MUST_CONSIDER BIT(2)
+/* Should be excluded in GO negotiation */
+#define WEIGHTED_PCL_EXCLUDE BIT(3)
+
+/* Preferred channel list with weight */
+struct weighted_pcl {
+	u32 freq; /* MHz */
+	u8 weight;
+	u32 flag; /* bitmap for WEIGHTED_PCL_* */
+};
+
 /**
  * struct wpa_driver_ops - Driver interface API definition
  *
@@ -4446,14 +4464,17 @@ struct wpa_driver_ops {
 	 * @priv: Private driver interface data
 	 * @if_type: Interface type
 	 * @num: Number of channels
-	 * @freq_list: Preferred channel frequency list encoded in MHz values
+	 * @freq_list: Weighted preferred channel list
 	 * Returns 0 on success, -1 on failure
 	 *
 	 * This command can be used to query the preferred frequency list from
-	 * the driver specific to a particular interface type.
+	 * the driver specific to a particular interface type. The freq_list
+	 * array needs to have room for *num entries. *num will be updated to
+	 * indicate the number of entries fetched from the driver.
 	 */
 	int (*get_pref_freq_list)(void *priv, enum wpa_driver_if_type if_type,
-				  unsigned int *num, unsigned int *freq_list);
+				  unsigned int *num,
+				  struct weighted_pcl *freq_list);
 
 	/**
 	 * set_prob_oper_freq - Indicate probable P2P operating channel

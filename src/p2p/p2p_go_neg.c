@@ -182,8 +182,20 @@ static struct wpabuf * p2p_build_go_neg_req(struct p2p_data *p2p,
 	p2p_buf_add_intended_addr(buf, p2p->intended_addr);
 	is_6ghz_capab = is_p2p_6ghz_capable(p2p) &&
 		p2p_is_peer_6ghz_capab(p2p, peer->info.p2p_device_addr);
-	p2p_buf_add_channel_list(buf, p2p->cfg->country, &p2p->channels,
-				 is_6ghz_capab);
+	if (p2p->num_pref_freq) {
+		bool go = p2p->go_intent == 15;
+		struct p2p_channels pref_chanlist;
+
+		p2p_pref_channel_filter(&p2p->channels, p2p->pref_freq_list,
+					p2p->num_pref_freq, &pref_chanlist, go);
+		p2p_channels_dump(p2p, "channel list after filtering",
+				  &pref_chanlist);
+		p2p_buf_add_channel_list(buf, p2p->cfg->country,
+					 &pref_chanlist, is_6ghz_capab);
+	} else {
+		p2p_buf_add_channel_list(buf, p2p->cfg->country,
+					 &p2p->channels, is_6ghz_capab);
+	}
 	p2p_buf_add_device_info(buf, p2p, peer);
 	p2p_buf_add_operating_channel(buf, p2p->cfg->country,
 				      p2p->op_reg_class, p2p->op_channel);
@@ -283,6 +295,7 @@ static struct wpabuf * p2p_build_go_neg_resp(struct p2p_data *p2p,
 	size_t extra = 0;
 	u16 pw_id;
 	bool is_6ghz_capab;
+	struct p2p_channels pref_chanlist;
 
 	p2p_dbg(p2p, "Building GO Negotiation Response");
 
@@ -333,20 +346,32 @@ static struct wpabuf * p2p_build_go_neg_resp(struct p2p_data *p2p,
 					      p2p->op_channel);
 	}
 	p2p_buf_add_intended_addr(buf, p2p->intended_addr);
+	if (p2p->num_pref_freq) {
+		bool go = (peer && peer->go_state == LOCAL_GO) ||
+			p2p->go_intent == 15;
+
+		p2p_pref_channel_filter(&p2p->channels, p2p->pref_freq_list,
+					p2p->num_pref_freq, &pref_chanlist, go);
+		p2p_channels_dump(p2p, "channel list after filtering",
+				  &pref_chanlist);
+	} else {
+		p2p_copy_channels(&pref_chanlist, &p2p->channels,
+				  p2p->allow_6ghz);
+	}
 	if (status || peer == NULL) {
 		p2p_buf_add_channel_list(buf, p2p->cfg->country,
-					 &p2p->channels, false);
+					 &pref_chanlist, false);
 	} else if (peer->go_state == REMOTE_GO) {
 		is_6ghz_capab = is_p2p_6ghz_capable(p2p) &&
 			p2p_is_peer_6ghz_capab(p2p, peer->info.p2p_device_addr);
 		p2p_buf_add_channel_list(buf, p2p->cfg->country,
-					 &p2p->channels, is_6ghz_capab);
+					 &pref_chanlist, is_6ghz_capab);
 	} else {
 		struct p2p_channels res;
 
 		is_6ghz_capab = is_p2p_6ghz_capable(p2p) &&
 			p2p_is_peer_6ghz_capab(p2p, peer->info.p2p_device_addr);
-		p2p_channels_intersect(&p2p->channels, &peer->channels,
+		p2p_channels_intersect(&pref_chanlist, &peer->channels,
 				       &res);
 		p2p_buf_add_channel_list(buf, p2p->cfg->country, &res,
 				       is_6ghz_capab);
@@ -573,7 +598,8 @@ int p2p_go_select_channel(struct p2p_data *p2p, struct p2p_device *dev,
 static void p2p_check_pref_chan_no_recv(struct p2p_data *p2p, int go,
 					struct p2p_device *dev,
 					struct p2p_message *msg,
-					unsigned freq_list[], unsigned int size)
+					const struct weighted_pcl freq_list[],
+					unsigned int size)
 {
 	u8 op_class, op_channel;
 	unsigned int oper_freq = 0, i, j;
@@ -588,10 +614,11 @@ static void p2p_check_pref_chan_no_recv(struct p2p_data *p2p, int go,
 	 */
 	for (i = 0; i < size && !found; i++) {
 		/* Make sure that the common frequency is supported by peer. */
-		oper_freq = freq_list[i];
+		oper_freq = freq_list[i].freq;
 		if (p2p_freq_to_channel(oper_freq, &op_class,
-					&op_channel) < 0)
-			continue; /* cannot happen due to earlier check */
+					&op_channel) < 0 ||
+		    !p2p_pref_freq_allowed(&freq_list[i], go))
+			continue;
 		for (j = 0; j < msg->channel_list_len; j++) {
 			if (!msg->channel_list ||
 			    op_channel != msg->channel_list[j])
@@ -620,7 +647,8 @@ static void p2p_check_pref_chan_no_recv(struct p2p_data *p2p, int go,
 static void p2p_check_pref_chan_recv(struct p2p_data *p2p, int go,
 				     struct p2p_device *dev,
 				     struct p2p_message *msg,
-				     unsigned freq_list[], unsigned int size)
+				     const struct weighted_pcl freq_list[],
+				     unsigned int size)
 {
 	u8 op_class, op_channel;
 	unsigned int oper_freq = 0, i, j;
@@ -636,11 +664,13 @@ static void p2p_check_pref_chan_recv(struct p2p_data *p2p, int go,
 			oper_freq = p2p_channel_to_freq(
 				msg->pref_freq_list[2 * j],
 				msg->pref_freq_list[2 * j + 1]);
-			if (freq_list[i] != oper_freq)
+			if (freq_list[i].freq != oper_freq)
 				continue;
 			if (p2p_freq_to_channel(oper_freq, &op_class,
 						&op_channel) < 0)
 				continue; /* cannot happen */
+			if (!p2p_pref_freq_allowed(&freq_list[i], go))
+				break;
 			p2p->op_reg_class = op_class;
 			p2p->op_channel = op_channel;
 			os_memcpy(&p2p->channels, &p2p->cfg->channels,
@@ -663,7 +693,7 @@ static void p2p_check_pref_chan_recv(struct p2p_data *p2p, int go,
 void p2p_check_pref_chan(struct p2p_data *p2p, int go,
 			 struct p2p_device *dev, struct p2p_message *msg)
 {
-	unsigned int freq_list[P2P_MAX_PREF_CHANNELS], size;
+	unsigned int size;
 	unsigned int i;
 	u8 op_class, op_channel;
 	char txt[100], *pos, *end;
@@ -680,25 +710,30 @@ void p2p_check_pref_chan(struct p2p_data *p2p, int go,
 
 	/* Obtain our preferred frequency list from driver based on P2P role. */
 	size = P2P_MAX_PREF_CHANNELS;
-	if (p2p->cfg->get_pref_freq_list(p2p->cfg->cb_ctx, go, &size,
-					 freq_list))
+	if (p2p->cfg->get_pref_freq_list(p2p->cfg->cb_ctx, go,
+					 &p2p->num_pref_freq,
+					 p2p->pref_freq_list))
+		return;
+	size = p2p->num_pref_freq;
+	if (!size)
 		return;
 	/* Filter out frequencies that are not acceptable for P2P use */
 	i = 0;
 	while (i < size) {
-		if (p2p_freq_to_channel(freq_list[i], &op_class,
-					&op_channel) < 0 ||
+		if (p2p_freq_to_channel(p2p->pref_freq_list[i].freq,
+					&op_class, &op_channel) < 0 ||
 		    (!p2p_channels_includes(&p2p->cfg->channels,
 					    op_class, op_channel) &&
 		     (go || !p2p_channels_includes(&p2p->cfg->cli_channels,
 						   op_class, op_channel)))) {
 			p2p_dbg(p2p,
 				"Ignore local driver frequency preference %u MHz since it is not acceptable for P2P use (go=%d)",
-				freq_list[i], go);
+				p2p->pref_freq_list[i].freq, go);
 			if (size - i - 1 > 0)
-				os_memmove(&freq_list[i], &freq_list[i + 1],
+				os_memmove(&p2p->pref_freq_list[i],
+					   &p2p->pref_freq_list[i + 1],
 					   (size - i - 1) *
-					   sizeof(unsigned int));
+					   sizeof(struct weighted_pcl));
 			size--;
 			continue;
 		}
@@ -710,7 +745,8 @@ void p2p_check_pref_chan(struct p2p_data *p2p, int go,
 	pos = txt;
 	end = pos + sizeof(txt);
 	for (i = 0; i < size; i++) {
-		res = os_snprintf(pos, end - pos, " %u", freq_list[i]);
+		res = os_snprintf(pos, end - pos, " %u",
+				  p2p->pref_freq_list[i].freq);
 		if (os_snprintf_error(end - pos, res))
 			break;
 		pos += res;
@@ -724,11 +760,14 @@ void p2p_check_pref_chan(struct p2p_data *p2p, int go,
 	 * our preferred channel list.
 	 */
 	for (i = 0; i < size; i++) {
-		if (freq_list[i] == (unsigned int) dev->oper_freq)
+		if (p2p->pref_freq_list[i].freq ==
+		    (unsigned int) dev->oper_freq &&
+		    p2p_pref_freq_allowed(&p2p->pref_freq_list[i], go))
 			break;
 	}
 	if (i != size &&
-	    p2p_freq_to_channel(freq_list[i], &op_class, &op_channel) == 0) {
+	    p2p_freq_to_channel(p2p->pref_freq_list[i].freq, &op_class,
+				&op_channel) == 0) {
 		/* Peer operating channel preference matches our preference */
 		p2p->op_reg_class = op_class;
 		p2p->op_channel = op_channel;
@@ -746,9 +785,11 @@ void p2p_check_pref_chan(struct p2p_data *p2p, int go,
 	  * _not_ included in the GO Negotiation Request or Invitation Request.
 	  */
 	if (msg->pref_freq_list_len == 0)
-		p2p_check_pref_chan_no_recv(p2p, go, dev, msg, freq_list, size);
+		p2p_check_pref_chan_no_recv(p2p, go, dev, msg,
+					    p2p->pref_freq_list, size);
 	else
-		p2p_check_pref_chan_recv(p2p, go, dev, msg, freq_list, size);
+		p2p_check_pref_chan_recv(p2p, go, dev, msg,
+					 p2p->pref_freq_list, size);
 }
 
 

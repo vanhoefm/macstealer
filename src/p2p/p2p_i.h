@@ -10,6 +10,7 @@
 #define P2P_I_H
 
 #include "utils/list.h"
+#include "drivers/driver.h"
 #include "p2p.h"
 
 #define P2P_GO_NEG_CNF_MAX_RETRY_COUNT 1
@@ -542,7 +543,7 @@ struct p2p_data {
 
 	struct wpabuf **vendor_elem;
 
-	unsigned int pref_freq_list[P2P_MAX_PREF_CHANNELS];
+	struct weighted_pcl pref_freq_list[P2P_MAX_PREF_CHANNELS];
 	unsigned int num_pref_freq;
 
 	/* Override option for preferred operating channel in GO Negotiation */
@@ -789,7 +790,7 @@ void p2p_buf_add_persistent_group_info(struct wpabuf *buf, const u8 *dev_addr,
 int p2p_build_wps_ie(struct p2p_data *p2p, struct wpabuf *buf, int pw_id,
 		     int all_attr);
 void p2p_buf_add_pref_channel_list(struct wpabuf *buf,
-				   const unsigned int *preferred_freq_list,
+				   const struct weighted_pcl *pref_freq_list,
 				   unsigned int size);
 
 /* p2p_sd.c */
@@ -891,6 +892,10 @@ int p2p_prepare_channel(struct p2p_data *p2p, struct p2p_device *dev,
 void p2p_go_neg_wait_timeout(void *eloop_ctx, void *timeout_ctx);
 int p2p_go_select_channel(struct p2p_data *p2p, struct p2p_device *dev,
 			  u8 *status);
+void p2p_pref_channel_filter(const struct p2p_channels *a,
+			     const struct weighted_pcl *freq_list,
+			     unsigned int num_channels,
+			     struct p2p_channels *res, bool go);
 void p2p_dbg(struct p2p_data *p2p, const char *fmt, ...)
 PRINTF_FORMAT(2, 3);
 void p2p_info(struct p2p_data *p2p, const char *fmt, ...)
