@@ -453,6 +453,8 @@ static void p2p_copy_client_info(struct p2p_device *dev,
 	dev->info.config_methods = cli->config_methods;
 	os_memcpy(dev->info.pri_dev_type, cli->pri_dev_type, 8);
 	dev->info.wps_sec_dev_type_list_len = 8 * cli->num_sec_dev_types;
+	if (dev->info.wps_sec_dev_type_list_len > WPS_SEC_DEV_TYPE_MAX_LEN)
+		dev->info.wps_sec_dev_type_list_len = WPS_SEC_DEV_TYPE_MAX_LEN;
 	os_memcpy(dev->info.wps_sec_dev_type_list, cli->sec_dev_types,
 		  dev->info.wps_sec_dev_type_list_len);
 }
