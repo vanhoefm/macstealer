@@ -7,9 +7,12 @@
 from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
+import binascii
 import os
+import struct
 import time
 
+import hostapd
 import hwsim_utils
 from wpasupplicant import WpaSupplicant
 from p2p_utils import *
@@ -776,3 +779,42 @@ def test_discovery_device_name_change(dev):
         raise Exception("Unexpected device name(2): " + ev)
     wpas.p2p_stop_find()
     dev[0].p2p_stop_find()
+
+def test_p2p_group_cli_invalid(dev, apdev):
+    """P2P device discovery with invalid group client info"""
+    attr = struct.pack('<BHBB', 2, 2, 0x25, 0x09)
+
+    attr += struct.pack('<BH', 3, 6) + "\x02\x02\x02\x02\x02\x00".encode()
+
+    cli = bytes()
+    cli += "\x02\x02\x02\x02\x02\x03".encode()
+    cli += "\x02\x02\x02\x02\x02\x04".encode()
+    cli += struct.pack('>BH', 0, 0x3148)
+    dev_type = "\x00\x00\x00\x00\x00\x00\x00\x01".encode()
+    cli += dev_type
+    num_sec = 25
+    cli += struct.pack('B', num_sec)
+    cli += num_sec * dev_type
+    name = "TEST".encode()
+    cli += struct.pack('>HH', 0x1011, len(name)) + name
+    desc = struct.pack('B', len(cli)) + cli
+    attr += struct.pack('<BH', 14, len(desc)) + desc
+
+    p2p_ie = struct.pack('>BBL', 0xdd, 4 + len(attr), 0x506f9a09) + attr
+    ie = binascii.hexlify(p2p_ie).decode()
+
+    params = {"ssid": "DIRECT-test",
+              "eap_server": "1",
+              "wps_state": "2",
+              "wpa_passphrase": "12345678",
+              "wpa": "2",
+              "wpa_key_mgmt": "WPA-PSK",
+              "rsn_pairwise": "CCMP",
+              "vendor_elements": ie}
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    for i in range(2):
+        dev[i].p2p_find(social=True)
+        ev = dev[i].wait_global_event(["P2P-DEVICE-FOUND"], timeout=5)
+        if not ev:
+            raise Exception("P2P device not found")
