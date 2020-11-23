@@ -1885,11 +1885,11 @@ const struct oper_class_map global_op_class[] = {
 	 * frequency index 42, 58, 106, 122, 138, 155 with channel spacing of
 	 * 80 MHz, but currently use the following definition for simplicity
 	 * (these center frequencies are not actual channels, which makes
-	 * wpas_p2p_allow_channel() fail). wpas_p2p_verify_80mhz() should take
+	 * wpas_p2p_verify_channel() fail). wpas_p2p_verify_80mhz() should take
 	 * care of removing invalid channels.
 	 */
 	{ HOSTAPD_MODE_IEEE80211A, 128, 36, 161, 4, BW80, P2P_SUPP },
-	{ HOSTAPD_MODE_IEEE80211A, 129, 50, 114, 16, BW160, P2P_SUPP },
+	{ HOSTAPD_MODE_IEEE80211A, 129, 36, 128, 4, BW160, P2P_SUPP },
 	{ HOSTAPD_MODE_IEEE80211A, 131, 1, 233, 4, BW20, NO_P2P_SUPP },
 	{ HOSTAPD_MODE_IEEE80211A, 132, 1, 233, 8, BW40, NO_P2P_SUPP },
 	{ HOSTAPD_MODE_IEEE80211A, 133, 1, 233, 16, BW80, NO_P2P_SUPP },
