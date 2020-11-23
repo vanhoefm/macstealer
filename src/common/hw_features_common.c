@@ -580,6 +580,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 				center_segment0 = 138;
 			else if (channel <= 161)
 				center_segment0 = 155;
+			else if (channel <= 177)
+				center_segment0 = 171;
 			data->center_freq1 = 5000 + center_segment0 * 5;
 		} else {
 			/*

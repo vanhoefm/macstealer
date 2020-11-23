@@ -1944,7 +1944,7 @@ try_2_4_or_5:
 		return 2407 + 5 * chan;
 	if (chan == 14)
 		return 2484;
-	if (chan >= 36 && chan <= 169)
+	if (chan >= 36 && chan <= 177)
 		return 5000 + 5 * chan;
 
 	return 0;

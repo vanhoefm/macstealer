@@ -3578,7 +3578,7 @@ static int wpas_p2p_get_center_80mhz(struct wpa_supplicant *wpa_s,
 				     struct hostapd_hw_modes *mode,
 				     u8 channel)
 {
-	u8 center_channels[] = { 42, 58, 106, 122, 138, 155 };
+	u8 center_channels[] = { 42, 58, 106, 122, 138, 155, 171 };
 	size_t i;
 
 	if (mode->mode != HOSTAPD_MODE_IEEE80211A)
@@ -3639,7 +3639,7 @@ static int wpas_p2p_get_center_160mhz(struct wpa_supplicant *wpa_s,
 				     struct hostapd_hw_modes *mode,
 				     u8 channel)
 {
-	u8 center_channels[] = { 50, 114 };
+	u8 center_channels[] = { 50, 114, 163 };
 	unsigned int i;
 
 	if (mode->mode != HOSTAPD_MODE_IEEE80211A)
@@ -3787,7 +3787,7 @@ static int wpas_p2p_setup_channels(struct wpa_supplicant *wpa_s,
 
 			/* Check for non-continuous jump in channel index
 			 * incrementation */
-			if ((o->op_class == 128 || o->op_class == 130) &&
+			if ((o->op_class >= 128 && o->op_class <= 130) &&
 			    ch < 149 && ch + o->inc > 149)
 				ch = 149;
 

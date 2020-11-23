@@ -552,7 +552,7 @@ static int wnm_nei_get_chan(struct wpa_supplicant *wpa_s, u8 op_class, u8 chan)
 			freq = 2407 + chan * 5;
 		else if (chan == 14)
 			freq = 2484;
-		else if (chan >= 36 && chan <= 169)
+		else if (chan >= 36 && chan <= 177)
 			freq = 5000 + chan * 5;
 	}
 	return freq;

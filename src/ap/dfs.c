@@ -81,17 +81,17 @@ static int dfs_is_chan_allowed(struct hostapd_channel_data *chan, int n_chans)
 	 * We will also choose this first channel as the control one.
 	 */
 	int allowed_40[] = { 36, 44, 52, 60, 100, 108, 116, 124, 132, 149, 157,
-			     184, 192 };
+			     165, 173, 184, 192 };
 	/*
 	 * VHT80, valid channels based on center frequency:
-	 * 42, 58, 106, 122, 138, 155
+	 * 42, 58, 106, 122, 138, 155, 171
 	 */
-	int allowed_80[] = { 36, 52, 100, 116, 132, 149 };
+	int allowed_80[] = { 36, 52, 100, 116, 132, 149, 165 };
 	/*
 	 * VHT160 valid channels based on center frequency:
-	 * 50, 114
+	 * 50, 114, 163
 	 */
-	int allowed_160[] = { 36, 100 };
+	int allowed_160[] = { 36, 100, 149 };
 	int *allowed = allowed_40;
 	unsigned int i, allowed_no = 0;
 

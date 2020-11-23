@@ -556,8 +556,8 @@ static int * wpas_add_channels(const struct oper_class_map *op,
 static int * wpas_op_class_freqs(const struct oper_class_map *op,
 				 struct hostapd_hw_modes *mode, int active)
 {
-	u8 channels_80mhz_5ghz[] = { 42, 58, 106, 122, 138, 155 };
-	u8 channels_160mhz_5ghz[] = { 50, 114 };
+	u8 channels_80mhz_5ghz[] = { 42, 58, 106, 122, 138, 155, 171 };
+	u8 channels_160mhz_5ghz[] = { 50, 114, 163 };
 	u8 channels_80mhz_6ghz[] = { 7, 23, 39, 55, 71, 87, 103, 119, 135, 151,
 				     167, 183, 199, 215 };
 	u8 channels_160mhz_6ghz[] = { 15, 47, 79, 111, 143, 175, 207 };
