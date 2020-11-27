@@ -221,6 +221,12 @@ struct wpa_driver_nl80211_data {
 	 * (NL80211_CMD_VENDOR). 0 if no pending scan request.
 	 */
 	int last_scan_cmd;
+#ifdef CONFIG_DRIVER_NL80211_QCA
+	bool roam_indication_done;
+	u8 *pending_roam_data;
+	size_t pending_roam_data_len;
+	struct os_reltime pending_roam_ind_time;
+#endif /* CONFIG_DRIVER_NL80211_QCA */
 };
 
 struct nl_msg;

@@ -2986,6 +2986,9 @@ static void wpa_driver_nl80211_deinit(struct i802_bss *bss)
 		os_free(drv->iface_ext_capa[i].ext_capa_mask);
 	}
 	os_free(drv->first_bss);
+#ifdef CONFIG_DRIVER_NL80211_QCA
+	os_free(drv->pending_roam_data);
+#endif /* CONFIG_DRIVER_NL80211_QCA */
 	os_free(drv);
 }
 
@@ -6187,6 +6190,9 @@ skip_auth_type:
 		wpa_printf(MSG_DEBUG, "nl80211: MLME connect failed: ret=%d "
 			   "(%s)", ret, strerror(-ret));
 	} else {
+#ifdef CONFIG_DRIVER_NL80211_QCA
+		drv->roam_indication_done = false;
+#endif /* CONFIG_DRIVER_NL80211_QCA */
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: Connect request send successfully");
 	}
