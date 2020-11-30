@@ -736,6 +736,8 @@ struct hostapd_bss_config {
 
 	int broadcast_deauth;
 
+	int notify_mgmt_frames;
+
 #ifdef CONFIG_DPP
 	char *dpp_name;
 	char *dpp_mud_url;

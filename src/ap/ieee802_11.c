@@ -6024,6 +6024,31 @@ static int handle_action(struct hostapd_data *hapd,
 
 
 /**
+ * notify_mgmt_frame - Notify of Management frames on the control interface
+ * @hapd: hostapd BSS data structure (the BSS to which the Management frame was
+ * sent to)
+ * @buf: Management frame data (starting from the IEEE 802.11 header)
+ * @len: Length of frame data in octets
+ *
+ * Notify the control interface of any received Management frame.
+ */
+static void notify_mgmt_frame(struct hostapd_data *hapd, const u8 *buf,
+			      size_t len)
+{
+
+	int hex_len = len * 2 + 1;
+	char *hex = os_malloc(hex_len);
+
+	if (hex) {
+		wpa_snprintf_hex(hex, hex_len, buf, len);
+		wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO,
+			     AP_MGMT_FRAME_RECEIVED "buf=%s", hex);
+		os_free(hex);
+	}
+}
+
+
+/**
  * ieee802_11_mgmt - process incoming IEEE 802.11 management frames
  * @hapd: hostapd BSS data structure (the BSS to which the management frame was
  * sent to)
@@ -6112,6 +6137,9 @@ int ieee802_11_mgmt(struct hostapd_data *hapd, const u8 *buf, size_t len,
 
 	if (hapd->iconf->track_sta_max_num)
 		sta_track_add(hapd->iface, mgmt->sa, ssi_signal);
+
+	if (hapd->conf->notify_mgmt_frames)
+		notify_mgmt_frame(hapd, buf, len);
 
 	switch (stype) {
 	case WLAN_FC_STYPE_AUTH:

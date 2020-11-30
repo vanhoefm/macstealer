@@ -4368,6 +4368,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		bss->multicast_to_unicast = atoi(pos);
 	} else if (os_strcmp(buf, "broadcast_deauth") == 0) {
 		bss->broadcast_deauth = atoi(pos);
+	} else if (os_strcmp(buf, "notify_mgmt_frames") == 0) {
+		bss->notify_mgmt_frames = atoi(pos);
 #ifdef CONFIG_DPP
 	} else if (os_strcmp(buf, "dpp_name") == 0) {
 		os_free(bss->dpp_name);
