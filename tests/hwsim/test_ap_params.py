@@ -843,3 +843,29 @@ def test_ap_wowlan_triggers(dev, apdev):
     dev[0].scan_for_bss(bssid, freq="2412")
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
+
+def test_ap_notify_mgmt_frames(dev, apdev):
+    """hostapd notify_mgmt_frames configuration enabled"""
+    ssid = "mgmt_frames"
+    params = {'ssid': ssid, 'notify_mgmt_frames': "1"}
+    hapd = hostapd.add_ap(apdev[0], params)
+    bssid = hapd.own_addr()
+    dev[0].scan_for_bss(bssid, freq="2412")
+    dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
+    ev = hapd.wait_event(["AP-MGMT-FRAME-RECEIVED"], timeout=5)
+    if ev is None:
+        raise Exception("AP-MGMT-FRAME-RECEIVED wait timed out")
+    if "buf=b0" not in ev:
+        raise Exception("Expected auth request in AP-MGMT-FRAME-RECEIVED")
+
+def test_ap_notify_mgmt_frames_disabled(dev, apdev):
+    """hostapd notify_mgmt_frames configuration disabled"""
+    ssid = "mgmt_frames"
+    params = {'ssid': ssid, 'notify_mgmt_frames': "0"}
+    hapd = hostapd.add_ap(apdev[0], params)
+    bssid = hapd.own_addr()
+    dev[0].scan_for_bss(bssid, freq="2412")
+    dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
+    ev = hapd.wait_event(["AP-MGMT-FRAME-RECEIVED"], timeout=0.1)
+    if ev is not None:
+        raise Exception("Unexpected AP-MGMT-FRAME-RECEIVED")
