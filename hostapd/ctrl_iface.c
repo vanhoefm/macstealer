@@ -1223,6 +1223,52 @@ static int hostapd_ctrl_iface_get_config(struct hostapd_data *hapd,
 			return pos - buf;
 		pos += ret;
 	}
+
+	if (hapd->conf->multi_ap) {
+		struct hostapd_ssid *ssid = &hapd->conf->multi_ap_backhaul_ssid;
+
+		ret = os_snprintf(pos, end - pos, "multi_ap=%d\n",
+				  hapd->conf->multi_ap);
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+
+		if (ssid->ssid) {
+			ret = os_snprintf(pos, end - pos,
+					  "multi_ap_backhaul_ssid=%s\n",
+					  wpa_ssid_txt(ssid->ssid,
+						       ssid->ssid_len));
+			if (os_snprintf_error(end - pos, ret))
+				return pos - buf;
+			pos += ret;
+		}
+
+		if (hapd->conf->wps_state && hapd->conf->wpa &&
+			ssid->wpa_passphrase) {
+			ret = os_snprintf(pos, end - pos,
+					  "multi_ap_backhaul_wpa_passphrase=%s\n",
+					  ssid->wpa_passphrase);
+			if (os_snprintf_error(end - pos, ret))
+				return pos - buf;
+			pos += ret;
+		}
+
+		if (hapd->conf->wps_state && hapd->conf->wpa &&
+		    ssid->wpa_psk &&
+		    ssid->wpa_psk->group) {
+			char hex[PMK_LEN * 2 + 1];
+
+			wpa_snprintf_hex(hex, sizeof(hex), ssid->wpa_psk->psk,
+					 PMK_LEN);
+			ret = os_snprintf(pos, end - pos,
+					  "multi_ap_backhaul_wpa_psk=%s\n",
+					  hex);
+			forced_memzero(hex, sizeof(hex));
+			if (os_snprintf_error(end - pos, ret))
+				return pos - buf;
+			pos += ret;
+		}
+	}
 #endif /* CONFIG_WPS */
 
 	if (hapd->conf->wpa) {
