@@ -4715,6 +4715,11 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			break;
 		}
 #endif /* CONFIG_TESTING_OPTIONS */
+		if (wpa_s->disconnected) {
+			wpa_printf(MSG_INFO,
+				   "Ignore unexpected EVENT_ASSOC in disconnected state");
+			break;
+		}
 		wpa_supplicant_event_assoc(wpa_s, data);
 		wpa_s->assoc_status_code = WLAN_STATUS_SUCCESS;
 		if (data &&
