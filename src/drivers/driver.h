@@ -2015,6 +2015,8 @@ struct wpa_driver_capa {
 #define WPA_DRIVER_FLAGS2_BEACON_RATE_HE	0x0000000000000020ULL
 /** Driver supports Beacon protection only in client mode */
 #define WPA_DRIVER_FLAGS2_BEACON_PROTECTION_CLIENT 0x0000000000000040ULL
+/** Driver supports Operating Channel Validation */
+#define WPA_DRIVER_FLAGS2_OCV			0x0000000000000080ULL
 	u64 flags2;
 
 #define FULL_AP_CLIENT_STATE_SUPP(drv_flags) \

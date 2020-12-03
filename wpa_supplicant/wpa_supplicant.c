@@ -1656,7 +1656,9 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_MFP,
 			 wpas_get_ssid_pmf(wpa_s, ssid));
 #ifdef CONFIG_OCV
-	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_OCV, ssid->ocv);
+	if ((wpa_s->drv_flags & WPA_DRIVER_FLAGS_SME) ||
+	    (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_OCV))
+		wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_OCV, ssid->ocv);
 #endif /* CONFIG_OCV */
 	sae_pwe = wpa_s->conf->sae_pwe;
 	if (ssid->sae_password_id && sae_pwe != 3)
