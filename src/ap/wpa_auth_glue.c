@@ -1512,6 +1512,9 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 	else
 		_conf.extended_key_id = 0;
 
+	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_BEACON_PROTECTION))
+		_conf.beacon_prot = 0;
+
 	_conf.secure_ltf =
 		!!(hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF);
 	_conf.secure_rtt =

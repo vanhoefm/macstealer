@@ -169,7 +169,9 @@ static int ieee802_11_send_wnmsleep_resp(struct hostapd_data *hapd,
 		pos += igtk_elem_len;
 		wpa_printf(MSG_DEBUG, "Pass 4 igtk_len = %d",
 			   (int) igtk_elem_len);
-		if (hapd->conf->beacon_prot) {
+		if (hapd->conf->beacon_prot &&
+		    (hapd->iface->drv_flags &
+		     WPA_DRIVER_FLAGS_BEACON_PROTECTION)) {
 			res = wpa_wnmsleep_bigtk_subelem(sta->wpa_sm, pos);
 			if (res < 0)
 				goto fail;
@@ -537,7 +539,8 @@ static void wnm_beacon_protection_failure(struct hostapd_data *hapd,
 {
 	struct sta_info *sta;
 
-	if (!hapd->conf->beacon_prot)
+	if (!hapd->conf->beacon_prot ||
+	    !(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_BEACON_PROTECTION))
 		return;
 
 	sta = ap_get_sta(hapd, addr);

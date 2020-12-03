@@ -425,7 +425,9 @@ static void hostapd_ext_capab_byte(struct hostapd_data *hapd, u8 *pos, int idx)
 					       * Identifiers Used Exclusively */
 		}
 #endif /* CONFIG_SAE */
-		if (hapd->conf->beacon_prot)
+		if (hapd->conf->beacon_prot &&
+		    (hapd->iface->drv_flags &
+		     WPA_DRIVER_FLAGS_BEACON_PROTECTION))
 			*pos |= 0x10; /* Bit 84 - Beacon Protection Enabled */
 		break;
 	case 11: /* Bits 88-95 */
@@ -494,7 +496,8 @@ u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid)
 	    hostapd_sae_pw_id_in_use(hapd->conf))
 		len = 11;
 #endif /* CONFIG_SAE */
-	if (len < 11 && hapd->conf->beacon_prot)
+	if (len < 11 && hapd->conf->beacon_prot &&
+	    (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_BEACON_PROTECTION))
 		len = 11;
 #ifdef CONFIG_SAE_PK
 	if (len < 12 && hapd->conf->wpa &&
