@@ -521,7 +521,7 @@ void wpa_supplicant_set_default_scan_ies(struct wpa_supplicant *wpa_s)
 {
 	struct wpabuf *default_ies = NULL;
 	u8 ext_capab[18];
-	int ext_capab_len;
+	int ext_capab_len, frame_id;
 	enum wpa_driver_if_type type = WPA_IF_STATION;
 
 #ifdef CONFIG_P2P
@@ -544,6 +544,20 @@ void wpa_supplicant_set_default_scan_ies(struct wpa_supplicant *wpa_s)
 	if (wpabuf_resize(&default_ies, 12) == 0)
 		wpas_mbo_scan_ie(wpa_s, default_ies);
 #endif /* CONFIG_MBO */
+
+	if (type == WPA_IF_P2P_CLIENT)
+		frame_id = VENDOR_ELEM_PROBE_REQ_P2P;
+	else
+		frame_id = VENDOR_ELEM_PROBE_REQ;
+
+	if (wpa_s->vendor_elem[frame_id]) {
+		size_t len;
+
+		len = wpabuf_len(wpa_s->vendor_elem[frame_id]);
+		if (len > 0 && wpabuf_resize(&default_ies, len) == 0)
+			wpabuf_put_buf(default_ies,
+				       wpa_s->vendor_elem[frame_id]);
+	}
 
 	if (default_ies)
 		wpa_drv_set_default_scan_ies(wpa_s, wpabuf_head(default_ies),

@@ -9784,8 +9784,7 @@ static int wpas_ctrl_vendor_elem_add(struct wpa_supplicant *wpa_s, char *cmd)
 
 	if (wpa_s->vendor_elem[frame] == NULL) {
 		wpa_s->vendor_elem[frame] = buf;
-		wpas_vendor_elem_update(wpa_s);
-		return 0;
+		goto update_ies;
 	}
 
 	if (wpabuf_resize(&wpa_s->vendor_elem[frame], len) < 0) {
@@ -9795,7 +9794,13 @@ static int wpas_ctrl_vendor_elem_add(struct wpa_supplicant *wpa_s, char *cmd)
 
 	wpabuf_put_buf(wpa_s->vendor_elem[frame], buf);
 	wpabuf_free(buf);
+
+update_ies:
 	wpas_vendor_elem_update(wpa_s);
+
+	if (frame == VENDOR_ELEM_PROBE_REQ ||
+	    frame == VENDOR_ELEM_PROBE_REQ_P2P)
+		wpa_supplicant_set_default_scan_ies(wpa_s);
 
 	return 0;
 }
