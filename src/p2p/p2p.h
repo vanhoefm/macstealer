@@ -1625,6 +1625,7 @@ int p2p_scan_res_handler(struct p2p_data *p2p, const u8 *bssid, int freq,
 /**
  * p2p_scan_res_handled - Indicate end of scan results
  * @p2p: P2P module context from p2p_init()
+ * @delay: Search delay for next scan in ms
  *
  * This function is called to indicate that all P2P scan results from a scan
  * have been reported with zero or more calls to p2p_scan_res_handler(). This
@@ -1632,7 +1633,7 @@ int p2p_scan_res_handler(struct p2p_data *p2p, const u8 *bssid, int freq,
  * struct p2p_config::p2p_scan() call if none of the p2p_scan_res_handler()
  * calls stopped iteration.
  */
-void p2p_scan_res_handled(struct p2p_data *p2p);
+void p2p_scan_res_handled(struct p2p_data *p2p, unsigned int delay);
 
 enum p2p_send_action_result {
 	P2P_SEND_ACTION_SUCCESS /* Frame was send and acknowledged */,

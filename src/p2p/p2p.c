@@ -3510,12 +3510,17 @@ int p2p_scan_res_handler(struct p2p_data *p2p, const u8 *bssid, int freq,
 }
 
 
-void p2p_scan_res_handled(struct p2p_data *p2p)
+void p2p_scan_res_handled(struct p2p_data *p2p, unsigned int delay)
 {
 	if (!p2p->p2p_scan_running) {
 		p2p_dbg(p2p, "p2p_scan was not running, but scan results received");
 	}
 	p2p->p2p_scan_running = 0;
+
+	/* Use this delay only when p2p_find doesn't set it */
+	if (!p2p->search_delay)
+		p2p->search_delay = delay;
+
 	eloop_cancel_timeout(p2p_scan_timeout, p2p, NULL);
 
 	if (p2p_run_after_scan(p2p))
