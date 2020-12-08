@@ -2091,9 +2091,18 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 			return -1;
 		if (data && data->scan_info.external_scan)
 			return -1;
-		wpa_dbg(wpa_s, MSG_DEBUG, "Failed to get scan results - try "
-			"scanning again");
-		wpa_supplicant_req_new_scan(wpa_s, 1, 0);
+		if (wpa_s->scan_res_fail_handler) {
+			void (*handler)(struct wpa_supplicant *wpa_s);
+
+			handler = wpa_s->scan_res_fail_handler;
+			wpa_s->scan_res_fail_handler = NULL;
+			handler(wpa_s);
+		} else {
+			wpa_dbg(wpa_s, MSG_DEBUG,
+				"Failed to get scan results - try scanning again");
+			wpa_supplicant_req_new_scan(wpa_s, 1, 0);
+		}
+
 		ret = -1;
 		goto scan_work_done;
 	}

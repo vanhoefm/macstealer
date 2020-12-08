@@ -291,6 +291,24 @@ static void wpas_p2p_scan_res_handler(struct wpa_supplicant *wpa_s,
 }
 
 
+static void wpas_p2p_scan_res_fail_handler(struct wpa_supplicant *wpa_s)
+{
+	if (wpa_s->p2p_scan_work) {
+		struct wpa_radio_work *work = wpa_s->p2p_scan_work;
+
+		wpa_s->p2p_scan_work = NULL;
+		radio_work_done(work);
+	}
+
+	if (wpa_s->global->p2p_disabled || !wpa_s->global->p2p)
+		return;
+
+	wpa_dbg(wpa_s, MSG_DEBUG,
+		"P2P: Failed to get scan results - try to continue");
+	p2p_scan_res_handled(wpa_s->global->p2p);
+}
+
+
 static void wpas_p2p_trigger_scan_cb(struct wpa_radio_work *work, int deinit)
 {
 	struct wpa_supplicant *wpa_s = work->wpa_s;
@@ -335,6 +353,7 @@ static void wpas_p2p_trigger_scan_cb(struct wpa_radio_work *work, int deinit)
 	p2p_notify_scan_trigger_status(wpa_s->global->p2p, ret);
 	os_get_reltime(&wpa_s->scan_trigger_time);
 	wpa_s->scan_res_handler = wpas_p2p_scan_res_handler;
+	wpa_s->scan_res_fail_handler = wpas_p2p_scan_res_fail_handler;
 	wpa_s->own_scan_requested = 1;
 	wpa_s->clear_driver_scan_cache = 0;
 	wpa_s->p2p_scan_work = work;
