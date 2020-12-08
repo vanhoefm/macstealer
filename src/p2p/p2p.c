@@ -428,7 +428,9 @@ static struct p2p_device * p2p_create_device(struct p2p_data *p2p,
 			oldest = dev;
 	}
 	if (count + 1 > p2p->cfg->max_peers && oldest) {
-		p2p_dbg(p2p, "Remove oldest peer entry to make room for a new peer");
+		p2p_dbg(p2p,
+			"Remove oldest peer entry to make room for a new peer "
+			MACSTR, MAC2STR(oldest->info.p2p_device_addr));
 		dl_list_del(&oldest->list);
 		p2p_device_free(p2p, oldest);
 	}
