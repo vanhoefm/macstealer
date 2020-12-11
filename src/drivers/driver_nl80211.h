@@ -295,6 +295,10 @@ int android_pno_start(struct i802_bss *bss,
 int android_pno_stop(struct i802_bss *bss);
 extern int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
 					 size_t buf_len);
+extern int wpa_driver_nl80211_driver_event(struct wpa_driver_nl80211_data *drv,
+					   u32 vendor_id, u32 subcmd,
+					   u8 *data, size_t len);
+
 
 #ifdef ANDROID_P2P
 int wpa_driver_set_p2p_noa(void *priv, u8 count, int start, int duration);

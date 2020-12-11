@@ -2415,6 +2415,12 @@ static void nl80211_vendor_event(struct wpa_driver_nl80211_data *drv,
 		return;
 	}
 
+#ifdef ANDROID
+#ifdef ANDROID_LIB_EVENT
+       wpa_driver_nl80211_driver_event(drv, vendor_id, subcmd, data, len);
+#endif /* ANDROID_LIB_EVENT */
+#endif /* ANDROID */
+
 	switch (vendor_id) {
 	case OUI_QCA:
 		nl80211_vendor_event_qca(drv, subcmd, data, len);
