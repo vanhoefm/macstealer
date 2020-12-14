@@ -17,7 +17,7 @@ from tshark import run_tshark
 from wpasupplicant import WpaSupplicant
 from hwsim import HWSimRadio
 from p2p_utils import *
-from utils import clear_regdom_dev
+from utils import *
 
 def set_country(country, dev=None):
     subprocess.call(['iw', 'reg', 'set', country])
@@ -952,7 +952,8 @@ def _test_p2p_go_move_scm_peer_supports(dev, apdev):
         dev[0].remove_group()
     finally:
         dev[0].global_request("SET p2p_go_freq_change_policy 2")
-        set_country("00")
+        disable_hapd(hapd)
+        clear_regdom_dev(dev, 1)
 
 def test_p2p_go_move_scm_peer_does_not_support(dev, apdev):
     """No P2P GO move due to SCM operation (peer does not supports)"""
@@ -998,6 +999,7 @@ def _test_p2p_go_move_scm_peer_does_not_support(dev, apdev):
     finally:
         dev[0].global_request("SET p2p_go_freq_change_policy 2")
         dev[1].request("DRIVER_EVENT AVOID_FREQUENCIES")
+        disable_hapd(hapd)
         clear_regdom_dev(dev, 2)
 
 def test_p2p_go_move_scm_multi(dev, apdev):
