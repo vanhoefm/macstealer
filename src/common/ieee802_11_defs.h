@@ -2378,4 +2378,51 @@ enum mscs_description_subelem {
 	MCSC_SUBELEM_STATUS = 1,
 };
 
+/*
+ * IEEE Std 802.11ai-2016, 9.6.8.36 FILS Discovery frame format,
+ * Figure 9-687b - FILS Discovery Frame Control subfield format
+ */
+#define FD_FRAME_CTL_CAP_PRESENT			((u16) BIT(5))
+#define FD_FRAME_CTL_SHORT_SSID_PRESENT			((u16) BIT(6))
+#define FD_FRAME_CTL_AP_CSN_PRESENT			((u16) BIT(7))
+#define FD_FRAME_CTL_ANO_PRESENT			((u16) BIT(8))
+#define FD_FRAME_CTL_FREQ_SEG1_PRESENT			((u16) BIT(9))
+#define FD_FRAME_CTL_PRI_CHAN_PRESENT			((u16) BIT(10))
+#define FD_FRAME_CTL_RSN_INFO_PRESENT			((u16) BIT(11))
+#define FD_FRAME_CTL_LENGTH_PRESENT			((u16) BIT(12))
+#define FD_FRAME_CTL_MD_PRESENT				((u16) BIT(13))
+
+/*
+ * IEEE Std 802.11ai-2016, 9.6.8.36 FILS Discovery frame format,
+ * Figure 9-687c - FD Capability subfield format
+ */
+#define FD_CAP_ESS					BIT(0)
+#define FD_CAP_PRIVACY					BIT(1)
+#define FD_CAP_MULTI_BSSID_PRESENT			BIT(9)
+
+#define FD_CAP_BSS_CHWIDTH_20				0
+#define FD_CAP_BSS_CHWIDTH_40				1
+#define FD_CAP_BSS_CHWIDTH_80				2
+#define FD_CAP_BSS_CHWIDTH_160_80_80			3
+#define FD_CAP_BSS_CHWIDTH_SHIFT			2
+
+#define FD_CAP_NSS_1					0
+#define FD_CAP_NSS_2					1
+#define FD_CAP_NSS_3					2
+#define FD_CAP_NSS_4					3
+#define FD_CAP_NSS_5_8					4
+#define FD_CAP_NSS_SHIFT				5
+
+#define FD_CAP_PHY_INDEX_HR_DSSS			0
+#define FD_CAP_PHY_INDEX_ERP_OFDM			1
+#define FD_CAP_PHY_INDEX_HT				2
+#define FD_CAP_PHY_INDEX_VHT				3
+#define FD_CAP_PHY_INDEX_HE				4 /* P802.11ax */
+#define FD_CAP_PHY_INDEX_SHIFT				10
+
+/*
+ * IEEE P802.11ax/D8.0 26.17.2.3.2, AP behavior for fast passive scanning
+ */
+#define FD_MAX_INTERVAL_6GHZ                  20 /* TUs */
+
 #endif /* IEEE802_11_DEFS_H */
