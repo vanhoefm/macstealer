@@ -1541,6 +1541,26 @@ struct wpa_driver_ap_params {
 	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
 	 */
 	int sae_pwe;
+
+	/**
+	 * FILS Discovery frame minimum interval in TUs
+	 */
+	u32 fd_min_int;
+
+	/**
+	 * FILS Discovery frame maximum interval in TUs (0 = FD frame disabled)
+	 */
+	u32 fd_max_int;
+
+	/**
+	 * FILS Discovery frame template data
+	 */
+	u8 *fd_frame_tmpl;
+
+	/**
+	 * FILS Discovery frame template length
+	 */
+	size_t fd_frame_tmpl_len;
 };
 
 struct wpa_driver_mesh_bss_params {

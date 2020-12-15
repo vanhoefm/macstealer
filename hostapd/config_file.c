@@ -4423,6 +4423,10 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		bss->dhcp_server_port = atoi(pos);
 	} else if (os_strcmp(buf, "dhcp_relay_port") == 0) {
 		bss->dhcp_relay_port = atoi(pos);
+	} else if (os_strcmp(buf, "fils_discovery_min_interval") == 0) {
+		bss->fils_discovery_min_int = atoi(pos);
+	} else if (os_strcmp(buf, "fils_discovery_max_interval") == 0) {
+		bss->fils_discovery_max_int = atoi(pos);
 #endif /* CONFIG_FILS */
 	} else if (os_strcmp(buf, "multicast_to_unicast") == 0) {
 		bss->multicast_to_unicast = atoi(pos);

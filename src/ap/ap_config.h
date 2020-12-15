@@ -730,6 +730,8 @@ struct hostapd_bss_config {
 	unsigned int fils_hlp_wait_time;
 	u16 dhcp_server_port;
 	u16 dhcp_relay_port;
+	u32 fils_discovery_min_int;
+	u32 fils_discovery_max_int;
 #endif /* CONFIG_FILS */
 
 	int multicast_to_unicast;

@@ -1125,6 +1125,7 @@ u8 * wpa_auth_write_assoc_resp_owe(struct wpa_state_machine *sm,
 
 
 #ifdef CONFIG_FILS
+
 u8 * wpa_auth_write_assoc_resp_fils(struct wpa_state_machine *sm,
 				    u8 *pos, size_t max_len,
 				    const u8 *req_ies, size_t req_ies_len)
@@ -1141,4 +1142,91 @@ u8 * wpa_auth_write_assoc_resp_fils(struct wpa_state_machine *sm,
 		return pos;
 	return pos + res;
 }
+
+
+bool wpa_auth_write_fd_rsn_info(struct wpa_authenticator *wpa_auth,
+				u8 *fd_rsn_info)
+{
+	struct wpa_auth_config *conf;
+	u32 selectors = 0;
+	u8 *pos = fd_rsn_info;
+	int i, res;
+	u32 cipher, suite, selector, mask;
+	u8 tmp[10 * RSN_SELECTOR_LEN];
+
+	if (!wpa_auth)
+		return false;
+	conf = &wpa_auth->conf;
+
+	if (!(conf->wpa & WPA_PROTO_RSN))
+		return false;
+
+	/* RSN Capability (B0..B15) */
+	WPA_PUT_LE16(pos, wpa_own_rsn_capab(conf));
+	pos += 2;
+
+	/* Group Data Cipher Suite Selector (B16..B21) */
+	suite = wpa_cipher_to_suite(WPA_PROTO_RSN, conf->wpa_group);
+	if (suite == RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED)
+		cipher = 63; /* No cipher suite selected */
+	if ((suite >> 8) == 0x000fac && ((suite & 0xff) <= 13))
+		cipher = suite & 0xff;
+	else
+		cipher = 62; /* vendor specific */
+	selectors |= cipher;
+
+	/* Group Management Cipher Suite Selector (B22..B27) */
+	cipher = 63; /* Default to no cipher suite selected */
+	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION) {
+		switch (conf->group_mgmt_cipher) {
+		case WPA_CIPHER_AES_128_CMAC:
+			cipher = RSN_CIPHER_SUITE_AES_128_CMAC & 0xff;
+			break;
+		case WPA_CIPHER_BIP_GMAC_128:
+			cipher = RSN_CIPHER_SUITE_BIP_GMAC_128 & 0xff;
+			break;
+		case WPA_CIPHER_BIP_GMAC_256:
+			cipher = RSN_CIPHER_SUITE_BIP_GMAC_256 & 0xff;
+			break;
+		case WPA_CIPHER_BIP_CMAC_256:
+			cipher = RSN_CIPHER_SUITE_BIP_CMAC_256 & 0xff;
+			break;
+		}
+	}
+	selectors |= cipher << 6;
+
+	/* Pairwise Cipher Suite Selector (B28..B33) */
+	cipher = 63; /* Default to no cipher suite selected */
+	res = rsn_cipher_put_suites(tmp, conf->rsn_pairwise);
+	if (res == 1 && tmp[0] == 0x00 && tmp[1] == 0x0f && tmp[2] == 0xac &&
+	    tmp[3] <= 13)
+		cipher = tmp[3];
+	selectors |= cipher << 12;
+
+	/* AKM Suite Selector (B34..B39) */
+	selector = 0; /* default to AKM from RSNE in Beacon/Probe Response */
+	mask = WPA_KEY_MGMT_FILS_SHA256 | WPA_KEY_MGMT_FILS_SHA384 |
+		WPA_KEY_MGMT_FT_FILS_SHA384;
+	if ((conf->wpa_key_mgmt & mask) && (conf->wpa_key_mgmt & ~mask) == 0) {
+		suite = conf->wpa_key_mgmt & mask;
+		if (suite == WPA_KEY_MGMT_FILS_SHA256)
+			selector = 1; /* 00-0f-ac:14 */
+		else if (suite == WPA_KEY_MGMT_FILS_SHA384)
+			selector = 2; /* 00-0f-ac:15 */
+		else if (suite == (WPA_KEY_MGMT_FILS_SHA256 |
+				   WPA_KEY_MGMT_FILS_SHA384))
+			selector = 3; /* 00-0f-ac:14 or 00-0f-ac:15 */
+		else if (suite == WPA_KEY_MGMT_FT_FILS_SHA384)
+			selector = 4; /* 00-0f-ac:17 */
+	}
+	selectors |= selector << 18;
+
+	for (i = 0; i < 3; i++) {
+		*pos++ = selectors & 0xff;
+		selectors >>= 8;
+	}
+
+	return true;
+}
+
 #endif /* CONFIG_FILS */

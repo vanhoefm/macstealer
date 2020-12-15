@@ -131,6 +131,7 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
 	bss->fils_hlp_wait_time = 30;
 	bss->dhcp_server_port = DHCP_SERVER_PORT;
 	bss->dhcp_relay_port = DHCP_SERVER_PORT;
+	bss->fils_discovery_min_int = 20;
 #endif /* CONFIG_FILS */
 
 	bss->broadcast_deauth = 1;
