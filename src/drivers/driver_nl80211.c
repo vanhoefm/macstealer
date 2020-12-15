@@ -4403,6 +4403,36 @@ static int nl80211_put_sae_pwe(struct nl_msg *msg, int pwe)
 #endif /* CONFIG_SAE */
 
 
+#ifdef CONFIG_FILS
+static int nl80211_fils_discovery(struct i802_bss *bss, struct nl_msg *msg,
+				  struct wpa_driver_ap_params *params)
+{
+	struct nlattr *attr;
+
+	if (!bss->drv->fils_discovery) {
+		wpa_printf(MSG_ERROR,
+			   "nl80211: Driver does not support FILS Discovery frame transmission for %s",
+			   bss->ifname);
+		return -1;
+	}
+
+	attr = nla_nest_start(msg, NL80211_ATTR_FILS_DISCOVERY);
+	if (!attr ||
+	    nla_put_u32(msg, NL80211_FILS_DISCOVERY_ATTR_INT_MIN,
+			params->fd_min_int) ||
+	    nla_put_u32(msg, NL80211_FILS_DISCOVERY_ATTR_INT_MAX,
+			params->fd_max_int) ||
+	    (params->fd_frame_tmpl &&
+	     nla_put(msg, NL80211_FILS_DISCOVERY_ATTR_TMPL,
+		     params->fd_frame_tmpl_len, params->fd_frame_tmpl)))
+		return -1;
+
+	nla_nest_end(msg, attr);
+	return 0;
+}
+#endif /* CONFIG_FILS */
+
+
 static int wpa_driver_nl80211_set_ap(void *priv,
 				     struct wpa_driver_ap_params *params)
 {
@@ -4687,6 +4717,11 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 	    nl80211_put_sae_pwe(msg, params->sae_pwe) < 0)
 		goto fail;
 #endif /* CONFIG_SAE */
+
+#ifdef CONFIG_FILS
+	if (params->fd_max_int && nl80211_fils_discovery(bss, msg, params) < 0)
+		goto fail;
+#endif /* CONFIG_FILS */
 
 	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
 				       NULL, NULL, NULL, NULL);

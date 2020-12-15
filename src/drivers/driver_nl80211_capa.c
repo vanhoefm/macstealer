@@ -648,6 +648,10 @@ static void wiphy_info_ext_feature_flags(struct wiphy_info_data *info,
 	if (ext_feature_isset(ext_features, len,
 			      NL80211_EXT_FEATURE_MULTICAST_REGISTRATIONS))
 		info->drv->multicast_registrations = 1;
+
+	if (ext_feature_isset(ext_features, len,
+			      NL80211_EXT_FEATURE_FILS_DISCOVERY))
+		info->drv->fils_discovery = 1;
 }
 
 

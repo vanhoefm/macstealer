@@ -175,6 +175,7 @@ struct wpa_driver_nl80211_data {
 	unsigned int multicast_registrations:1;
 	unsigned int no_rrm:1;
 	unsigned int get_sta_info_vendor_cmd_avail:1;
+	unsigned int fils_discovery:1;
 
 	u64 vendor_scan_cookie;
 	u64 remain_on_chan_cookie;
