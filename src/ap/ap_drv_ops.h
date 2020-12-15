@@ -134,6 +134,7 @@ int hostapd_start_dfs_cac(struct hostapd_iface *iface,
 int hostapd_drv_do_acs(struct hostapd_data *hapd);
 int hostapd_drv_update_dh_ie(struct hostapd_data *hapd, const u8 *peer,
 			     u16 reason_code, const u8 *ie, size_t ielen);
+int hostapd_drv_dpp_listen(struct hostapd_data *hapd, bool enable);
 
 
 #include "drivers/driver.h"

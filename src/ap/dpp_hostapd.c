@@ -697,12 +697,14 @@ int hostapd_dpp_listen(struct hostapd_data *hapd, const char *cmd)
 		return -1;
 	}
 
+	hostapd_drv_dpp_listen(hapd, true);
 	return 0;
 }
 
 
 void hostapd_dpp_listen_stop(struct hostapd_data *hapd)
 {
+	hostapd_drv_dpp_listen(hapd, false);
 	/* TODO: Stop listen operation on non-operating channel */
 }
 

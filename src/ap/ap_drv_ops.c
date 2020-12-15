@@ -988,3 +988,11 @@ int hostapd_drv_update_dh_ie(struct hostapd_data *hapd, const u8 *peer,
 	return hapd->driver->update_dh_ie(hapd->drv_priv, peer, reason_code,
 					  ie, ielen);
 }
+
+
+int hostapd_drv_dpp_listen(struct hostapd_data *hapd, bool enable)
+{
+	if (!hapd->driver || !hapd->driver->dpp_listen || !hapd->drv_priv)
+		return 0;
+	return hapd->driver->dpp_listen(hapd->drv_priv, enable);
+}
