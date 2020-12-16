@@ -1473,13 +1473,13 @@ static int wpa_ft_store_pmk_r1(struct wpa_authenticator *wpa_auth,
 }
 
 
-static int wpa_ft_fetch_pmk_r1(struct wpa_authenticator *wpa_auth,
-			       const u8 *spa, const u8 *pmk_r1_name,
-			       u8 *pmk_r1, size_t *pmk_r1_len, int *pairwise,
-			       struct vlan_description *vlan,
-			       const u8 **identity, size_t *identity_len,
-			       const u8 **radius_cui, size_t *radius_cui_len,
-			       int *session_timeout)
+int wpa_ft_fetch_pmk_r1(struct wpa_authenticator *wpa_auth,
+			const u8 *spa, const u8 *pmk_r1_name,
+			u8 *pmk_r1, size_t *pmk_r1_len, int *pairwise,
+			struct vlan_description *vlan,
+			const u8 **identity, size_t *identity_len,
+			const u8 **radius_cui, size_t *radius_cui_len,
+			int *session_timeout)
 {
 	struct wpa_ft_pmk_cache *cache = wpa_auth->ft_pmk_cache;
 	struct wpa_ft_pmk_r1_sa *r1;

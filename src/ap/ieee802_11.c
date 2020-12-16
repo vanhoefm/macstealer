@@ -2811,7 +2811,7 @@ static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
 
 static int
 pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
-		 struct rsn_pmksa_cache_entry *pmksa,
+		 const u8 *cached_pmk, size_t cached_pmk_len,
 		 struct wpa_pasn_params_data *pasn_data,
 		 struct wpabuf *wrapped_data,
 		 struct wpabuf *secret)
@@ -2824,7 +2824,7 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 	os_memset(pmk, 0, sizeof(pmk));
 	pmk_len = 0;
 
-	if (!pmksa)
+	if (!cached_pmk || !cached_pmk_len)
 		wpa_printf(MSG_DEBUG, "PASN: No valid PMKSA entry");
 
 	if (sta->pasn->akmp == WPA_KEY_MGMT_PASN) {
@@ -2832,11 +2832,11 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 
 		pmk_len = WPA_PASN_PMK_LEN;
 		os_memcpy(pmk, pasn_default_pmk, sizeof(pasn_default_pmk));
-	} else if (pmksa) {
+	} else if (cached_pmk && cached_pmk_len) {
 		wpa_printf(MSG_DEBUG, "PASN: Using PMKSA entry");
 
-		pmk_len = pmksa->pmk_len;
-		os_memcpy(pmk, pmksa->pmk, pmksa->pmk_len);
+		pmk_len = cached_pmk_len;
+		os_memcpy(pmk, cached_pmk, cached_pmk_len);
 	} else {
 		switch (sta->pasn->akmp) {
 #ifdef CONFIG_SAE
@@ -2983,6 +2983,12 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 	struct wpa_ie_data rsn_data;
 	struct wpa_pasn_params_data pasn_params;
 	struct rsn_pmksa_cache_entry *pmksa = NULL;
+	const u8 *cached_pmk = NULL;
+	size_t cached_pmk_len = 0;
+#ifdef CONFIG_IEEE80211R_AP
+	u8 pmk_r1[PMK_LEN_MAX];
+	size_t pmk_r1_len;
+#endif /* CONFIG_IEEE80211R_AP */
 	struct wpabuf *wrapped_data = NULL, *secret = NULL;
 	const int *groups = hapd->conf->pasn_groups;
 	static const int default_groups[] = { 19, 0 };
@@ -3145,17 +3151,44 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 	}
 
 	if (rsn_data.num_pmkid) {
-		wpa_printf(MSG_DEBUG, "PASN: Try to find PMKSA entry");
+		if (wpa_key_mgmt_ft(sta->pasn->akmp)) {
+#ifdef CONFIG_IEEE80211R_AP
+			wpa_printf(MSG_DEBUG, "PASN: FT: Fetch PMK-R1");
 
-		pmksa = wpa_auth_pmksa_get(hapd->wpa_auth, sta->addr,
-					   rsn_data.pmkid);
+			ret = wpa_ft_fetch_pmk_r1(hapd->wpa_auth, sta->addr,
+						  rsn_data.pmkid,
+						  pmk_r1, &pmk_r1_len, NULL,
+						  NULL, NULL, NULL,
+						  NULL, NULL, NULL);
+			if (ret) {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: FT: Failed getting PMK-R1");
+				status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+				goto send_resp;
+			}
+			cached_pmk = pmk_r1;
+			cached_pmk_len = pmk_r1_len;
+#else /* CONFIG_IEEE80211R_AP */
+			wpa_printf(MSG_DEBUG, "PASN: FT: Not supported");
+			status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+			goto send_resp;
+#endif /* CONFIG_IEEE80211R_AP */
+		} else {
+			wpa_printf(MSG_DEBUG, "PASN: Try to find PMKSA entry");
+
+			pmksa = wpa_auth_pmksa_get(hapd->wpa_auth, sta->addr,
+						   rsn_data.pmkid);
+			if (pmksa) {
+				cached_pmk = pmksa->pmk;
+				cached_pmk_len = pmksa->pmk_len;
+			}
+		}
 	} else {
 		wpa_printf(MSG_DEBUG, "PASN: No PMKID specified");
-		pmksa = NULL;
 	}
 
-	ret = pasn_derive_keys(hapd, sta, pmksa, &pasn_params,
-			       wrapped_data, secret);
+	ret = pasn_derive_keys(hapd, sta, cached_pmk, cached_pmk_len,
+			       &pasn_params, wrapped_data, secret);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive keys");
 		status = WLAN_STATUS_UNSPECIFIED_FAILURE;

@@ -468,6 +468,14 @@ void wpa_ft_rrb_oui_rx(struct wpa_authenticator *wpa_auth, const u8 *src_addr,
 void wpa_ft_push_pmk_r1(struct wpa_authenticator *wpa_auth, const u8 *addr);
 void wpa_ft_deinit(struct wpa_authenticator *wpa_auth);
 void wpa_ft_sta_deinit(struct wpa_state_machine *sm);
+int wpa_ft_fetch_pmk_r1(struct wpa_authenticator *wpa_auth,
+			const u8 *spa, const u8 *pmk_r1_name,
+			u8 *pmk_r1, size_t *pmk_r1_len, int *pairwise,
+			struct vlan_description *vlan,
+			const u8 **identity, size_t *identity_len,
+			const u8 **radius_cui, size_t *radius_cui_len,
+			int *session_timeout);
+
 #endif /* CONFIG_IEEE80211R_AP */
 
 void wpa_wnmsleep_rekey_gtk(struct wpa_state_machine *sm);
