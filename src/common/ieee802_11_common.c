@@ -303,6 +303,10 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
 			break;
 		elems->he_6ghz_band_cap = pos;
 		break;
+	case WLAN_EID_EXT_PASN_PARAMS:
+		elems->pasn_params = pos;
+		elems->pasn_params_len = elen;
+		break;
 	default:
 		if (show_errors) {
 			wpa_printf(MSG_MSGDUMP,
