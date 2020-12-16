@@ -156,6 +156,23 @@ void ap_sta_ip6addr_del(struct hostapd_data *hapd, struct sta_info *sta)
 }
 
 
+#ifdef CONFIG_PASN
+
+void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta)
+{
+	if (sta->pasn) {
+		wpa_printf(MSG_DEBUG, "PASN: Free PASN context: " MACSTR,
+			   MAC2STR(sta->addr));
+
+		if (sta->pasn->ecdh)
+			crypto_ecdh_deinit(sta->pasn->ecdh);
+		bin_clear_free(sta->pasn, sizeof(*sta->pasn));
+		sta->pasn = NULL;
+	}
+}
+
+#endif /* CONFIG_PASN */
+
 void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
 {
 	int set_beacon = 0;
@@ -370,6 +387,10 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
 #ifdef CONFIG_WNM_AP
 	eloop_cancel_timeout(ap_sta_reset_steer_flag_timer, hapd, sta);
 #endif /* CONFIG_WNM_AP */
+
+#ifdef CONFIG_PASN
+	ap_free_sta_pasn(hapd, sta);
+#endif /* CONFIG_PASN */
 
 	os_free(sta->ifname_wds);
 

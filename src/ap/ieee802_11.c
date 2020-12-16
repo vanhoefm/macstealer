@@ -25,6 +25,7 @@
 #include "common/ocv.h"
 #include "common/wpa_common.h"
 #include "common/wpa_ctrl.h"
+#include "common/ptksa_cache.h"
 #include "radius/radius.h"
 #include "radius/radius_client.h"
 #include "p2p/p2p.h"
@@ -2296,6 +2297,494 @@ ieee802_11_set_radius_info(struct hostapd_data *hapd, struct sta_info *sta,
 }
 
 
+#ifdef CONFIG_PASN
+
+static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
+					     struct sta_info *sta)
+{
+	switch (sta->pasn->akmp) {
+	case WPA_KEY_MGMT_PASN:
+		/* no wrapped data */
+		return NULL;
+	case WPA_KEY_MGMT_SAE:
+	case WPA_KEY_MGMT_FILS_SHA256:
+	case WPA_KEY_MGMT_FILS_SHA384:
+	case WPA_KEY_MGMT_FT_PSK:
+	case WPA_KEY_MGMT_FT_IEEE8021X:
+	case WPA_KEY_MGMT_FT_IEEE8021X_SHA384:
+	default:
+		wpa_printf(MSG_ERROR,
+			   "PASN: TODO: Wrapped data for akmp=0x%x",
+			   sta->pasn->akmp);
+		return NULL;
+	}
+}
+
+
+static int
+pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
+		 struct rsn_pmksa_cache_entry *pmksa,
+		 struct wpa_pasn_params_data *pasn_data,
+		 struct wpabuf *wrapped_data,
+		 struct wpabuf *secret)
+{
+	static const u8 pasn_default_pmk[] = {'P', 'M', 'K', 'z'};
+	u8 pmk[PMK_LEN_MAX];
+	u8 pmk_len;
+	int ret;
+
+	os_memset(pmk, 0, sizeof(pmk));
+	pmk_len = 0;
+
+	if (!pmksa)
+		wpa_printf(MSG_DEBUG, "PASN: No valid PMKSA entry");
+
+	if (sta->pasn->akmp == WPA_KEY_MGMT_PASN) {
+		wpa_printf(MSG_DEBUG, "PASN: Using default PMK");
+
+		pmk_len = WPA_PASN_PMK_LEN;
+		os_memcpy(pmk, pasn_default_pmk, sizeof(pasn_default_pmk));
+	} else if (pmksa) {
+		wpa_printf(MSG_DEBUG, "PASN: Using PMKSA entry");
+
+		pmk_len = pmksa->pmk_len;
+		os_memcpy(pmk, pmksa->pmk, pmksa->pmk_len);
+	} else {
+		/* TODO: Derive PMK based on wrapped data */
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Missing implementation to derive PMK");
+
+		return -1;
+	}
+
+	ret = pasn_pmk_to_ptk(pmk, pmk_len, sta->addr, hapd->own_addr,
+			      wpabuf_head(secret), wpabuf_len(secret),
+			      &sta->pasn->ptk, sta->pasn->akmp,
+			      sta->pasn->cipher, WPA_KDK_MAX_LEN);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to derive PTK");
+		return -1;
+	}
+
+	wpa_printf(MSG_DEBUG, "PASN: PTK successfully derived");
+	return 0;
+}
+
+
+static int handle_auth_pasn_resp(struct hostapd_data *hapd,
+				 struct sta_info *sta,
+				 struct rsn_pmksa_cache_entry *pmksa,
+				 u16 status)
+{
+	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
+	u8 mic[WPA_PASN_MAX_MIC_LEN];
+	u8 mic_len, data_len;
+	u8 *ptr;
+	const u8 *data, *rsn_ie;
+	size_t rsn_ie_len;
+	int ret;
+
+	wpa_printf(MSG_DEBUG, "PASN: Building frame 2: status=%u", status);
+
+	buf = wpabuf_alloc(1500);
+	if (!buf)
+		goto fail;
+
+	wpa_pasn_build_auth_header(buf, hapd->own_addr, hapd->own_addr,
+				   sta->addr, 2, status);
+
+	if (status != WLAN_STATUS_SUCCESS)
+		goto done;
+
+	if (wpa_pasn_add_rsne(buf, pmksa ? pmksa->pmkid : NULL,
+			      sta->pasn->akmp, sta->pasn->cipher) < 0)
+		goto fail;
+
+	/* No need to derive PMK if PMKSA is given */
+	if (!pmksa)
+		wrapped_data_buf = pasn_get_wrapped_data(hapd, sta);
+	else
+		sta->pasn->wrapped_data_format = WPA_PASN_WRAPPED_DATA_NO;
+
+	/* Get public key */
+	pubkey = crypto_ecdh_get_pubkey(sta->pasn->ecdh, 0);
+	pubkey = wpabuf_zeropad(pubkey,
+				crypto_ecdh_prime_len(sta->pasn->ecdh));
+	if (!pubkey) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to get pubkey");
+		goto fail;
+	}
+
+	wpa_pasn_add_parameter_ie(buf, sta->pasn->group,
+				  sta->pasn->wrapped_data_format,
+				  pubkey, NULL, 0);
+
+	if (wpa_pasn_add_wrapped_data(buf, wrapped_data_buf) < 0)
+		goto fail;
+
+	wpabuf_free(wrapped_data_buf);
+	wrapped_data_buf = NULL;
+	wpabuf_free(pubkey);
+	pubkey = NULL;
+
+	/* Add the mic */
+	mic_len = pasn_mic_len(sta->pasn->akmp, sta->pasn->cipher);
+	wpabuf_put_u8(buf, WLAN_EID_MIC);
+	wpabuf_put_u8(buf, mic_len);
+	ptr = wpabuf_put(buf, mic_len);
+
+	os_memset(ptr, 0, mic_len);
+
+	data = wpabuf_head_u8(buf) + IEEE80211_HDRLEN;
+	data_len = wpabuf_len(buf) - IEEE80211_HDRLEN;
+
+	rsn_ie = wpa_auth_get_wpa_ie(hapd->wpa_auth, &rsn_ie_len);
+	if (!rsn_ie || !rsn_ie_len)
+		goto fail;
+
+	/*
+	 * Note: wpa_auth_get_wpa_ie() might return not only the RSNE but also
+	 * MDE, etc. Thus, do not use the returned length but instead use the
+	 * length specified in the IE header.
+	 */
+	ret = pasn_mic(sta->pasn->ptk.kck, sta->pasn->akmp, sta->pasn->cipher,
+		       hapd->own_addr, sta->addr, rsn_ie, rsn_ie[1] + 2,
+		       data, data_len, mic);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Frame 3: Failed MIC calculation");
+		goto fail;
+	}
+
+	os_memcpy(ptr, mic, mic_len);
+
+done:
+	wpa_printf(MSG_DEBUG,
+		   "PASN: Building frame 2: success; resp STA=" MACSTR,
+		   MAC2STR(sta->addr));
+
+	ret = hostapd_drv_send_mlme(hapd, wpabuf_head(buf), wpabuf_len(buf), 0,
+				    NULL, 0, 0);
+	if (ret)
+		wpa_printf(MSG_INFO, "send_auth_reply: Send failed");
+
+	wpabuf_free(buf);
+	return ret;
+fail:
+	wpabuf_free(wrapped_data_buf);
+	wpabuf_free(pubkey);
+	wpabuf_free(buf);
+	return -1;
+}
+
+
+static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
+			       const struct ieee80211_mgmt *mgmt, size_t len)
+{
+	struct ieee802_11_elems elems;
+	struct wpa_ie_data rsn_data;
+	struct wpa_pasn_params_data pasn_params;
+	struct rsn_pmksa_cache_entry *pmksa;
+	struct wpabuf *wrapped_data = NULL, *secret = NULL;
+	const int *groups = hapd->conf->pasn_groups;
+	static const int default_groups[] = { 19, 0 };
+	u16 status = WLAN_STATUS_SUCCESS;
+	int ret;
+	u32 i;
+
+	if (!groups)
+		groups = default_groups;
+
+	if (ieee802_11_parse_elems(mgmt->u.auth.variable,
+				   len - offsetof(struct ieee80211_mgmt,
+						  u.auth.variable),
+				   &elems, 0) == ParseFailed) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Failed parsing Authentication frame");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto send_resp;
+	}
+
+	ret = wpa_parse_wpa_ie_rsn(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
+				   &rsn_data);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed parsing RNSE");
+		status = WLAN_STATUS_INVALID_RSNIE;
+		goto send_resp;
+	}
+
+	ret = wpa_pasn_validate_rsne(&rsn_data);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed validating RSNE");
+		status = WLAN_STATUS_INVALID_RSNIE;
+		goto send_resp;
+	}
+
+	if (!(rsn_data.key_mgmt & hapd->conf->wpa_key_mgmt) ||
+	    !(rsn_data.pairwise_cipher & hapd->conf->rsn_pairwise)) {
+		wpa_printf(MSG_DEBUG, "PASN: Mismatch in AKMP/cipher");
+		status = WLAN_STATUS_INVALID_RSNIE;
+		goto send_resp;
+	}
+
+	sta->pasn->akmp = rsn_data.key_mgmt;
+	sta->pasn->cipher = rsn_data.pairwise_cipher;
+
+	if (!elems.pasn_params || !elems.pasn_params_len) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: No PASN Parameters element found");
+		status = WLAN_STATUS_INVALID_PARAMETERS;
+		goto send_resp;
+	}
+
+	ret = wpa_pasn_parse_parameter_ie(elems.pasn_params - 3,
+					  elems.pasn_params_len + 3,
+					  false, &pasn_params);
+	if (ret) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Failed validation of PASN Parameters IE");
+		status = WLAN_STATUS_INVALID_PARAMETERS;
+		goto send_resp;
+	}
+
+	for (i = 0; groups[i] > 0 && groups[i] != pasn_params.group; i++)
+		;
+
+	if (!pasn_params.group || groups[i] != pasn_params.group) {
+		wpa_printf(MSG_DEBUG, "PASN: Requested group=%hu not allowed",
+			   pasn_params.group);
+		status = WLAN_STATUS_FINITE_CYCLIC_GROUP_NOT_SUPPORTED;
+		goto send_resp;
+	}
+
+	if (!pasn_params.pubkey || !pasn_params.pubkey_len) {
+		wpa_printf(MSG_DEBUG, "PASN: Invalid public key");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto send_resp;
+	}
+
+	sta->pasn->ecdh = crypto_ecdh_init(pasn_params.group);
+	if (!sta->pasn->ecdh) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to init ECDH");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto send_resp;
+	}
+
+	sta->pasn->group = pasn_params.group;
+
+	secret = crypto_ecdh_set_peerkey(sta->pasn->ecdh, 0,
+					 pasn_params.pubkey,
+					 pasn_params.pubkey_len);
+	if (!secret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to derive shared secret");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto send_resp;
+	}
+
+	if (pasn_params.wrapped_data_format != WPA_PASN_WRAPPED_DATA_NO) {
+		wrapped_data = ieee802_11_defrag(&elems,
+						 WLAN_EID_EXTENSION,
+						 WLAN_EID_EXT_WRAPPED_DATA);
+		if (!wrapped_data) {
+			wpa_printf(MSG_DEBUG, "PASN: Missing wrapped data");
+			status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+			goto send_resp;
+		}
+	}
+
+	sta->pasn->wrapped_data_format = pasn_params.wrapped_data_format;
+
+	if (rsn_data.num_pmkid) {
+		wpa_printf(MSG_DEBUG, "PASN: Try to find PMKSA entry");
+
+		pmksa = wpa_auth_pmksa_get(hapd->wpa_auth, sta->addr,
+					   rsn_data.pmkid);
+	} else {
+		wpa_printf(MSG_DEBUG, "PASN: No PMKID specified");
+		pmksa = NULL;
+	}
+
+	ret = pasn_derive_keys(hapd, sta, pmksa, &pasn_params,
+			       wrapped_data, secret);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to derive keys");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto send_resp;
+	}
+
+	ret = pasn_auth_frame_hash(sta->pasn->akmp, sta->pasn->cipher,
+				   ((const u8 *) mgmt) + IEEE80211_HDRLEN,
+				   len - IEEE80211_HDRLEN, sta->pasn->hash);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to compute hash");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+	}
+
+send_resp:
+	ret = handle_auth_pasn_resp(hapd, sta, pmksa, status);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to send response");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+	} else {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Success handling transaction == 1");
+	}
+
+	wpabuf_free(secret);
+	wpabuf_free(wrapped_data);
+
+	if (status != WLAN_STATUS_SUCCESS)
+		ap_free_sta(hapd, sta);
+}
+
+
+static void handle_auth_pasn_3(struct hostapd_data *hapd, struct sta_info *sta,
+			       const struct ieee80211_mgmt *mgmt, size_t len)
+{
+	struct ieee802_11_elems elems;
+	struct wpa_pasn_params_data pasn_params;
+	struct wpabuf *wrapped_data = NULL;
+	u8 mic[WPA_PASN_MAX_MIC_LEN], out_mic[WPA_PASN_MAX_MIC_LEN];
+	u8 mic_len;
+	int ret;
+
+	if (ieee802_11_parse_elems(mgmt->u.auth.variable,
+				   len - offsetof(struct ieee80211_mgmt,
+						  u.auth.variable),
+				   &elems, 0) == ParseFailed) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Failed parsing Authentication frame");
+		goto fail;
+	}
+
+	/* Check that the MIC IE exists. Save it and zero out the memory. */
+	mic_len = pasn_mic_len(sta->pasn->akmp, sta->pasn->cipher);
+	if (!elems.mic || elems.mic_len != mic_len) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Invalid MIC. Expecting len=%u", mic_len);
+		goto fail;
+	} else {
+		os_memcpy(mic, elems.mic, mic_len);
+		/* TODO: Clean this up.. Should not modify received frame
+		 * buffer. */
+		os_memset((u8 *) elems.mic, 0, mic_len);
+	}
+
+	if (!elems.pasn_params || !elems.pasn_params_len) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: No PASN Parameters element found");
+		goto fail;
+	}
+
+	ret = wpa_pasn_parse_parameter_ie(elems.pasn_params - 3,
+					  elems.pasn_params_len + 3,
+					  false, &pasn_params);
+	if (ret) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Failed validation of PASN Parameters IE");
+		goto fail;
+	}
+
+	if (pasn_params.pubkey || pasn_params.pubkey_len) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Public key should not be included");
+		goto fail;
+	}
+
+	/* Verify the MIC */
+	ret = pasn_mic(sta->pasn->ptk.kck, sta->pasn->akmp, sta->pasn->cipher,
+		       sta->addr, hapd->own_addr,
+		       sta->pasn->hash, mic_len * 2,
+		       (u8 *) &mgmt->u.auth,
+		       len - offsetof(struct ieee80211_mgmt, u.auth),
+		       out_mic);
+
+	wpa_hexdump_key(MSG_DEBUG, "PASN: Frame MIC", mic, mic_len);
+	if (ret || os_memcmp(mic, out_mic, mic_len) != 0) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed MIC verification");
+		goto fail;
+	}
+
+	if (pasn_params.wrapped_data_format != WPA_PASN_WRAPPED_DATA_NO) {
+		wrapped_data = ieee802_11_defrag(&elems,
+						 WLAN_EID_EXTENSION,
+						 WLAN_EID_EXT_WRAPPED_DATA);
+
+		if (!wrapped_data) {
+			wpa_printf(MSG_DEBUG, "PASN: Missing wrapped data");
+			goto fail;
+		}
+
+		/* TODO: Handle wrapped data */
+		wpabuf_free(wrapped_data);
+	}
+
+	wpa_printf(MSG_INFO,
+		   "PASN: Success handling transaction == 3. Store PTK");
+
+	ptksa_cache_add(hapd->ptksa, sta->addr, sta->pasn->cipher, 43200,
+			&sta->pasn->ptk);
+fail:
+	ap_free_sta(hapd, sta);
+}
+
+
+static void handle_auth_pasn(struct hostapd_data *hapd, struct sta_info *sta,
+			     const struct ieee80211_mgmt *mgmt, size_t len,
+			     u16 trans_seq, u16 status)
+{
+	if (hapd->conf->wpa != WPA_PROTO_RSN) {
+		wpa_printf(MSG_INFO, "PASN: RSN is not configured");
+		return;
+	}
+
+	wpa_printf(MSG_INFO, "PASN authentication: sta=" MACSTR,
+		   MAC2STR(sta->addr));
+
+	if (trans_seq == 1) {
+		if (sta->pasn) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Not expecting transaction == 1");
+			return;
+		}
+
+		if (status != WLAN_STATUS_SUCCESS) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Failure status in transaction == 1");
+			return;
+		}
+
+		sta->pasn = os_zalloc(sizeof(*sta->pasn));
+		if (!sta->pasn) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Failed to allocate PASN context");
+			return;
+		}
+
+		handle_auth_pasn_1(hapd, sta, mgmt, len);
+	} else if (trans_seq == 3) {
+		if (!sta->pasn) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Not expecting transaction == 3");
+			return;
+		}
+
+		if (status != WLAN_STATUS_SUCCESS) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Failure status in transaction == 3");
+			ap_free_sta_pasn(hapd, sta);
+			return;
+		}
+
+		handle_auth_pasn_3(hapd, sta, mgmt, len);
+	} else {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Invalid transaction %u - ignore", trans_seq);
+	}
+}
+
+#endif /* CONFIG_PASN */
+
+
 static void handle_auth(struct hostapd_data *hapd,
 			const struct ieee80211_mgmt *mgmt, size_t len,
 			int rssi, int from_queue)
@@ -2382,6 +2871,11 @@ static void handle_auth(struct hostapd_data *hapd,
 	       hapd->conf->fils_dh_group &&
 	       auth_alg == WLAN_AUTH_FILS_SK_PFS) ||
 #endif /* CONFIG_FILS */
+#ifdef CONFIG_PASN
+	      (hapd->conf->wpa &&
+	       (hapd->conf->wpa_key_mgmt & WPA_KEY_MGMT_PASN) &&
+	       auth_alg == WLAN_AUTH_PASN) ||
+#endif /* CONFIG_PASN */
 	      ((hapd->conf->auth_algs & WPA_AUTH_ALG_SHARED) &&
 	       auth_alg == WLAN_AUTH_SHARED_KEY))) {
 		wpa_printf(MSG_INFO, "Unsupported authentication algorithm (%d)",
@@ -2391,6 +2885,9 @@ static void handle_auth(struct hostapd_data *hapd,
 	}
 
 	if (!(auth_transaction == 1 || auth_alg == WLAN_AUTH_SAE ||
+#ifdef CONFIG_PASN
+	      (auth_alg == WLAN_AUTH_PASN && auth_transaction == 3) ||
+#endif /* CONFIG_PASN */
 	      (auth_alg == WLAN_AUTH_SHARED_KEY && auth_transaction == 3))) {
 		wpa_printf(MSG_INFO, "Unknown authentication transaction number (%d)",
 			   auth_transaction);
@@ -2512,6 +3009,15 @@ static void handle_auth(struct hostapd_data *hapd,
 			return;
 		}
 #endif /* CONFIG_MESH */
+#ifdef CONFIG_PASN
+		if (auth_alg == WLAN_AUTH_PASN &&
+		    (sta->flags & WLAN_STA_ASSOC)) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: auth: Existing station: " MACSTR,
+				   MAC2STR(sta->addr));
+			return;
+		}
+#endif /* CONFIG_PASN */
 	} else {
 #ifdef CONFIG_MESH
 		if (hapd->conf->mesh & MESH_ENABLED) {
@@ -2572,11 +3078,14 @@ static void handle_auth(struct hostapd_data *hapd,
 	 * to allow the original connection work until the attempt can complete
 	 * (re)association, so that unprotected Authentication frame cannot be
 	 * used to bypass PMF protection.
+	 *
+	 * PASN authentication does not require adding/removing station to the
+	 * driver so skip this flow in case of PASN authentication.
 	 */
 	if (FULL_AP_CLIENT_STATE_SUPP(hapd->iface->drv_flags) &&
 	    (!(sta->flags & WLAN_STA_MFP) || !ap_sta_is_authorized(sta)) &&
 	    !(hapd->conf->mesh & MESH_ENABLED) &&
-	    !(sta->added_unassoc)) {
+	    !(sta->added_unassoc) && auth_alg != WLAN_AUTH_PASN) {
 		if (ap_sta_re_add(hapd, sta) < 0) {
 			resp = WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA;
 			goto fail;
@@ -2663,6 +3172,12 @@ static void handle_auth(struct hostapd_data *hapd,
 				 handle_auth_fils_finish);
 		return;
 #endif /* CONFIG_FILS */
+#ifdef CONFIG_PASN
+	case WLAN_AUTH_PASN:
+		handle_auth_pasn(hapd, sta, mgmt, len, auth_transaction,
+				 status_code);
+		return;
+#endif /* CONFIG_PASN */
 	}
 
  fail:

@@ -14,6 +14,7 @@
 #include "vlan.h"
 #include "common/wpa_common.h"
 #include "common/ieee802_11_defs.h"
+#include "crypto/sha384.h"
 
 /* STA flags */
 #define WLAN_STA_AUTH BIT(0)
@@ -61,6 +62,18 @@ struct mbo_non_pref_chan_info {
 struct pending_eapol_rx {
 	struct wpabuf *buf;
 	struct os_reltime rx_time;
+};
+
+struct pasn_data {
+	int akmp;
+	int cipher;
+	u16 group;
+	u8 trans_seq;
+	u8 wrapped_data_format;
+
+	u8 hash[SHA384_MAC_LEN];
+	struct wpa_ptk ptk;
+	struct crypto_ecdh *ecdh;
 };
 
 struct sta_info {
@@ -286,6 +299,10 @@ struct sta_info {
 	unsigned int airtime_weight;
 	struct os_reltime backlogged_until;
 #endif /* CONFIG_AIRTIME_POLICY */
+
+#ifdef CONFIG_PASN
+	struct pasn_data *pasn;
+#endif /* CONFIG_PASN */
 };
 
 
@@ -362,5 +379,7 @@ void ap_sta_delayed_1x_auth_fail_disconnect(struct hostapd_data *hapd,
 int ap_sta_pending_delayed_1x_auth_fail_disconnect(struct hostapd_data *hapd,
 						   struct sta_info *sta);
 int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta);
+
+void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta);
 
 #endif /* STA_INFO_H */
