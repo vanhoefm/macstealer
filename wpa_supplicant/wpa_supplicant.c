@@ -580,6 +580,10 @@ static void wpa_supplicant_cleanup(struct wpa_supplicant *wpa_s)
 	wpa_s->wpa = NULL;
 	wpa_blacklist_clear(wpa_s);
 
+#ifdef CONFIG_PASN
+	wpas_pasn_auth_stop(wpa_s);
+#endif /* CONFIG_PASN */
+
 	wpa_bss_deinit(wpa_s);
 
 	wpa_supplicant_cancel_delayed_sched_scan(wpa_s);
@@ -729,6 +733,10 @@ static void wpa_supplicant_cleanup(struct wpa_supplicant *wpa_s)
 	dpp_global_deinit(wpa_s->dpp);
 	wpa_s->dpp = NULL;
 #endif /* CONFIG_DPP */
+
+#ifdef CONFIG_PASN
+	wpas_pasn_auth_stop(wpa_s);
+#endif /* CONFIG_PASN */
 }
 
 

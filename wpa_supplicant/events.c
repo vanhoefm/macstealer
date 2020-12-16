@@ -4883,6 +4883,14 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			" type=%d stype=%d",
 			MAC2STR(data->tx_status.dst),
 			data->tx_status.type, data->tx_status.stype);
+#ifdef CONFIG_PASN
+		if (data->tx_status.type == WLAN_FC_TYPE_MGMT &&
+		    data->tx_status.stype == WLAN_FC_STYPE_AUTH &&
+		    wpas_pasn_auth_tx_status(wpa_s, data->tx_status.data,
+					     data->tx_status.data_len,
+					     data->tx_status.ack) == 0)
+			break;
+#endif /* CONFIG_PASN */
 #ifdef CONFIG_AP
 		if (wpa_s->ap_iface == NULL) {
 #ifdef CONFIG_OFFCHANNEL
@@ -5111,6 +5119,12 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 				mesh_mpm_mgmt_rx(wpa_s, &data->rx_mgmt);
 				break;
 			}
+#ifdef CONFIG_PASN
+			if (stype == WLAN_FC_STYPE_AUTH &&
+			    wpas_pasn_auth_rx(wpa_s, mgmt,
+					      data->rx_mgmt.frame_len) != -2)
+				break;
+#endif /* CONFIG_PASN */
 
 #ifdef CONFIG_SAE
 			if (stype == WLAN_FC_STYPE_AUTH &&

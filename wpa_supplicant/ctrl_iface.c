@@ -8533,6 +8533,11 @@ static void wpa_supplicant_ctrl_iface_flush(struct wpa_supplicant *wpa_s)
 	free_bss_tmp_disallowed(wpa_s);
 
 	os_memset(&wpa_s->robust_av, 0, sizeof(struct robust_av_data));
+
+#ifdef CONFIG_PASN
+	wpas_pasn_auth_stop(wpa_s);
+#endif /* CONFIG_PASN */
+
 }
 
 

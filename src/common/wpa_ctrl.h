@@ -408,6 +408,9 @@ extern "C" {
 #define BIT(x) (1U << (x))
 #endif
 
+/* PASN authentication status */
+#define PASN_AUTH_STATUS "PASN-AUTH-STATUS "
+
 /* BSS command information masks */
 
 #define WPA_BSS_MASK_ALL		0xFFFDFFFF

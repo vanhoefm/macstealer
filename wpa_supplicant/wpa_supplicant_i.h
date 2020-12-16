@@ -14,6 +14,7 @@
 #include "common/defs.h"
 #include "common/sae.h"
 #include "common/wpa_ctrl.h"
+#include "crypto/sha384.h"
 #include "wps/wps_defs.h"
 #include "config_ssid.h"
 #include "wmm_ac.h"
@@ -513,6 +514,28 @@ struct robust_av_data {
 	size_t frame_classifier_len;
 	bool valid_config;
 };
+
+#ifdef CONFIG_PASN
+struct wpas_pasn {
+	int akmp;
+	int cipher;
+	u16 group;
+	int freq;
+
+	u8 trans_seq;
+	u8 status;
+
+	u8 bssid[ETH_ALEN];
+	size_t pmk_len;
+	u8 pmk[PMK_LEN_MAX];
+
+	u8 hash[SHA384_MAC_LEN];
+
+	struct wpabuf *beacon_rsne;
+	struct wpa_ptk ptk;
+	struct crypto_ecdh *ecdh;
+};
+#endif /* CONFIG_PASN */
 
 /**
  * struct wpa_supplicant - Internal data for wpa_supplicant interface
@@ -1334,6 +1357,11 @@ struct wpa_supplicant {
 	unsigned int multi_ap_fronthaul:1;
 	struct robust_av_data robust_av;
 	bool mscs_setup_done;
+
+#ifdef CONFIG_PASN
+	struct wpas_pasn pasn;
+	struct wpa_radio_work *pasn_auth_work;
+#endif /* CONFIG_PASN */
 };
 
 
@@ -1654,5 +1682,14 @@ void wpas_handle_robust_av_recv_action(struct wpa_supplicant *wpa_s,
 				       size_t len);
 void wpas_handle_assoc_resp_mscs(struct wpa_supplicant *wpa_s, const u8 *bssid,
 				 const u8 *ies, size_t ies_len);
+
+int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
+			 const u8 *bssid, int akmp, int cipher,
+			 u16 group);
+void wpas_pasn_auth_stop(struct wpa_supplicant *wpa_s);
+int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
+			     const u8 *data, size_t data_len, u8 acked);
+int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
+		      const struct ieee80211_mgmt *mgmt, size_t len);
 
 #endif /* WPA_SUPPLICANT_I_H */

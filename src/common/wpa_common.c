@@ -2392,6 +2392,8 @@ const char * wpa_key_mgmt_txt(int key_mgmt, int proto)
 		return "OWE";
 	case WPA_KEY_MGMT_DPP:
 		return "DPP";
+	case WPA_KEY_MGMT_PASN:
+		return "PASN";
 	default:
 		return "UNKNOWN";
 	}
