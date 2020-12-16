@@ -595,6 +595,14 @@ CFLAGS += -DCONFIG_DPP2
 endif
 endif
 
+ifdef CONFIG_PASN
+CFLAGS += -DCONFIG_PASN
+NEED_HMAC_SHA256_KDF=y
+NEED_HMAC_SHA384_KDF=y
+NEED_SHA256=y
+NEED_SHA384=y
+endif
+
 ifdef CONFIG_EAP_IKEV2
 CFLAGS += -DEAP_SERVER_IKEV2
 OBJS += ../src/eap_server/eap_server_ikev2.o ../src/eap_server/ikev2.o

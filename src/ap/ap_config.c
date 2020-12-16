@@ -955,6 +955,10 @@ void hostapd_config_free_bss(struct hostapd_bss_config *conf)
 	}
 #endif /* CONFIG_AIRTIME_POLICY */
 
+#ifdef CONFIG_PASN
+	os_free(conf->pasn_groups);
+#endif /* CONFIG_PASN */
+
 	os_free(conf);
 }
 

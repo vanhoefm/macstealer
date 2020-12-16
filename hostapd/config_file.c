@@ -754,6 +754,10 @@ static int hostapd_config_parse_key_mgmt(int line, const char *value)
 		else if (os_strcmp(start, "OSEN") == 0)
 			val |= WPA_KEY_MGMT_OSEN;
 #endif /* CONFIG_HS20 */
+#ifdef CONFIG_PASN
+		else if (os_strcmp(start, "PASN") == 0)
+			val |= WPA_KEY_MGMT_PASN;
+#endif /* CONFIG_PASN */
 		else {
 			wpa_printf(MSG_ERROR, "Line %d: invalid key_mgmt '%s'",
 				   line, start);
@@ -4582,6 +4586,13 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 	} else if (os_strcmp(buf, "force_kdk_derivation") == 0) {
 		bss->force_kdk_derivation = atoi(pos);
 #endif /* CONFIG_TESTING_OPTIONS */
+	} else if (os_strcmp(buf, "pasn_groups") == 0) {
+		if (hostapd_parse_intlist(&bss->pasn_groups, pos)) {
+			wpa_printf(MSG_ERROR,
+				   "Line %d: Invalid pasn_groups value '%s'",
+				   line, pos);
+			return 1;
+		}
 #endif /* CONFIG_PASN */
 	} else {
 		wpa_printf(MSG_ERROR,

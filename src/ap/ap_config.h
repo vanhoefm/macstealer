@@ -871,6 +871,8 @@ struct hostapd_bss_config {
 	 */
 	int force_kdk_derivation;
 #endif /* CONFIG_TESTING_OPTIONS */
+
+	int *pasn_groups;
 #endif /* CONFIG_PASN */
 };
 

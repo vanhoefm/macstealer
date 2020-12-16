@@ -260,6 +260,13 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 		num_suites++;
 	}
 #endif /* CONFIG_HS20 */
+#ifdef CONFIG_PASN
+	if (conf->wpa_key_mgmt & WPA_KEY_MGMT_PASN) {
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_PASN);
+		pos += RSN_SELECTOR_LEN;
+		num_suites++;
+	}
+#endif /* CONFIG_PASN */
 
 #ifdef CONFIG_RSN_TESTING
 	if (rsn_testing) {
