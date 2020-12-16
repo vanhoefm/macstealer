@@ -1011,7 +1011,7 @@ dbus_bool_t wpas_dbus_getter_global_capabilities(
 	const struct wpa_dbus_property_desc *property_desc,
 	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
-	const char *capabilities[12];
+	const char *capabilities[13];
 	size_t num_items = 0;
 	struct wpa_global *global = user_data;
 	struct wpa_supplicant *wpa_s;
@@ -1062,6 +1062,9 @@ dbus_bool_t wpas_dbus_getter_global_capabilities(
 #ifdef CONFIG_OWE
 	capabilities[num_items++] = "owe";
 #endif /* CONFIG_OWE */
+#ifdef CONFIG_SUITEB192
+	capabilities[num_items++] = "suiteb192";
+#endif /* CONFIG_SUITEB192 */
 	if (ext_key_id_supported)
 		capabilities[num_items++] = "extended_key_id";
 
