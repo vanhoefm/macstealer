@@ -4499,6 +4499,15 @@ static int ctrl_iface_get_capability_auth_alg(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_FILS_SK_PFS */
 #endif /* CONFIG_FILS */
 
+#ifdef CONFIG_PASN
+	ret = os_snprintf(pos, end - pos, "%sPASN",
+			  pos == buf ? "" : " ");
+	if (os_snprintf_error(end - pos, ret))
+		return pos - buf;
+	pos += ret;
+
+#endif /* CONFIG_PASN */
+
 	return pos - buf;
 }
 
@@ -10448,6 +10457,70 @@ static int wpas_ctrl_iface_configure_mscs(struct wpa_supplicant *wpa_s,
 }
 
 
+#ifdef CONFIG_PASN
+static int wpas_ctrl_iface_pasn_start(struct wpa_supplicant *wpa_s, char *cmd)
+{
+	char *token, *context = NULL;
+	u8 bssid[ETH_ALEN];
+	int akmp = -1, cipher = -1, got_bssid = 0;
+	u16 group = 0xFFFF;
+
+	/*
+	 * Entry format: bssid=<BSSID> akmp=<AKMP> cipher=<CIPHER> group=<group>
+	 */
+	while ((token = str_token(cmd, " ", &context))) {
+		if (os_strncmp(token, "bssid=", 6) == 0) {
+			if (hwaddr_aton(token + 6, bssid))
+				return -1;
+			got_bssid = 1;
+		} else if (os_strcmp(token, "akmp=PASN") == 0) {
+			akmp = WPA_KEY_MGMT_PASN;
+#ifdef CONFIG_IEEE80211R
+		} else if (os_strcmp(token, "akmp=FT-PSK") == 0) {
+			akmp = WPA_KEY_MGMT_FT_PSK;
+		} else if (os_strcmp(token, "akmp=FT-EAP-SHA384") == 0) {
+			akmp = WPA_KEY_MGMT_FT_IEEE8021X_SHA384;
+		} else if (os_strcmp(token, "akmp=FT-EAP") == 0) {
+			akmp = WPA_KEY_MGMT_FT_IEEE8021X;
+#endif /* CONFIG_IEEE80211R */
+#ifdef CONFIG_SAE
+		} else if (os_strcmp(token, "akmp=SAE") == 0) {
+			akmp = WPA_KEY_MGMT_SAE;
+#endif /* CONFIG_SAE */
+#ifdef CONFIG_FILS
+		} else if (os_strcmp(token, "akmp=FILS-SHA256") == 0) {
+			akmp = WPA_KEY_MGMT_FILS_SHA256;
+		} else if (os_strcmp(token, "akmp=FILS-SHA384") == 0) {
+			akmp = WPA_KEY_MGMT_FILS_SHA384;
+#endif /* CONFIG_FILS */
+		} else if (os_strcmp(token, "cipher=CCMP-256") == 0) {
+			cipher = WPA_CIPHER_CCMP_256;
+		} else if (os_strcmp(token, "cipher=GCMP-256") == 0) {
+			cipher = WPA_CIPHER_GCMP_256;
+		} else if (os_strcmp(token, "cipher=CCMP") == 0) {
+			cipher = WPA_CIPHER_CCMP;
+		} else if (os_strcmp(token, "cipher=GCMP") == 0) {
+			cipher = WPA_CIPHER_GCMP;
+		} else if (os_strncmp(token, "group=", 6) == 0) {
+			group = atoi(token + 6);
+		} else {
+			wpa_printf(MSG_DEBUG,
+				   "CTRL: PASN Invalid parameter: '%s'",
+				   token);
+			return -1;
+		}
+	}
+
+	if (!got_bssid || akmp == -1 || cipher == -1 || group == 0xFFFF) {
+		wpa_printf(MSG_DEBUG,"CTRL: PASN missing parameter");
+		return -1;
+	}
+
+	return wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group);
+}
+#endif /* CONFIG_PASN */
+
+
 char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 					 char *buf, size_t *resp_len)
 {
@@ -11342,6 +11415,15 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	} else if (os_strncmp(buf, "MSCS ", 5) == 0) {
 		if (wpas_ctrl_iface_configure_mscs(wpa_s, buf + 5))
 			reply_len = -1;
+#ifdef CONFIG_PASN
+	} else if (os_strncmp(buf, "PASN_START ", 11) == 0) {
+		if (wpas_ctrl_iface_pasn_start(wpa_s, buf + 11) < 0)
+			reply_len = -1;
+	} else if (os_strcmp(buf, "PASN_STOP") == 0) {
+		wpas_pasn_auth_stop(wpa_s);
+	} else if (os_strcmp(buf, "PTKSA_CACHE_LIST") == 0) {
+		reply_len = ptksa_cache_list(wpa_s->ptksa, reply, reply_size);
+#endif /* CONFIG_PASN */
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
 		reply_len = 16;
