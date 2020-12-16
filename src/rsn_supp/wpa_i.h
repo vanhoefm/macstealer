@@ -80,9 +80,9 @@ struct wpa_sm {
 
 	/*
 	 * If set Key Derivation Key should be derived as part of PMK to
-	 * PTK derivation.
+	 * PTK derivation regardless of advertised capabilities.
 	 */
-	bool kdk;
+	bool force_kdk_derivation;
 
 	u8 own_addr[ETH_ALEN];
 	const char *ifname;

@@ -579,7 +579,7 @@ static int wpa_derive_ptk(struct wpa_sm *sm, const unsigned char *src_addr,
 			  const struct wpa_eapol_key *key, struct wpa_ptk *ptk)
 {
 	const u8 *z = NULL;
-	size_t z_len = 0;
+	size_t z_len = 0, kdk_len;
 	int akmp;
 
 #ifdef CONFIG_IEEE80211R
@@ -603,11 +603,19 @@ static int wpa_derive_ptk(struct wpa_sm *sm, const unsigned char *src_addr,
 		akmp |= WPA_KEY_MGMT_PSK_SHA256;
 	}
 #endif /* CONFIG_OWE */
+
+	if (sm->force_kdk_derivation ||
+	    (sm->secure_ltf && sm->ap_rsnxe && sm->ap_rsnxe_len >= 4 &&
+	     sm->ap_rsnxe[3] & BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8)))
+		kdk_len = WPA_KDK_MAX_LEN;
+	else
+		kdk_len = 0;
+
 	return wpa_pmk_to_ptk(sm->pmk, sm->pmk_len, "Pairwise key expansion",
 			      sm->own_addr, sm->bssid, sm->snonce,
 			      key->key_nonce, ptk, akmp,
 			      sm->pairwise_cipher, z, z_len,
-			      sm->kdk ? WPA_KDK_MAX_LEN : 0);
+			      kdk_len);
 }
 
 
@@ -3188,7 +3196,7 @@ void wpa_sm_set_config(struct wpa_sm *sm, struct rsn_supp_config *config)
 		sm->p2p = config->p2p;
 		sm->wpa_rsc_relaxation = config->wpa_rsc_relaxation;
 		sm->owe_ptk_workaround = config->owe_ptk_workaround;
-		sm->kdk = config->kdk;
+		sm->force_kdk_derivation = config->force_kdk_derivation;
 #ifdef CONFIG_FILS
 		if (config->fils_cache_id) {
 			sm->fils_cache_id_set = 1;
@@ -3211,7 +3219,7 @@ void wpa_sm_set_config(struct wpa_sm *sm, struct rsn_supp_config *config)
 		sm->wpa_rsc_relaxation = 0;
 		sm->owe_ptk_workaround = 0;
 		sm->beacon_prot = 0;
-		sm->kdk = false;
+		sm->force_kdk_derivation = false;
 	}
 }
 
@@ -4134,7 +4142,7 @@ int fils_process_auth(struct wpa_sm *sm, const u8 *bssid, const u8 *data,
 	const u8 *g_sta = NULL;
 	size_t g_sta_len = 0;
 	const u8 *g_ap = NULL;
-	size_t g_ap_len = 0;
+	size_t g_ap_len = 0, kdk_len;
 	struct wpabuf *pub = NULL;
 
 	os_memcpy(sm->bssid, bssid, ETH_ALEN);
@@ -4362,6 +4370,13 @@ int fils_process_auth(struct wpa_sm *sm, const u8 *bssid, const u8 *data,
 		goto fail;
 	}
 
+	if (sm->force_kdk_derivation ||
+	    (sm->secure_ltf && sm->ap_rsnxe && sm->ap_rsnxe_len >= 4 &&
+	     sm->ap_rsnxe[3] & BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8)))
+		kdk_len = WPA_KDK_MAX_LEN;
+	else
+		kdk_len = 0;
+
 	if (fils_pmk_to_ptk(sm->pmk, sm->pmk_len, sm->own_addr, sm->bssid,
 			    sm->fils_nonce, sm->fils_anonce,
 			    dh_ss ? wpabuf_head(dh_ss) : NULL,
@@ -4369,7 +4384,7 @@ int fils_process_auth(struct wpa_sm *sm, const u8 *bssid, const u8 *data,
 			    &sm->ptk, ick, &ick_len,
 			    sm->key_mgmt, sm->pairwise_cipher,
 			    sm->fils_ft, &sm->fils_ft_len,
-			    sm->kdk ? WPA_KDK_MAX_LEN : 0) < 0) {
+			    kdk_len) < 0) {
 		wpa_printf(MSG_DEBUG, "FILS: Failed to derive PTK");
 		goto fail;
 	}

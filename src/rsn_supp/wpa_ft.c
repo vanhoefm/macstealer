@@ -40,7 +40,7 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 	const u8 *anonce = key->key_nonce;
 	int use_sha384 = wpa_key_mgmt_sha384(sm->key_mgmt);
 	const u8 *mpmk;
-	size_t mpmk_len;
+	size_t mpmk_len, kdk_len;
 
 	if (sm->xxkey_len > 0) {
 		mpmk = sm->xxkey;
@@ -68,10 +68,17 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 
 	wpa_ft_pasn_store_r1kh(sm, src_addr);
 
+	if (sm->force_kdk_derivation ||
+	    (sm->secure_ltf && sm->ap_rsnxe && sm->ap_rsnxe_len >= 4 &&
+	     sm->ap_rsnxe[3] & BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8)))
+		kdk_len = WPA_KDK_MAX_LEN;
+	else
+		kdk_len = 0;
+
 	return wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce, anonce,
 				 sm->own_addr, sm->bssid, sm->pmk_r1_name, ptk,
 				 ptk_name, sm->key_mgmt, sm->pairwise_cipher,
-				 sm->kdk ? WPA_KDK_MAX_LEN : 0);
+				 kdk_len);
 }
 
 
@@ -539,7 +546,7 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 	int ret;
 	const u8 *bssid;
 	const u8 *kck;
-	size_t kck_len;
+	size_t kck_len, kdk_len;
 	int use_sha384 = wpa_key_mgmt_sha384(sm->key_mgmt);
 	const u8 *anonce, *snonce;
 
@@ -664,11 +671,18 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 
 	wpa_ft_pasn_store_r1kh(sm, bssid);
 
+	if (sm->force_kdk_derivation ||
+	    (sm->secure_ltf && sm->ap_rsnxe && sm->ap_rsnxe_len >= 4 &&
+	     sm->ap_rsnxe[3] & BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8)))
+		kdk_len = WPA_KDK_MAX_LEN;
+	else
+		kdk_len = 0;
+
 	if (wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce,
 			      anonce, sm->own_addr, bssid,
 			      sm->pmk_r1_name, &sm->ptk, ptk_name, sm->key_mgmt,
 			      sm->pairwise_cipher,
-			      sm->kdk ? WPA_KDK_MAX_LEN : 0) < 0)
+			      kdk_len) < 0)
 		return -1;
 
 	if (wpa_key_mgmt_fils(sm->key_mgmt)) {

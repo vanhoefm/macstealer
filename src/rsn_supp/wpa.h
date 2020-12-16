@@ -132,7 +132,7 @@ struct rsn_supp_config {
 	int owe_ptk_workaround;
 	const u8 *fils_cache_id;
 	int beacon_prot;
-	bool kdk;
+	bool force_kdk_derivation;
 };
 
 #ifndef CONFIG_NO_WPA
