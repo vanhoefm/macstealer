@@ -166,9 +166,20 @@ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta)
 
 		if (sta->pasn->ecdh)
 			crypto_ecdh_deinit(sta->pasn->ecdh);
+
+		wpabuf_free(sta->pasn->secret);
+		sta->pasn->secret = NULL;
+
 #ifdef CONFIG_SAE
 		sae_clear_data(&sta->pasn->sae);
 #endif /* CONFIG_SAE */
+
+#ifdef CONFIG_FILS
+		/* In practice this pointer should be NULL */
+		wpabuf_free(sta->pasn->fils.erp_resp);
+		sta->pasn->fils.erp_resp = NULL;
+#endif /* CONFIG_FILS */
+
 		bin_clear_free(sta->pasn, sizeof(*sta->pasn));
 		sta->pasn = NULL;
 	}

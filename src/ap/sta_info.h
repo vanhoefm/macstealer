@@ -41,6 +41,7 @@
 #define WLAN_STA_MULTI_AP BIT(23)
 #define WLAN_STA_HE BIT(24)
 #define WLAN_STA_6GHZ BIT(25)
+#define WLAN_STA_PENDING_PASN_FILS_ERP BIT(26)
 #define WLAN_STA_PENDING_DISASSOC_CB BIT(29)
 #define WLAN_STA_PENDING_DEAUTH_CB BIT(30)
 #define WLAN_STA_NONERP BIT(31)
@@ -65,6 +66,22 @@ struct pending_eapol_rx {
 	struct os_reltime rx_time;
 };
 
+enum pasn_fils_state {
+	PASN_FILS_STATE_NONE = 0,
+	PASN_FILS_STATE_PENDING_AS,
+	PASN_FILS_STATE_COMPLETE
+};
+
+struct pasn_fils_data {
+	u8 state;
+	u8 nonce[FILS_NONCE_LEN];
+	u8 anonce[FILS_NONCE_LEN];
+	u8 session[FILS_SESSION_LEN];
+	u8 erp_pmkid[PMKID_LEN];
+
+	struct wpabuf *erp_resp;
+};
+
 struct pasn_data {
 	int akmp;
 	int cipher;
@@ -76,9 +93,13 @@ struct pasn_data {
 	struct wpa_ptk ptk;
 	struct crypto_ecdh *ecdh;
 
+	struct wpabuf *secret;
 #ifdef CONFIG_SAE
 	struct sae_data sae;
 #endif /* CONFIG_SAE */
+#ifdef CONFIG_FILS
+	struct pasn_fils_data fils;
+#endif /* CONFIG_FILS */
 };
 
 struct sta_info {

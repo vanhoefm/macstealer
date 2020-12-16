@@ -2067,7 +2067,8 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 
 #ifdef CONFIG_FILS
 #ifdef NEED_AP_MLME
-	if (sta->flags & WLAN_STA_PENDING_FILS_ERP) {
+	if (sta->flags &
+	    (WLAN_STA_PENDING_FILS_ERP | WLAN_STA_PENDING_PASN_FILS_ERP)) {
 		/* TODO: Add a PMKSA entry on success? */
 		ieee802_11_finish_fils_auth(
 			hapd, sta, hdr->code == RADIUS_CODE_ACCESS_ACCEPT,

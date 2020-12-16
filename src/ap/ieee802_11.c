@@ -66,6 +66,23 @@ prepare_auth_resp_fils(struct hostapd_data *hapd,
 		       const u8 *msk, size_t msk_len,
 		       int *is_pub);
 #endif /* CONFIG_FILS */
+
+#ifdef CONFIG_PASN
+
+static int handle_auth_pasn_resp(struct hostapd_data *hapd,
+				 struct sta_info *sta,
+				 struct rsn_pmksa_cache_entry *pmksa,
+				 u16 status);
+#ifdef CONFIG_FILS
+
+static void pasn_fils_auth_resp(struct hostapd_data *hapd,
+				struct sta_info *sta, u16 status,
+				struct wpabuf *erp_resp,
+				const u8 *msk, size_t msk_len);
+
+#endif /* CONFIG_FILS */
+#endif /* CONFIG_PASN */
+
 static void handle_auth(struct hostapd_data *hapd,
 			const struct ieee80211_mgmt *mgmt, size_t len,
 			int rssi, int from_queue);
@@ -2211,23 +2228,35 @@ void ieee802_11_finish_fils_auth(struct hostapd_data *hapd,
 				 struct wpabuf *erp_resp,
 				 const u8 *msk, size_t msk_len)
 {
-	struct wpabuf *data;
-	int pub = 0;
 	u16 resp;
+	u32 flags = sta->flags;
 
-	sta->flags &= ~WLAN_STA_PENDING_FILS_ERP;
+	sta->flags &= ~(WLAN_STA_PENDING_FILS_ERP |
+			WLAN_STA_PENDING_PASN_FILS_ERP);
 
-	if (!sta->fils_pending_cb)
-		return;
 	resp = success ? WLAN_STATUS_SUCCESS : WLAN_STATUS_UNSPECIFIED_FAILURE;
-	data = prepare_auth_resp_fils(hapd, sta, &resp, NULL, erp_resp,
-				      msk, msk_len, &pub);
-	if (!data) {
-		wpa_printf(MSG_DEBUG,
-			   "%s: prepare_auth_resp_fils() returned failure",
-			   __func__);
+
+	if (flags & WLAN_STA_PENDING_FILS_ERP) {
+		struct wpabuf *data;
+		int pub = 0;
+
+		if (!sta->fils_pending_cb)
+			return;
+
+		data = prepare_auth_resp_fils(hapd, sta, &resp, NULL, erp_resp,
+					      msk, msk_len, &pub);
+		if (!data) {
+			wpa_printf(MSG_DEBUG,
+				   "%s: prepare_auth_resp_fils() failure",
+				   __func__);
+		}
+		sta->fils_pending_cb(hapd, sta, resp, data, pub);
+#ifdef CONFIG_PASN
+	} else if (flags & WLAN_STA_PENDING_PASN_FILS_ERP) {
+		pasn_fils_auth_resp(hapd, sta, resp, erp_resp,
+				    msk, msk_len);
+#endif /* CONFIG_PASN */
 	}
-	sta->fils_pending_cb(hapd, sta, resp, data, pub);
 }
 
 #endif /* CONFIG_FILS */
@@ -2500,6 +2529,253 @@ static struct wpabuf * pasn_get_sae_wd(struct hostapd_data *hapd,
 #endif /* CONFIG_SAE */
 
 
+#ifdef CONFIG_FILS
+
+static struct wpabuf * pasn_get_fils_wd(struct hostapd_data *hapd,
+					struct sta_info *sta)
+{
+	struct pasn_data *pasn = sta->pasn;
+	struct pasn_fils_data *fils = &pasn->fils;
+	struct wpabuf *buf = NULL;
+
+	if (!fils->erp_resp) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Missing erp_resp");
+		return NULL;
+	}
+
+	buf = wpabuf_alloc(1500);
+	if (!buf)
+		return NULL;
+
+	/* Add the authentication algorithm */
+	wpabuf_put_le16(buf, WLAN_AUTH_FILS_SK);
+
+	/* Authentication Transaction seq# */
+	wpabuf_put_le16(buf, 2);
+
+	/* Status Code */
+	wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
+
+	/* Own RSNE */
+	wpa_pasn_add_rsne(buf, NULL, pasn->akmp, pasn->cipher);
+
+	/* FILS Nonce */
+	wpabuf_put_u8(buf, WLAN_EID_EXTENSION);
+	wpabuf_put_u8(buf, 1 + FILS_NONCE_LEN);
+	wpabuf_put_u8(buf, WLAN_EID_EXT_FILS_NONCE);
+	wpabuf_put_data(buf, fils->anonce, FILS_NONCE_LEN);
+
+	/* FILS Session */
+	wpabuf_put_u8(buf, WLAN_EID_EXTENSION);
+	wpabuf_put_u8(buf, 1 + FILS_SESSION_LEN);
+	wpabuf_put_u8(buf, WLAN_EID_EXT_FILS_SESSION);
+	wpabuf_put_data(buf, fils->session, FILS_SESSION_LEN);
+
+	/* Wrapped Data */
+	wpabuf_put_u8(buf, WLAN_EID_EXTENSION);
+	wpabuf_put_u8(buf, 1 + wpabuf_len(fils->erp_resp));
+	wpabuf_put_u8(buf, WLAN_EID_EXT_WRAPPED_DATA);
+	wpabuf_put_buf(buf, fils->erp_resp);
+
+	return buf;
+}
+
+
+static void pasn_fils_auth_resp(struct hostapd_data *hapd,
+				struct sta_info *sta, u16 status,
+				struct wpabuf *erp_resp,
+				const u8 *msk, size_t msk_len)
+{
+	struct pasn_data *pasn = sta->pasn;
+	struct pasn_fils_data *fils = &pasn->fils;
+	u8 pmk[PMK_LEN_MAX];
+	size_t pmk_len;
+	int ret;
+
+	wpa_printf(MSG_DEBUG, "PASN: FILS: Handle AS response - status=%u",
+		   status);
+
+	if (status != WLAN_STATUS_SUCCESS)
+		goto fail;
+
+	if (!pasn->secret) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Missing secret");
+		goto fail;
+	}
+
+	if (random_get_bytes(fils->anonce, FILS_NONCE_LEN) < 0) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed to get ANonce");
+		goto fail;
+	}
+
+	wpa_hexdump(MSG_DEBUG, "RSN: Generated FILS ANonce",
+		    fils->anonce, FILS_NONCE_LEN);
+
+	ret = fils_rmsk_to_pmk(pasn->akmp, msk, msk_len, fils->nonce,
+			       fils->anonce, NULL, 0, pmk, &pmk_len);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "FILS: Failed to derive PMK");
+		goto fail;
+	}
+
+	ret = pasn_pmk_to_ptk(pmk, pmk_len, sta->addr, hapd->own_addr,
+			      wpabuf_head(pasn->secret),
+			      wpabuf_len(pasn->secret),
+			      &sta->pasn->ptk, sta->pasn->akmp,
+			      sta->pasn->cipher, WPA_KDK_MAX_LEN);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed to derive PTK");
+		goto fail;
+	}
+
+	wpa_printf(MSG_DEBUG, "PASN: PTK successfully derived");
+
+	wpabuf_free(pasn->secret);
+	pasn->secret = NULL;
+
+	fils->erp_resp = erp_resp;
+	ret = handle_auth_pasn_resp(hapd, sta, NULL, WLAN_STATUS_SUCCESS);
+	fils->erp_resp = NULL;
+
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed to send response");
+		goto fail;
+	}
+
+	fils->state = PASN_FILS_STATE_COMPLETE;
+	return;
+fail:
+	ap_free_sta(hapd, sta);
+}
+
+
+static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
+			       struct wpabuf *wd)
+{
+	struct pasn_data *pasn = sta->pasn;
+	struct pasn_fils_data *fils = &pasn->fils;
+	struct ieee802_11_elems elems;
+	struct wpa_ie_data rsne_data;
+	struct wpabuf *fils_wd;
+	const u8 *data;
+	size_t buf_len;
+	u16 alg, seq, status;
+	int ret;
+
+	if (fils->state != PASN_FILS_STATE_NONE) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Not expecting wrapped data");
+		return -1;
+	}
+
+	if (!wd) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: No wrapped data");
+		return -1;
+	}
+
+	data = wpabuf_head_u8(wd);
+	buf_len = wpabuf_len(wd);
+
+	if (buf_len < 6) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Buffer too short. len=%lu",
+			   buf_len);
+		return -1;
+	}
+
+	alg = WPA_GET_LE16(data);
+	seq = WPA_GET_LE16(data + 2);
+	status = WPA_GET_LE16(data + 4);
+
+	wpa_printf(MSG_DEBUG, "PASN: FILS: alg=%u, seq=%u, status=%u",
+		   alg, seq, status);
+
+	if (alg != WLAN_AUTH_FILS_SK || seq != 1 ||
+	    status != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: FILS: Dropping peer authentication");
+		return -1;
+	}
+
+	data += 6;
+	buf_len -= 6;
+
+	if (ieee802_11_parse_elems(data, buf_len, &elems, 1) == ParseFailed) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Could not parse elements");
+		return -1;
+	}
+
+	if (!elems.rsn_ie || !elems.fils_nonce || !elems.fils_nonce ||
+	    !elems.wrapped_data) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Missing IEs");
+		return -1;
+	}
+
+	ret = wpa_parse_wpa_ie_rsn(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
+				   &rsne_data);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed parsing RNSE");
+		return -1;
+	}
+
+	ret = wpa_pasn_validate_rsne(&rsne_data);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed validating RSNE");
+		return -1;
+	}
+
+	if (rsne_data.num_pmkid) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: FILS: Not expecting PMKID in RSNE");
+		return -1;
+	}
+
+	wpa_hexdump(MSG_DEBUG, "PASN: FILS: Nonce", elems.fils_nonce,
+		    FILS_NONCE_LEN);
+	os_memcpy(fils->nonce, elems.fils_nonce, FILS_NONCE_LEN);
+
+	wpa_hexdump(MSG_DEBUG, "PASN: FILS: Session", elems.fils_session,
+		    FILS_SESSION_LEN);
+	os_memcpy(fils->session, elems.fils_session, FILS_SESSION_LEN);
+
+#ifdef CONFIG_NO_RADIUS
+	wpa_printf(MSG_DEBUG, "PASN: FILS: RADIUS is not configured. Fail");
+	return -1;
+#endif /* CONFIG_NO_RADIUS */
+
+	fils_wd = ieee802_11_defrag(&elems, WLAN_EID_EXTENSION,
+				    WLAN_EID_EXT_WRAPPED_DATA);
+
+	if (!fils_wd) {
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Missing wrapped data");
+		return -1;
+	}
+
+	if (!sta->eapol_sm)
+		sta->eapol_sm = ieee802_1x_alloc_eapol_sm(hapd, sta);
+
+	wpa_printf(MSG_DEBUG,
+		   "PASN: FILS: Forward EAP-Initiate/Re-auth to AS");
+
+	ieee802_1x_encapsulate_radius(hapd, sta, wpabuf_head(fils_wd),
+				      wpabuf_len(fils_wd));
+
+	sta->flags |= WLAN_STA_PENDING_PASN_FILS_ERP;
+
+	fils->state = PASN_FILS_STATE_PENDING_AS;
+
+	/*
+	 * Calculate pending PMKID here so that we do not need to maintain a
+	 * copy of the EAP-Initiate/Reautt message.
+	 */
+	fils_pmkid_erp(pasn->akmp, wpabuf_head(fils_wd), wpabuf_len(fils_wd),
+		       fils->erp_pmkid);
+
+	wpabuf_free(fils_wd);
+	return 0;
+}
+
+#endif /* CONFIG_FILS */
+
+
 static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
 					     struct sta_info *sta)
 {
@@ -2510,10 +2786,17 @@ static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
 	case WPA_KEY_MGMT_SAE:
 #ifdef CONFIG_SAE
 		return pasn_get_sae_wd(hapd, sta);
+#else /* CONFIG_SAE */
+		wpa_printf(MSG_ERROR,
+			   "PASN: SAE: Cannot derive wrapped data");
+		return NULL;
 #endif /* CONFIG_SAE */
-		/* fall through */
 	case WPA_KEY_MGMT_FILS_SHA256:
 	case WPA_KEY_MGMT_FILS_SHA384:
+#ifdef CONFIG_FILS
+		return pasn_get_fils_wd(hapd, sta);
+#endif /* CONFIG_FILS */
+		/* fall through */
 	case WPA_KEY_MGMT_FT_PSK:
 	case WPA_KEY_MGMT_FT_IEEE8021X:
 	case WPA_KEY_MGMT_FT_IEEE8021X_SHA384:
@@ -2699,12 +2982,13 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 	struct ieee802_11_elems elems;
 	struct wpa_ie_data rsn_data;
 	struct wpa_pasn_params_data pasn_params;
-	struct rsn_pmksa_cache_entry *pmksa;
+	struct rsn_pmksa_cache_entry *pmksa = NULL;
 	struct wpabuf *wrapped_data = NULL, *secret = NULL;
 	const int *groups = hapd->conf->pasn_groups;
 	static const int default_groups[] = { 19, 0 };
 	u16 status = WLAN_STATUS_SUCCESS;
 	int ret;
+	bool derive_keys;
 	u32 i;
 
 	if (!groups)
@@ -2796,6 +3080,7 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 		goto send_resp;
 	}
 
+	derive_keys = true;
 	if (pasn_params.wrapped_data_format != WPA_PASN_WRAPPED_DATA_NO) {
 		wrapped_data = ieee802_11_defrag(&elems,
 						 WLAN_EID_EXTENSION,
@@ -2818,9 +3103,46 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 			}
 		}
 #endif /* CONFIG_SAE */
+#ifdef CONFIG_FILS
+		if (sta->pasn->akmp == WPA_KEY_MGMT_FILS_SHA256 ||
+		    sta->pasn->akmp == WPA_KEY_MGMT_FILS_SHA384) {
+			ret = pasn_wd_handle_fils(hapd, sta, wrapped_data);
+			if (ret) {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: Failed processing FILS wrapped data");
+				status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+				goto send_resp;
+			}
+
+			wpa_printf(MSG_DEBUG,
+				   "PASN: FILS: Pending AS response");
+
+			/*
+			 * With PASN/FILS, keys can be derived only after a
+			 * response from the AS is processed.
+			 */
+			derive_keys = false;
+		}
+#endif /* CONFIG_FILS */
 	}
 
 	sta->pasn->wrapped_data_format = pasn_params.wrapped_data_format;
+
+	ret = pasn_auth_frame_hash(sta->pasn->akmp, sta->pasn->cipher,
+				   ((const u8 *) mgmt) + IEEE80211_HDRLEN,
+				   len - IEEE80211_HDRLEN, sta->pasn->hash);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to compute hash");
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto send_resp;
+	}
+
+	if (!derive_keys) {
+		wpa_printf(MSG_DEBUG, "PASN: Storing secret");
+		sta->pasn->secret = secret;
+		wpabuf_free(wrapped_data);
+		return;
+	}
 
 	if (rsn_data.num_pmkid) {
 		wpa_printf(MSG_DEBUG, "PASN: Try to find PMKSA entry");
@@ -2955,6 +3277,15 @@ static void handle_auth_pasn_3(struct hostapd_data *hapd, struct sta_info *sta,
 			}
 		}
 #endif /* CONFIG_SAE */
+#ifdef CONFIG_FILS
+		if (sta->pasn->akmp == WPA_KEY_MGMT_FILS_SHA256 ||
+		    sta->pasn->akmp == WPA_KEY_MGMT_FILS_SHA384) {
+			if (wrapped_data) {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: FILS: Ignore wrapped data");
+			}
+		}
+#endif /* CONFIG_FILS */
 		wpabuf_free(wrapped_data);
 	}
 
