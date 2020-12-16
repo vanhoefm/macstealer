@@ -21,6 +21,7 @@ from utils import *
 from hwsim import HWSimRadio
 from test_erp import check_erp_capa, start_erp_as
 from test_fils import check_fils_capa
+from test_ap_ft import run_roams, ft_params1, ft_params2
 
 def check_pasn_capab(dev):
     if "PASN" not in dev.get_capability("auth_alg"):
@@ -536,3 +537,99 @@ def test_pasn_fils_sha256_connected_diff_channel(dev, apdev, params):
 def test_pasn_fils_sha384_connected_diff_channel(dev, apdev, params):
     """PASN FILS authentication using SHA-384 while connected diff channel"""
     check_pasn_fils_connected_diff_channel(dev, apdev, params, "FILS-SHA384")
+
+def test_pasn_ft_psk(dev, apdev):
+    """PASN authentication with FT-PSK"""
+    check_pasn_capab(dev[0])
+
+    ssid = "test-pasn-ft-psk"
+    passphrase = "12345678"
+
+    params = ft_params1(ssid=ssid, passphrase=passphrase)
+    params['wpa_key_mgmt'] += " PASN"
+    hapd0 = hostapd.add_ap(apdev[0], params)
+    params = ft_params2(ssid=ssid, passphrase=passphrase)
+    params['wpa_key_mgmt'] += " PASN"
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    run_roams(dev[0], apdev, hapd0, hapd1, ssid, passphrase)
+
+    if dev[0].get_status_field('bssid') == apdev[0]['bssid']:
+        pasn_hapd = hapd1
+    else:
+        pasn_hapd = hapd0
+
+    check_pasn_akmp_cipher(dev[0], pasn_hapd, "FT-PSK", "CCMP")
+
+    run_roams(dev[0], apdev, hapd0, hapd1, ssid, passphrase, only_one_way=1)
+
+    if dev[0].get_status_field('bssid') == apdev[0]['bssid']:
+        pasn_hapd = hapd1
+    else:
+        pasn_hapd = hapd0
+
+    check_pasn_akmp_cipher(dev[0], pasn_hapd, "FT-PSK", "CCMP")
+
+def test_pasn_ft_eap(dev, apdev):
+    """PASN authentication with FT-EAP"""
+    check_pasn_capab(dev[0])
+
+    ssid = "test-pasn-ft-psk"
+    passphrase = "12345678"
+    identity = "gpsk user"
+
+    radius = hostapd.radius_params()
+    params = ft_params1(ssid=ssid, passphrase=passphrase)
+    params['wpa_key_mgmt'] = "FT-EAP PASN"
+    params["ieee8021x"] = "1"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd0 = hostapd.add_ap(apdev[0], params)
+
+    params = ft_params2(ssid=ssid, passphrase=passphrase)
+    params['wpa_key_mgmt'] = "FT-EAP PASN"
+    params["ieee8021x"] = "1"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    run_roams(dev[0], apdev, hapd0, hapd1, ssid, passphrase, eap=True,
+              eap_identity=identity)
+
+    if dev[0].get_status_field('bssid') == apdev[0]['bssid']:
+        pasn_hapd = hapd1
+    else:
+        pasn_hapd = hapd0
+
+    check_pasn_akmp_cipher(dev[0], pasn_hapd, "FT-EAP", "CCMP")
+
+def test_pasn_ft_eap_sha384(dev, apdev):
+    """PASN authentication with FT-EAP-SHA-384"""
+    check_pasn_capab(dev[0])
+
+    ssid = "test-pasn-ft-psk"
+    passphrase = "12345678"
+    identity = "gpsk user"
+
+    radius = hostapd.radius_params()
+    params = ft_params1(ssid=ssid, passphrase=passphrase)
+    params["ieee80211w"] = "2"
+    params['wpa_key_mgmt'] = "FT-EAP-SHA384 PASN"
+    params["ieee8021x"] = "1"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd0 = hostapd.add_ap(apdev[0], params)
+
+    params = ft_params2(ssid=ssid, passphrase=passphrase)
+    params["ieee80211w"] = "2"
+    params['wpa_key_mgmt'] = "FT-EAP-SHA384 PASN"
+    params["ieee8021x"] = "1"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    run_roams(dev[0], apdev, hapd0, hapd1, ssid, passphrase, eap=True,
+              sha384=True)
+
+    if dev[0].get_status_field('bssid') == apdev[0]['bssid']:
+        pasn_hapd = hapd1
+    else:
+        pasn_hapd = hapd0
+
+    check_pasn_akmp_cipher(dev[0], pasn_hapd, "FT-EAP-SHA384", "CCMP")
