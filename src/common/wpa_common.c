@@ -1216,7 +1216,8 @@ int wpa_cipher_valid_group(int cipher)
 
 int wpa_cipher_valid_mgmt_group(int cipher)
 {
-	return cipher == WPA_CIPHER_AES_128_CMAC ||
+	return cipher == WPA_CIPHER_GTK_NOT_USED ||
+		cipher == WPA_CIPHER_AES_128_CMAC ||
 		cipher == WPA_CIPHER_BIP_GMAC_128 ||
 		cipher == WPA_CIPHER_BIP_GMAC_256 ||
 		cipher == WPA_CIPHER_BIP_CMAC_256;

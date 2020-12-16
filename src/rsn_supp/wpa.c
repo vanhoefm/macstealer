@@ -1306,7 +1306,8 @@ static int ieee80211w_set_keys(struct wpa_sm *sm,
 {
 	size_t len;
 
-	if (!wpa_cipher_valid_mgmt_group(sm->mgmt_group_cipher))
+	if (!wpa_cipher_valid_mgmt_group(sm->mgmt_group_cipher) ||
+	    sm->mgmt_group_cipher == WPA_CIPHER_GTK_NOT_USED)
 		return 0;
 
 	if (ie->igtk) {
@@ -1665,6 +1666,7 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 	}
 
 	if (ie.igtk &&
+	    sm->mgmt_group_cipher != WPA_CIPHER_GTK_NOT_USED &&
 	    wpa_cipher_valid_mgmt_group(sm->mgmt_group_cipher) &&
 	    ie.igtk_len != WPA_IGTK_KDE_PREFIX_LEN +
 	    (unsigned int) wpa_cipher_key_len(sm->mgmt_group_cipher)) {
