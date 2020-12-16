@@ -41,6 +41,7 @@
 #include "common/hw_features_common.h"
 #include "common/gas_server.h"
 #include "common/dpp.h"
+#include "common/ptksa_cache.h"
 #include "p2p/p2p.h"
 #include "fst/fst.h"
 #include "blacklist.h"
@@ -573,6 +574,8 @@ static void wpa_supplicant_cleanup(struct wpa_supplicant *wpa_s)
 
 	wmm_ac_clear_saved_tspecs(wpa_s);
 	pmksa_candidate_free(wpa_s->wpa);
+	ptksa_cache_deinit(wpa_s->ptksa);
+	wpa_s->ptksa = NULL;
 	wpa_sm_deinit(wpa_s->wpa);
 	wpa_s->wpa = NULL;
 	wpa_blacklist_clear(wpa_s);

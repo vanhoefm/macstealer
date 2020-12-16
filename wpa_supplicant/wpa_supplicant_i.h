@@ -639,6 +639,8 @@ struct wpa_supplicant {
 	int interface_removed; /* whether the network interface has been
 				* removed */
 	struct wpa_sm *wpa;
+	struct ptksa_cache *ptksa;
+
 	struct eapol_sm *eapol;
 
 	struct ctrl_iface_priv *ctrl_iface;

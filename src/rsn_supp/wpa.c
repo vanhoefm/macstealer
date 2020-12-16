@@ -949,6 +949,9 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 		return -1;
 	}
 
+	wpa_sm_store_ptk(sm, sm->bssid, sm->pairwise_cipher,
+			 sm->dot11RSNAConfigPMKLifetime, &sm->ptk);
+
 	/* TK is not needed anymore in supplicant */
 	os_memset(sm->ptk.tk, 0, WPA_TK_MAX_LEN);
 	sm->ptk.tk_len = 0;
@@ -4915,6 +4918,9 @@ int fils_process_assoc_resp(struct wpa_sm *sm, const u8 *resp, size_t len)
 			alg, keylen, MAC2STR(sm->bssid));
 		goto fail;
 	}
+
+	wpa_sm_store_ptk(sm, sm->bssid, sm->pairwise_cipher,
+			 sm->dot11RSNAConfigPMKLifetime, &sm->ptk);
 
 	/* TODO: TK could be cleared after auth frame exchange now that driver
 	 * takes care of association frame encryption/decryption. */

@@ -449,6 +449,8 @@ static int wpa_ft_install_ptk(struct wpa_sm *sm, const u8 *bssid)
 		return -1;
 	}
 
+	wpa_sm_store_ptk(sm, sm->bssid, sm->pairwise_cipher,
+			 sm->dot11RSNAConfigPMKLifetime, &sm->ptk);
 	return 0;
 }
 

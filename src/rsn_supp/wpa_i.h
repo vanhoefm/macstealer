@@ -447,6 +447,14 @@ static inline void wpa_sm_transition_disable(struct wpa_sm *sm, u8 bitmap)
 		sm->ctx->transition_disable(sm->ctx->ctx, bitmap);
 }
 
+static inline void wpa_sm_store_ptk(struct wpa_sm *sm,
+				    u8 *addr, int cipher,
+				    u32 life_time, struct wpa_ptk *ptk)
+{
+	if (sm->ctx->store_ptk)
+		sm->ctx->store_ptk(sm->ctx->ctx, addr, cipher, life_time,
+				   ptk);
+}
 
 int wpa_eapol_key_send(struct wpa_sm *sm, struct wpa_ptk *ptk,
 		       int ver, const u8 *dest, u16 proto,

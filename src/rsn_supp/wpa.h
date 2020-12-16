@@ -87,6 +87,8 @@ struct wpa_sm_ctx {
 			    const u8 *pkt, size_t pkt_len);
 	int (*channel_info)(void *ctx, struct wpa_channel_info *ci);
 	void (*transition_disable)(void *ctx, u8 bitmap);
+	void (*store_ptk)(void *ctx, u8 *addr, int cipher,
+			  u32 life_time, const struct wpa_ptk *ptk);
 };
 
 

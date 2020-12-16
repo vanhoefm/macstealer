@@ -16,6 +16,7 @@
 #include "config.h"
 #include "l2_packet/l2_packet.h"
 #include "common/wpa_common.h"
+#include "common/ptksa_cache.h"
 #include "wpa_supplicant_i.h"
 #include "driver_i.h"
 #include "rsn_supp/pmksa_cache.h"
@@ -1341,6 +1342,15 @@ static void wpa_supplicant_transition_disable(void *_wpa_s, u8 bitmap)
 #endif /* CONFIG_NO_CONFIG_WRITE */
 }
 
+
+static void wpa_supplicant_store_ptk(void *ctx, u8 *addr, int cipher,
+				     u32 life_time, const struct wpa_ptk *ptk)
+{
+	struct wpa_supplicant *wpa_s = ctx;
+
+	ptksa_cache_add(wpa_s->ptksa, addr, cipher, life_time, ptk);
+}
+
 #endif /* CONFIG_NO_WPA */
 
 
@@ -1348,9 +1358,20 @@ int wpa_supplicant_init_wpa(struct wpa_supplicant *wpa_s)
 {
 #ifndef CONFIG_NO_WPA
 	struct wpa_sm_ctx *ctx;
+
+	wpa_s->ptksa = ptksa_cache_init();
+	if (!wpa_s->ptksa) {
+		wpa_printf(MSG_ERROR, "Failed to allocate PTKSA");
+		return -1;
+	}
+
 	ctx = os_zalloc(sizeof(*ctx));
 	if (ctx == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to allocate WPA context.");
+
+		ptksa_cache_deinit(wpa_s->ptksa);
+		wpa_s->ptksa = NULL;
+
 		return -1;
 	}
 
@@ -1394,12 +1415,15 @@ int wpa_supplicant_init_wpa(struct wpa_supplicant *wpa_s)
 	ctx->fils_hlp_rx = wpa_supplicant_fils_hlp_rx;
 	ctx->channel_info = wpa_supplicant_channel_info;
 	ctx->transition_disable = wpa_supplicant_transition_disable;
+	ctx->store_ptk = wpa_supplicant_store_ptk;
 
 	wpa_s->wpa = wpa_sm_init(ctx);
 	if (wpa_s->wpa == NULL) {
-		wpa_printf(MSG_ERROR, "Failed to initialize WPA state "
-			   "machine");
+		wpa_printf(MSG_ERROR,
+			   "Failed to initialize WPA state machine");
 		os_free(ctx);
+		ptksa_cache_deinit(wpa_s->ptksa);
+		wpa_s->ptksa = NULL;
 		return -1;
 	}
 #endif /* CONFIG_NO_WPA */

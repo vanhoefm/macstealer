@@ -22,6 +22,7 @@
 #ifdef CONFIG_DPP
 #include "common/dpp.h"
 #endif /* CONFIG_DPP */
+#include "common/ptksa_cache.h"
 #include "crypto/tls.h"
 #include "ap/hostapd.h"
 #include "eap_peer/eap.h"
@@ -8431,6 +8432,7 @@ static void wpa_supplicant_ctrl_iface_flush(struct wpa_supplicant *wpa_s)
 	wpa_s->conf->auto_interworking = 0;
 	wpa_s->conf->okc = 0;
 
+	ptksa_cache_flush(wpa_s->ptksa, NULL, WPA_CIPHER_NONE);
 	wpa_sm_pmksa_cache_flush(wpa_s->wpa, NULL);
 	rsn_preauth_deinit(wpa_s->wpa);
 
@@ -10108,6 +10110,7 @@ static int wpas_ctrl_iface_pmksa(struct wpa_supplicant *wpa_s,
 
 static void wpas_ctrl_iface_pmksa_flush(struct wpa_supplicant *wpa_s)
 {
+	ptksa_cache_flush(wpa_s->ptksa, NULL, WPA_CIPHER_NONE);
 	wpa_sm_pmksa_cache_flush(wpa_s->wpa, NULL);
 #ifdef CONFIG_AP
 	wpas_ap_pmksa_cache_flush(wpa_s);
