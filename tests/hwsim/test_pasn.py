@@ -59,12 +59,15 @@ def check_pasn_ptk(dev, hapd, cipher):
         raise Exception("TK/KDK mismatch")
 
 def check_pasn_akmp_cipher(dev, hapd, akmp="PASN", cipher="CCMP",
-                           group="19", status=0, fail=0):
+                           group="19", status=0, fail=0, nid=""):
     dev.scan(type="ONLY", freq=2412)
 
     cmd = "PASN_START bssid=%s akmp=%s cipher=%s group=%s" % (hapd.own_addr(), akmp, cipher, group)
 
     resp = dev.request(cmd)
+    if nid != "":
+        cmd += " nid=%s" % nid
+
     if fail:
         if "OK" in resp:
             raise Exception("Unexpected success to start PASN authentication")
@@ -351,3 +354,84 @@ def test_pasn_fils_sha256_kdk(dev, apdev, params):
 def test_pasn_fils_sha384_kdk(dev, apdev, params):
     """Station authentication with FILS-SHA384 with KDK derivation during connection"""
     check_pasn_fils_kdk(dev, apdev, params, "FILS-SHA384")
+
+@remote_compatible
+def test_pasn_sae(dev, apdev):
+    """PASN authentication with SAE AP with PMK derivation + PMKSA caching"""
+    check_pasn_capab(dev[0])
+    check_sae_capab(dev[0])
+
+    params = hostapd.wpa2_params(ssid="test-pasn-sae",
+                                 passphrase="12345678")
+    params['wpa_key_mgmt'] = 'SAE PASN'
+    hapd = start_pasn_ap(apdev[0], params)
+
+    dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE", scan_freq="2412",
+                   only_add_network=True)
+
+    # first test with a valid PSK
+    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="0")
+
+    # And now with PMKSA caching
+    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP")
+
+    # And now with a wrong passphrase
+    if "FAIL" in dev[0].request("PMKSA_FLUSH"):
+        raise Exception("PMKSA_FLUSH failed")
+
+    dev[0].set_network_quoted(0, "psk", "12345678787")
+    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", status=1, nid="0")
+
+@remote_compatible
+def test_pasn_sae_while_connected_same_channel(dev, apdev):
+    """PASN SAE authentication while connected same channel"""
+    check_pasn_capab(dev[0])
+    check_sae_capab(dev[0])
+
+    params = hostapd.wpa2_params(ssid="test-pasn-wpa2-psk",
+                                 passphrase="12345678")
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].connect("test-pasn-wpa2-psk", psk="12345678", scan_freq="2412")
+
+    params = hostapd.wpa2_params(ssid="test-pasn-sae",
+                                 passphrase="12345678")
+
+    params['wpa_key_mgmt'] = 'SAE PASN'
+    hapd = start_pasn_ap(apdev[1], params)
+
+    dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                   scan_freq="2412", only_add_network=True)
+
+    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="1")
+
+@remote_compatible
+def test_pasn_sae_while_connected_diff_channel(dev, apdev):
+    """PASN SAE authentication while connected diff channel"""
+    check_pasn_capab(dev[0])
+    check_sae_capab(dev[0])
+
+    with HWSimRadio(n_channels=2) as (radio, iface):
+        wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
+        wpas.interface_add(iface)
+
+        if wpas.get_mcc() < 2:
+            raise HwsimSkip("PASN: New radio does not support MCC")
+
+        params = hostapd.wpa2_params(ssid="test-pasn-wpa2-psk",
+                                     passphrase="12345678")
+        params['channel'] = "6"
+        hapd = hostapd.add_ap(apdev[0], params)
+
+        wpas.connect("test-pasn-wpa2-psk", psk="12345678", scan_freq="2437")
+
+        params = hostapd.wpa2_params(ssid="test-pasn-sae",
+                                     passphrase="12345678")
+
+        params['wpa_key_mgmt'] = 'SAE PASN'
+        hapd = start_pasn_ap(apdev[1], params)
+
+        wpas.connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                       scan_freq="2412", only_add_network=True)
+
+        check_pasn_akmp_cipher(wpas, hapd, "SAE", "CCMP", nid="1")
