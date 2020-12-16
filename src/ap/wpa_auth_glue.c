@@ -211,7 +211,7 @@ static void hostapd_wpa_auth_conf(struct hostapd_bss_config *conf,
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_PASN
 #ifdef CONFIG_TESTING_OPTIONS
-	wconf->kdk = conf->force_kdk_derivation;
+	wconf->force_kdk_derivation = conf->force_kdk_derivation;
 #endif /* CONFIG_TESTING_OPTIONS */
 #endif /* CONFIG_PASN */
 }

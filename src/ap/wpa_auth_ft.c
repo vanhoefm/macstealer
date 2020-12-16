@@ -3066,7 +3066,7 @@ static int wpa_ft_process_auth_req(struct wpa_state_machine *sm,
 	const u8 *identity, *radius_cui;
 	size_t identity_len = 0, radius_cui_len = 0;
 	int use_sha384;
-	size_t pmk_r1_len;
+	size_t pmk_r1_len, kdk_len;
 
 	*resp_ies = NULL;
 	*resp_ies_len = 0;
@@ -3196,12 +3196,18 @@ pmk_r1_derived:
 	wpa_hexdump(MSG_DEBUG, "FT: Generated ANonce",
 		    sm->ANonce, WPA_NONCE_LEN);
 
+	if (sm->wpa_auth->conf.force_kdk_derivation ||
+	    (sm->wpa_auth->conf.secure_ltf &&
+	     sm->rsnxe && sm->rsnxe_len >= 4 &&
+	     sm->rsnxe[3] & BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8)))
+		kdk_len = WPA_KDK_MAX_LEN;
+	else
+		kdk_len = 0;
+
 	if (wpa_pmk_r1_to_ptk(pmk_r1, pmk_r1_len, sm->SNonce, sm->ANonce,
 			      sm->addr, sm->wpa_auth->addr, pmk_r1_name,
 			      &sm->PTK, ptk_name, sm->wpa_key_mgmt,
-			      pairwise,
-			      sm->wpa_auth->conf.kdk ?
-			      WPA_KDK_MAX_LEN : 0) < 0)
+			      pairwise, kdk_len) < 0)
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 
 	sm->pairwise = pairwise;
