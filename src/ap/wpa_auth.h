@@ -257,6 +257,11 @@ struct wpa_auth_config {
 #endif /* CONFIG_FILS */
 	int sae_pwe;
 	bool sae_pk;
+
+	unsigned int secure_ltf:1;
+	unsigned int secure_rtt:1;
+	unsigned int prot_range_neg:1;
+
 	int owe_ptk_workaround;
 	u8 transition_disable;
 #ifdef CONFIG_DPP2

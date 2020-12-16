@@ -1950,6 +1950,15 @@ struct wpa_driver_capa {
 #define WPA_DRIVER_FLAGS2_CONTROL_PORT_RX	0x0000000000000001ULL
 /** Driver supports TX status reports for EAPOL frames through control port */
 #define WPA_DRIVER_FLAGS2_CONTROL_PORT_TX_STATUS 0x0000000000000002ULL
+/** Driver supports secure LTF */
+#define WPA_DRIVER_FLAGS2_SEC_LTF		0x0000000000000004ULL
+/** Driver supports secure RTT measurement exchange */
+#define WPA_DRIVER_FLAGS2_SEC_RTT		0x0000000000000008ULL
+/**
+ * Driver supports protection of range negotiation and measurement management
+ * frames
+ */
+#define WPA_DRIVER_FLAGS2_PROT_RANGE_NEG	0x0000000000000010ULL
 	u64 flags2;
 
 #define FULL_AP_CLIENT_STATE_SUPP(drv_flags) \

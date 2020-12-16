@@ -354,25 +354,38 @@ int wpa_gen_wpa_ie(struct wpa_sm *sm, u8 *wpa_ie, size_t wpa_ie_len)
 int wpa_gen_rsnxe(struct wpa_sm *sm, u8 *rsnxe, size_t rsnxe_len)
 {
 	u8 *pos = rsnxe;
+	u16 capab = 0;
+	size_t flen;
 
-	if (!wpa_key_mgmt_sae(sm->key_mgmt))
-		return 0; /* SAE not in use */
-	if (sm->sae_pwe != 1 && sm->sae_pwe != 2 && !sm->sae_pk)
+	if (wpa_key_mgmt_sae(sm->key_mgmt) &&
+	    (sm->sae_pwe == 1 || sm->sae_pwe == 2 || sm->sae_pk)) {
+		capab |= BIT(WLAN_RSNX_CAPAB_SAE_H2E);
+#ifdef CONFIG_SAE_PK
+		if (sm->sae_pk)
+			capab |= BIT(WLAN_RSNX_CAPAB_SAE_PK);
+#endif /* CONFIG_SAE_PK */
+	}
+
+	if (sm->secure_ltf)
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF);
+	if (sm->secure_rtt)
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_RTT);
+	if (sm->prot_range_neg)
+		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
+
+	flen = (capab & 0xff00) ? 2 : 1;
+	if (!capab)
 		return 0; /* no supported extended RSN capabilities */
-
-	if (rsnxe_len < 3)
+	if (rsnxe_len < 2 + flen)
 		return -1;
+	capab |= flen - 1; /* bit 0-3 = Field length (n - 1) */
 
 	*pos++ = WLAN_EID_RSNX;
-	*pos++ = 1;
-	/* bits 0-3 = 0 since only one octet of Extended RSN Capabilities is
-	 * used for now */
-	*pos = BIT(WLAN_RSNX_CAPAB_SAE_H2E);
-#ifdef CONFIG_SAE_PK
-	if (sm->sae_pk)
-		*pos |= BIT(WLAN_RSNX_CAPAB_SAE_PK);
-#endif /* CONFIG_SAE_PK */
-	pos++;
+	*pos++ = flen;
+	*pos++ = capab & 0x00ff;
+	capab >>= 8;
+	if (capab)
+		*pos++ = capab;
 
 	return pos - rsnxe;
 }

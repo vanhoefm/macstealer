@@ -106,7 +106,11 @@ struct wpa_sm {
 	int mfp; /* 0 = disabled, 1 = optional, 2 = mandatory */
 	int ocv; /* Operating Channel Validation */
 	int sae_pwe; /* SAE PWE generation options */
-	int sae_pk; /* whether SAE-PK is used */
+
+	unsigned int sae_pk:1; /* whether SAE-PK is used */
+	unsigned int secure_ltf:1;
+	unsigned int secure_rtt:1;
+	unsigned int prot_range_neg:1;
 
 	u8 *assoc_wpa_ie; /* Own WPA/RSN IE from (Re)AssocReq */
 	size_t assoc_wpa_ie_len;
