@@ -1628,3 +1628,21 @@ class WpaSupplicant:
         res = self.request("DPP_CONFIGURATOR_REMOVE %d" % conf_id)
         if "OK" not in res:
             raise Exception("DPP_CONFIGURATOR_REMOVE failed")
+
+    def get_ptksa(self, bssid, cipher):
+        res = self.request("PTKSA_CACHE_LIST")
+        lines = res.splitlines()
+        for l in lines:
+            if bssid not in l or cipher not in l:
+                continue
+
+            vals = dict()
+            [index, addr, cipher, expiration, tk, kdk] = l.split(' ', 5)
+            vals['index'] = index
+            vals['addr'] = addr
+            vals['cipher'] = cipher
+            vals['expiration'] = expiration
+            vals['tk'] = tk
+            vals['kdk'] = kdk
+            return vals
+        return None
