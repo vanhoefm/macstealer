@@ -528,12 +528,19 @@ struct wpas_pasn {
 	u8 bssid[ETH_ALEN];
 	size_t pmk_len;
 	u8 pmk[PMK_LEN_MAX];
+	bool using_pmksa;
 
 	u8 hash[SHA384_MAC_LEN];
 
 	struct wpabuf *beacon_rsne;
 	struct wpa_ptk ptk;
 	struct crypto_ecdh *ecdh;
+
+#ifdef CONFIG_SAE
+	struct sae_data sae;
+#endif /* CONFIG_SAE */
+
+	const struct wpa_ssid *ssid;
 };
 #endif /* CONFIG_PASN */
 
@@ -1685,7 +1692,7 @@ void wpas_handle_assoc_resp_mscs(struct wpa_supplicant *wpa_s, const u8 *bssid,
 
 int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
 			 const u8 *bssid, int akmp, int cipher,
-			 u16 group);
+			 u16 group, int network_id);
 void wpas_pasn_auth_stop(struct wpa_supplicant *wpa_s);
 int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 			     const u8 *data, size_t data_len, u8 acked);

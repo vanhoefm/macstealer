@@ -5194,3 +5194,14 @@ void wpa_sm_set_dpp_z(struct wpa_sm *sm, const struct wpabuf *z)
 	}
 }
 #endif /* CONFIG_DPP2 */
+
+
+#ifdef CONFIG_PASN
+void wpa_pasn_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
+			      const u8 *pmkid, const u8 *bssid, int key_mgmt)
+{
+	sm->cur_pmksa = pmksa_cache_add(sm->pmksa, pmk, pmk_len, pmkid, NULL, 0,
+					bssid, sm->own_addr, NULL,
+					key_mgmt, 0);
+}
+#endif /* CONFIG_PASN */

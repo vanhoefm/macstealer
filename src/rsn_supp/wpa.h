@@ -521,5 +521,7 @@ int owe_process_assoc_resp(struct wpa_sm *sm, const u8 *bssid,
 void wpa_sm_set_reset_fils_completed(struct wpa_sm *sm, int set);
 void wpa_sm_set_fils_cache_id(struct wpa_sm *sm, const u8 *fils_cache_id);
 void wpa_sm_set_dpp_z(struct wpa_sm *sm, const struct wpabuf *z);
+void wpa_pasn_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
+			      const u8 *pmkid, const u8 *bssid, int key_mgmt);
 
 #endif /* WPA_H */

@@ -10464,6 +10464,7 @@ static int wpas_ctrl_iface_pasn_start(struct wpa_supplicant *wpa_s, char *cmd)
 	u8 bssid[ETH_ALEN];
 	int akmp = -1, cipher = -1, got_bssid = 0;
 	u16 group = 0xFFFF;
+	int id = 0;
 
 	/*
 	 * Entry format: bssid=<BSSID> akmp=<AKMP> cipher=<CIPHER> group=<group>
@@ -10503,6 +10504,8 @@ static int wpas_ctrl_iface_pasn_start(struct wpa_supplicant *wpa_s, char *cmd)
 			cipher = WPA_CIPHER_GCMP;
 		} else if (os_strncmp(token, "group=", 6) == 0) {
 			group = atoi(token + 6);
+		} else if (os_strncmp(token, "nid=", 4) == 0) {
+			id = atoi(token + 4);
 		} else {
 			wpa_printf(MSG_DEBUG,
 				   "CTRL: PASN Invalid parameter: '%s'",
@@ -10516,7 +10519,7 @@ static int wpas_ctrl_iface_pasn_start(struct wpa_supplicant *wpa_s, char *cmd)
 		return -1;
 	}
 
-	return wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group);
+	return wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group, id);
 }
 #endif /* CONFIG_PASN */
 

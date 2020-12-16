@@ -21,6 +21,7 @@
 #include "wpa_supplicant_i.h"
 #include "driver_i.h"
 #include "bss.h"
+#include "config.h"
 
 static const int dot11RSNAConfigPMKLifetime = 43200;
 
@@ -29,6 +30,7 @@ struct wpa_pasn_auth_work {
 	int akmp;
 	int cipher;
 	u16 group;
+	int network_id;
 };
 
 
@@ -61,13 +63,203 @@ static void wpas_pasn_auth_status(struct wpa_supplicant *wpa_s, const u8 *bssid,
 }
 
 
-static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpas_pasn *pasn)
+#ifdef CONFIG_SAE
+
+static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpa_supplicant *wpa_s)
 {
+	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct wpabuf *buf = NULL;
+	const char *password = NULL;
+	int ret;
+
+	if (pasn->ssid) {
+		password = pasn->ssid->sae_password;
+		if (!password)
+			password = pasn->ssid->passphrase;
+	}
+
+	if (!password) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE without a password");
+		return NULL;
+	}
+
+	ret = sae_set_group(&pasn->sae, pasn->group);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to set SAE group");
+		return NULL;
+	}
+
+	/* TODO: SAE H2E */
+	ret = sae_prepare_commit(wpa_s->own_addr, pasn->bssid,
+				 (const u8 *) password, os_strlen(password), 0,
+				 &pasn->sae);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
+		return NULL;
+	}
+
+	/* Need to add the entire Authentication frame body */
+	buf = wpabuf_alloc(6 + SAE_COMMIT_MAX_LEN);
+	if (!buf) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to allocate SAE buffer");
+		return NULL;
+	}
+
+	wpabuf_put_le16(buf, WLAN_AUTH_SAE);
+	wpabuf_put_le16(buf, 1);
+	wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
+
+	sae_write_commit(&pasn->sae, buf, NULL, 0);
+	pasn->sae.state = SAE_COMMITTED;
+
+	return buf;
+}
+
+
+static int wpas_pasn_wd_sae_rx(struct wpa_supplicant *wpa_s, struct wpabuf *wd)
+{
+	struct wpas_pasn *pasn = &wpa_s->pasn;
+	const u8 *data;
+	size_t buf_len;
+	u16 len, res, alg, seq, status;
+	int groups[] = { pasn->group, 0 };
+	int ret;
+
+	if (!wd)
+		return -1;
+
+	data = wpabuf_head_u8(wd);
+	buf_len = wpabuf_len(wd);
+
+	/* first handle the commit message */
+	if (buf_len < 2) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short (commit)");
+		return -1;
+	}
+
+	len = WPA_GET_LE16(data);
+	if (len < 6 || buf_len - 2 < len) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short for commit");
+		return -1;
+	}
+
+	buf_len -= 2;
+	data += 2;
+
+	alg = WPA_GET_LE16(data);
+	seq = WPA_GET_LE16(data + 2);
+	status = WPA_GET_LE16(data + 4);
+
+	wpa_printf(MSG_DEBUG, "PASN: SAE: commit: alg=%u, seq=%u, status=%u",
+		   alg, seq, status);
+
+	/* TODO: SAE H2E */
+	if (alg != WLAN_AUTH_SAE || seq != 1 || status != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE: dropping peer commit");
+		return -1;
+	}
+
+	res = sae_parse_commit(&pasn->sae, data + 6, len - 6, NULL, 0, groups,
+			       0);
+	if (res != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE failed parsing commit");
+		return -1;
+	}
+
+	/* Process the commit message and derive the PMK */
+	ret = sae_process_commit(&pasn->sae);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "SAE: Failed to process peer commit");
+		return -1;
+	}
+
+	buf_len -= len;
+	data += len;
+
+	/* Handle the confirm message */
+	if (buf_len < 2) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short (confirm)");
+		return -1;
+	}
+
+	len = WPA_GET_LE16(data);
+	if (len < 6 || buf_len - 2 < len) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short for confirm");
+		return -1;
+	}
+
+	buf_len -= 2;
+	data += 2;
+
+	alg = WPA_GET_LE16(data);
+	seq = WPA_GET_LE16(data + 2);
+	status = WPA_GET_LE16(data + 4);
+
+	wpa_printf(MSG_DEBUG, "PASN: SAE confirm: alg=%u, seq=%u, status=%u",
+		   alg, seq, status);
+
+	if (alg != WLAN_AUTH_SAE || seq != 2 || status != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: Dropping peer SAE confirm");
+		return -1;
+	}
+
+	res = sae_check_confirm(&pasn->sae, data + 6, len - 6);
+	if (res != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE failed checking confirm");
+		return -1;
+	}
+
+	wpa_printf(MSG_DEBUG, "PASN: SAE completed successfully");
+	pasn->sae.state = SAE_ACCEPTED;
+
+	return 0;
+}
+
+
+static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpa_supplicant *wpa_s)
+{
+	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct wpabuf *buf = NULL;
+
+	/* Need to add the entire authentication frame body */
+	buf = wpabuf_alloc(6 + SAE_CONFIRM_MAX_LEN);
+	if (!buf) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to allocate SAE buffer");
+		return NULL;
+	}
+
+	wpabuf_put_le16(buf, WLAN_AUTH_SAE);
+	wpabuf_put_le16(buf, 2);
+	wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
+
+	sae_write_confirm(&pasn->sae, buf);
+	pasn->sae.state = SAE_CONFIRMED;
+
+	return buf;
+}
+
+#endif /* CONFIG_SAE */
+
+
+static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpa_supplicant *wpa_s)
+{
+	struct wpas_pasn *pasn = &wpa_s->pasn;
+
+	if (pasn->using_pmksa)
+		return NULL;
+
 	switch (pasn->akmp) {
 	case WPA_KEY_MGMT_PASN:
 		/* no wrapped data */
 		return NULL;
 	case WPA_KEY_MGMT_SAE:
+#ifdef CONFIG_SAE
+		if (pasn->trans_seq == 0)
+			return wpas_pasn_wd_sae_commit(wpa_s);
+		if (pasn->trans_seq == 2)
+			return wpas_pasn_wd_sae_confirm(wpa_s);
+#endif /* CONFIG_SAE */
+		/* fall through */
 	case WPA_KEY_MGMT_FILS_SHA256:
 	case WPA_KEY_MGMT_FILS_SHA384:
 	case WPA_KEY_MGMT_FT_PSK:
@@ -84,6 +276,9 @@ static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpas_pasn *pasn)
 
 static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
 {
+	if (pasn->using_pmksa)
+		return WPA_PASN_WRAPPED_DATA_NO;
+
 	/* Note: Valid AKMP is expected to already be validated */
 	switch (pasn->akmp) {
 	case WPA_KEY_MGMT_SAE:
@@ -141,7 +336,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 		 * Note: Even when PMKSA is available, also add wrapped data as
 		 * it is possible that the PMKID is no longer valid at the AP.
 		 */
-		wrapped_data_buf = wpas_pasn_get_wrapped_data(pasn);
+		wrapped_data_buf = wpas_pasn_get_wrapped_data(wpa_s);
 	} else {
 		pmksa = NULL;
 	}
@@ -210,7 +405,7 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
 				   wpa_s->own_addr, pasn->bssid,
 				   pasn->trans_seq + 1, WLAN_STATUS_SUCCESS);
 
-	wrapped_data_buf = wpas_pasn_get_wrapped_data(pasn);
+	wrapped_data_buf = wpas_pasn_get_wrapped_data(wpa_s);
 
 	if (!wrapped_data_buf)
 		wrapped_data = WPA_PASN_WRAPPED_DATA_NO;
@@ -275,6 +470,7 @@ static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 	pasn->group = 0;
 	pasn->trans_seq = 0;
 	pasn->pmk_len = 0;
+	pasn->using_pmksa = false;
 
 	forced_memzero(pasn->pmk, sizeof(pasn->pmk));
 	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
@@ -283,6 +479,9 @@ static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 	wpabuf_free(pasn->beacon_rsne);
 	pasn->beacon_rsne = NULL;
 
+#ifdef CONFIG_SAE
+	sae_clear_data(&pasn->sae);
+#endif /* CONFIG_SAE */
 	pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 }
 
@@ -318,10 +517,34 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 
 			pasn->pmk_len = pmksa->pmk_len;
 			os_memcpy(pasn->pmk, pmksa->pmk, pmksa->pmk_len);
+			pasn->using_pmksa = true;
 
 			return 0;
 		}
 	}
+
+#ifdef CONFIG_SAE
+	if (pasn->akmp == WPA_KEY_MGMT_SAE) {
+		int ret;
+
+		ret = wpas_pasn_wd_sae_rx(wpa_s, wrapped_data);
+		if (ret) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Failed processing SAE wrapped data");
+			pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+			return -1;
+		}
+
+		wpa_printf(MSG_DEBUG, "PASN: Success deriving PMK with SAE");
+		pasn->pmk_len = PMK_LEN;
+		os_memcpy(pasn->pmk, pasn->sae.pmk, PMK_LEN);
+
+		wpa_pasn_pmksa_cache_add(wpa_s->wpa, pasn->pmk,
+					 pasn->pmk_len, pasn->sae.pmkid,
+					 pasn->bssid, pasn->akmp);
+		return 0;
+	}
+#endif /* CONFIG_SAE */
 
 	/* TODO: Derive PMK based on wrapped data */
 	wpa_printf(MSG_DEBUG, "PASN: Missing implementation to derive PMK");
@@ -332,9 +555,11 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 
 static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 			   int akmp, int cipher, u16 group, int freq,
-			   const u8 *beacon_rsne, u8 beacon_rsne_len)
+			   const u8 *beacon_rsne, u8 beacon_rsne_len,
+			   int network_id)
 {
 	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct wpa_ssid *ssid = NULL;
 	struct wpabuf *frame;
 	int ret;
 
@@ -345,11 +570,21 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 		return -1;
 	}
 
+	ssid = wpa_config_get_network(wpa_s->conf, network_id);
+
 	switch (akmp) {
 	case WPA_KEY_MGMT_PASN:
 		break;
 #ifdef CONFIG_SAE
 	case WPA_KEY_MGMT_SAE:
+		if (!ssid) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: No network profile found for SAE");
+			return -1;
+		}
+		pasn->sae.state = SAE_NOTHING;
+		pasn->sae.send_confirm = 0;
+		pasn->ssid = ssid;
 		break;
 #endif /* CONFIG_SAE */
 #ifdef CONFIG_FILS
@@ -497,7 +732,8 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	}
 
 	ret = wpas_pasn_start(wpa_s, awork->bssid, awork->akmp, awork->cipher,
-			      awork->group, bss->freq, rsne, *(rsne + 1) + 2);
+			      awork->group, bss->freq, rsne, *(rsne + 1) + 2,
+			      awork->network_id);
 	if (ret) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Failed to start PASN authentication");
@@ -514,7 +750,7 @@ fail:
 
 
 int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
-			 int akmp, int cipher, u16 group)
+			 int akmp, int cipher, u16 group, int network_id)
 {
 	struct wpa_pasn_auth_work *awork;
 	struct wpa_bss *bss;
@@ -558,6 +794,7 @@ int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	awork->akmp = akmp;
 	awork->cipher = cipher;
 	awork->group = group;
+	awork->network_id = network_id;
 
 	if (radio_add_work(wpa_s, bss->freq, "pasn-start-auth", 1,
 			   wpas_pasn_auth_start_cb, awork) < 0) {

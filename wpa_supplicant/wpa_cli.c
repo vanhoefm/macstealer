@@ -3877,7 +3877,7 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 #ifdef CONFIG_PASN
 	{ "pasn_auth_start", wpa_cli_cmd_pasn_auth_start, NULL,
 	  cli_cmd_flag_none,
-	  "bssid=<BSSID> akmp=<WPA key mgmt> cipher=<WPA cipher> group=<group> = Start PASN authentication" },
+	  "bssid=<BSSID> akmp=<WPA key mgmt> cipher=<WPA cipher> group=<group> nid=<network id> = Start PASN authentication" },
 	{ "pasn_auth_stop", wpa_cli_cmd_pasn_auth_stop, NULL,
 	  cli_cmd_flag_none,
 	  "= Stop PASN authentication" },

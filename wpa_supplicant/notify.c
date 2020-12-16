@@ -387,6 +387,11 @@ void wpas_notify_network_removed(struct wpa_supplicant *wpa_s,
 		wpas_notify_persistent_group_removed(wpa_s, ssid);
 
 	wpas_p2p_network_removed(wpa_s, ssid);
+
+#ifdef CONFIG_PASN
+	if (wpa_s->pasn.ssid == ssid)
+		wpa_s->pasn.ssid = NULL;
+#endif /* CONFIG_PASN */
 }
 
 
