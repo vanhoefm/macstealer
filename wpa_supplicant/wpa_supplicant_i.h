@@ -15,6 +15,7 @@
 #include "common/sae.h"
 #include "common/wpa_ctrl.h"
 #include "crypto/sha384.h"
+#include "eapol_supp/eapol_supp_sm.h"
 #include "wps/wps_defs.h"
 #include "config_ssid.h"
 #include "wmm_ac.h"
@@ -516,6 +517,15 @@ struct robust_av_data {
 };
 
 #ifdef CONFIG_PASN
+
+struct pasn_fils {
+	u8 nonce[FILS_NONCE_LEN];
+	u8 anonce[FILS_NONCE_LEN];
+	u8 session[FILS_SESSION_LEN];
+	u8 erp_pmkid[PMKID_LEN];
+	bool completed;
+};
+
 struct wpas_pasn {
 	int akmp;
 	int cipher;
@@ -540,7 +550,11 @@ struct wpas_pasn {
 	struct sae_data sae;
 #endif /* CONFIG_SAE */
 
-	const struct wpa_ssid *ssid;
+	struct wpa_ssid *ssid;
+
+#ifdef CONFIG_FILS
+	struct pasn_fils fils;
+#endif /* CONFIG_FILS */
 };
 #endif /* CONFIG_PASN */
 
