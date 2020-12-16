@@ -592,15 +592,16 @@ int fils_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const u8 *spa, const u8 *aa,
 		    const u8 *snonce, const u8 *anonce, const u8 *dhss,
 		    size_t dhss_len, struct wpa_ptk *ptk,
 		    u8 *ick, size_t *ick_len, int akmp, int cipher,
-		    u8 *fils_ft, size_t *fils_ft_len)
+		    u8 *fils_ft, size_t *fils_ft_len, size_t kdk_len)
 {
 	u8 *data, *pos;
 	size_t data_len;
 	u8 tmp[FILS_ICK_MAX_LEN + WPA_KEK_MAX_LEN + WPA_TK_MAX_LEN +
-	       FILS_FT_MAX_LEN];
+	       FILS_FT_MAX_LEN + WPA_KDK_MAX_LEN];
 	size_t key_data_len;
 	const char *label = "FILS PTK Derivation";
 	int ret = -1;
+	size_t offset;
 
 	/*
 	 * FILS-Key-Data = PRF-X(PMK, "FILS PTK Derivation",
@@ -611,6 +612,9 @@ int fils_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const u8 *spa, const u8 *aa,
 	 * If doing FT initial mobility domain association:
 	 * FILS-FT = L(FILS-Key-Data, ICK_bits + KEK_bits + TK_bits,
 	 *             FILS-FT_bits)
+	 * When a KDK is derived:
+	 * KDK = L(FILS-Key-Data, ICK_bits + KEK_bits + TK_bits + FILS-FT_bits,
+	 *	   KDK_bits)
 	 */
 	data_len = 2 * ETH_ALEN + 2 * FILS_NONCE_LEN + dhss_len;
 	data = os_malloc(data_len);
@@ -638,6 +642,19 @@ int fils_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const u8 *spa, const u8 *aa,
 	else
 		goto err;
 	key_data_len = *ick_len + ptk->kek_len + ptk->tk_len;
+
+	if (kdk_len) {
+		if (kdk_len > WPA_KDK_MAX_LEN) {
+			wpa_printf(MSG_ERROR, "FILS: KDK len=%zu too big",
+				   kdk_len);
+			goto err;
+		}
+
+		ptk->kdk_len = kdk_len;
+		key_data_len += kdk_len;
+	} else {
+		ptk->kdk_len = 0;
+	}
 
 	if (fils_ft && fils_ft_len) {
 		if (akmp == WPA_KEY_MGMT_FT_FILS_SHA256) {
@@ -673,19 +690,27 @@ int fils_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const u8 *spa, const u8 *aa,
 	wpa_hexdump_key(MSG_DEBUG, "FILS: FILS-Key-Data", tmp, key_data_len);
 
 	os_memcpy(ick, tmp, *ick_len);
+	offset = *ick_len;
 	wpa_hexdump_key(MSG_DEBUG, "FILS: ICK", ick, *ick_len);
 
-	os_memcpy(ptk->kek, tmp + *ick_len, ptk->kek_len);
+	os_memcpy(ptk->kek, tmp + offset, ptk->kek_len);
 	wpa_hexdump_key(MSG_DEBUG, "FILS: KEK", ptk->kek, ptk->kek_len);
+	offset += ptk->kek_len;
 
-	os_memcpy(ptk->tk, tmp + *ick_len + ptk->kek_len, ptk->tk_len);
+	os_memcpy(ptk->tk, tmp + offset, ptk->tk_len);
 	wpa_hexdump_key(MSG_DEBUG, "FILS: TK", ptk->tk, ptk->tk_len);
+	offset += ptk->tk_len;
 
 	if (fils_ft && fils_ft_len) {
-		os_memcpy(fils_ft, tmp + *ick_len + ptk->kek_len + ptk->tk_len,
-			  *fils_ft_len);
+		os_memcpy(fils_ft, tmp + offset, *fils_ft_len);
 		wpa_hexdump_key(MSG_DEBUG, "FILS: FILS-FT",
 				fils_ft, *fils_ft_len);
+		offset += *fils_ft_len;
+	}
+
+	if (ptk->kdk_len) {
+		os_memcpy(ptk->kdk, tmp + offset, ptk->kdk_len);
+		wpa_hexdump_key(MSG_DEBUG, "FILS: KDK", ptk->kdk, ptk->kdk_len);
 	}
 
 	ptk->kek2_len = 0;

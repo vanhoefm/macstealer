@@ -494,7 +494,7 @@ static int try_rmsk(struct wlantest *wt, struct wlantest_bss *bss,
 			    sta->snonce, sta->anonce, NULL, 0,
 			    &ptk, ick, &ick_len,
 			    sta->key_mgmt, sta->pairwise_cipher,
-			    NULL, NULL) < 0)
+			    NULL, NULL, 0) < 0)
 		return -1;
 
 	/* Check AES-SIV decryption with the derived key */

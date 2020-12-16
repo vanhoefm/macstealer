@@ -396,7 +396,7 @@ int fils_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const u8 *spa, const u8 *aa,
 		    const u8 *snonce, const u8 *anonce, const u8 *dhss,
 		    size_t dhss_len, struct wpa_ptk *ptk,
 		    u8 *ick, size_t *ick_len, int akmp, int cipher,
-		    u8 *fils_ft, size_t *fils_ft_len);
+		    u8 *fils_ft, size_t *fils_ft_len, size_t kdk_len);
 int fils_key_auth_sk(const u8 *ick, size_t ick_len, const u8 *snonce,
 		     const u8 *anonce, const u8 *sta_addr, const u8 *bssid,
 		     const u8 *g_sta, size_t g_sta_len,
