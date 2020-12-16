@@ -190,6 +190,11 @@ void wpa_sm_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
 int wpa_sm_pmksa_exists(struct wpa_sm *sm, const u8 *bssid,
 			const void *network_ctx);
 void wpa_sm_drop_sa(struct wpa_sm *sm);
+struct rsn_pmksa_cache_entry * wpa_sm_pmksa_cache_get(struct wpa_sm *sm,
+						      const u8 *aa,
+						      const u8 *pmkid,
+						      const void *network_ctx,
+						      int akmp);
 int wpa_sm_has_ptk(struct wpa_sm *sm);
 int wpa_sm_has_ptk_installed(struct wpa_sm *sm);
 
@@ -364,6 +369,13 @@ static inline int wpa_sm_pmksa_cache_list(struct wpa_sm *sm, char *buf,
 
 static inline void wpa_sm_drop_sa(struct wpa_sm *sm)
 {
+}
+
+static inline struct rsn_pmksa_cache_entry *
+wpa_sm_pmksa_cache_get(struct wpa_sm *sm, const u8 *aa, const u8 *pmkid,
+		       const void *network_ctx, int akmp)
+{
+	return NULL;
 }
 
 static inline int wpa_sm_has_ptk(struct wpa_sm *sm)
