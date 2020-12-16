@@ -535,6 +535,16 @@ struct pasn_parameter_ie {
 	u8 wrapped_data_format; /* WPA_PASN_WRAPPED_DATA_* */
 } STRUCT_PACKED;
 
+struct wpa_pasn_params_data {
+	u8 wrapped_data_format;
+	u16 after;
+	u8 comeback_len;
+	const u8 *comeback;
+	u16 group;
+	u8 pubkey_len;
+	const u8 *pubkey;
+};
+
 int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
 		     int use_sha384);
 
@@ -634,5 +644,24 @@ int pasn_mic(const u8 *kck, int akmp, int cipher,
 
 int pasn_auth_frame_hash(int akmp, int cipher, const u8 *data, size_t len,
 			 u8 *hash);
+
+void wpa_pasn_build_auth_header(struct wpabuf *buf, const u8 *bssid,
+				const u8 *src, const u8 *dst,
+				u8 trans_seq, u16 status);
+
+int wpa_pasn_add_rsne(struct wpabuf *buf, const u8 *pmkid,
+		      int akmp, int cipher);
+
+void wpa_pasn_add_parameter_ie(struct wpabuf *buf, u16 pasn_group,
+			       u8 wrapped_data_format,
+			       struct wpabuf *pubkey,
+			       struct wpabuf *comeback, int after);
+
+int wpa_pasn_add_wrapped_data(struct wpabuf *buf,
+			      struct wpabuf *wrapped_data_buf);
+
+int wpa_pasn_validate_rsne(const struct wpa_ie_data *data);
+int wpa_pasn_parse_parameter_ie(const u8 *data, u8 len, bool from_ap,
+				struct wpa_pasn_params_data *pasn_params);
 
 #endif /* WPA_COMMON_H */

@@ -1504,6 +1504,10 @@ static int rsn_key_mgmt_to_bitfield(const u8 *s)
 #endif /* CONFIG_DPP */
 	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_OSEN)
 		return WPA_KEY_MGMT_OSEN;
+#ifdef CONFIG_PASN
+	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_PASN)
+		return WPA_KEY_MGMT_PASN;
+#endif /* CONFIG_PASN */
 	return 0;
 }
 
@@ -3259,3 +3263,431 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 
 	return ret;
 }
+
+
+#ifdef CONFIG_PASN
+
+/*
+ * wpa_pasn_build_auth_header - Add the MAC header and initialize Authentication
+ * frame for PASN
+ *
+ * @buf: Buffer in which the header will be added
+ * @bssid: The BSSID of the AP
+ * @src: Source address
+ * @dst: Destination address
+ * @trans_seq: Authentication transaction sequence number
+ * @status: Authentication status
+ */
+void wpa_pasn_build_auth_header(struct wpabuf *buf, const u8 *bssid,
+				const u8 *src, const u8 *dst,
+				u8 trans_seq, u16 status)
+{
+	struct ieee80211_mgmt *auth;
+
+	wpa_printf(MSG_DEBUG, "PASN: Add authentication header. trans_seq=%u",
+		   trans_seq);
+
+	auth = wpabuf_put(buf, offsetof(struct ieee80211_mgmt,
+					u.auth.variable));
+
+	auth->frame_control = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
+					   (WLAN_FC_STYPE_AUTH << 4));
+
+	os_memcpy(auth->da, dst, ETH_ALEN);
+	os_memcpy(auth->sa, src, ETH_ALEN);
+	os_memcpy(auth->bssid, bssid, ETH_ALEN);
+	auth->seq_ctrl = 0;
+
+	auth->u.auth.auth_alg = host_to_le16(WLAN_AUTH_PASN);
+	auth->u.auth.auth_transaction = host_to_le16(trans_seq);
+	auth->u.auth.status_code = host_to_le16(status);
+}
+
+
+/*
+ * wpa_pasn_add_rsne - Add an RSNE for PASN authentication
+ * @buf: Buffer in which the IE will be added
+ * @pmkid: Optional PMKID. Can be NULL.
+ * @akmp: Authentication and key management protocol
+ * @cipher: The cipher suite
+ */
+int wpa_pasn_add_rsne(struct wpabuf *buf, const u8 *pmkid, int akmp, int cipher)
+{
+	struct rsn_ie_hdr *hdr;
+	u32 suite;
+	u16 capab;
+	u8 *pos;
+	u8 rsne_len;
+
+	wpa_printf(MSG_DEBUG, "PASN: Add RSNE");
+
+	rsne_len = sizeof(*hdr) + RSN_SELECTOR_LEN +
+		2 + RSN_SELECTOR_LEN + 2 + RSN_SELECTOR_LEN +
+		2 + RSN_SELECTOR_LEN + 2 + (pmkid ? PMKID_LEN : 0);
+
+	if (wpabuf_tailroom(buf) < rsne_len)
+		return -1;
+	hdr = wpabuf_put(buf, rsne_len);
+	hdr->elem_id = WLAN_EID_RSN;
+	hdr->len = rsne_len - 2;
+	WPA_PUT_LE16(hdr->version, RSN_VERSION);
+	pos = (u8 *) (hdr + 1);
+
+	/* Group addressed data is not allowed */
+	RSN_SELECTOR_PUT(pos, RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED);
+	pos += RSN_SELECTOR_LEN;
+
+	/* Add the pairwise cipher */
+	WPA_PUT_LE16(pos, 1);
+	pos += 2;
+	suite = wpa_cipher_to_suite(WPA_PROTO_RSN, cipher);
+	RSN_SELECTOR_PUT(pos, suite);
+	pos += RSN_SELECTOR_LEN;
+
+	/* Add the AKM suite */
+	WPA_PUT_LE16(pos, 1);
+	pos += 2;
+
+	switch (akmp) {
+	case WPA_KEY_MGMT_PASN:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_PASN);
+		break;
+#ifdef CONFIG_SAE
+	case WPA_KEY_MGMT_SAE:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_SAE);
+		break;
+#endif /* CONFIG_SAE */
+#ifdef CONFIG_FILS
+	case WPA_KEY_MGMT_FILS_SHA256:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FILS_SHA256);
+		break;
+	case WPA_KEY_MGMT_FILS_SHA384:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FILS_SHA384);
+		break;
+#endif /* CONFIG_FILS */
+#ifdef CONFIG_IEEE80211R
+	case WPA_KEY_MGMT_FT_PSK:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_PSK);
+		break;
+	case WPA_KEY_MGMT_FT_IEEE8021X:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_802_1X);
+		break;
+	case WPA_KEY_MGMT_FT_IEEE8021X_SHA384:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_FT_802_1X_SHA384);
+		break;
+#endif /* CONFIG_IEEE80211R */
+	default:
+		wpa_printf(MSG_ERROR, "PASN: Invalid AKMP=0x%x", akmp);
+		return -1;
+	}
+	pos += RSN_SELECTOR_LEN;
+
+	/* RSN Capabilities: PASN mandates both MFP capable and required */
+	capab = WPA_CAPABILITY_MFPC | WPA_CAPABILITY_MFPR;
+	WPA_PUT_LE16(pos, capab);
+	pos += 2;
+
+	if (pmkid) {
+		wpa_printf(MSG_DEBUG, "PASN: Adding PMKID");
+
+		WPA_PUT_LE16(pos, 1);
+		pos += 2;
+		os_memcpy(pos, pmkid, PMKID_LEN);
+		pos += PMKID_LEN;
+	} else {
+		WPA_PUT_LE16(pos, 0);
+		pos += 2;
+	}
+
+	/* Group addressed management is not allowed */
+	RSN_SELECTOR_PUT(pos, RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED);
+
+	return 0;
+}
+
+
+/*
+ * wpa_pasn_add_parameter_ie - Add PASN Parameters IE for PASN authentication
+ * @buf: Buffer in which the IE will be added
+ * @pasn_group: Finite Cyclic Group ID for PASN authentication
+ * @wrapped_data_format: Format of the data in the Wrapped Data IE
+ * @pubkey: A buffer holding the local public key. Can be NULL
+ * @comeback: A buffer holding the comeback token. Can be NULL
+ * @after: If comeback is set, defined the comeback time in seconds. -1 to not
+ *	include the Comeback After field (frames from non-AP STA).
+ */
+void wpa_pasn_add_parameter_ie(struct wpabuf *buf, u16 pasn_group,
+			       u8 wrapped_data_format,
+			       struct wpabuf *pubkey,
+			       struct wpabuf *comeback, int after)
+{
+	struct pasn_parameter_ie *params;
+
+	wpa_printf(MSG_DEBUG, "PASN: Add PASN Parameters element");
+
+	params = wpabuf_put(buf, sizeof(*params));
+
+	params->id = WLAN_EID_EXTENSION;
+	params->len = sizeof(*params) - 2;
+	params->id_ext = WLAN_EID_EXT_PASN_PARAMS;
+	params->control = 0;
+	params->wrapped_data_format = wrapped_data_format;
+
+	if (comeback) {
+		wpa_printf(MSG_DEBUG, "PASN: Adding comeback data");
+
+		/*
+		 * 2 octets for the 'after' field + 1 octet for the length +
+		 * actual cookie data
+		 */
+		if (after >= 0)
+			params->len += 2;
+		params->len += 1 + wpabuf_len(comeback);
+		params->control |= WPA_PASN_CTRL_COMEBACK_INFO_PRESENT;
+
+		if (after >= 0)
+			wpabuf_put_le16(buf, after);
+		wpabuf_put_u8(buf, wpabuf_len(comeback));
+		wpabuf_put_buf(buf, comeback);
+	}
+
+	if (pubkey) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Adding public key and group ID %u",
+			   pasn_group);
+
+		/*
+		 * 2 octets for the finite cyclic group + 2 octets public key
+		 * length + the actual key
+		 */
+		params->len += 2 + 1 + wpabuf_len(pubkey);
+		params->control |= WPA_PASN_CTRL_GROUP_AND_KEY_PRESENT;
+
+		wpabuf_put_le16(buf, pasn_group);
+		wpabuf_put_u8(buf, wpabuf_len(pubkey));
+		wpabuf_put_buf(buf, pubkey);
+	}
+}
+
+/*
+ * wpa_pasn_add_wrapped_data - Add a Wrapped Data IE to PASN Authentication
+ * frame. If needed, the Wrapped Data IE would be fragmented.
+ *
+ * @buf: Buffer in which the IE will be added
+ * @wrapped_data_buf: Buffer holding the wrapped data
+ */
+int wpa_pasn_add_wrapped_data(struct wpabuf *buf,
+			      struct wpabuf *wrapped_data_buf)
+{
+	const u8 *data;
+	size_t data_len;
+	u8 len;
+
+	if (!wrapped_data_buf)
+		return 0;
+
+	wpa_printf(MSG_DEBUG, "PASN: Add wrapped data");
+
+	data = wpabuf_head_u8(wrapped_data_buf);
+	data_len = wpabuf_len(wrapped_data_buf);
+
+	/* nothing to add */
+	if (!data_len)
+		return 0;
+
+	if (data_len <= 254)
+		len = 1 + data_len;
+	else
+		len = 255;
+
+	if (wpabuf_tailroom(buf) < 3 + data_len)
+		return -1;
+
+	wpabuf_put_u8(buf, WLAN_EID_EXTENSION);
+	wpabuf_put_u8(buf, len);
+	wpabuf_put_u8(buf, WLAN_EID_EXT_WRAPPED_DATA);
+	wpabuf_put_data(buf, data, len - 1);
+
+	data += len - 1;
+	data_len -= len - 1;
+
+	while (data_len) {
+		if (wpabuf_tailroom(buf) < 1 + data_len)
+			return -1;
+		wpabuf_put_u8(buf, WLAN_EID_FRAGMENT);
+		len = data_len > 255 ? 255 : data_len;
+		wpabuf_put_u8(buf, len);
+		wpabuf_put_data(buf, data, len);
+		data += len;
+		data_len -= len;
+	}
+
+	return 0;
+}
+
+
+/*
+ * wpa_pasn_validate_rsne - Validate PSAN specific data of RSNE
+ * @data: Parsed representation of an RSNE
+ * Returns -1 for invalid data; otherwise 0
+ */
+int wpa_pasn_validate_rsne(const struct wpa_ie_data *data)
+{
+	u16 capab = WPA_CAPABILITY_MFPC | WPA_CAPABILITY_MFPR;
+
+	if (data->proto != WPA_PROTO_RSN)
+		return -1;
+
+	if ((data->capabilities & capab) != capab) {
+		wpa_printf(MSG_DEBUG, "PASN: Invalid RSNE capabilities");
+		return -1;
+	}
+
+	if (!data->has_group || data->group_cipher != WPA_CIPHER_GTK_NOT_USED) {
+		wpa_printf(MSG_DEBUG, "PASN: Invalid group data cipher");
+		return -1;
+	}
+
+	if (!data->has_pairwise || !data->pairwise_cipher ||
+	    (data->pairwise_cipher & (data->pairwise_cipher - 1))) {
+		wpa_printf(MSG_DEBUG, "PASN: No valid pairwise suite");
+		return -1;
+	}
+
+	switch (data->key_mgmt) {
+#ifdef CONFIG_SAE
+	case WPA_KEY_MGMT_SAE:
+	/* fall through */
+#endif /* CONFIG_SAE */
+#ifdef CONFIG_FILS
+	case WPA_KEY_MGMT_FILS_SHA256:
+	case WPA_KEY_MGMT_FILS_SHA384:
+	/* fall through */
+#endif /* CONFIG_FILS */
+#ifdef CONFIG_IEEE80211R
+	case WPA_KEY_MGMT_FT_PSK:
+	case WPA_KEY_MGMT_FT_IEEE8021X:
+	case WPA_KEY_MGMT_FT_IEEE8021X_SHA384:
+	/* fall through */
+#endif /* CONFIG_IEEE80211R */
+	case WPA_KEY_MGMT_PASN:
+		break;
+	default:
+		wpa_printf(MSG_ERROR, "PASN: invalid key_mgmt: 0x%0x",
+			   data->key_mgmt);
+		return -1;
+	}
+
+	if (data->mgmt_group_cipher != WPA_CIPHER_GTK_NOT_USED) {
+		wpa_printf(MSG_DEBUG, "PASN: Invalid group mgmt cipher");
+		return -1;
+	}
+
+	if (data->num_pmkid > 1) {
+		wpa_printf(MSG_DEBUG, "PASN: Invalid number of PMKIDs");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
+ * wpa_pasn_parse_parameter_ie - Validates PASN Parameters IE
+ * @data: Pointer to the PASN Parameters IE (starting with the EID).
+ * @len: Length of the data in the PASN Parameters IE
+ * @from_ap: Whether this was received from an AP
+ * @pasn_params: On successful return would hold the parsed PASN parameters.
+ * Returns: -1 for invalid data; otherwise 0
+ *
+ * Note: On successful return, the pointers in &pasn_params point to the data in
+ * the IE and are not locally allocated (so they should not be freed etc.).
+ */
+int wpa_pasn_parse_parameter_ie(const u8 *data, u8 len, bool from_ap,
+				struct wpa_pasn_params_data *pasn_params)
+{
+	struct pasn_parameter_ie *params = (struct pasn_parameter_ie *) data;
+	const u8 *pos = (const u8 *) (params + 1);
+
+	if (!pasn_params) {
+		wpa_printf(MSG_DEBUG, "PASN: Invalid params");
+		return -1;
+	}
+
+	if (!params || ((size_t) (params->len + 2) < sizeof(*params)) ||
+	    len < sizeof(*params) || params->len + 2 != len) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Invalid parameters IE. len=(%u, %u)",
+			   params ? params->len : 0, len);
+		return -1;
+	}
+
+	os_memset(pasn_params, 0, sizeof(*pasn_params));
+
+	switch (params->wrapped_data_format) {
+	case WPA_PASN_WRAPPED_DATA_NO:
+	case WPA_PASN_WRAPPED_DATA_SAE:
+	case WPA_PASN_WRAPPED_DATA_FILS_SK:
+	case WPA_PASN_WRAPPED_DATA_FT:
+		break;
+	default:
+		wpa_printf(MSG_DEBUG, "PASN: Invalid wrapped data format");
+		return -1;
+	}
+
+	pasn_params->wrapped_data_format = params->wrapped_data_format;
+
+	len -= sizeof(*params);
+
+	if (params->control & WPA_PASN_CTRL_COMEBACK_INFO_PRESENT) {
+		if (from_ap) {
+			if (len < 2) {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: Invalid Parameters IE: Truncated Comeback After");
+				return -1;
+			}
+			pasn_params->after = WPA_GET_LE16(pos);
+			pos += 2;
+			len -= 2;
+		}
+
+		if (len < 1 || len < 1 + *pos) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Invalid Parameters IE: comeback len");
+			return -1;
+		}
+
+		pasn_params->comeback_len = *pos++;
+		len--;
+		pasn_params->comeback = pos;
+		len -=  pasn_params->comeback_len;
+		pos += pasn_params->comeback_len;
+	}
+
+	if (params->control & WPA_PASN_CTRL_GROUP_AND_KEY_PRESENT) {
+		if (len < 3 || len < 3 + pos[2]) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Invalid Parameters IE: group and key");
+			return -1;
+		}
+
+		pasn_params->group = WPA_GET_LE16(pos);
+		pos += 2;
+		len -= 2;
+		pasn_params->pubkey_len = *pos++;
+		len--;
+		pasn_params->pubkey = pos;
+		len -= pasn_params->pubkey_len;
+		pos += pasn_params->pubkey_len;
+	}
+
+	if (len) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Invalid Parameters IE. Bytes left=%u", len);
+		return -1;
+	}
+
+	return 0;
+}
+
+#endif /* CONFIG_PASN */
