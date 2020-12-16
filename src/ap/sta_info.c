@@ -166,6 +166,9 @@ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta)
 
 		if (sta->pasn->ecdh)
 			crypto_ecdh_deinit(sta->pasn->ecdh);
+#ifdef CONFIG_SAE
+		sae_clear_data(&sta->pasn->sae);
+#endif /* CONFIG_SAE */
 		bin_clear_free(sta->pasn, sizeof(*sta->pasn));
 		sta->pasn = NULL;
 	}

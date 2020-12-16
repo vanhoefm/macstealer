@@ -470,6 +470,49 @@ static void sae_set_state(struct sta_info *sta, enum sae_state state,
 }
 
 
+static const char * sae_get_password(struct hostapd_data *hapd,
+				     struct sta_info *sta,
+				     const char *rx_id,
+				     struct sae_password_entry **pw_entry,
+				     struct sae_pt **s_pt,
+				     const struct sae_pk **s_pk)
+{
+	const char *password = NULL;
+	struct sae_password_entry *pw;
+	struct sae_pt *pt = NULL;
+	const struct sae_pk *pk = NULL;
+
+	for (pw = hapd->conf->sae_passwords; pw; pw = pw->next) {
+		if (!is_broadcast_ether_addr(pw->peer_addr) &&
+		    os_memcmp(pw->peer_addr, sta->addr, ETH_ALEN) != 0)
+			continue;
+		if ((rx_id && !pw->identifier) || (!rx_id && pw->identifier))
+			continue;
+		if (rx_id && pw->identifier &&
+		    os_strcmp(rx_id, pw->identifier) != 0)
+			continue;
+		password = pw->password;
+		pt = pw->pt;
+		if (!(hapd->conf->mesh & MESH_ENABLED))
+			pk = pw->pk;
+		break;
+	}
+	if (!password) {
+		password = hapd->conf->ssid.wpa_passphrase;
+		pt = hapd->conf->ssid.pt;
+	}
+
+	if (pw_entry)
+		*pw_entry = pw;
+	if (s_pt)
+		*s_pt = pt;
+	if (s_pk)
+		*s_pk = pk;
+
+	return password;
+}
+
+
 static struct wpabuf * auth_build_sae_commit(struct hostapd_data *hapd,
 					     struct sta_info *sta, int update,
 					     int status_code)
@@ -499,25 +542,7 @@ static struct wpabuf * auth_build_sae_commit(struct hostapd_data *hapd,
 		 status_code == WLAN_STATUS_SAE_PK)
 		use_pt = 1;
 
-	for (pw = hapd->conf->sae_passwords; pw; pw = pw->next) {
-		if (!is_broadcast_ether_addr(pw->peer_addr) &&
-		    os_memcmp(pw->peer_addr, sta->addr, ETH_ALEN) != 0)
-			continue;
-		if ((rx_id && !pw->identifier) || (!rx_id && pw->identifier))
-			continue;
-		if (rx_id && pw->identifier &&
-		    os_strcmp(rx_id, pw->identifier) != 0)
-			continue;
-		password = pw->password;
-		pt = pw->pt;
-		if (!(hapd->conf->mesh & MESH_ENABLED))
-			pk = pw->pk;
-		break;
-	}
-	if (!password) {
-		password = hapd->conf->ssid.wpa_passphrase;
-		pt = hapd->conf->ssid.pt;
-	}
+	password = sae_get_password(hapd, sta, rx_id, &pw, &pt, &pk);
 	if (!password || (use_pt && !pt)) {
 		wpa_printf(MSG_DEBUG, "SAE: No password available");
 		return NULL;
@@ -2298,6 +2323,182 @@ ieee802_11_set_radius_info(struct hostapd_data *hapd, struct sta_info *sta,
 
 
 #ifdef CONFIG_PASN
+#ifdef CONFIG_SAE
+
+static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
+				     struct sta_info *sta,
+				     struct wpabuf *wd)
+{
+	struct pasn_data *pasn = sta->pasn;
+	const char *password = NULL;
+	const u8 *data;
+	size_t buf_len;
+	u16 res, alg, seq, status;
+	int groups[] = { pasn->group, 0 };
+	int ret;
+
+	if (!wd)
+		return -1;
+
+	data = wpabuf_head_u8(wd);
+	buf_len = wpabuf_len(wd);
+
+	if (buf_len < 6) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short. len=%lu",
+			   buf_len);
+		return -1;
+	}
+
+	alg = WPA_GET_LE16(data);
+	seq = WPA_GET_LE16(data + 2);
+	status = WPA_GET_LE16(data + 4);
+
+	wpa_printf(MSG_DEBUG, "PASN: SAE commit: alg=%u, seq=%u, status=%u",
+		   alg, seq, status);
+
+	/* TODO: SAE H2E */
+	if (alg != WLAN_AUTH_SAE || seq != 1 || status != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: Dropping peer SAE commit");
+		return -1;
+	}
+
+	sae_clear_data(&pasn->sae);
+	pasn->sae.state = SAE_NOTHING;
+
+	ret = sae_set_group(&pasn->sae, pasn->group);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to set SAE group");
+		return -1;
+	}
+
+	password = sae_get_password(hapd, sta, NULL, NULL, NULL, NULL);
+	if (!password) {
+		wpa_printf(MSG_DEBUG, "PASN: No SAE password found");
+		return -1;
+	}
+
+	ret = sae_prepare_commit(hapd->own_addr, sta->addr,
+				 (const u8 *) password, os_strlen(password), 0,
+				 &pasn->sae);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
+		return -1;
+	}
+
+	res = sae_parse_commit(&pasn->sae, data + 6, buf_len - 6, NULL, 0,
+			       groups, 0);
+	if (res != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed parsing SAE commit");
+		return -1;
+	}
+
+	/* Process the commit message and derive the PMK */
+	ret = sae_process_commit(&pasn->sae);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "SAE: Failed to process peer commit");
+		return -1;
+	}
+
+	pasn->sae.state = SAE_COMMITTED;
+
+	return 0;
+}
+
+
+static int pasn_wd_handle_sae_confirm(struct hostapd_data *hapd,
+				      struct sta_info *sta,
+				      struct wpabuf *wd)
+{
+	struct pasn_data *pasn = sta->pasn;
+	const u8 *data;
+	size_t buf_len;
+	u16 res, alg, seq, status;
+
+	if (!wd)
+		return -1;
+
+	data = wpabuf_head_u8(wd);
+	buf_len = wpabuf_len(wd);
+
+	if (buf_len < 6) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short. len=%lu",
+			   buf_len);
+		return -1;
+	}
+
+	alg = WPA_GET_LE16(data);
+	seq = WPA_GET_LE16(data + 2);
+	status = WPA_GET_LE16(data + 4);
+
+	wpa_printf(MSG_DEBUG, "PASN: SAE confirm: alg=%u, seq=%u, status=%u",
+		   alg, seq, status);
+
+	if (alg != WLAN_AUTH_SAE || seq != 2 || status != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: Dropping peer SAE confirm");
+		return -1;
+	}
+
+	res = sae_check_confirm(&pasn->sae, data + 6, buf_len - 6);
+	if (res != WLAN_STATUS_SUCCESS) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE failed checking confirm");
+		return -1;
+	}
+
+	pasn->sae.state = SAE_ACCEPTED;
+
+	/*
+	 * TODO: Based on on IEEE P802.11az/D2.6, the PMKSA derived with
+	 * PASN/SAE should only be allowed with future PASN only. For now do not
+	 * restrict this only for PASN.
+	 */
+	wpa_auth_pmksa_add_sae(hapd->wpa_auth, sta->addr,
+			       pasn->sae.pmk, pasn->sae.pmkid);
+	return 0;
+}
+
+
+static struct wpabuf * pasn_get_sae_wd(struct hostapd_data *hapd,
+				       struct sta_info *sta)
+{
+	struct pasn_data *pasn = sta->pasn;
+	struct wpabuf *buf = NULL;
+	u8 *len_ptr;
+	size_t len;
+
+	/* Need to add the entire Authentication frame body */
+	buf = wpabuf_alloc(8 + SAE_COMMIT_MAX_LEN + 8 + SAE_CONFIRM_MAX_LEN);
+	if (!buf) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to allocate SAE buffer");
+		return NULL;
+	}
+
+	/* Need to add the entire authentication frame body for the commit */
+	len_ptr = wpabuf_put(buf, 2);
+	wpabuf_put_le16(buf, WLAN_AUTH_SAE);
+	wpabuf_put_le16(buf, 1);
+	wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
+
+	/* Write the actual commit and update the length accordingly */
+	sae_write_commit(&pasn->sae, buf, NULL, 0);
+	len = wpabuf_len(buf);
+	WPA_PUT_LE16(len_ptr, len - 2);
+
+	/* Need to add the entire Authentication frame body for the confirm */
+	len_ptr = wpabuf_put(buf, 2);
+	wpabuf_put_le16(buf, WLAN_AUTH_SAE);
+	wpabuf_put_le16(buf, 2);
+	wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
+
+	sae_write_confirm(&pasn->sae, buf);
+	WPA_PUT_LE16(len_ptr, wpabuf_len(buf) - len - 2);
+
+	pasn->sae.state = SAE_CONFIRMED;
+
+	return buf;
+}
+
+#endif /* CONFIG_SAE */
+
 
 static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
 					     struct sta_info *sta)
@@ -2307,6 +2508,10 @@ static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
 		/* no wrapped data */
 		return NULL;
 	case WPA_KEY_MGMT_SAE:
+#ifdef CONFIG_SAE
+		return pasn_get_sae_wd(hapd, sta);
+#endif /* CONFIG_SAE */
+		/* fall through */
 	case WPA_KEY_MGMT_FILS_SHA256:
 	case WPA_KEY_MGMT_FILS_SHA384:
 	case WPA_KEY_MGMT_FT_PSK:
@@ -2350,11 +2555,22 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 		pmk_len = pmksa->pmk_len;
 		os_memcpy(pmk, pmksa->pmk, pmksa->pmk_len);
 	} else {
-		/* TODO: Derive PMK based on wrapped data */
-		wpa_printf(MSG_DEBUG,
-			   "PASN: Missing implementation to derive PMK");
-
-		return -1;
+		switch (sta->pasn->akmp) {
+#ifdef CONFIG_SAE
+		case WPA_KEY_MGMT_SAE:
+			if (sta->pasn->sae.state == SAE_COMMITTED) {
+				pmk_len = PMK_LEN;
+				os_memcpy(pmk, sta->pasn->sae.pmk, PMK_LEN);
+				break;
+			}
+#endif /* CONFIG_SAE */
+			/* fall through */
+		default:
+			/* TODO: Derive PMK based on wrapped data */
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Missing PMK derivation");
+			return -1;
+		}
 	}
 
 	ret = pasn_pmk_to_ptk(pmk, pmk_len, sta->addr, hapd->own_addr,
@@ -2589,6 +2805,19 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 			status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 			goto send_resp;
 		}
+
+#ifdef CONFIG_SAE
+		if (sta->pasn->akmp == WPA_KEY_MGMT_SAE) {
+			ret = pasn_wd_handle_sae_commit(hapd, sta,
+							wrapped_data);
+			if (ret) {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: Failed processing SAE commit");
+				status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+				goto send_resp;
+			}
+		}
+#endif /* CONFIG_SAE */
 	}
 
 	sta->pasn->wrapped_data_format = pasn_params.wrapped_data_format;
@@ -2714,7 +2943,18 @@ static void handle_auth_pasn_3(struct hostapd_data *hapd, struct sta_info *sta,
 			goto fail;
 		}
 
-		/* TODO: Handle wrapped data */
+#ifdef CONFIG_SAE
+		if (sta->pasn->akmp == WPA_KEY_MGMT_SAE) {
+			ret = pasn_wd_handle_sae_confirm(hapd, sta,
+							 wrapped_data);
+			if (ret) {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: Failed processing SAE confirm");
+				wpabuf_free(wrapped_data);
+				goto fail;
+			}
+		}
+#endif /* CONFIG_SAE */
 		wpabuf_free(wrapped_data);
 	}
 

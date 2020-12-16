@@ -14,6 +14,7 @@
 #include "vlan.h"
 #include "common/wpa_common.h"
 #include "common/ieee802_11_defs.h"
+#include "common/sae.h"
 #include "crypto/sha384.h"
 
 /* STA flags */
@@ -74,6 +75,10 @@ struct pasn_data {
 	u8 hash[SHA384_MAC_LEN];
 	struct wpa_ptk ptk;
 	struct crypto_ecdh *ecdh;
+
+#ifdef CONFIG_SAE
+	struct sae_data sae;
+#endif /* CONFIG_SAE */
 };
 
 struct sta_info {
