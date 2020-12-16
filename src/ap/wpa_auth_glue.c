@@ -14,6 +14,7 @@
 #include "common/ieee802_11_defs.h"
 #include "common/sae.h"
 #include "common/wpa_ctrl.h"
+#include "common/ptksa_cache.h"
 #include "crypto/sha1.h"
 #include "eapol_auth/eapol_auth_sm.h"
 #include "eapol_auth/eapol_auth_sm_i.h"
@@ -917,6 +918,27 @@ static int hostapd_channel_info(void *ctx, struct wpa_channel_info *ci)
 }
 
 
+#ifdef CONFIG_PASN
+
+static void hostapd_store_ptksa(void *ctx, const u8 *addr,int cipher,
+				u32 life_time, const struct wpa_ptk *ptk)
+{
+	struct hostapd_data *hapd = ctx;
+
+	ptksa_cache_add(hapd->ptksa, addr, cipher, life_time, ptk);
+}
+
+
+static void hostapd_clear_ptksa(void *ctx, const u8 *addr, int cipher)
+{
+	struct hostapd_data *hapd = ctx;
+
+	ptksa_cache_flush(hapd->ptksa, addr, cipher);
+}
+
+#endif /* CONFIG_PASN */
+
+
 static int hostapd_wpa_auth_update_vlan(void *ctx, const u8 *addr, int vlan_id)
 {
 #ifndef CONFIG_NO_VLAN
@@ -1442,6 +1464,11 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 		.send_oui = hostapd_wpa_auth_send_oui,
 		.channel_info = hostapd_channel_info,
 		.update_vlan = hostapd_wpa_auth_update_vlan,
+#ifdef CONFIG_PASN
+		.store_ptksa = hostapd_store_ptksa,
+		.clear_ptksa = hostapd_clear_ptksa,
+#endif /* CONFIG_PASN */
+
 #ifdef CONFIG_OCV
 		.get_sta_tx_params = hostapd_get_sta_tx_params,
 #endif /* CONFIG_OCV */
@@ -1510,6 +1537,12 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 		return -1;
 	}
 
+	hapd->ptksa = ptksa_cache_init();
+	if (!hapd->ptksa) {
+		wpa_printf(MSG_ERROR, "Failed to allocate PTKSA cache");
+		return -1;
+	}
+
 #ifdef CONFIG_IEEE80211R_AP
 	if (!hostapd_drv_none(hapd) &&
 	    wpa_key_mgmt_ft(hapd->conf->wpa_key_mgmt)) {
@@ -1549,6 +1582,9 @@ void hostapd_reconfig_wpa(struct hostapd_data *hapd)
 void hostapd_deinit_wpa(struct hostapd_data *hapd)
 {
 	ieee80211_tkip_countermeasures_deinit(hapd);
+	ptksa_cache_deinit(hapd->ptksa);
+	hapd->ptksa = NULL;
+
 	rsn_preauth_iface_deinit(hapd);
 	if (hapd->wpa_auth) {
 		wpa_deinit(hapd->wpa_auth);

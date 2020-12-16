@@ -224,6 +224,23 @@ int wpa_auth_for_each_auth(struct wpa_authenticator *wpa_auth,
 }
 
 
+void wpa_auth_store_ptksa(struct wpa_authenticator *wpa_auth,
+			  const u8 *addr, int cipher,
+			  u32 life_time, const struct wpa_ptk *ptk)
+{
+	if (wpa_auth->cb->store_ptksa)
+		wpa_auth->cb->store_ptksa(wpa_auth->cb_ctx, addr, cipher,
+					  life_time, ptk);
+}
+
+
+void wpa_auth_remove_ptksa(struct wpa_authenticator *wpa_auth,
+			   const u8 *addr, int cipher)
+{
+	if (wpa_auth->cb->clear_ptksa)
+		wpa_auth->cb->clear_ptksa(wpa_auth->cb_ctx, addr, cipher);
+}
+
 void wpa_auth_logger(struct wpa_authenticator *wpa_auth, const u8 *addr,
 		     logger_level level, const char *txt)
 {
@@ -1739,6 +1756,9 @@ void wpa_remove_ptk(struct wpa_state_machine *sm)
 {
 	sm->PTK_valid = false;
 	os_memset(&sm->PTK, 0, sizeof(sm->PTK));
+
+	wpa_auth_remove_ptksa(sm->wpa_auth, sm->addr, sm->pairwise);
+
 	if (wpa_auth_set_key(sm->wpa_auth, 0, WPA_ALG_NONE, sm->addr, 0, NULL,
 			     0, KEY_FLAG_PAIRWISE))
 		wpa_printf(MSG_DEBUG,
@@ -2823,6 +2843,9 @@ int fils_set_tk(struct wpa_state_machine *sm)
 	}
 	sm->tk_already_set = true;
 
+	wpa_auth_store_ptksa(sm->wpa_auth, sm->addr, sm->pairwise,
+			     dot11RSNAConfigPMKLifetime, &sm->PTK);
+
 	return 0;
 }
 
@@ -3611,6 +3634,8 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 		sm->pairwise_set = true;
 
 		wpa_auth_set_ptk_rekey_timer(sm);
+		wpa_auth_store_ptksa(sm->wpa_auth, sm->addr, sm->pairwise,
+				     dot11RSNAConfigPMKLifetime, &sm->PTK);
 
 		if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt) ||
 		    sm->wpa_key_mgmt == WPA_KEY_MGMT_DPP ||

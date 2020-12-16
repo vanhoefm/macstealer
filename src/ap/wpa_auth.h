@@ -312,6 +312,9 @@ struct wpa_auth_callbacks {
 	int (*get_sta_tx_params)(void *ctx, const u8 *addr,
 				 int ap_max_chanwidth, int ap_seg1_idx,
 				 int *bandwidth, int *seg1_idx);
+	void (*store_ptksa)(void *ctx, const u8 *addr, int cipher,
+			    u32 life_time, const struct wpa_ptk *ptk);
+	void (*clear_ptksa)(void *ctx, const u8 *addr, int cipher);
 #ifdef CONFIG_IEEE80211R_AP
 	struct wpa_state_machine * (*add_sta)(void *ctx, const u8 *sta_addr);
 	int (*add_sta_ft)(void *ctx, const u8 *sta_addr);

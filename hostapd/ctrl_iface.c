@@ -37,6 +37,7 @@
 #include "common/dpp.h"
 #endif /* CONFIG_DPP */
 #include "common/wpa_ctrl.h"
+#include "common/ptksa_cache.h"
 #include "crypto/tls.h"
 #include "drivers/driver.h"
 #include "eapol_auth/eapol_auth_sm.h"
@@ -3810,6 +3811,10 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 	} else if (os_strncmp(buf, "GET_CAPABILITY ", 15) == 0) {
 		reply_len = hostapd_ctrl_iface_get_capability(
 			hapd, buf + 15, reply, reply_size);
+#ifdef CONFIG_PASN
+	} else if (os_strcmp(buf, "PTKSA_CACHE_LIST") == 0) {
+		reply_len = ptksa_cache_list(hapd->ptksa, reply, reply_size);
+#endif /* CONFIG_PASN */
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
 		reply_len = 16;

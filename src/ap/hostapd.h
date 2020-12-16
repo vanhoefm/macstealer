@@ -370,6 +370,8 @@ struct hostapd_data {
 
 	int dhcp_sock; /* UDP socket used with the DHCP server */
 
+	struct ptksa_cache *ptksa;
+
 #ifdef CONFIG_DPP
 	int dpp_init_done;
 	struct dpp_authentication *dpp_auth;
