@@ -555,6 +555,12 @@ struct wpas_pasn {
 #ifdef CONFIG_FILS
 	struct pasn_fils fils;
 #endif /* CONFIG_FILS */
+
+#ifdef CONFIG_IEEE80211R
+	u8 pmk_r1[PMK_LEN_MAX];
+	size_t pmk_r1_len;
+	u8 pmk_r1_name[WPA_PMK_NAME_LEN];
+#endif /* CONFIG_IEEE80211R */
 };
 #endif /* CONFIG_PASN */
 

@@ -569,6 +569,12 @@ static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpa_supplicant *wpa_s)
 	case WPA_KEY_MGMT_FT_PSK:
 	case WPA_KEY_MGMT_FT_IEEE8021X:
 	case WPA_KEY_MGMT_FT_IEEE8021X_SHA384:
+		/*
+		 * Wrapped data with these AKMs is optional and is only needed
+		 * for further validation of FT security parameters. For now do
+		 * not use them.
+		 */
+		return NULL;
 	default:
 		wpa_printf(MSG_ERROR,
 			   "PASN: TODO: Wrapped data for akmp=0x%x",
@@ -593,7 +599,12 @@ static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
 	case WPA_KEY_MGMT_FT_PSK:
 	case WPA_KEY_MGMT_FT_IEEE8021X:
 	case WPA_KEY_MGMT_FT_IEEE8021X_SHA384:
-		return WPA_PASN_WRAPPED_DATA_FT;
+		/*
+		 * Wrapped data with these AKMs is optional and is only needed
+		 * for further validation of FT security parameters. For now do
+		 * not use them.
+		 */
+		return WPA_PASN_WRAPPED_DATA_NO;
 	case WPA_KEY_MGMT_PASN:
 	default:
 		return WPA_PASN_WRAPPED_DATA_NO;
@@ -605,7 +616,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 {
 	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
-	struct rsn_pmksa_cache_entry *pmksa;
+	const u8 *pmkid;
 	u8 wrapped_data;
 	int ret;
 
@@ -632,21 +643,36 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 				   wpa_s->own_addr, pasn->bssid,
 				   pasn->trans_seq + 1, WLAN_STATUS_SUCCESS);
 
-	if (wrapped_data != WPA_PASN_WRAPPED_DATA_NO) {
+	pmkid = NULL;
+	if (wpa_key_mgmt_ft(pasn->akmp)) {
+		ret = wpa_pasn_ft_derive_pmk_r1(wpa_s->wpa, pasn->akmp,
+						pasn->bssid,
+						pasn->pmk_r1,
+						&pasn->pmk_r1_len,
+						pasn->pmk_r1_name);
+		if (ret) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: FT: Failed to derive keys");
+			goto fail;
+		}
+
+		pmkid = pasn->pmk_r1_name;
+	} else if (wrapped_data != WPA_PASN_WRAPPED_DATA_NO) {
+		struct rsn_pmksa_cache_entry *pmksa;
+
 		pmksa = wpa_sm_pmksa_cache_get(wpa_s->wpa, pasn->bssid,
 					       NULL, NULL, pasn->akmp);
+		if (pmksa)
+			pmkid = pmksa->pmkid;
 
 		/*
 		 * Note: Even when PMKSA is available, also add wrapped data as
 		 * it is possible that the PMKID is no longer valid at the AP.
 		 */
 		wrapped_data_buf = wpas_pasn_get_wrapped_data(wpa_s);
-	} else {
-		pmksa = NULL;
 	}
 
-	if (wpa_pasn_add_rsne(buf, pmksa ? pmksa->pmkid : NULL,
-			      pasn->akmp, pasn->cipher) < 0)
+	if (wpa_pasn_add_rsne(buf, pmkid, pasn->akmp, pasn->cipher) < 0)
 		goto fail;
 
 	if (!wrapped_data_buf)
@@ -791,6 +817,11 @@ static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 	os_memset(&pasn->fils, 0, sizeof(pasn->fils));
 #endif /* CONFIG_FILS*/
 
+#ifdef CONFIG_IEEE80211R
+	forced_memzero(pasn->pmk_r1, sizeof(pasn->pmk_r1));
+	pasn->pmk_r1_len = 0;
+	os_memset(pasn->pmk_r1_name, 0, sizeof(pasn->pmk_r1_name));
+#endif /* CONFIG_IEEE80211R */
 	pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 }
 
@@ -813,6 +844,19 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 		os_memcpy(pasn->pmk, pasn_default_pmk,
 			  sizeof(pasn_default_pmk));
 		return 0;
+	}
+
+	if (wpa_key_mgmt_ft(pasn->akmp)) {
+#ifdef CONFIG_IEEE80211R
+		wpa_printf(MSG_DEBUG, "PASN: FT: Using PMK-R1");
+		pasn->pmk_len = pasn->pmk_r1_len;
+		os_memcpy(pasn->pmk, pasn->pmk_r1, pasn->pmk_r1_len);
+		pasn->using_pmksa = true;
+		return 0;
+#else /* CONFIG_IEEE80211R */
+		wpa_printf(MSG_DEBUG, "PASN: FT: Not supported");
+		return -1;
+#endif /* CONFIG_IEEE80211R */
 	}
 
 	if (rsn_data->num_pmkid) {

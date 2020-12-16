@@ -3819,6 +3819,11 @@ void wpa_sm_drop_sa(struct wpa_sm *sm)
 	sm->pmk_r0_len = 0;
 	os_memset(sm->pmk_r1, 0, sizeof(sm->pmk_r1));
 	sm->pmk_r1_len = 0;
+#ifdef CONFIG_PASN
+	os_free(sm->pasn_r1kh);
+	sm->pasn_r1kh = NULL;
+	sm->n_pasn_r1kh = 0;
+#endif /* CONFIG_PASN */
 #endif /* CONFIG_IEEE80211R */
 }
 

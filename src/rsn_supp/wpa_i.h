@@ -14,6 +14,11 @@
 struct wpa_tdls_peer;
 struct wpa_eapol_key;
 
+struct pasn_ft_r1kh {
+	u8 bssid[ETH_ALEN];
+	u8 r1kh_id[FT_R1KH_ID_LEN];
+};
+
 /**
  * struct wpa_sm - Internal WPA state machine data
  */
@@ -152,6 +157,17 @@ struct wpa_sm {
 	u8 mdie_ft_capab; /* FT Capability and Policy from target AP MDIE */
 	u8 *assoc_resp_ies; /* MDIE and FTIE from (Re)Association Response */
 	size_t assoc_resp_ies_len;
+#ifdef CONFIG_PASN
+	/*
+	 * Currently, the WPA state machine stores the PMK-R1, PMK-R1-Name and
+	 * R1KH-ID only for the current association. As PMK-R1 is required to
+	 * perform PASN authentication with FT, store the R1KH-ID for previous
+	 * associations, which would later be used to derive the PMK-R1 as part
+	 * of the PASN authentication flow.
+	 */
+	struct pasn_ft_r1kh *pasn_r1kh;
+	unsigned int n_pasn_r1kh;
+#endif /* CONFIG_PASN */
 #endif /* CONFIG_IEEE80211R */
 
 #ifdef CONFIG_P2P

@@ -24,6 +24,15 @@
 
 #ifdef CONFIG_IEEE80211R
 
+#ifdef CONFIG_PASN
+static void wpa_ft_pasn_store_r1kh(struct wpa_sm *sm, const u8 *bssid);
+#else /* CONFIG_PASN */
+static void wpa_ft_pasn_store_r1kh(struct wpa_sm *sm, const u8 *bssid)
+{
+}
+#endif /* CONFIG_PASN */
+
+
 int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		      const struct wpa_eapol_key *key, struct wpa_ptk *ptk)
 {
@@ -56,6 +65,9 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 			      sm->r1kh_id, sm->own_addr, sm->pmk_r1,
 			      sm->pmk_r1_name) < 0)
 		return -1;
+
+	wpa_ft_pasn_store_r1kh(sm, src_addr);
+
 	return wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce, anonce,
 				 sm->own_addr, sm->bssid, sm->pmk_r1_name, ptk,
 				 ptk_name, sm->key_mgmt, sm->pairwise_cipher,
@@ -649,6 +661,9 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 	sm->pmk_r1_len = sm->pmk_r0_len;
 
 	bssid = target_ap;
+
+	wpa_ft_pasn_store_r1kh(sm, bssid);
+
 	if (wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce,
 			      anonce, sm->own_addr, bssid,
 			      sm->pmk_r1_name, &sm->ptk, ptk_name, sm->key_mgmt,
@@ -1241,5 +1256,89 @@ int wpa_ft_start_over_ds(struct wpa_sm *sm, const u8 *target_ap,
 
 	return 0;
 }
+
+
+#ifdef CONFIG_PASN
+
+static struct pasn_ft_r1kh * wpa_ft_pasn_get_r1kh(struct wpa_sm *sm,
+						  const u8 *bssid)
+{
+	size_t i;
+
+	for (i = 0; i < sm->n_pasn_r1kh; i++)
+		if (os_memcmp(sm->pasn_r1kh[i].bssid, bssid, ETH_ALEN) == 0)
+			return &sm->pasn_r1kh[i];
+
+	return NULL;
+}
+
+
+static void wpa_ft_pasn_store_r1kh(struct wpa_sm *sm, const u8 *bssid)
+{
+	struct pasn_ft_r1kh *tmp = wpa_ft_pasn_get_r1kh(sm, bssid);
+
+	if (tmp)
+		return;
+
+	tmp = os_realloc_array(sm->pasn_r1kh, sm->n_pasn_r1kh + 1,
+			       sizeof(*tmp));
+	if (!tmp) {
+		wpa_printf(MSG_DEBUG, "PASN: FT: Failed to store R1KH");
+		return;
+	}
+
+	sm->pasn_r1kh = tmp;
+	tmp = &sm->pasn_r1kh[sm->n_pasn_r1kh];
+
+	wpa_printf(MSG_DEBUG, "PASN: FT: Store R1KH for " MACSTR,
+		   MAC2STR(bssid));
+
+	os_memcpy(tmp->bssid, bssid, ETH_ALEN);
+	os_memcpy(tmp->r1kh_id, sm->r1kh_id, FT_R1KH_ID_LEN);
+
+	sm->n_pasn_r1kh++;
+}
+
+
+int wpa_pasn_ft_derive_pmk_r1(struct wpa_sm *sm, int akmp, const u8 *bssid,
+			      u8 *pmk_r1, size_t *pmk_r1_len, u8 *pmk_r1_name)
+{
+	struct pasn_ft_r1kh *r1kh_entry;
+
+	if (sm->key_mgmt != (unsigned int) akmp) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: FT: Key management mismatch: %u != %u",
+			   sm->key_mgmt, akmp);
+		return -1;
+	}
+
+	r1kh_entry = wpa_ft_pasn_get_r1kh(sm, bssid);
+	if (!r1kh_entry) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: FT: Cannot find R1KH-ID for " MACSTR,
+			   MAC2STR(bssid));
+		return -1;
+	}
+
+	/*
+	 * Note: PMK R0 etc. were already derived and are maintained by the
+	 * state machine, and as the same key hierarchy is used, there is no
+	 * need to derive them again, so only derive PMK R1 etc.
+	 */
+	if (wpa_derive_pmk_r1(sm->pmk_r0, sm->pmk_r0_len, sm->pmk_r0_name,
+			      r1kh_entry->r1kh_id, sm->own_addr, pmk_r1,
+			      pmk_r1_name) < 0)
+		return -1;
+
+	*pmk_r1_len = sm->pmk_r0_len;
+
+	wpa_hexdump_key(MSG_DEBUG, "PASN: FT: PMK-R1", pmk_r1, sm->pmk_r0_len);
+	wpa_hexdump(MSG_DEBUG, "PASN: FT: PMKR1Name", pmk_r1_name,
+		    WPA_PMK_NAME_LEN);
+
+	return 0;
+}
+
+#endif /* CONFIG_PASN */
 
 #endif /* CONFIG_IEEE80211R */
