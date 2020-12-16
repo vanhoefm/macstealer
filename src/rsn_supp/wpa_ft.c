@@ -58,7 +58,8 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		return -1;
 	return wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce, anonce,
 				 sm->own_addr, sm->bssid, sm->pmk_r1_name, ptk,
-				 ptk_name, sm->key_mgmt, sm->pairwise_cipher);
+				 ptk_name, sm->key_mgmt, sm->pairwise_cipher,
+				 sm->kdk ? WPA_KDK_MAX_LEN : 0);
 }
 
 
@@ -649,7 +650,8 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 	if (wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce,
 			      anonce, sm->own_addr, bssid,
 			      sm->pmk_r1_name, &sm->ptk, ptk_name, sm->key_mgmt,
-			      sm->pairwise_cipher) < 0)
+			      sm->pairwise_cipher,
+			      sm->kdk ? WPA_KDK_MAX_LEN : 0) < 0)
 		return -1;
 
 	if (wpa_key_mgmt_fils(sm->key_mgmt)) {

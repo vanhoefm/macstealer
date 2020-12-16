@@ -120,7 +120,7 @@ static int try_pmk(struct wlantest *wt, struct wlantest_bss *bss,
 				      sta->snonce, sta->anonce, sta->addr,
 				      bss->bssid, sta->pmk_r1_name,
 				      &ptk, ptk_name, sta->key_mgmt,
-				      sta->pairwise_cipher) < 0 ||
+				      sta->pairwise_cipher, 0) < 0 ||
 		    check_mic(ptk.kck, ptk.kck_len, sta->key_mgmt, ver, data,
 			      len) < 0)
 			return -1;

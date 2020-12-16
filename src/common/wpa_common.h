@@ -427,7 +427,8 @@ int wpa_derive_pmk_r1(const u8 *pmk_r0, size_t pmk_r0_len,
 int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len, const u8 *snonce,
 		      const u8 *anonce, const u8 *sta_addr, const u8 *bssid,
 		      const u8 *pmk_r1_name,
-		      struct wpa_ptk *ptk, u8 *ptk_name, int akmp, int cipher);
+		      struct wpa_ptk *ptk, u8 *ptk_name, int akmp, int cipher,
+		      size_t kdk_len);
 #endif /* CONFIG_IEEE80211R */
 
 struct wpa_ie_data {

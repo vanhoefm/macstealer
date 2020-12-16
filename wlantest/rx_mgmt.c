@@ -290,7 +290,7 @@ static void process_ft_auth(struct wlantest *wt, struct wlantest_bss *bss,
 	    wpa_pmk_r1_to_ptk(sta->pmk_r1, sta->pmk_r1_len, parse.fte_snonce,
 			      parse.fte_anonce, sta->addr, bss->bssid,
 			      sta->pmk_r1_name, &ptk, ptk_name, sta->key_mgmt,
-			      sta->pairwise_cipher) < 0)
+			      sta->pairwise_cipher, 0) < 0)
 		return;
 
 	add_note(wt, MSG_DEBUG, "Derived new PTK");
@@ -1779,7 +1779,8 @@ static void rx_mgmt_action_ft_response(struct wlantest *wt,
 	    wpa_pmk_r1_to_ptk(sta->pmk_r1, sta->pmk_r1_len, parse.fte_snonce,
 			      parse.fte_anonce, new_sta->addr, bss->bssid,
 			      sta->pmk_r1_name, &ptk, ptk_name,
-			      new_sta->key_mgmt, new_sta->pairwise_cipher) < 0)
+			      new_sta->key_mgmt, new_sta->pairwise_cipher,
+			      0) < 0)
 		return;
 
 	add_note(wt, MSG_DEBUG, "Derived new PTK");

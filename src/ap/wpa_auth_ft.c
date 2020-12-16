@@ -2147,7 +2147,8 @@ int wpa_auth_derive_ptk_ft(struct wpa_state_machine *sm, struct wpa_ptk *ptk)
 
 	return wpa_pmk_r1_to_ptk(pmk_r1, pmk_r1_len, sm->SNonce, sm->ANonce,
 				 sm->addr, sm->wpa_auth->addr, sm->pmk_r1_name,
-				 ptk, ptk_name, sm->wpa_key_mgmt, sm->pairwise);
+				 ptk, ptk_name, sm->wpa_key_mgmt, sm->pairwise,
+				 0);
 }
 
 
@@ -3198,7 +3199,9 @@ pmk_r1_derived:
 	if (wpa_pmk_r1_to_ptk(pmk_r1, pmk_r1_len, sm->SNonce, sm->ANonce,
 			      sm->addr, sm->wpa_auth->addr, pmk_r1_name,
 			      &sm->PTK, ptk_name, sm->wpa_key_mgmt,
-			      pairwise) < 0)
+			      pairwise,
+			      sm->wpa_auth->conf.kdk ?
+			      WPA_KDK_MAX_LEN : 0) < 0)
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 
 	sm->pairwise = pairwise;

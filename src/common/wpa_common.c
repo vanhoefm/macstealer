@@ -1750,15 +1750,24 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
 		      const u8 *snonce, const u8 *anonce,
 		      const u8 *sta_addr, const u8 *bssid,
 		      const u8 *pmk_r1_name,
-		      struct wpa_ptk *ptk, u8 *ptk_name, int akmp, int cipher)
+		      struct wpa_ptk *ptk, u8 *ptk_name, int akmp, int cipher,
+		      size_t kdk_len)
 {
 	u8 buf[2 * WPA_NONCE_LEN + 2 * ETH_ALEN];
 	u8 *pos, hash[32];
 	const u8 *addr[6];
 	size_t len[6];
-	u8 tmp[2 * WPA_KCK_MAX_LEN + 2 * WPA_KEK_MAX_LEN + WPA_TK_MAX_LEN];
+	u8 tmp[2 * WPA_KCK_MAX_LEN + 2 * WPA_KEK_MAX_LEN + WPA_TK_MAX_LEN +
+	       WPA_KDK_MAX_LEN];
 	size_t ptk_len, offset;
 	int use_sha384 = wpa_key_mgmt_sha384(akmp);
+
+	if (kdk_len > WPA_KDK_MAX_LEN) {
+		wpa_printf(MSG_ERROR,
+			   "FT: KDK len=%zu exceeds max supported len",
+			   kdk_len);
+		return -1;
+	}
 
 	/*
 	 * PTK = KDF-PTKLen(PMK-R1, "FT-PTK", SNonce || ANonce ||
@@ -1786,8 +1795,9 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
 	ptk->kek_len = wpa_kek_len(akmp, PMK_LEN);
 	ptk->kek2_len = wpa_kek2_len(akmp);
 	ptk->tk_len = wpa_cipher_key_len(cipher);
+	ptk->kdk_len = kdk_len;
 	ptk_len = ptk->kck_len + ptk->kek_len + ptk->tk_len +
-		ptk->kck2_len + ptk->kek2_len;
+		ptk->kck2_len + ptk->kek2_len + ptk->kdk_len;
 
 #ifdef CONFIG_SHA384
 	if (use_sha384) {
@@ -1846,6 +1856,8 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
 	os_memcpy(ptk->kck2, tmp + offset, ptk->kck2_len);
 	offset += ptk->kck2_len;
 	os_memcpy(ptk->kek2, tmp + offset, ptk->kek2_len);
+	offset += ptk->kek2_len;
+	os_memcpy(ptk->kdk, tmp + offset, ptk->kdk_len);
 
 	wpa_hexdump_key(MSG_DEBUG, "FT: KCK", ptk->kck, ptk->kck_len);
 	wpa_hexdump_key(MSG_DEBUG, "FT: KEK", ptk->kek, ptk->kek_len);
@@ -1855,6 +1867,9 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
 	if (ptk->kek2_len)
 		wpa_hexdump_key(MSG_DEBUG, "FT: KEK2",
 				ptk->kek2, ptk->kek2_len);
+	if (ptk->kdk_len)
+		wpa_hexdump_key(MSG_DEBUG, "FT: KDK", ptk->kdk, ptk->kdk_len);
+
 	wpa_hexdump_key(MSG_DEBUG, "FT: TK", ptk->tk, ptk->tk_len);
 	wpa_hexdump(MSG_DEBUG, "FT: PTKName", ptk_name, WPA_PMK_NAME_LEN);
 

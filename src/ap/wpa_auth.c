@@ -2272,7 +2272,9 @@ static int wpa_derive_ptk(struct wpa_state_machine *sm, const u8 *snonce,
 						 sm->pmk_r1_name,
 						 ptk, ptk_name,
 						 sm->wpa_key_mgmt,
-						 sm->pairwise);
+						 sm->pairwise,
+						 sm->wpa_auth->conf.kdk ?
+						 WPA_KDK_MAX_LEN : 0);
 		}
 		return wpa_auth_derive_ptk_ft(sm, ptk);
 	}
