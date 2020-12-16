@@ -1327,8 +1327,8 @@ u8 pasn_mic_len(int akmp, int cipher)
  * @addr2: For the 2nd PASN frame the BSSID; for the 3rd frame the supplicant
  *	address
  * @data: For calculating the MIC for the 2nd PASN frame, this should hold the
- *	Beacon frame RSNE. For calculating the MIC for the 3rd PASN frame, this
- *	should hold the hash of the body of the PASN 1st frame.
+ *	Beacon frame RSNE + RSNXE. For calculating the MIC for the 3rd PASN
+ *	frame, this should hold the hash of the body of the PASN 1st frame.
  * @data_len: The length of data
  * @frame: The body of the PASN frame including the MIC element with the octets
  *	in the MIC field of the MIC element set to 0.
@@ -3690,6 +3690,26 @@ int wpa_pasn_parse_parameter_ie(const u8 *data, u8 len, bool from_ap,
 	}
 
 	return 0;
+}
+
+
+void wpa_pasn_add_rsnxe(struct wpabuf *buf, u16 capab)
+{
+	size_t flen;
+
+	flen = (capab & 0xff00) ? 2 : 1;
+	if (!capab)
+		return; /* no supported extended RSN capabilities */
+	if (wpabuf_tailroom(buf) < 2 + flen)
+		return;
+	capab |= flen - 1; /* bit 0-3 = Field length (n - 1) */
+
+	wpabuf_put_u8(buf, WLAN_EID_RSNX);
+	wpabuf_put_u8(buf, flen);
+	wpabuf_put_u8(buf, capab & 0x00ff);
+	capab >>= 8;
+	if (capab)
+		wpabuf_put_u8(buf, capab);
 }
 
 #endif /* CONFIG_PASN */

@@ -2877,9 +2877,10 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 {
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
 	u8 mic[WPA_PASN_MAX_MIC_LEN];
-	u8 mic_len, data_len;
+	u8 mic_len, frame_len, data_len;
 	u8 *ptr;
-	const u8 *data, *rsn_ie;
+	const u8 *frame, *data, *rsn_ie, *rsnxe_ie;
+	u8 *data_buf = NULL;
 	size_t rsn_ie_len;
 	int ret;
 
@@ -2926,6 +2927,11 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 	wpabuf_free(pubkey);
 	pubkey = NULL;
 
+	/* Add RSNXE if needed */
+	rsnxe_ie = hostapd_wpa_ie(hapd, WLAN_EID_RSNX);
+	if (rsnxe_ie)
+		wpabuf_put_data(buf, rsnxe_ie, 2 + rsnxe_ie[1]);
+
 	/* Add the mic */
 	mic_len = pasn_mic_len(sta->pasn->akmp, sta->pasn->cipher);
 	wpabuf_put_u8(buf, WLAN_EID_MIC);
@@ -2934,8 +2940,8 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 
 	os_memset(ptr, 0, mic_len);
 
-	data = wpabuf_head_u8(buf) + IEEE80211_HDRLEN;
-	data_len = wpabuf_len(buf) - IEEE80211_HDRLEN;
+	frame = wpabuf_head_u8(buf) + IEEE80211_HDRLEN;
+	frame_len = wpabuf_len(buf) - IEEE80211_HDRLEN;
 
 	rsn_ie = wpa_auth_get_wpa_ie(hapd->wpa_auth, &rsn_ie_len);
 	if (!rsn_ie || !rsn_ie_len)
@@ -2946,9 +2952,24 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 	 * MDE, etc. Thus, do not use the returned length but instead use the
 	 * length specified in the IE header.
 	 */
+	data_len = rsn_ie[1] + 2;
+	if (rsnxe_ie) {
+		data_buf = os_zalloc(rsn_ie[1] + 2 + rsnxe_ie[1] + 2);
+		if (!data_buf)
+			goto fail;
+
+		os_memcpy(data_buf, rsn_ie, rsn_ie[1] + 2);
+		os_memcpy(data_buf + rsn_ie[1] + 2, rsnxe_ie, rsnxe_ie[1] + 2);
+		data_len += rsnxe_ie[1] + 2;
+		data = data_buf;
+	} else {
+		data = rsn_ie;
+	}
+
 	ret = pasn_mic(sta->pasn->ptk.kck, sta->pasn->akmp, sta->pasn->cipher,
-		       hapd->own_addr, sta->addr, rsn_ie, rsn_ie[1] + 2,
-		       data, data_len, mic);
+		       hapd->own_addr, sta->addr, data, data_len,
+		       frame, frame_len, mic);
+	os_free(data_buf);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Frame 3: Failed MIC calculation");
 		goto fail;

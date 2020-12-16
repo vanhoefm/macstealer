@@ -21,6 +21,7 @@
 #define WPA_GTK_MAX_LEN 32
 #define WPA_PASN_PMK_LEN 32
 #define WPA_PASN_MAX_MIC_LEN 24
+#define WPA_MAX_RSNXE_LEN 4
 
 #define OWE_DH_GROUP 19
 
@@ -663,5 +664,7 @@ int wpa_pasn_add_wrapped_data(struct wpabuf *buf,
 int wpa_pasn_validate_rsne(const struct wpa_ie_data *data);
 int wpa_pasn_parse_parameter_ie(const u8 *data, u8 len, bool from_ap,
 				struct wpa_pasn_params_data *pasn_params);
+
+void wpa_pasn_add_rsnxe(struct wpabuf *buf, u16 capab);
 
 #endif /* WPA_COMMON_H */

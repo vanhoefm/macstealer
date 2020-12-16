@@ -266,7 +266,7 @@ static u8 * hostapd_eid_country(struct hostapd_data *hapd, u8 *eid,
 }
 
 
-static const u8 * hostapd_wpa_ie(struct hostapd_data *hapd, u8 eid)
+const u8 * hostapd_wpa_ie(struct hostapd_data *hapd, u8 eid)
 {
 	const u8 *ies;
 	size_t ies_len;

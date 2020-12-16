@@ -619,6 +619,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 	const u8 *pmkid;
 	u8 wrapped_data;
 	int ret;
+	u16 capab;
 
 	wpa_printf(MSG_DEBUG, "PASN: Building frame 1");
 
@@ -683,6 +684,17 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 
 	if (wpa_pasn_add_wrapped_data(buf, wrapped_data_buf) < 0)
 		goto fail;
+
+	/* Add own RNSXE */
+	/* TODO: How to handle protected TWT and SAE H2E? */
+	capab = 0;
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF)
+		capab |= WLAN_RSNX_CAPAB_SECURE_LTF;
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT)
+		capab |= WLAN_RSNX_CAPAB_SECURE_RTT;
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG)
+		capab |= WLAN_RSNX_CAPAB_PROT_RANGE_NEG;
+	wpa_pasn_add_rsnxe(buf, capab);
 
 	ret = pasn_auth_frame_hash(pasn->akmp, pasn->cipher,
 				   wpabuf_head_u8(buf) + IEEE80211_HDRLEN,
@@ -806,8 +818,8 @@ static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
 	forced_memzero(&pasn->hash, sizeof(pasn->hash));
 
-	wpabuf_free(pasn->beacon_rsne);
-	pasn->beacon_rsne = NULL;
+	wpabuf_free(pasn->beacon_rsne_rsnxe);
+	pasn->beacon_rsne_rsnxe = NULL;
 
 #ifdef CONFIG_SAE
 	sae_clear_data(&pasn->sae);
@@ -926,6 +938,7 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 			   int akmp, int cipher, u16 group, int freq,
 			   const u8 *beacon_rsne, u8 beacon_rsne_len,
+			   const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 			   int network_id)
 {
 	struct wpas_pasn *pasn = &wpa_s->pasn;
@@ -980,11 +993,17 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 		goto fail;
 	}
 
-	pasn->beacon_rsne = wpabuf_alloc_copy(beacon_rsne, beacon_rsne_len);
-	if (!pasn->beacon_rsne) {
-		wpa_printf(MSG_DEBUG, "PASN: Failed storing beacon RSNE");
+	pasn->beacon_rsne_rsnxe = wpabuf_alloc(beacon_rsne_len +
+					       beacon_rsnxe_len);
+	if (!pasn->beacon_rsne_rsnxe) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed storing beacon RSNE/RSNXE");
 		goto fail;
 	}
+
+	wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsne, beacon_rsne_len);
+	if (beacon_rsnxe && beacon_rsnxe_len)
+		wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsnxe,
+				beacon_rsnxe_len);
 
 	pasn->akmp = akmp;
 	pasn->cipher = cipher;
@@ -1068,7 +1087,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	struct wpa_supplicant *wpa_s = work->wpa_s;
 	struct wpa_pasn_auth_work *awork = work->ctx;
 	struct wpa_bss *bss;
-	const u8 *rsne;
+	const u8 *rsne, *rsnxe;
 	int ret;
 
 	wpa_printf(MSG_DEBUG, "PASN: auth_start_cb: deinit=%d", deinit);
@@ -1101,8 +1120,11 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 		goto fail;
 	}
 
+	rsnxe = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
+
 	ret = wpas_pasn_start(wpa_s, awork->bssid, awork->akmp, awork->cipher,
 			      awork->group, bss->freq, rsne, *(rsne + 1) + 2,
+			      rsnxe, rsnxe ? *(rsnxe + 1) + 2 : 0,
 			      awork->network_id);
 	if (ret) {
 		wpa_printf(MSG_DEBUG,
@@ -1366,8 +1388,8 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 	/* Verify the MIC */
 	ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
 		       pasn->bssid, wpa_s->own_addr,
-		       wpabuf_head(pasn->beacon_rsne),
-		       wpabuf_len(pasn->beacon_rsne),
+		       wpabuf_head(pasn->beacon_rsne_rsnxe),
+		       wpabuf_len(pasn->beacon_rsne_rsnxe),
 		       (u8 *) &mgmt->u.auth,
 		       len - offsetof(struct ieee80211_mgmt, u.auth),
 		       out_mic);

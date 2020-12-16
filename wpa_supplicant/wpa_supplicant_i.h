@@ -542,7 +542,7 @@ struct wpas_pasn {
 
 	u8 hash[SHA384_MAC_LEN];
 
-	struct wpabuf *beacon_rsne;
+	struct wpabuf *beacon_rsne_rsnxe;
 	struct wpa_ptk ptk;
 	struct crypto_ecdh *ecdh;
 
