@@ -620,3 +620,9 @@ CONFIG_DPP=y
 # support for this by default, but that functionality is subject to be removed
 # in the future.
 #CONFIG_NO_TKIP=y
+
+# Pre-Association Security Negotiation (PASN)
+# Experimental implementation based on IEEE P802.11z/D2.6 and the protocol
+# design is still subject to change. As such, this should not yet be enabled in
+# production use.
+#CONFIG_PASN=y

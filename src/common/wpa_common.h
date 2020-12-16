@@ -219,6 +219,8 @@ struct wpa_eapol_key {
 #define WPA_KDK_MAX_LEN 32
 #define FILS_ICK_MAX_LEN 48
 #define FILS_FT_MAX_LEN 48
+#define WPA_PASN_KCK_LEN 32
+#define WPA_PASN_MIC_MAX_LEN 24
 
 /**
  * struct wpa_ptk - WPA Pairwise Transient Key
@@ -616,5 +618,21 @@ int wpa_use_akm_defined(int akmp);
 int wpa_use_cmac(int akmp);
 int wpa_use_aes_key_wrap(int akmp);
 int fils_domain_name_hash(const char *domain, u8 *hash);
+
+int pasn_pmk_to_ptk(const u8 *pmk, size_t pmk_len,
+		    const u8 *spa, const u8 *bssid,
+		    const u8 *dhss, size_t dhss_len,
+		    struct wpa_ptk *ptk, int akmp, int cipher,
+		    size_t kdk_len);
+
+u8 pasn_mic_len(int akmp, int cipher);
+
+int pasn_mic(const u8 *kck, int akmp, int cipher,
+	     const u8 *addr1, const u8 *addr2,
+	     const u8 *data, size_t data_len,
+	     const u8 *frame, size_t frame_len, u8 *mic);
+
+int pasn_auth_frame_hash(int akmp, int cipher, const u8 *data, size_t len,
+			 u8 *hash);
 
 #endif /* WPA_COMMON_H */
