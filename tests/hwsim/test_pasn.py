@@ -435,3 +435,104 @@ def test_pasn_sae_while_connected_diff_channel(dev, apdev):
                        scan_freq="2412", only_add_network=True)
 
         check_pasn_akmp_cipher(wpas, hapd, "SAE", "CCMP", nid="1")
+
+def pasn_fils_setup(wpas, apdev, params, key_mgmt):
+    check_fils_capa(wpas)
+    check_erp_capa(wpas)
+
+    start_erp_as(msk_dump=os.path.join(params['logdir'], "msk.lst"))
+
+    bssid = apdev[0]['bssid']
+    params = hostapd.wpa2_eap_params(ssid="fils")
+    params['wpa_key_mgmt'] = key_mgmt + " PASN"
+    params['auth_server_port'] = "18128"
+    params['erp_domain'] = 'example.com'
+    params['fils_realm'] = 'example.com'
+    params['disable_pmksa_caching'] = '1'
+    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+
+    id = wpas.connect("fils", key_mgmt=key_mgmt,
+                      eap="PSK", identity="psk.user@example.com",
+                      password_hex="0123456789abcdef0123456789abcdef",
+                      erp="1", scan_freq="2412")
+
+    wpas.request("DISCONNECT")
+    wpas.wait_disconnected()
+    wpas.dump_monitor()
+
+    if "FAIL" in wpas.request("PMKSA_FLUSH"):
+        raise Exception("PMKSA_FLUSH failed")
+
+    return hapd
+
+def check_pasn_fils(dev, apdev, params, key_mgmt):
+    check_pasn_capab(dev[0])
+
+    hapd = pasn_fils_setup(dev[0], apdev, params, key_mgmt);
+    check_pasn_akmp_cipher(dev[0], hapd, key_mgmt, "CCMP", nid="0")
+
+@remote_compatible
+def test_pasn_fils_sha256(dev, apdev, params):
+    """PASN FILS authentication using SHA-256"""
+    check_pasn_fils(dev, apdev, params, "FILS-SHA256")
+
+@remote_compatible
+def test_pasn_fils_sha384(dev, apdev, params):
+    """PASN FILS authentication using SHA-384"""
+    check_pasn_fils(dev, apdev, params, "FILS-SHA384")
+
+def check_pasn_fils_connected_same_channel(dev, apdev, params, key_mgmt):
+    check_pasn_capab(dev[0])
+
+    hapd = pasn_fils_setup(dev[0], apdev, params, key_mgmt);
+
+    # Connect to another AP on the same channel
+    hapd1 = hostapd.add_ap(apdev[1], {"ssid": "open"})
+    dev[0].connect("open", key_mgmt="NONE", scan_freq="2412",
+                   bg_scan_period="0")
+
+    hwsim_utils.test_connectivity(dev[0], hapd1)
+
+    # And perform the PASN authentication with FILS
+    check_pasn_akmp_cipher(dev[0], hapd, key_mgmt, "CCMP", nid="0")
+
+@remote_compatible
+def test_pasn_fils_sha256_connected_same_channel(dev, apdev, params):
+    """PASN FILS authentication using SHA-256 while connected same channel"""
+    check_pasn_fils_connected_same_channel(dev, apdev, params, "FILS-SHA256")
+
+@remote_compatible
+def test_pasn_fils_sha384_connected_same_channel(dev, apdev, params):
+    """PASN FILS authentication using SHA-384 while connected same channel"""
+    check_pasn_fils_connected_same_channel(dev, apdev, params, "FILS-SHA384")
+
+def check_pasn_fils_connected_diff_channel(dev, apdev, params, key_mgmt):
+    check_pasn_capab(dev[0])
+
+    with HWSimRadio(n_channels=2) as (radio, iface):
+        wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
+        wpas.interface_add(iface)
+        if wpas.get_mcc() < 2:
+           raise Exception("New radio does not support MCC")
+
+        hapd = pasn_fils_setup(wpas, apdev, params, key_mgmt);
+
+        # Connect to another AP on a different channel
+        hapd1 = hostapd.add_ap(apdev[1], {"ssid": "open", "channel" : "6"})
+        wpas.connect("open", key_mgmt="NONE", scan_freq="2437",
+                bg_scan_period="0")
+
+        hwsim_utils.test_connectivity(wpas, hapd1)
+
+        # And perform the PASN authentication with FILS
+        check_pasn_akmp_cipher(wpas, hapd, key_mgmt, "CCMP", nid="0")
+
+@remote_compatible
+def test_pasn_fils_sha256_connected_diff_channel(dev, apdev, params):
+    """PASN FILS authentication using SHA-256 while connected diff channel"""
+    check_pasn_fils_connected_diff_channel(dev, apdev, params, "FILS-SHA256")
+
+@remote_compatible
+def test_pasn_fils_sha384_connected_diff_channel(dev, apdev, params):
+    """PASN FILS authentication using SHA-384 while connected diff channel"""
+    check_pasn_fils_connected_diff_channel(dev, apdev, params, "FILS-SHA384")
