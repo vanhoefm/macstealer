@@ -262,6 +262,12 @@ struct wpa_auth_config {
 #ifdef CONFIG_DPP2
 	int dpp_pfs;
 #endif /* CONFIG_DPP2 */
+
+	/*
+	 * If set Key Derivation Key should be derived as part of PMK to
+	 * PTK derivation.
+	 */
+	bool kdk;
 };
 
 typedef enum {

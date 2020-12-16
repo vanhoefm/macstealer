@@ -862,6 +862,16 @@ struct hostapd_bss_config {
 	 */
 	u8 mka_psk_set;
 #endif /* CONFIG_MACSEC */
+
+#ifdef CONFIG_PASN
+#ifdef CONFIG_TESTING_OPTIONS
+	/*
+	 * Normally, KDK should be derived if and only if both sides support
+	 * secure LTF. Allow forcing KDK derivation for testing purposes.
+	 */
+	int force_kdk_derivation;
+#endif /* CONFIG_TESTING_OPTIONS */
+#endif /* CONFIG_PASN */
 };
 
 /**

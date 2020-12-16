@@ -606,7 +606,8 @@ static int wpa_derive_ptk(struct wpa_sm *sm, const unsigned char *src_addr,
 	return wpa_pmk_to_ptk(sm->pmk, sm->pmk_len, "Pairwise key expansion",
 			      sm->own_addr, sm->bssid, sm->snonce,
 			      key->key_nonce, ptk, akmp,
-			      sm->pairwise_cipher, z, z_len);
+			      sm->pairwise_cipher, z, z_len,
+			      sm->kdk ? WPA_KDK_MAX_LEN : 0);
 }
 
 
@@ -3184,6 +3185,7 @@ void wpa_sm_set_config(struct wpa_sm *sm, struct rsn_supp_config *config)
 		sm->p2p = config->p2p;
 		sm->wpa_rsc_relaxation = config->wpa_rsc_relaxation;
 		sm->owe_ptk_workaround = config->owe_ptk_workaround;
+		sm->kdk = config->kdk;
 #ifdef CONFIG_FILS
 		if (config->fils_cache_id) {
 			sm->fils_cache_id_set = 1;
@@ -3206,6 +3208,7 @@ void wpa_sm_set_config(struct wpa_sm *sm, struct rsn_supp_config *config)
 		sm->wpa_rsc_relaxation = 0;
 		sm->owe_ptk_workaround = 0;
 		sm->beacon_prot = 0;
+		sm->kdk = false;
 	}
 }
 

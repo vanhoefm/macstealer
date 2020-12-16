@@ -216,6 +216,7 @@ struct wpa_eapol_key {
 #define WPA_KCK_MAX_LEN 32
 #define WPA_KEK_MAX_LEN 64
 #define WPA_TK_MAX_LEN 32
+#define WPA_KDK_MAX_LEN 32
 #define FILS_ICK_MAX_LEN 48
 #define FILS_FT_MAX_LEN 48
 
@@ -229,11 +230,13 @@ struct wpa_ptk {
 	u8 tk[WPA_TK_MAX_LEN]; /* Temporal Key (TK) */
 	u8 kck2[WPA_KCK_MAX_LEN]; /* FT reasoc Key Confirmation Key (KCK2) */
 	u8 kek2[WPA_KEK_MAX_LEN]; /* FT reassoc Key Encryption Key (KEK2) */
+	u8 kdk[WPA_KDK_MAX_LEN]; /* Key Derivation Key */
 	size_t kck_len;
 	size_t kek_len;
 	size_t tk_len;
 	size_t kck2_len;
 	size_t kek2_len;
+	size_t kdk_len;
 	int installed; /* 1 if key has already been installed to driver */
 };
 
@@ -383,7 +386,7 @@ int wpa_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const char *label,
 		   const u8 *addr1, const u8 *addr2,
 		   const u8 *nonce1, const u8 *nonce2,
 		   struct wpa_ptk *ptk, int akmp, int cipher,
-		   const u8 *z, size_t z_len);
+		   const u8 *z, size_t z_len, size_t kdk_len);
 int fils_rmsk_to_pmk(int akmp, const u8 *rmsk, size_t rmsk_len,
 		     const u8 *snonce, const u8 *anonce, const u8 *dh_ss,
 		     size_t dh_ss_len, u8 *pmk, size_t *pmk_len);

@@ -73,6 +73,12 @@ struct wpa_sm {
 			     * to be used */
 	int keyidx_active; /* Key ID for the active TK */
 
+	/*
+	 * If set Key Derivation Key should be derived as part of PMK to
+	 * PTK derivation.
+	 */
+	bool kdk;
+
 	u8 own_addr[ETH_ALEN];
 	const char *ifname;
 	const char *bridge_ifname;

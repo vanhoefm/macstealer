@@ -1451,5 +1451,10 @@ void wpa_supplicant_rsn_supp_set_config(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_FILS */
 		conf.beacon_prot = ssid->beacon_prot;
 	}
+#ifdef CONFIG_PASN
+#ifdef CONFIG_TESTING_OPTIONS
+	conf.kdk = wpa_s->conf->force_kdk_derivation;
+#endif /* CONFIG_TESTING_OPTIONS */
+#endif /* CONFIG_PASN*/
 	wpa_sm_set_config(wpa_s->wpa, ssid ? &conf : NULL);
 }

@@ -333,6 +333,7 @@ int wpa_eapol_key_mic(const u8 *key, size_t key_len, int akmp, int ver,
  * @ptk: Buffer for pairwise transient key
  * @akmp: Negotiated AKM
  * @cipher: Negotiated pairwise cipher
+ * @kdk_len: The length in octets that should be derived for KDK
  * Returns: 0 on success, -1 on failure
  *
  * IEEE Std 802.11i-2004 - 8.5.1.2 Pairwise key hierarchy
@@ -348,12 +349,13 @@ int wpa_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const char *label,
 		   const u8 *addr1, const u8 *addr2,
 		   const u8 *nonce1, const u8 *nonce2,
 		   struct wpa_ptk *ptk, int akmp, int cipher,
-		   const u8 *z, size_t z_len)
+		   const u8 *z, size_t z_len, size_t kdk_len)
 {
 #define MAX_Z_LEN 66 /* with NIST P-521 */
 	u8 data[2 * ETH_ALEN + 2 * WPA_NONCE_LEN + MAX_Z_LEN];
 	size_t data_len = 2 * ETH_ALEN + 2 * WPA_NONCE_LEN;
-	u8 tmp[WPA_KCK_MAX_LEN + WPA_KEK_MAX_LEN + WPA_TK_MAX_LEN];
+	u8 tmp[WPA_KCK_MAX_LEN + WPA_KEK_MAX_LEN + WPA_TK_MAX_LEN +
+		WPA_KDK_MAX_LEN];
 	size_t ptk_len;
 #ifdef CONFIG_OWE
 	int owe_ptk_workaround = 0;
@@ -395,16 +397,24 @@ int wpa_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const char *label,
 		data_len += z_len;
 	}
 
+	if (kdk_len > WPA_KDK_MAX_LEN) {
+		wpa_printf(MSG_ERROR,
+			   "WPA: KDK len=%zu exceeds max supported len",
+			   kdk_len);
+		return -1;
+	}
+
 	ptk->kck_len = wpa_kck_len(akmp, pmk_len);
 	ptk->kek_len = wpa_kek_len(akmp, pmk_len);
 	ptk->tk_len = wpa_cipher_key_len(cipher);
+	ptk->kdk_len = kdk_len;
 	if (ptk->tk_len == 0) {
 		wpa_printf(MSG_ERROR,
 			   "WPA: Unsupported cipher (0x%x) used in PTK derivation",
 			   cipher);
 		return -1;
 	}
-	ptk_len = ptk->kck_len + ptk->kek_len + ptk->tk_len;
+	ptk_len = ptk->kck_len + ptk->kek_len + ptk->tk_len + ptk->kdk_len;
 
 	if (wpa_key_mgmt_sha384(akmp)) {
 #if defined(CONFIG_SUITEB192) || defined(CONFIG_FILS)
@@ -487,6 +497,12 @@ int wpa_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const char *label,
 
 	os_memcpy(ptk->tk, tmp + ptk->kck_len + ptk->kek_len, ptk->tk_len);
 	wpa_hexdump_key(MSG_DEBUG, "WPA: TK", ptk->tk, ptk->tk_len);
+
+	if (kdk_len) {
+		os_memcpy(ptk->kdk, tmp + ptk->kck_len + ptk->kek_len +
+			  ptk->tk_len, ptk->kdk_len);
+		wpa_hexdump_key(MSG_DEBUG, "WPA: KDK", ptk->kdk, ptk->kdk_len);
+	}
 
 	ptk->kek2_len = 0;
 	ptk->kck2_len = 0;
