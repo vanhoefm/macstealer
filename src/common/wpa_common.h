@@ -19,6 +19,8 @@
 #define WPA_KEY_RSC_LEN 8
 #define WPA_GMK_LEN 32
 #define WPA_GTK_MAX_LEN 32
+#define WPA_PASN_PMK_LEN 32
+#define WPA_PASN_MAX_MIC_LEN 24
 
 #define OWE_DH_GROUP 19
 
@@ -78,6 +80,9 @@ WPA_CIPHER_BIP_CMAC_256)
 #define RSN_AUTH_KEY_MGMT_FT_FILS_SHA256 RSN_SELECTOR(0x00, 0x0f, 0xac, 16)
 #define RSN_AUTH_KEY_MGMT_FT_FILS_SHA384 RSN_SELECTOR(0x00, 0x0f, 0xac, 17)
 #define RSN_AUTH_KEY_MGMT_OWE RSN_SELECTOR(0x00, 0x0f, 0xac, 18)
+
+#define RSN_AUTH_KEY_MGMT_PASN RSN_SELECTOR(0x00, 0x0f, 0xac, 21)
+
 #define RSN_AUTH_KEY_MGMT_CCKM RSN_SELECTOR(0x00, 0x40, 0x96, 0x00)
 #define RSN_AUTH_KEY_MGMT_OSEN RSN_SELECTOR(0x50, 0x6f, 0x9a, 0x01)
 #define RSN_AUTH_KEY_MGMT_DPP RSN_SELECTOR(0x50, 0x6f, 0x9a, 0x02)
@@ -506,6 +511,23 @@ struct wpa_ft_ies {
 	const u8 *rsnxe;
 	size_t rsnxe_len;
 };
+
+/* IEEE P802.11az/D2.6 - 9.4.2.303 PASN Parameters element */
+#define WPA_PASN_CTRL_COMEBACK_INFO_PRESENT BIT(0)
+#define WPA_PASN_CTRL_GROUP_AND_KEY_PRESENT BIT(1)
+
+#define WPA_PASN_WRAPPED_DATA_NO      0
+#define WPA_PASN_WRAPPED_DATA_FT      1
+#define WPA_PASN_WRAPPED_DATA_FILS_SK 2
+#define WPA_PASN_WRAPPED_DATA_SAE     3
+
+struct pasn_parameter_ie {
+	u8 id;
+	u8 len;
+	u8 id_ext;
+	u8 control; /* WPA_PASN_CTRL_* */
+	u8 wrapped_data_format; /* WPA_PASN_WRAPPED_DATA_* */
+} STRUCT_PACKED;
 
 int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
 		     int use_sha384);
