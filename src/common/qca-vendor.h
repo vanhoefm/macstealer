@@ -1458,6 +1458,12 @@ enum qca_wlan_vendor_acs_hw_mode {
  *	concurrent network sessions on different Wi-Fi bands. This feature
  *	capability is attributed to the hardware's capability to support
  *	the same (e.g., DBS).
+ * @QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT: Flag indicating whether the
+ *	responses for the respective TWT operations are asynchronous (separate
+ *	event message) from the driver. If not specified, the responses are
+ *	synchronous (in vendor command reply) to the request. Each TWT
+ *	operation is specifically mentioned (against its respective
+ *	documentation) to support either of these or both modes.
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits
  */
 enum qca_wlan_vendor_features {
@@ -1475,6 +1481,7 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_THERMAL_CONFIG		= 11,
 	QCA_WLAN_VENDOR_FEATURE_ADAPTIVE_11R		= 12,
 	QCA_WLAN_VENDOR_FEATURE_CONCURRENT_BAND_SESSIONS = 13,
+	QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT	= 14,
 	NUM_QCA_WLAN_VENDOR_FEATURES /* keep last */
 };
 
@@ -7827,48 +7834,66 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 /**
  * enum qca_wlan_twt_operation - Operation of the config TWT request
  * Values for %QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_OPERATION.
+ * The response for the respective operations can be either synchronous or
+ * asynchronous (wherever specified). If synchronous, the response to this
+ * operation is obtained in the corresponding vendor command reply to the user
+ * space. For the asynchronous case the response is obtained as an event with
+ * the same operation type.
+ *
+ * Drivers shall support either of these modes but not both simultaneously.
+ * This support for asynchronous mode is advertised through the flag
+ * QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT. If this flag is not advertised,
+ * the driver shall support synchronous mode.
  *
  * @QCA_WLAN_TWT_SET: Setup a TWT session. Required parameters are configured
  * through QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS. Refers the enum
- * qca_wlan_vendor_attr_twt_setup.
+ * qca_wlan_vendor_attr_twt_setup. Depending upon the
+ * @QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT capability, this is either a
+ * synchronous or asynchronous operation.
  *
  * @QCA_WLAN_TWT_GET: Get the configured TWT parameters. Required parameters are
  * obtained through QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS. Refers the enum
- * qca_wlan_vendor_attr_twt_setup.
+ * qca_wlan_vendor_attr_twt_setup. This is a synchronous operation.
  *
  * @QCA_WLAN_TWT_TERMINATE: Terminate the TWT session. Required parameters are
  * obtained through QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS. Refers the enum
  * qca_wlan_vendor_attr_twt_setup. Valid only after the TWT session is setup.
  * This terminate can either get triggered by the user space or can as well be
  * a notification from the firmware if it initiates a terminate.
+ * Depending upon the @QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT capability,
+ * the request from user space can either be a synchronous or asynchronous
+ * operation.
  *
  * @QCA_WLAN_TWT_SUSPEND: Suspend the TWT session. Required parameters are
  * obtained through QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS. Refers the enum
  * qca_wlan_vendor_attr_twt_setup. Valid only after the TWT session is setup.
+ * Depending upon the @QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT capability,
+ * this is either a synchronous or asynchronous operation.
  *
  * @QCA_WLAN_TWT_RESUME: Resume the TWT session. Required parameters are
  * configured through QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS. Refers the enum
  * qca_wlan_vendor_attr_twt_resume. Valid only after the TWT session is setup.
  * This can as well be a notification from the firmware on a QCA_WLAN_TWT_NUDGE
- * request.
+ * request. Depending upon the @QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT
+ * capability, this is either a synchronous or asynchronous operation.
  *
  * @QCA_WLAN_TWT_NUDGE: Suspend and resume the TWT session. TWT nudge is a
  * combination of suspend and resume in a single request. Required parameters
  * are configured through QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS. Refers the
  * enum qca_wlan_vendor_attr_twt_nudge. Valid only after the TWT session is
- * setup.
+ * setup. Depending upon the @QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT
+ * capability, this is either a synchronous or asynchronous operation.
  *
  * @QCA_WLAN_TWT_GET_STATS: Get the TWT session traffic statistics information.
  * Refers the enum qca_wlan_vendor_attr_twt_stats. Valid only after the TWT
- * session is setup.
+ * session is setup. It's a synchronous operation.
  *
  * @QCA_WLAN_TWT_CLEAR_STATS: Clear TWT session traffic statistics information.
- * Valid only after the TWT session is setup.
+ * Valid only after the TWT session is setup. It's a synchronous operation.
  *
  * @QCA_WLAN_TWT_GET_CAPABILITIES: Get TWT capabilities of this device and its
  * peer. Refers the enum qca_wlan_vendor_attr_twt_capability. It's a synchronous
- * operation, i.e., the capabilities are obtained in the corresponding
- * vendor command reply to the user space.
+ * operation.
  *
  * @QCA_WLAN_TWT_SETUP_READY_NOTIFY: Notify userspace that the firmare is
  * ready for a new TWT session setup after it issued a TWT teardown.
