@@ -571,6 +571,13 @@ static void mlme_event_connect(struct wpa_driver_nl80211_data *drv,
 		event.assoc_info.fils_pmkid = nla_data(fils_pmkid);
 
 	wpa_supplicant_event(drv->ctx, EVENT_ASSOC, &event);
+
+	/* Avoid a race condition by stopping to ignore any following
+	 * disconnection events now that the driver has indicated it is
+	 * connected since that connection could have been triggered by a roam
+	 * operation that happened in parallel with the disconnection request.
+	 */
+	drv->ignore_next_local_disconnect = 0;
 }
 
 
