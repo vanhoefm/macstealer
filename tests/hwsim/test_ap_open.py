@@ -198,19 +198,15 @@ def test_ap_open_unexpected_assoc_event(dev, apdev):
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected(timeout=15)
     dev[0].dump_monitor()
-    # This will be accepted due to matching network
+    # This association will be ignored by wpa_supplicant since the current
+    # state is not to try to connect after that DISCONNECT command.
     dev[0].cmd_execute(['iw', 'dev', dev[0].ifname, 'connect', 'open', "2412",
                         apdev[0]['bssid']])
-    dev[0].wait_connected(timeout=15)
+    ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED"], timeout=0.3)
+    dev[0].cmd_execute(['iw', 'dev', dev[0].ifname, 'disconnect'])
     dev[0].dump_monitor()
-
-    dev[0].request("REMOVE_NETWORK all")
-    dev[0].wait_disconnected(timeout=5)
-    dev[0].dump_monitor()
-    # This will result in disconnection due to no matching network
-    dev[0].cmd_execute(['iw', 'dev', dev[0].ifname, 'connect', 'open', "2412",
-                        apdev[0]['bssid']])
-    dev[0].wait_disconnected(timeout=15)
+    if ev is not None:
+        raise Exception("Unexpected connection")
 
 def test_ap_open_external_assoc(dev, apdev):
     """AP with open mode and external association"""
