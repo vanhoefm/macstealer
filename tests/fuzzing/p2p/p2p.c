@@ -115,7 +115,7 @@ static void test_send(void *eloop_data, void *user_ctx)
 	os_memset(&rx_time, 0, sizeof(rx_time));
 	p2p_scan_res_handler(ctx->p2p, (u8 *) "\x02\x00\x00\x00\x01\x00", 2412,
 			     &rx_time, 0, ctx->data, ctx->data_len);
-	p2p_scan_res_handled(ctx->p2p);
+	p2p_scan_res_handled(ctx->p2p, 0);
 
 	p2p_probe_req_rx(ctx->p2p, (u8 *) "\x02\x00\x00\x00\x01\x00",
 			 (u8 *) "\x02\x00\x00\x00\x00\x00",
