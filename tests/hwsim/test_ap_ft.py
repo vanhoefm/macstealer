@@ -1606,7 +1606,14 @@ def test_ap_ft_eap_pull_wildcard_multi_bss(dev, apdev, params):
         f.write("interface=%s\n" % ifname2)
         f.write("bssid=%s\n" % bssid2)
         f.write("ctrl_interface=/var/run/hostapd\n")
+
+        fields = ["ssid", "wpa_passphrase", "nas_identifier", "wpa_key_mgmt",
+                  "wpa", "rsn_pairwise", "auth_server_addr"]
+        for name in fields:
+            f.write("%s=%s\n" % (name, params[name]))
         for name, val in params.items():
+            if name in fields:
+                continue
             f.write("%s=%s\n" % (name, val))
     hapd2 = hostapd.add_bss(apdev[0], ifname2, bssconf)
 
