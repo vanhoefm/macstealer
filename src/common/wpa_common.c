@@ -3226,6 +3226,11 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 			   pos[1] >= sizeof(struct ieee80211_vht_capabilities))
 		{
 			ie->vht_capabilities = pos + 2;
+		} else if (*pos == WLAN_EID_EXTENSION &&
+			   pos[1] >= 1 + IEEE80211_HE_CAPAB_MIN_LEN &&
+			   pos[2] == WLAN_EID_EXT_HE_CAPABILITIES) {
+			ie->he_capabilities = pos + 3;
+			ie->he_capab_len = pos[1] - 1;
 		} else if (*pos == WLAN_EID_QOS && pos[1] >= 1) {
 			ie->qosinfo = pos[2];
 		} else if (*pos == WLAN_EID_SUPPORTED_CHANNELS) {

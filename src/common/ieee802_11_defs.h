@@ -2164,6 +2164,7 @@ struct ieee80211_he_capabilities {
 	* and optional variable length PPE Thresholds field. */
 	u8 optional[37];
 } STRUCT_PACKED;
+#define IEEE80211_HE_CAPAB_MIN_LEN (6 + 11)
 
 struct ieee80211_he_operation {
 	le32 he_oper_params; /* HE Operation Parameters[3] and
