@@ -32,6 +32,7 @@
 static int wpas_dpp_listen_start(struct wpa_supplicant *wpa_s,
 				 unsigned int freq);
 static void wpas_dpp_reply_wait_timeout(void *eloop_ctx, void *timeout_ctx);
+static void wpas_dpp_auth_conf_wait_timeout(void *eloop_ctx, void *timeout_ctx);
 static void wpas_dpp_auth_success(struct wpa_supplicant *wpa_s, int initiator);
 static void wpas_dpp_tx_status(struct wpa_supplicant *wpa_s,
 			       unsigned int freq, const u8 *dst,
@@ -473,6 +474,8 @@ static void wpas_dpp_tx_status(struct wpa_supplicant *wpa_s,
 			   "DPP: Terminate authentication exchange due to a request to do so on TX status");
 		eloop_cancel_timeout(wpas_dpp_init_timeout, wpa_s, NULL);
 		eloop_cancel_timeout(wpas_dpp_reply_wait_timeout, wpa_s, NULL);
+		eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s,
+				     NULL);
 		eloop_cancel_timeout(wpas_dpp_auth_resp_retry_timeout, wpa_s,
 				     NULL);
 #ifdef CONFIG_DPP2
@@ -503,6 +506,17 @@ static void wpas_dpp_tx_status(struct wpa_supplicant *wpa_s,
 			wpas_dpp_auth_resp_retry(wpa_s);
 			return;
 		}
+	}
+
+	if (auth->waiting_auth_conf &&
+	    auth->auth_resp_status == DPP_STATUS_OK) {
+		/* Make sure we do not get stuck waiting for Auth Confirm
+		 * indefinitely after successfully transmitted Auth Response to
+		 * allow new authentication exchanges to be started. */
+		eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s,
+				     NULL);
+		eloop_register_timeout(1, 0, wpas_dpp_auth_conf_wait_timeout,
+				       wpa_s, NULL);
 	}
 
 	if (!is_broadcast_ether_addr(dst) && auth->waiting_auth_resp &&
@@ -590,6 +604,23 @@ static void wpas_dpp_reply_wait_timeout(void *eloop_ctx, void *timeout_ctx)
 
 	eloop_register_timeout(wait_time / 1000, (wait_time % 1000) * 1000,
 			       wpas_dpp_reply_wait_timeout, wpa_s, NULL);
+}
+
+
+static void wpas_dpp_auth_conf_wait_timeout(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+
+	if (!auth || !auth->waiting_auth_conf)
+		return;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Terminate authentication exchange due to Auth Confirm timeout");
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_FAIL "No Auth Confirm received");
+	offchannel_send_action_done(wpa_s);
+	dpp_auth_deinit(auth);
+	wpa_s->dpp_auth = NULL;
 }
 
 
@@ -809,6 +840,8 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
 	if (!tcp && wpa_s->dpp_auth) {
 		eloop_cancel_timeout(wpas_dpp_init_timeout, wpa_s, NULL);
 		eloop_cancel_timeout(wpas_dpp_reply_wait_timeout, wpa_s, NULL);
+		eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s,
+				     NULL);
 		eloop_cancel_timeout(wpas_dpp_auth_resp_retry_timeout, wpa_s,
 				     NULL);
 #ifdef CONFIG_DPP2
@@ -1807,6 +1840,8 @@ static void wpas_dpp_rx_auth_conf(struct wpa_supplicant *wpa_s, const u8 *src,
 			   MACSTR ") - drop", MAC2STR(auth->peer_mac_addr));
 		return;
 	}
+
+	eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s, NULL);
 
 	if (dpp_auth_conf_rx(auth, hdr, buf, len) < 0) {
 		wpa_printf(MSG_DEBUG, "DPP: Authentication failed");
@@ -2947,6 +2982,7 @@ wpas_dpp_gas_status_handler(void *ctx, struct wpabuf *resp, int ok)
 	wpa_printf(MSG_DEBUG, "DPP: Configuration exchange completed (ok=%d)",
 		   ok);
 	eloop_cancel_timeout(wpas_dpp_reply_wait_timeout, wpa_s, NULL);
+	eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_auth_resp_retry_timeout, wpa_s, NULL);
 #ifdef CONFIG_DPP2
 	if (ok && auth->peer_version >= 2 &&
@@ -3324,6 +3360,7 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 		return;
 	eloop_cancel_timeout(wpas_dpp_pkex_retry_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_reply_wait_timeout, wpa_s, NULL);
+	eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_init_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_auth_resp_retry_timeout, wpa_s, NULL);
 #ifdef CONFIG_DPP2

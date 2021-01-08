@@ -23,6 +23,8 @@
 
 
 static void hostapd_dpp_reply_wait_timeout(void *eloop_ctx, void *timeout_ctx);
+static void hostapd_dpp_auth_conf_wait_timeout(void *eloop_ctx,
+					       void *timeout_ctx);
 static void hostapd_dpp_auth_success(struct hostapd_data *hapd, int initiator);
 static void hostapd_dpp_init_timeout(void *eloop_ctx, void *timeout_ctx);
 static int hostapd_dpp_auth_init_next(struct hostapd_data *hapd);
@@ -246,6 +248,8 @@ void hostapd_dpp_tx_status(struct hostapd_data *hapd, const u8 *dst,
 		eloop_cancel_timeout(hostapd_dpp_init_timeout, hapd, NULL);
 		eloop_cancel_timeout(hostapd_dpp_reply_wait_timeout,
 				     hapd, NULL);
+		eloop_cancel_timeout(hostapd_dpp_auth_conf_wait_timeout,
+				     hapd, NULL);
 		eloop_cancel_timeout(hostapd_dpp_auth_resp_retry_timeout, hapd,
 				     NULL);
 #ifdef CONFIG_DPP2
@@ -275,6 +279,17 @@ void hostapd_dpp_tx_status(struct hostapd_data *hapd, const u8 *dst,
 			hostapd_dpp_auth_resp_retry(hapd);
 			return;
 		}
+	}
+
+	if (auth->waiting_auth_conf &&
+	    auth->auth_resp_status == DPP_STATUS_OK) {
+		/* Make sure we do not get stuck waiting for Auth Confirm
+		 * indefinitely after successfully transmitted Auth Response to
+		 * allow new authentication exchanges to be started. */
+		eloop_cancel_timeout(hostapd_dpp_auth_conf_wait_timeout, hapd,
+				     NULL);
+		eloop_register_timeout(1, 0, hostapd_dpp_auth_conf_wait_timeout,
+				       hapd, NULL);
 	}
 
 	if (!is_broadcast_ether_addr(dst) && auth->waiting_auth_resp && ok) {
@@ -374,6 +389,25 @@ static void hostapd_dpp_reply_wait_timeout(void *eloop_ctx, void *timeout_ctx)
 
 	eloop_register_timeout(wait_time / 1000, (wait_time % 1000) * 1000,
 			       hostapd_dpp_reply_wait_timeout, hapd, NULL);
+}
+
+
+static void hostapd_dpp_auth_conf_wait_timeout(void *eloop_ctx,
+					       void *timeout_ctx)
+{
+	struct hostapd_data *hapd = eloop_ctx;
+	struct dpp_authentication *auth = hapd->dpp_auth;
+
+	if (!auth || !auth->waiting_auth_conf)
+		return;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Terminate authentication exchange due to Auth Confirm timeout");
+	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_FAIL
+		"No Auth Confirm received");
+	hostapd_drv_send_action_cancel_wait(hapd);
+	dpp_auth_deinit(auth);
+	hapd->dpp_auth = NULL;
 }
 
 
@@ -593,6 +627,8 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
 	if (!tcp && hapd->dpp_auth) {
 		eloop_cancel_timeout(hostapd_dpp_init_timeout, hapd, NULL);
 		eloop_cancel_timeout(hostapd_dpp_reply_wait_timeout,
+				     hapd, NULL);
+		eloop_cancel_timeout(hostapd_dpp_auth_conf_wait_timeout,
 				     hapd, NULL);
 		eloop_cancel_timeout(hostapd_dpp_auth_resp_retry_timeout, hapd,
 				     NULL);
@@ -1962,6 +1998,7 @@ void hostapd_dpp_gas_status_handler(struct hostapd_data *hapd, int ok)
 	wpa_printf(MSG_DEBUG, "DPP: Configuration exchange completed (ok=%d)",
 		   ok);
 	eloop_cancel_timeout(hostapd_dpp_reply_wait_timeout, hapd, NULL);
+	eloop_cancel_timeout(hostapd_dpp_auth_conf_wait_timeout, hapd, NULL);
 	eloop_cancel_timeout(hostapd_dpp_auth_resp_retry_timeout, hapd, NULL);
 #ifdef CONFIG_DPP2
 		eloop_cancel_timeout(hostapd_dpp_reconfig_reply_wait_timeout,
@@ -2207,6 +2244,7 @@ void hostapd_dpp_deinit(struct hostapd_data *hapd)
 	if (!hapd->dpp_init_done)
 		return;
 	eloop_cancel_timeout(hostapd_dpp_reply_wait_timeout, hapd, NULL);
+	eloop_cancel_timeout(hostapd_dpp_auth_conf_wait_timeout, hapd, NULL);
 	eloop_cancel_timeout(hostapd_dpp_init_timeout, hapd, NULL);
 	eloop_cancel_timeout(hostapd_dpp_auth_resp_retry_timeout, hapd, NULL);
 #ifdef CONFIG_DPP2

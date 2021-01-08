@@ -251,6 +251,7 @@ static struct wpabuf * dpp_auth_build_resp(struct dpp_authentication *auth,
 	u8 *attr_start, *attr_end, *pos;
 
 	auth->waiting_auth_conf = 1;
+	auth->auth_resp_status = status;
 	auth->auth_resp_tries = 0;
 
 	/* Build DPP Authentication Response frame attributes */
