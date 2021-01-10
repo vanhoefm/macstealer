@@ -9,6 +9,8 @@ import subprocess
 import threading
 import tempfile
 import os
+import traceback
+import select
 
 logger = logging.getLogger()
 
@@ -207,6 +209,7 @@ class Host():
                 if not self.pending(proc.stdout, timeout=remaining):
                     break
         except:
+            logger.debug(traceback.format_exc())
             pass
         return None
 
