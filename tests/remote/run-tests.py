@@ -13,6 +13,7 @@ import time
 import traceback
 import getopt
 from datetime import datetime
+from random import shuffle
 
 import logging
 logger = logging.getLogger()
@@ -32,7 +33,7 @@ from hwsim_wrapper import run_hwsim_test
 def usage():
     print("USAGE: " + sys.argv[0] + " -t devices")
     print("USAGE: " + sys.argv[0] + " -t check_devices")
-    print("USAGE: " + sys.argv[0] + " -d <dut_name> -t <all|sanity|tests_to_run> [-r <ref_name>] [-c <cfg_file.py>] [-m <all|monitor_name>] [-h hwsim_tests] [-f hwsim_modules][-R][-T][-P][-v]")
+    print("USAGE: " + sys.argv[0] + " -d <dut_name> -t <all|sanity|tests_to_run> [-r <ref_name>] [-c <cfg_file.py>] [-m <all|monitor_name>] [-h hwsim_tests] [-f hwsim_modules][-R][-T][-P][-S][-v]")
     print("USAGE: " + sys.argv[0])
 
 def get_devices(devices, duts, refs, monitors):
@@ -79,10 +80,11 @@ def main():
     trace = False
     restart = False
     perf = False
+    shuffle_tests = False
 
     # parse input parameters
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "d:f:r:t:l:k:c:m:h:vRPT",
+        opts, args = getopt.getopt(sys.argv[1:], "d:f:r:t:l:k:c:m:h:vRPTS",
                                    ["dut=", "modules=", "ref=", "tests=",
                                     "log-dir=",
                                     "cfg=", "key=", "monitor=", "hwsim="])
@@ -100,6 +102,8 @@ def main():
             trace = True
         elif option == "-P":
             perf = True
+        elif option == "-S":
+            shuffle_tests = True
         elif option in ("-d", "--dut"):
             duts.append(argument)
         elif option in ("-r", "--ref"):
@@ -282,6 +286,10 @@ def main():
                 logger.warning("test case: " + test + " NOT-FOUND")
                 continue
             tests_to_run.append(t)
+
+    if shuffle_tests:
+        shuffle(tests_to_run)
+        shuffle(hwsim_tests_to_run)
 
     # lock devices
     try:
