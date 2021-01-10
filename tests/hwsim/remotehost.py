@@ -130,18 +130,18 @@ class Host():
             self.execute(cmd)
 
         # try again
-        self.wait_execute_complete(t, 5)
+        self.thread_wait(t, 5)
         if t.isAlive():
             cmd = ["kill `cat " + pid_file + "`"]
             self.execute(cmd)
 
         # try with -9
-        self.wait_execute_complete(t, 5)
+        self.thread_wait(t, 5)
         if t.isAlive():
             cmd = ["kill -9 `cat " + pid_file + "`"]
             self.execute(cmd)
 
-        self.wait_execute_complete(t, 5)
+        self.thread_wait(t, 5)
         if t.isAlive():
             raise Exception("thread still alive")
 
