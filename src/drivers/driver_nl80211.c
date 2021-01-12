@@ -2975,6 +2975,7 @@ static void wpa_driver_nl80211_deinit(struct i802_bss *bss)
 	os_free(drv->filter_ssids);
 
 	os_free(drv->auth_ie);
+	os_free(drv->auth_data);
 
 	if (drv->in_interface_list)
 		dl_list_del(&drv->list);
@@ -3628,6 +3629,16 @@ static void nl80211_copy_auth_params(struct wpa_driver_nl80211_data *drv,
 		}
 	}
 
+	os_free(drv->auth_data);
+	drv->auth_data = NULL;
+	drv->auth_data_len = 0;
+	if (params->auth_data) {
+		drv->auth_data = os_memdup(params->auth_data,
+					   params->auth_data_len);
+		if (drv->auth_data)
+			drv->auth_data_len = params->auth_data_len;
+	}
+
 	for (i = 0; i < 4; i++) {
 		if (params->wep_key[i] && params->wep_key_len[i] &&
 		    params->wep_key_len[i] <= 16) {
@@ -3881,6 +3892,8 @@ int wpa_driver_nl80211_authenticate_retry(struct wpa_driver_nl80211_data *drv)
 
 	params.ie = drv->auth_ie;
 	params.ie_len = drv->auth_ie_len;
+	params.auth_data = drv->auth_data;
+	params.auth_data_len = drv->auth_data_len;
 
 	for (i = 0; i < 4; i++) {
 		if (drv->auth_wep_key_len[i]) {

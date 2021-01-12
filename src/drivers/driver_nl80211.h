@@ -209,6 +209,8 @@ struct wpa_driver_nl80211_data {
 	int auth_alg;
 	u8 *auth_ie;
 	size_t auth_ie_len;
+	u8 *auth_data;
+	size_t auth_data_len;
 	u8 auth_wep_key[4][16];
 	size_t auth_wep_key_len[4];
 	int auth_wep_tx_keyidx;
