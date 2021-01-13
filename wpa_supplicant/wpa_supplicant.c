@@ -3487,6 +3487,20 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 	os_memset(&params, 0, sizeof(params));
 	wpa_s->reassociate = 0;
 	wpa_s->eap_expected_failure = 0;
+
+	/* Starting new association, so clear the possibly used WPA IE from the
+	 * previous association. */
+	wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, NULL, 0);
+	wpa_sm_set_assoc_rsnxe(wpa_s->wpa, NULL, 0);
+	wpa_s->rsnxe_len = 0;
+	wpa_s->mscs_setup_done = false;
+
+	wpa_ie = wpas_populate_assoc_ies(wpa_s, bss, ssid, &params, NULL);
+	if (!wpa_ie) {
+		wpas_connect_work_done(wpa_s);
+		return;
+	}
+
 	if (bss &&
 	    (!wpas_driver_bss_selection(wpa_s) || wpas_wps_searching(wpa_s))) {
 #ifdef CONFIG_IEEE80211R
@@ -3534,19 +3548,6 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 		wpa_supplicant_cancel_sched_scan(wpa_s);
 
 	wpa_supplicant_cancel_scan(wpa_s);
-
-	/* Starting new association, so clear the possibly used WPA IE from the
-	 * previous association. */
-	wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, NULL, 0);
-	wpa_sm_set_assoc_rsnxe(wpa_s->wpa, NULL, 0);
-	wpa_s->rsnxe_len = 0;
-	wpa_s->mscs_setup_done = false;
-
-	wpa_ie = wpas_populate_assoc_ies(wpa_s, bss, ssid, &params, NULL);
-	if (!wpa_ie) {
-		wpas_connect_work_done(wpa_s);
-		return;
-	}
 
 	wpa_clear_keys(wpa_s, bss ? bss->bssid : NULL);
 	use_crypt = 1;
