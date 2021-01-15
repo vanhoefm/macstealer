@@ -136,7 +136,8 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
               group_mgmt=None, ocv=None, sae_password=None,
               sae_password_id=None, sae_and_psk=False, pmksa_caching=False,
               roam_with_reassoc=False, also_non_ft=False, only_one_way=False,
-              wait_before_roam=0, return_after_initial=False, ieee80211w="1"):
+              wait_before_roam=0, return_after_initial=False, ieee80211w="1",
+              sae_transition=False):
     logger.info("Connect to first AP")
 
     copts = {}
@@ -161,7 +162,9 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
         copts["identity"] = eap_identity
         copts["password"] = "abcdefghijklmnop0123456789abcdef"
     else:
-        if sae:
+        if sae_transition:
+            copts["key_mgmt"] = "FT-SAE FT-PSK"
+        elif sae:
             copts["key_mgmt"] = "SAE FT-SAE" if sae_and_psk else "FT-SAE"
         else:
             copts["key_mgmt"] = "FT-PSK"
@@ -998,7 +1001,8 @@ def test_ap_ft_over_ds_pull_vlan(dev, apdev):
 def start_ft_sae(dev, apdev, wpa_ptk_rekey=None, sae_pwe=None,
                  rsne_override=None, rsnxe_override=None,
                  no_beacon_rsnxe2=False, ext_key_id=False,
-                 skip_prune_assoc=False, ft_rsnxe_used=False):
+                 skip_prune_assoc=False, ft_rsnxe_used=False,
+                 sae_transition=False):
     if "SAE" not in dev.get_capability("auth_alg"):
         raise HwsimSkip("SAE not supported")
     ssid = "test-ft"
@@ -1022,7 +1026,8 @@ def start_ft_sae(dev, apdev, wpa_ptk_rekey=None, sae_pwe=None,
         params['ft_rsnxe_used'] = '1'
     hapd0 = hostapd.add_ap(apdev[0], params)
     params = ft_params2(ssid=ssid, passphrase=passphrase)
-    params['wpa_key_mgmt'] = "FT-SAE"
+    if not sae_transition:
+        params['wpa_key_mgmt'] = "FT-SAE"
     if wpa_ptk_rekey:
         params['wpa_ptk_rekey'] = str(wpa_ptk_rekey)
     if sae_pwe is not None:
@@ -1041,7 +1046,7 @@ def start_ft_sae(dev, apdev, wpa_ptk_rekey=None, sae_pwe=None,
         params['ft_rsnxe_used'] = '1'
     hapd1 = hostapd.add_ap(apdev[1], params)
     key_mgmt = hapd1.get_config()['key_mgmt']
-    if key_mgmt.split(' ')[0] != "FT-SAE":
+    if key_mgmt.split(' ')[0] != "FT-SAE" and not sae_transition:
         raise Exception("Unexpected GET_CONFIG(key_mgmt): " + key_mgmt)
 
     dev.request("SET sae_groups ")
@@ -1051,6 +1056,12 @@ def test_ap_ft_sae(dev, apdev):
     """WPA2-PSK-FT-SAE AP"""
     hapd0, hapd1 = start_ft_sae(dev[0], apdev)
     run_roams(dev[0], apdev, hapd0, hapd1, "test-ft", "12345678", sae=True)
+
+def test_ap_ft_sae_transition(dev, apdev):
+    """WPA2-PSK-FT-SAE/PSK AP"""
+    hapd0, hapd1 = start_ft_sae(dev[0], apdev, sae_transition=True)
+    run_roams(dev[0], apdev, hapd0, hapd1, "test-ft", "12345678",
+              sae_transition=True)
 
 def test_ap_ft_sae_h2e(dev, apdev):
     """WPA2-PSK-FT-SAE AP (H2E)"""
