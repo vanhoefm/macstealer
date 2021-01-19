@@ -1620,6 +1620,9 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 	if (config->extended_key_id != DEFAULT_EXTENDED_KEY_ID)
 		fprintf(f, "extended_key_id=%d\n",
 			config->extended_key_id);
+	if (config->wowlan_disconnect_on_deinit)
+		fprintf(f, "wowlan_disconnect_on_deinit=%d\n",
+			config->wowlan_disconnect_on_deinit);
 }
 
 #endif /* CONFIG_NO_CONFIG_WRITE */

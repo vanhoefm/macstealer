@@ -6669,8 +6669,12 @@ static void wpa_supplicant_deinit_iface(struct wpa_supplicant *wpa_s,
 
 	wpa_s->disconnected = 1;
 	if (wpa_s->drv_priv) {
-		/* Don't deauthenticate if WoWLAN is enabled */
-		if (!wpa_drv_get_wowlan(wpa_s)) {
+		/*
+		 * Don't deauthenticate if WoWLAN is enable and not explicitly
+		 * been configured to disconnect.
+		 */
+		if (!wpa_drv_get_wowlan(wpa_s) ||
+		    wpa_s->conf->wowlan_disconnect_on_deinit) {
 			wpa_supplicant_deauthenticate(
 				wpa_s, WLAN_REASON_DEAUTH_LEAVING);
 

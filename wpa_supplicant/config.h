@@ -1599,6 +1599,15 @@ struct wpa_config {
 	 * 1 = use Extended Key ID when possible
 	 */
 	int extended_key_id;
+
+	/**
+	 * wowlan_disconnect_on_deinit - Trigger disconnect on wpa_supplicant
+	 * interface deinit even if the driver has enabled WoWLAN.
+	 *
+	 * 0 = Do not disconnect
+	 * 1 = Trigger disconnection
+	 */
+	int wowlan_disconnect_on_deinit;
 };
 
 

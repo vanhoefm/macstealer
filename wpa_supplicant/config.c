@@ -5148,6 +5148,7 @@ static const struct global_parse_data global_fields[] = {
 	{ INT_RANGE(disable_btm, 0, 1), CFG_CHANGED_DISABLE_BTM },
 	{ INT_RANGE(extended_key_id, 0, 1), 0 },
 #endif /* CONFIG_WNM */
+	{ INT_RANGE(wowlan_disconnect_on_deinit, 0, 1), 0},
 };
 
 #undef FUNC
