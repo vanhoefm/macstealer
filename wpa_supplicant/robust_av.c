@@ -48,18 +48,14 @@ void wpas_populate_mscs_descriptor_ie(struct robust_av_data *robust_av,
 int wpas_send_mscs_req(struct wpa_supplicant *wpa_s)
 {
 	struct wpabuf *buf;
-	const u8 *ext_capab = NULL;
 	size_t buf_len;
 	int ret;
 
 	if (wpa_s->wpa_state != WPA_COMPLETED || !wpa_s->current_ssid)
 		return 0;
 
-	if (wpa_s->current_bss)
-		ext_capab = wpa_bss_get_ie(wpa_s->current_bss,
-					   WLAN_EID_EXT_CAPAB);
-
-	if (!ext_capab || ext_capab[1] < 11 || !(ext_capab[12] & 0x20)) {
+	if (!wpa_s->current_bss ||
+	    !wpa_bss_ext_capab(wpa_s->current_bss, WLAN_EXT_CAPAB_MSCS)) {
 		wpa_dbg(wpa_s, MSG_INFO,
 			"AP does not support MSCS - could not send MSCS Req");
 		return -1;
