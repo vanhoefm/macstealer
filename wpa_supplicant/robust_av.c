@@ -8,11 +8,15 @@
 
 #include "utils/includes.h"
 #include "utils/common.h"
+#include "utils/eloop.h"
 #include "common/wpa_ctrl.h"
 #include "common/ieee802_11_common.h"
 #include "wpa_supplicant_i.h"
 #include "driver_i.h"
 #include "bss.h"
+
+
+#define SCS_RESP_TIMEOUT 1
 
 
 void wpas_populate_mscs_descriptor_ie(struct robust_av_data *robust_av,
@@ -323,6 +327,43 @@ static struct wpabuf * allocate_scs_buf(struct scs_desc_elem *desc_elem,
 }
 
 
+static void scs_request_timer(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	struct active_scs_elem *scs_desc, *prev;
+
+	if (wpa_s->wpa_state != WPA_COMPLETED || !wpa_s->current_ssid)
+		return;
+
+	/* Once timeout is over, remove all SCS descriptors with no response */
+	dl_list_for_each_safe(scs_desc, prev, &wpa_s->active_scs_ids,
+			      struct active_scs_elem, list) {
+		u8 bssid[ETH_ALEN] = { 0 };
+		const u8 *src;
+
+		if (scs_desc->status == SCS_DESC_SUCCESS)
+			continue;
+
+		if (wpa_s->current_bss)
+			src = wpa_s->current_bss->bssid;
+		else
+			src = bssid;
+
+		wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_SCS_RESULT "bssid=" MACSTR
+			" SCSID=%u status_code=timedout", MAC2STR(src),
+			scs_desc->scs_id);
+
+		dl_list_del(&scs_desc->list);
+		wpa_printf(MSG_INFO, "%s: SCSID %d removed after timeout",
+			   __func__, scs_desc->scs_id);
+		os_free(scs_desc);
+	}
+
+	eloop_cancel_timeout(scs_request_timer, wpa_s, NULL);
+	wpa_s->ongoing_scs_req = false;
+}
+
+
 int wpas_send_scs_req(struct wpa_supplicant *wpa_s)
 {
 	struct wpabuf *buf = NULL;
@@ -369,7 +410,33 @@ int wpas_send_scs_req(struct wpa_supplicant *wpa_s)
 	if (ret < 0) {
 		wpa_dbg(wpa_s, MSG_ERROR, "SCS: Failed to send SCS Request");
 		wpa_s->scs_dialog_token--;
+		goto end;
 	}
+
+	desc_elem = wpa_s->scs_robust_av_req.scs_desc_elems;
+	for (i = 0; i < wpa_s->scs_robust_av_req.num_scs_desc;
+	     i++, desc_elem++) {
+		struct active_scs_elem *active_scs_elem;
+
+		if (desc_elem->request_type != SCS_REQ_ADD)
+			continue;
+
+		active_scs_elem = os_malloc(sizeof(struct active_scs_elem));
+		if (!active_scs_elem)
+			break;
+		active_scs_elem->scs_id = desc_elem->scs_id;
+		active_scs_elem->status = SCS_DESC_SENT;
+		dl_list_add(&wpa_s->active_scs_ids, &active_scs_elem->list);
+	}
+
+	/*
+	 * Register a timeout after which this request will be removed from
+	 * the cache.
+	 */
+	eloop_register_timeout(SCS_RESP_TIMEOUT, 0, scs_request_timer, wpa_s,
+			       NULL);
+	wpa_s->ongoing_scs_req = true;
+
 end:
 	wpabuf_free(buf);
 	free_up_scs_desc(&wpa_s->scs_robust_av_req);
@@ -480,4 +547,115 @@ void wpas_handle_assoc_resp_mscs(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_MSCS_RESULT "bssid=" MACSTR
 		" status_code=%u", MAC2STR(bssid), status);
 	wpa_s->mscs_setup_done = status == WLAN_STATUS_SUCCESS;
+}
+
+
+void wpas_handle_robust_av_scs_recv_action(struct wpa_supplicant *wpa_s,
+					   const u8 *src, const u8 *buf,
+					   size_t len)
+{
+	u8 dialog_token;
+	unsigned int i, count;
+	struct active_scs_elem *scs_desc, *prev;
+
+	if (len < 2)
+		return;
+	if (!wpa_s->ongoing_scs_req) {
+		wpa_printf(MSG_INFO,
+			   "SCS: Drop received response due to no ongoing request");
+		return;
+	}
+
+	dialog_token = *buf++;
+	len--;
+	if (dialog_token != wpa_s->scs_dialog_token) {
+		wpa_printf(MSG_INFO,
+			   "SCS: Drop received frame due to dialog token mismatch: received:%u expected:%u",
+			   dialog_token, wpa_s->scs_dialog_token);
+		return;
+	}
+
+	/* This Count field does not exist in the IEEE Std 802.11-2020
+	 * definition of the SCS Response frame. However, it was accepted to
+	 * be added into REVme per REVme/D0.0 CC35 CID 49 (edits in document
+	 * 11-21-0688-07). */
+	count = *buf++;
+	len--;
+	if (count == 0 || count * 3 > len) {
+		wpa_printf(MSG_INFO,
+			   "SCS: Drop received frame due to invalid count: %u (remaining %zu octets)",
+			   count, len);
+		return;
+	}
+
+	for (i = 0; i < count; i++) {
+		u8 id;
+		u16 status;
+		bool scs_desc_found = false;
+
+		id = *buf++;
+		status = WPA_GET_LE16(buf);
+		buf += 2;
+		len -= 3;
+
+		dl_list_for_each(scs_desc, &wpa_s->active_scs_ids,
+				 struct active_scs_elem, list) {
+			if (id == scs_desc->scs_id) {
+				scs_desc_found = true;
+				break;
+			}
+		}
+
+		if (!scs_desc_found) {
+			wpa_printf(MSG_INFO, "SCS: SCS ID invalid %u", id);
+			continue;
+		}
+
+		if (status != WLAN_STATUS_SUCCESS) {
+			dl_list_del(&scs_desc->list);
+			os_free(scs_desc);
+		} else if (status == WLAN_STATUS_SUCCESS) {
+			scs_desc->status = SCS_DESC_SUCCESS;
+		}
+
+		wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_SCS_RESULT "bssid=" MACSTR
+			" SCSID=%u status_code=%u", MAC2STR(src), id, status);
+	}
+
+	eloop_cancel_timeout(scs_request_timer, wpa_s, NULL);
+	wpa_s->ongoing_scs_req = false;
+
+	dl_list_for_each_safe(scs_desc, prev, &wpa_s->active_scs_ids,
+			      struct active_scs_elem, list) {
+		if (scs_desc->status != SCS_DESC_SUCCESS) {
+			wpa_msg(wpa_s, MSG_INFO,
+				WPA_EVENT_SCS_RESULT "bssid=" MACSTR
+				" SCSID=%u status_code=response_not_received",
+				MAC2STR(src), scs_desc->scs_id);
+			dl_list_del(&scs_desc->list);
+			os_free(scs_desc);
+		}
+	}
+}
+
+
+static void wpas_clear_active_scs_ids(struct wpa_supplicant *wpa_s)
+{
+	struct active_scs_elem *scs_elem;
+
+	while ((scs_elem = dl_list_first(&wpa_s->active_scs_ids,
+					 struct active_scs_elem, list))) {
+		dl_list_del(&scs_elem->list);
+		os_free(scs_elem);
+	}
+}
+
+
+void wpas_scs_deinit(struct wpa_supplicant *wpa_s)
+{
+	free_up_scs_desc(&wpa_s->scs_robust_av_req);
+	wpa_s->scs_dialog_token = 0;
+	wpas_clear_active_scs_ids(wpa_s);
+	eloop_cancel_timeout(scs_request_timer, wpa_s, NULL);
+	wpa_s->ongoing_scs_req = false;
 }

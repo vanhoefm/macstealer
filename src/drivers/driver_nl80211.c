@@ -2505,6 +2505,10 @@ static int nl80211_mgmt_subscribe_non_ap(struct i802_bss *bss)
 	    (nl80211_register_action_frame(bss, (u8 *) "\x05\x02", 2) < 0))
 		ret = -1;
 
+	/* Robust AV SCS Response */
+	if (nl80211_register_action_frame(bss, (u8 *) "\x13\x01", 2) < 0)
+		ret = -1;
+
 	/* Robust AV MSCS Response */
 	if (nl80211_register_action_frame(bss, (u8 *) "\x13\x05", 2) < 0)
 		ret = -1;

@@ -11180,6 +11180,12 @@ static int wpas_ctrl_iface_configure_scs(struct wpa_supplicant *wpa_s,
 	int val;
 	unsigned int num_scs_desc = 0;
 
+	if (wpa_s->ongoing_scs_req) {
+		wpa_printf(MSG_ERROR, "%s: SCS Request already in queue",
+			   __func__);
+		return -1;
+	}
+
 	/**
 	 * format:
 	 * [scs_id=<decimal number>] <add|remove|change> [scs_up=<0-7>]
@@ -11197,8 +11203,10 @@ static int wpas_ctrl_iface_configure_scs(struct wpa_supplicant *wpa_s,
 
 	while (pos1) {
 		struct scs_desc_elem *n1;
+		struct active_scs_elem *active_scs_desc;
 		char *next_scs_desc;
 		unsigned int num_tclas_elem = 0;
+		bool scsid_active = false;
 
 		desc_elem.scs_id = atoi(pos1 + 7);
 		pos1 += 7;
@@ -11218,13 +11226,36 @@ static int wpas_ctrl_iface_configure_scs(struct wpa_supplicant *wpa_s,
 			pos1[next_scs_desc - pos1 - 1] = '\0';
 		}
 
+		dl_list_for_each(active_scs_desc, &wpa_s->active_scs_ids,
+				 struct active_scs_elem, list) {
+			if (desc_elem.scs_id == active_scs_desc->scs_id) {
+				scsid_active = true;
+				break;
+			}
+		}
+
 		if (os_strstr(pos1, "add ")) {
 			desc_elem.request_type = SCS_REQ_ADD;
+			if (scsid_active) {
+				wpa_printf(MSG_ERROR, "SCSID %d already active",
+					   desc_elem.scs_id);
+				return -1;
+			}
 		} else if (os_strstr(pos1, "remove")) {
 			desc_elem.request_type = SCS_REQ_REMOVE;
+			if (!scsid_active) {
+				wpa_printf(MSG_ERROR, "SCSID %d not active",
+					   desc_elem.scs_id);
+				return -1;
+			}
 			goto scs_desc_end;
 		} else if (os_strstr(pos1, "change ")) {
 			desc_elem.request_type = SCS_REQ_CHANGE;
+			if (!scsid_active) {
+				wpa_printf(MSG_ERROR, "SCSID %d not active",
+					   desc_elem.scs_id);
+				return -1;
+			}
 		} else {
 			wpa_printf(MSG_ERROR, "SCS Request type invalid");
 			goto free_scs_desc;

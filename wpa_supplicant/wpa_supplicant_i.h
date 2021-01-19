@@ -650,6 +650,19 @@ struct scs_robust_av_data {
 };
 
 
+enum scs_response_status {
+	SCS_DESC_SENT = 0,
+	SCS_DESC_SUCCESS = 1,
+};
+
+
+struct active_scs_elem {
+	struct dl_list list;
+	u8 scs_id;
+	enum scs_response_status status;
+};
+
+
 /**
  * struct wpa_supplicant - Internal data for wpa_supplicant interface
  *
@@ -1481,6 +1494,8 @@ struct wpa_supplicant {
 #ifdef CONFIG_TESTING_OPTIONS
 	unsigned int disable_scs_support:1;
 #endif /* CONFIG_TESTING_OPTIONS */
+	struct dl_list active_scs_ids;
+	bool ongoing_scs_req;
 };
 
 
@@ -1816,6 +1831,10 @@ void wpas_handle_assoc_resp_mscs(struct wpa_supplicant *wpa_s, const u8 *bssid,
 int wpas_send_scs_req(struct wpa_supplicant *wpa_s);
 void free_up_tclas_elem(struct scs_desc_elem *elem);
 void free_up_scs_desc(struct scs_robust_av_data *data);
+void wpas_handle_robust_av_scs_recv_action(struct wpa_supplicant *wpa_s,
+					   const u8 *src, const u8 *buf,
+					   size_t len);
+void wpas_scs_deinit(struct wpa_supplicant *wpa_s);
 
 int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
 			 const u8 *bssid, int akmp, int cipher,
