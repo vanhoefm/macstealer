@@ -576,6 +576,80 @@ struct wpas_pasn {
 };
 #endif /* CONFIG_PASN */
 
+
+enum ip_version {
+	IPV4 = 4,
+	IPV6 = 6,
+};
+
+
+struct ipv4_params {
+	struct in_addr src_ip;
+	struct in_addr dst_ip;
+	u16 src_port;
+	u16 dst_port;
+	u8 dscp;
+	u8 protocol;
+};
+
+
+struct ipv6_params {
+	struct in6_addr src_ip;
+	struct in6_addr dst_ip;
+	u16 src_port;
+	u16 dst_port;
+	u8 dscp;
+	u8 next_header;
+	u8 flow_label[3];
+};
+
+
+struct type4_params {
+	u8 classifier_mask;
+	enum ip_version ip_version;
+	union {
+		struct ipv4_params v4;
+		struct ipv6_params v6;
+	} ip_params;
+};
+
+
+struct type10_params {
+	u8 prot_instance;
+	u8 prot_number;
+	u8 *filter_value;
+	u8 *filter_mask;
+	size_t filter_len;
+};
+
+
+struct tclas_element {
+	u8 user_priority;
+	u8 classifier_type;
+	union {
+		struct type4_params type4_param;
+		struct type10_params type10_param;
+	} frame_classifier;
+};
+
+
+struct scs_desc_elem {
+	u8 scs_id;
+	enum scs_request_type request_type;
+	u8 intra_access_priority;
+	bool scs_up_avail;
+	struct tclas_element *tclas_elems;
+	unsigned int num_tclas_elem;
+	u8 tclas_processing;
+};
+
+
+struct scs_robust_av_data {
+	struct scs_desc_elem *scs_desc_elems;
+	unsigned int num_scs_desc;
+};
+
+
 /**
  * struct wpa_supplicant - Internal data for wpa_supplicant interface
  *
@@ -1402,6 +1476,8 @@ struct wpa_supplicant {
 	struct wpas_pasn pasn;
 	struct wpa_radio_work *pasn_auth_work;
 #endif /* CONFIG_PASN */
+	struct scs_robust_av_data scs_robust_av_req;
+	u8 scs_dialog_token;
 };
 
 
@@ -1734,6 +1810,9 @@ void wpas_handle_robust_av_recv_action(struct wpa_supplicant *wpa_s,
 				       size_t len);
 void wpas_handle_assoc_resp_mscs(struct wpa_supplicant *wpa_s, const u8 *bssid,
 				 const u8 *ies, size_t ies_len);
+int wpas_send_scs_req(struct wpa_supplicant *wpa_s);
+void free_up_tclas_elem(struct scs_desc_elem *elem);
+void free_up_scs_desc(struct scs_robust_av_data *data);
 
 int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
 			 const u8 *bssid, int akmp, int cipher,

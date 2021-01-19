@@ -743,6 +743,8 @@ static void wpa_supplicant_cleanup(struct wpa_supplicant *wpa_s)
 #ifdef CONFIG_PASN
 	wpas_pasn_auth_stop(wpa_s);
 #endif /* CONFIG_PASN */
+	free_up_scs_desc(&wpa_s->scs_robust_av_req);
+	wpa_s->scs_dialog_token = 0;
 }
 
 
@@ -1915,6 +1917,7 @@ static void wpas_ext_capab_byte(struct wpa_supplicant *wpa_s, u8 *pos, int idx)
 #endif /* CONFIG_MBO */
 		break;
 	case 6: /* Bits 48-55 */
+		*pos |= 0x40; /* Bit 54 - SCS */
 		break;
 	case 7: /* Bits 56-63 */
 		break;
@@ -3963,6 +3966,9 @@ static void wpa_supplicant_clear_connection(struct wpa_supplicant *wpa_s,
 	eapol_sm_notify_config(wpa_s->eapol, NULL, NULL);
 	if (old_ssid != wpa_s->current_ssid)
 		wpas_notify_network_changed(wpa_s);
+
+	free_up_scs_desc(&wpa_s->scs_robust_av_req);
+	wpa_s->scs_dialog_token = 0;
 	eloop_cancel_timeout(wpa_supplicant_timeout, wpa_s, NULL);
 }
 
