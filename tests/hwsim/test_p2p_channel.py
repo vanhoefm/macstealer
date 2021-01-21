@@ -226,6 +226,7 @@ def test_p2p_channel_avoid2(dev):
 def test_p2p_channel_avoid3(dev):
     """P2P and avoid frequencies driver event on 5 GHz"""
     try:
+        dev[0].global_request("SET p2p_pref_chan 128:44")
         set_country("CN", dev[0])
         form(dev[0], dev[1])
         set_country("CN", dev[0])
@@ -251,6 +252,7 @@ def test_p2p_channel_avoid3(dev):
     finally:
         set_country("00")
         dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES")
+        dev[0].global_request("SET p2p_pref_chan ")
         dev[1].flush_scan_cache()
 
 @remote_compatible
