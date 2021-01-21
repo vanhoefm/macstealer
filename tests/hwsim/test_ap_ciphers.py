@@ -415,6 +415,35 @@ def test_ap_cipher_mixed_wpa_wpa2(dev, apdev):
     hwsim_utils.test_connectivity(dev[0], dev[1])
 
 @remote_compatible
+def test_ap_cipher_wpa_sae(dev, apdev):
+    """WPA-PSK/TKIP and SAE mixed AP - WPA IE and RSNXE coexistence"""
+    skip_with_fips(dev[0])
+    skip_without_tkip(dev[0])
+    ssid = "test-wpa-sae"
+    passphrase = "12345678"
+    params = {"ssid": ssid,
+              "wpa_passphrase": passphrase,
+              "wpa": "3",
+              "wpa_key_mgmt": "WPA-PSK SAE",
+              "rsn_pairwise": "CCMP",
+              "wpa_pairwise": "TKIP",
+              "sae_pwe": "1"}
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].flush_scan_cache()
+
+    dev[0].connect(ssid, psk=passphrase, proto="WPA",
+                   pairwise="TKIP", group="TKIP", scan_freq="2412")
+    status = dev[0].get_status()
+    if status['key_mgmt'] != 'WPA-PSK':
+        raise Exception("Incorrect key_mgmt reported")
+    if status['pairwise_cipher'] != 'TKIP':
+        raise Exception("Incorrect pairwise_cipher reported")
+    if status['group_cipher'] != 'TKIP':
+        raise Exception("Incorrect group_cipher reported")
+    hapd.wait_sta()
+    hwsim_utils.test_connectivity(dev[0], hapd)
+
+@remote_compatible
 def test_ap_cipher_bip(dev, apdev):
     """WPA2-PSK with BIP"""
     check_group_mgmt_cipher(dev[0], apdev[0], "AES-128-CMAC")
