@@ -1279,7 +1279,7 @@ static int dpp_rx_gas_resp(struct dpp_connection *conn, const u8 *msg,
 	const u8 *pos, *end, *next, *adv_proto;
 	u16 status, slen, comeback_delay;
 
-	if (len < 5 + 2 + (comeback ? 1 : 0))
+	if (len < (size_t) (5 + 2 + (comeback ? 1 : 0)))
 		return -1;
 
 	wpa_printf(MSG_DEBUG,
