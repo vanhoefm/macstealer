@@ -3352,9 +3352,11 @@ def test_ap_ft_r0_key_expiration(dev, apdev):
     passphrase = "12345678"
 
     params = ft_params1(ssid=ssid, passphrase=passphrase)
+    params.pop('r0_key_lifetime', None)
     params['ft_r0_key_lifetime'] = "2"
     hapd0 = hostapd.add_ap(apdev[0], params)
     params = ft_params2(ssid=ssid, passphrase=passphrase)
+    params.pop('r0_key_lifetime', None)
     params['ft_r0_key_lifetime'] = "2"
     hapd1 = hostapd.add_ap(apdev[1], params)
 
