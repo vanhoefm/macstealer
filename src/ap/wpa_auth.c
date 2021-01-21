@@ -3393,6 +3393,8 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
 	    wpa_ie_len > wpa_ie[1] + 2U && wpa_ie[0] == WLAN_EID_RSN) {
 		/* WPA-only STA, remove RSN IE and possible MDIE */
 		wpa_ie = wpa_ie + wpa_ie[1] + 2;
+		if (wpa_ie[0] == WLAN_EID_RSNX)
+			wpa_ie = wpa_ie + wpa_ie[1] + 2;
 		if (wpa_ie[0] == WLAN_EID_MOBILITY_DOMAIN)
 			wpa_ie = wpa_ie + wpa_ie[1] + 2;
 		wpa_ie_len = wpa_ie[1] + 2;
@@ -5397,6 +5399,8 @@ int wpa_auth_resend_m3(struct wpa_state_machine *sm,
 	    wpa_ie_len > wpa_ie[1] + 2 && wpa_ie[0] == WLAN_EID_RSN) {
 		/* WPA-only STA, remove RSN IE and possible MDIE */
 		wpa_ie = wpa_ie + wpa_ie[1] + 2;
+		if (wpa_ie[0] == WLAN_EID_RSNX)
+			wpa_ie = wpa_ie + wpa_ie[1] + 2;
 		if (wpa_ie[0] == WLAN_EID_MOBILITY_DOMAIN)
 			wpa_ie = wpa_ie + wpa_ie[1] + 2;
 		wpa_ie_len = wpa_ie[1] + 2;
