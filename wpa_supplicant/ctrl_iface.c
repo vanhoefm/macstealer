@@ -4833,6 +4833,31 @@ static int wpa_supplicant_ctrl_iface_get_capability(
 	}
 #endif /* CONFIG_SAE */
 
+#ifdef CONFIG_OCV
+	if (os_strcmp(field, "ocv") == 0) {
+		if ((wpa_s->drv_flags & WPA_DRIVER_FLAGS_SME) ||
+		    (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_OCV))
+			res = os_snprintf(buf, buflen, "supported");
+		else
+			res = os_snprintf(buf, buflen, "not supported");
+		if (os_snprintf_error(buflen, res))
+			return -1;
+		return res;
+	}
+#endif /* CONFIG_OCV */
+
+	if (os_strcmp(field, "beacon_prot") == 0) {
+		if ((wpa_s->drv_flags & WPA_DRIVER_FLAGS_BEACON_PROTECTION) ||
+		    (wpa_s->drv_flags2 &
+		     WPA_DRIVER_FLAGS2_BEACON_PROTECTION_CLIENT))
+			res = os_snprintf(buf, buflen, "supported");
+		else
+			res = os_snprintf(buf, buflen, "not supported");
+		if (os_snprintf_error(buflen, res))
+			return -1;
+		return res;
+	}
+
 	wpa_printf(MSG_DEBUG, "CTRL_IFACE: Unknown GET_CAPABILITY field '%s'",
 		   field);
 
