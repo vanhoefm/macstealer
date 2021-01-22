@@ -2821,6 +2821,7 @@ def run_dpp_proto_init(dev, test_dev, test, mutual=False, unicast=True,
         own = id1b
     dev[1].dpp_auth_init(uri=uri0, role=role, configurator=configurator,
                          conf=conf, own=own)
+    return uri0, role, configurator, conf, own
 
 def test_dpp_proto_after_wrapped_data_auth_req(dev, apdev):
     """DPP protocol testing - attribute after Wrapped Data in Auth Req"""
@@ -3249,7 +3250,7 @@ def test_dpp_proto_stop_at_auth_req(dev, apdev):
 
 def test_dpp_proto_stop_at_auth_resp(dev, apdev):
     """DPP protocol testing - stop when receiving Auth Resp"""
-    run_dpp_proto_init(dev, 1, 88)
+    uri0, role, configurator, conf, own = run_dpp_proto_init(dev, 1, 88)
 
     ev = dev[1].wait_event(["DPP-TX "], timeout=5)
     if ev is None:
@@ -3262,6 +3263,18 @@ def test_dpp_proto_stop_at_auth_resp(dev, apdev):
     ev = dev[1].wait_event(["DPP-TX "], timeout=0.1)
     if ev is not None:
         raise Exception("Unexpected Auth Conf TX")
+
+    ev = dev[0].wait_event(["DPP-FAIL"], timeout=2)
+    if ev is None or "No Auth Confirm received" not in ev:
+        raise Exception("DPP-FAIL for missing Auth Confirm not reported")
+    time.sleep(0.1)
+
+    # Try again without special testing behavior to confirm Responder is able
+    # to accept a new provisioning attempt.
+    dev[1].set("dpp_test", "0")
+    dev[1].dpp_auth_init(uri=uri0, role=role, configurator=configurator,
+                         conf=conf, own=own)
+    wait_auth_success(dev[0], dev[1])
 
 def test_dpp_proto_stop_at_auth_conf(dev, apdev):
     """DPP protocol testing - stop when receiving Auth Conf"""
