@@ -1554,9 +1554,31 @@ struct wpa_config {
 	/**
 	 * p2p_device_random_mac_addr - P2P Device MAC address policy default
 	 *
-	 * 0 = use permanent MAC address
+	 * 0 = use permanent MAC address (the one set by default by the device
+	 *     driver). Notice that, if the device driver is configured to
+	 *     always use random MAC addresses, this flag breaks reinvoking a
+	 *     persistent group, so flags 1 or 2 should be used instead with
+	 *     such drivers if persistent groups are used.
 	 * 1 = use random MAC address on creating the interface if there is no
-	 * persistent groups.
+	 *     persistent group. Besides, if a persistent group is created,
+	 *     p2p_device_persistent_mac_addr is set to the MAC address of the
+	 *     P2P Device interface, so that this address will be subsequently
+	 *     used to change the MAC address of the P2P Device interface. With
+	 *     no persistent group, the random MAC address is created by
+	 *     wpa_supplicant, changing the one set by the device driver.
+	 *     The device driver shall support SIOCGIFFLAGS/SIOCSIFFLAGS ioctl
+	 *     interface control operations.
+	 * 2 = this flag should be used when the device driver uses random MAC
+	 *     addresses by default when a P2P Device interface is created.
+	 *     If p2p_device_persistent_mac_addr is set, use this MAC address
+	 *     on creating the P2P Device interface. If not set, use the
+	 *     default method adopted by the device driver (e.g., random MAC
+	 *     address). Besides, if a persistent group is created,
+	 *     p2p_device_persistent_mac_addr is set to the MAC address of the
+	 *     P2P Device interface, so that this address will be subsequently
+	 *     used in place of the default address set by the device driver.
+	 *     (This option does not need support of SIOCGIFFLAGS/SIOCSIFFLAGS
+	 *     ioctl interface control operations and uses NL80211_ATTR_MAC).
 	 *
 	 * By default, permanent MAC address is used.
 	 */
