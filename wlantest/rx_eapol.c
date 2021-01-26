@@ -1056,7 +1056,10 @@ static void rx_data_eapol_key(struct wlantest *wt, const u8 *bssid,
 
 	bss = bss_get(wt, bssid);
 	if (bss) {
-		sta = sta_get(bss, sta_addr);
+		if (sta_addr)
+			sta = sta_get(bss, sta_addr);
+		else
+			sta = NULL;
 		if (sta)
 			mic_len = wpa_mic_len(sta->key_mgmt, PMK_LEN);
 	}
