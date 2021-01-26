@@ -5868,7 +5868,7 @@ static struct wpa_radio_work * radio_work_get_next_work(struct wpa_radio *radio)
 		dl_list_for_each(tmp, &radio->work, struct wpa_radio_work,
 				 list) {
 			if (os_strcmp(tmp->type, "scan") == 0 &&
-			    radio->external_scan_running &&
+			    external_scan_running(radio) &&
 			    (((struct wpa_driver_scan_params *)
 			      tmp->ctx)->only_new_results ||
 			     tmp->wpa_s->clear_driver_scan_cache))
@@ -5924,7 +5924,7 @@ static struct wpa_radio_work * radio_work_get_next_work(struct wpa_radio *radio)
 			 * rejected by kernel.
 			 */
 			if (os_strcmp(tmp->type, "scan") == 0 &&
-			    radio->external_scan_running &&
+			    external_scan_running(radio) &&
 			    (((struct wpa_driver_scan_params *)
 			      tmp->ctx)->only_new_results ||
 			     tmp->wpa_s->clear_driver_scan_cache))
@@ -5963,7 +5963,7 @@ static void radio_start_next_work(void *eloop_ctx, void *timeout_ctx)
 		if (work->started)
 			return; /* already started and still in progress */
 
-		if (wpa_s && wpa_s->radio->external_scan_running) {
+		if (wpa_s && external_scan_running(wpa_s->radio)) {
 			wpa_printf(MSG_DEBUG, "Delay radio work start until externally triggered scan completes");
 			return;
 		}
@@ -6059,6 +6059,10 @@ static void radio_remove_interface(struct wpa_supplicant *wpa_s)
 		   wpa_s->ifname, radio->name);
 	dl_list_del(&wpa_s->radio_list);
 	radio_remove_works(wpa_s, NULL, 0);
+	/* If the interface that triggered the external scan was removed, the
+	 * external scan is no longer running. */
+	if (wpa_s == radio->external_scan_req_interface)
+		radio->external_scan_req_interface = NULL;
 	wpa_s->radio = NULL;
 	if (!dl_list_empty(&radio->ifaces))
 		return; /* Interfaces remain for this radio */

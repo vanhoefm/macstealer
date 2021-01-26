@@ -332,11 +332,22 @@ struct wpa_global {
 struct wpa_radio {
 	char name[16]; /* from driver_ops get_radio_name() or empty if not
 			* available */
-	unsigned int external_scan_running:1;
+	/** NULL if no external scan running. */
+	struct wpa_supplicant *external_scan_req_interface;
 	unsigned int num_active_works;
 	struct dl_list ifaces; /* struct wpa_supplicant::radio_list entries */
 	struct dl_list work; /* struct wpa_radio_work::list entries */
 };
+
+/**
+ * Checks whether an external scan is running on a given radio.
+ * @radio: Pointer to radio struct
+ * Returns: true if an external scan is running, false otherwise.
+ */
+static inline bool external_scan_running(struct wpa_radio *radio)
+{
+	return radio && radio->external_scan_req_interface;
+}
 
 #define MAX_ACTIVE_WORKS 2
 

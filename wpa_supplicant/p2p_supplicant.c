@@ -247,7 +247,7 @@ static void wpas_p2p_scan_res_handled(struct wpa_supplicant *wpa_s)
 	unsigned int delay = wpas_p2p_search_delay(wpa_s);
 
 	/* In case of concurrent P2P and external scans, delay P2P search. */
-	if (wpa_s->radio->external_scan_running) {
+	if (external_scan_running(wpa_s->radio)) {
 		delay = wpa_s->conf->p2p_search_delay;
 		wpa_printf(MSG_DEBUG,
 			   "P2P: Delay next P2P search by %d ms to let externally triggered scan complete",

@@ -4792,7 +4792,7 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			}
 		} else {
 			wpa_dbg(wpa_s, MSG_DEBUG, "External program started a scan");
-			wpa_s->radio->external_scan_running = 1;
+			wpa_s->radio->external_scan_req_interface = wpa_s;
 			wpa_msg_ctrl(wpa_s, MSG_INFO, WPA_EVENT_SCAN_STARTED);
 		}
 		break;
@@ -4800,7 +4800,7 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		if (wpa_s->wpa_state == WPA_INTERFACE_DISABLED) {
 			wpa_s->scan_res_handler = NULL;
 			wpa_s->own_scan_running = 0;
-			wpa_s->radio->external_scan_running = 0;
+			wpa_s->radio->external_scan_req_interface = NULL;
 			wpa_s->last_scan_req = NORMAL_SCAN_REQ;
 			break;
 		}
@@ -4820,7 +4820,7 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		if (!(data && data->scan_info.external_scan))
 			wpa_s->own_scan_running = 0;
 		if (data && data->scan_info.nl_scan_event)
-			wpa_s->radio->external_scan_running = 0;
+			wpa_s->radio->external_scan_req_interface = NULL;
 		radio_work_check_next(wpa_s);
 		break;
 #endif /* CONFIG_NO_SCAN_PROCESSING */
