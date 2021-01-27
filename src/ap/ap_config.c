@@ -1323,6 +1323,27 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 	}
 #endif /* CONFIG_IEEE80211AC */
 
+#ifdef CONFIG_IEEE80211AX
+#ifdef CONFIG_WEP
+	if (full_config && conf->ieee80211ax &&
+	    bss->ssid.security_policy == SECURITY_STATIC_WEP) {
+		bss->disable_11ax = true;
+		wpa_printf(MSG_ERROR,
+			   "HE (IEEE 802.11ax) with WEP is not allowed, disabling HE capabilities");
+	}
+#endif /* CONFIG_WEP */
+
+	if (full_config && conf->ieee80211ax && bss->wpa &&
+	    !(bss->wpa_pairwise & WPA_CIPHER_CCMP) &&
+	    !(bss->rsn_pairwise & (WPA_CIPHER_CCMP | WPA_CIPHER_GCMP |
+				   WPA_CIPHER_CCMP_256 | WPA_CIPHER_GCMP_256)))
+	{
+		bss->disable_11ax = true;
+		wpa_printf(MSG_ERROR,
+			   "HE (IEEE 802.11ax) with WPA/WPA2 requires CCMP/GCMP to be enabled, disabling HE capabilities");
+	}
+#endif /* CONFIG_IEEE80211AX */
+
 #ifdef CONFIG_WPS
 	if (full_config && bss->wps_state && bss->ignore_broadcast_ssid) {
 		wpa_printf(MSG_INFO, "WPS: ignore_broadcast_ssid "
