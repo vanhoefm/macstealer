@@ -5643,6 +5643,18 @@ int wpa_auth_rekey_gtk(struct wpa_authenticator *wpa_auth)
 }
 
 
+int wpa_auth_rekey_ptk(struct wpa_authenticator *wpa_auth,
+		       struct wpa_state_machine *sm)
+{
+	if (!wpa_auth || !sm)
+		return -1;
+	wpa_auth_logger(wpa_auth, sm->addr, LOGGER_DEBUG, "rekeying PTK");
+	wpa_request_new_ptk(sm);
+	wpa_sm_step(sm);
+	return 0;
+}
+
+
 void wpa_auth_set_ft_rsnxe_used(struct wpa_authenticator *wpa_auth, int val)
 {
 	if (wpa_auth)
