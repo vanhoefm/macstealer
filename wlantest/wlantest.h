@@ -304,8 +304,14 @@ u8 * ccmp_256_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
 u8 * ccmp_256_encrypt(const u8 *tk, u8 *frame, size_t len, size_t hdrlen,
 		      u8 *qos, u8 *pn, int keyid, size_t *encrypted_len);
 
+enum michael_mic_result {
+	MICHAEL_MIC_OK,
+	MICHAEL_MIC_INCORRECT,
+	MICHAEL_MIC_NOT_VERIFIED
+};
 u8 * tkip_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
-		  const u8 *data, size_t data_len, size_t *decrypted_len);
+		  const u8 *data, size_t data_len, size_t *decrypted_len,
+		  enum michael_mic_result *mic_res);
 u8 * tkip_encrypt(const u8 *tk, u8 *frame, size_t len, size_t hdrlen, u8 *qos,
 		  u8 *pn, int keyid, size_t *encrypted_len);
 void tkip_get_pn(u8 *pn, const u8 *data);

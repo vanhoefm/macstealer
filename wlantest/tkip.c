@@ -290,7 +290,8 @@ static void michael_mic_hdr(const struct ieee80211_hdr *hdr11, u8 *hdr)
 
 
 u8 * tkip_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
-		  const u8 *data, size_t data_len, size_t *decrypted_len)
+		  const u8 *data, size_t data_len, size_t *decrypted_len,
+		  enum michael_mic_result *mic_res)
 {
 	u16 iv16;
 	u32 iv32;
@@ -303,6 +304,7 @@ u8 * tkip_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
 	u8 michael_hdr[16];
 	u8 mic[8];
 	u16 fc = le_to_host16(hdr->frame_control);
+	u16 sc = le_to_host16(hdr->seq_ctrl);
 
 	if (data_len < 8 + 4)
 		return NULL;
@@ -336,6 +338,15 @@ u8 * tkip_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
 	plain_len -= 4;
 
 	/* TODO: MSDU reassembly */
+	if ((fc & WLAN_FC_MOREFRAG) || WLAN_GET_SEQ_FRAG(sc) > 0) {
+		/* For now, return the decrypted fragment and do not check the
+		 * Michael MIC value in the last fragment */
+		*decrypted_len = plain_len;
+		if (mic_res) {
+			*mic_res = MICHAEL_MIC_NOT_VERIFIED;
+			return plain;
+		}
+	}
 
 	if (plain_len < 8) {
 		wpa_printf(MSG_INFO, "TKIP: Not enough room for Michael MIC "
@@ -353,8 +364,15 @@ u8 * tkip_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
 		wpa_hexdump(MSG_DEBUG, "TKIP: Calculated MIC", mic, 8);
 		wpa_hexdump(MSG_DEBUG, "TKIP: Received MIC",
 			    plain + plain_len - 8, 8);
+		if (mic_res) {
+			*decrypted_len = plain_len - 8;
+			*mic_res = MICHAEL_MIC_INCORRECT;
+			return plain;
+		}
 		os_free(plain);
 		return NULL;
+	} else if (mic_res) {
+		*mic_res = MICHAEL_MIC_OK;
 	}
 
 	*decrypted_len = plain_len - 8;
