@@ -3694,6 +3694,8 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 	wpa_auth_vlogger(sm->wpa_auth, sm->addr, LOGGER_INFO,
 			 "pairwise key handshake completed (%s)",
 			 sm->wpa == WPA_VERSION_WPA ? "WPA" : "RSN");
+	wpa_msg(sm->wpa_auth->conf.msg_ctx, MSG_INFO, "EAPOL-4WAY-HS-COMPLETED "
+		MACSTR, MAC2STR(sm->addr));
 
 #ifdef CONFIG_IEEE80211R_AP
 	wpa_ft_push_pmk_r1(sm->wpa_auth, sm->addr);
