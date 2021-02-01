@@ -44,7 +44,8 @@ static void wpa_supplicant_mesh_deinit(struct wpa_supplicant *wpa_s,
 	os_free(wpa_s->mesh_rsn);
 	wpa_s->mesh_rsn = NULL;
 
-	wpa_supplicant_leave_mesh(wpa_s, false);
+	if (!also_clear_hostapd)
+		wpa_supplicant_leave_mesh(wpa_s, false);
 }
 
 
