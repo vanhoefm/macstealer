@@ -873,6 +873,11 @@ int wps_registrar_add_nfc_password_token(struct wps_registrar *reg,
 					 const u8 *oob_dev_pw,
 					 size_t oob_dev_pw_len);
 void wps_registrar_flush(struct wps_registrar *reg);
+int wps_registrar_update_multi_ap(struct wps_registrar *reg,
+				  const u8 *multi_ap_backhaul_ssid,
+				  size_t multi_ap_backhaul_ssid_len,
+				  const u8 *multi_ap_backhaul_network_key,
+				  size_t multi_ap_backhaul_network_key_len);
 
 int wps_build_credential_wrap(struct wpabuf *msg,
 			      const struct wps_credential *cred);

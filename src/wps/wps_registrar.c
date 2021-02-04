@@ -3669,6 +3669,35 @@ int wps_registrar_config_ap(struct wps_registrar *reg,
 }
 
 
+int wps_registrar_update_multi_ap(struct wps_registrar *reg,
+				  const u8 *multi_ap_backhaul_ssid,
+				  size_t multi_ap_backhaul_ssid_len,
+				  const u8 *multi_ap_backhaul_network_key,
+				  size_t multi_ap_backhaul_network_key_len)
+{
+	if (multi_ap_backhaul_ssid) {
+		os_memcpy(reg->multi_ap_backhaul_ssid,
+			  multi_ap_backhaul_ssid, multi_ap_backhaul_ssid_len);
+		reg->multi_ap_backhaul_ssid_len = multi_ap_backhaul_ssid_len;
+	}
+
+	os_free(reg->multi_ap_backhaul_network_key);
+	reg->multi_ap_backhaul_network_key = NULL;
+	reg->multi_ap_backhaul_network_key_len = 0;
+	if (multi_ap_backhaul_network_key) {
+		reg->multi_ap_backhaul_network_key =
+			os_memdup(multi_ap_backhaul_network_key,
+				  multi_ap_backhaul_network_key_len);
+		if (!reg->multi_ap_backhaul_network_key)
+			return -1;
+		reg->multi_ap_backhaul_network_key_len =
+			multi_ap_backhaul_network_key_len;
+	}
+
+	return 0;
+}
+
+
 #ifdef CONFIG_WPS_NFC
 
 int wps_registrar_add_nfc_pw_token(struct wps_registrar *reg,
