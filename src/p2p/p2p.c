@@ -665,6 +665,8 @@ static void p2p_update_peer_vendor_elems(struct p2p_device *dev, const u8 *ies,
 		if (wpabuf_resize(&dev->info.vendor_elems, 2 + len) < 0)
 			break;
 		wpabuf_put_data(dev->info.vendor_elems, pos - 2, 2 + len);
+		if (wpabuf_size(dev->info.vendor_elems) > 2000)
+			break;
 	}
 }
 
