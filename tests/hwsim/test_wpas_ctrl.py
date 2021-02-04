@@ -2147,3 +2147,11 @@ def test_wpas_ctrl_get_pref_freq_list_override(dev):
     dev[0].set("get_pref_freq_list_override", "")
     res = dev[0].request("GET_PREF_FREQ_LIST STATION").strip()
     logger.info("STATION (without override): " + res)
+
+def test_wpas_ctrl_interface_add_driver_init_failure(dev, apdev):
+    """wpa_supplicant INTERFACE_ADD and driver init failing"""
+    for i in range(1000):
+        res = dev[0].global_request("INTERFACE_ADD FOO")
+        if "FAIL" not in res:
+            raise Exception("Unexpected result: " + res)
+    dev[0].dump_monitor()
