@@ -1398,22 +1398,25 @@ void hostapd_deinit_wps(struct hostapd_data *hapd)
 
 void hostapd_update_wps(struct hostapd_data *hapd)
 {
-	if (hapd->wps == NULL)
+	struct wps_context *wps = hapd->wps;
+	struct hostapd_bss_config *conf = hapd->conf;
+
+	if (!wps)
 		return;
 
 #ifdef CONFIG_WPS_UPNP
-	hapd->wps->friendly_name = hapd->conf->friendly_name;
-	hapd->wps->manufacturer_url = hapd->conf->manufacturer_url;
-	hapd->wps->model_description = hapd->conf->model_description;
-	hapd->wps->model_url = hapd->conf->model_url;
-	hapd->wps->upc = hapd->conf->upc;
+	wps->friendly_name = conf->friendly_name;
+	wps->manufacturer_url = conf->manufacturer_url;
+	wps->model_description = conf->model_description;
+	wps->model_url = conf->model_url;
+	wps->upc = conf->upc;
 #endif /* CONFIG_WPS_UPNP */
 
-	hostapd_wps_set_vendor_ext(hapd, hapd->wps);
-	hostapd_wps_set_application_ext(hapd, hapd->wps);
+	hostapd_wps_set_vendor_ext(hapd, wps);
+	hostapd_wps_set_application_ext(hapd, wps);
 
-	if (hapd->conf->wps_state)
-		wps_registrar_update_ie(hapd->wps->registrar);
+	if (conf->wps_state)
+		wps_registrar_update_ie(wps->registrar);
 	else
 		hostapd_deinit_wps(hapd);
 }
