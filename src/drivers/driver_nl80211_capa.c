@@ -1390,6 +1390,7 @@ int wpa_driver_nl80211_capa(struct wpa_driver_nl80211_data *drv)
 
 	if (!info.device_ap_sme) {
 		drv->capa.flags |= WPA_DRIVER_FLAGS_DEAUTH_TX_STATUS;
+		drv->capa.flags2 |= WPA_DRIVER_FLAGS2_AP_SME;
 
 		/*
 		 * No AP SME is currently assumed to also indicate no AP MLME

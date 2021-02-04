@@ -1515,6 +1515,12 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_BEACON_PROTECTION))
 		_conf.beacon_prot = 0;
 
+#ifdef CONFIG_OCV
+	if (!(hapd->iface->drv_flags2 &
+	      (WPA_DRIVER_FLAGS2_AP_SME | WPA_DRIVER_FLAGS2_OCV)))
+		_conf.ocv = 0;
+#endif /* CONFIG_OCV */
+
 	_conf.secure_ltf =
 		!!(hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF);
 	_conf.secure_rtt =
