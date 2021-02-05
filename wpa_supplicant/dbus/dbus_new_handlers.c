@@ -5082,8 +5082,8 @@ dbus_bool_t wpas_dbus_getter_bss_ies(
 		return FALSE;
 
 	return wpas_dbus_simple_array_property_getter(iter, DBUS_TYPE_BYTE,
-						      res + 1, res->ie_len,
-						      error);
+						      wpa_bss_ie_ptr(res),
+						      res->ie_len, error);
 }
 
 
