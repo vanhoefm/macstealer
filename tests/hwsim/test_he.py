@@ -1005,7 +1005,7 @@ def test_he_tkip(dev, apdev):
             raise Exception("Unexpected STATUS ieee80211n value")
         if status["ieee80211ac"] != "0":
             raise Exception("Unexpected STATUS ieee80211ac value")
-        if status["ieee80211ax"] != "1":
+        if status["ieee80211ax"] != "0":
             raise Exception("Unexpected STATUS ieee80211ax value")
         if status["secondary_channel"] != "0":
             raise Exception("Unexpected STATUS secondary_channel value")
