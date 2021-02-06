@@ -54,8 +54,7 @@ int wpas_send_mscs_req(struct wpa_supplicant *wpa_s)
 	if (wpa_s->wpa_state != WPA_COMPLETED || !wpa_s->current_ssid)
 		return 0;
 
-	if (!wpa_s->current_bss ||
-	    !wpa_bss_ext_capab(wpa_s->current_bss, WLAN_EXT_CAPAB_MSCS)) {
+	if (!wpa_bss_ext_capab(wpa_s->current_bss, WLAN_EXT_CAPAB_MSCS)) {
 		wpa_dbg(wpa_s, MSG_INFO,
 			"AP does not support MSCS - could not send MSCS Req");
 		return -1;

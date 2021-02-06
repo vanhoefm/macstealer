@@ -1390,6 +1390,8 @@ const u8 * wpa_bss_get_fils_cache_id(const struct wpa_bss *bss)
 
 int wpa_bss_ext_capab(const struct wpa_bss *bss, unsigned int capab)
 {
+	if (!bss)
+		return 0;
 	return ieee802_11_ext_capab(wpa_bss_get_ie(bss, WLAN_EID_EXT_CAPAB),
 				    capab);
 }

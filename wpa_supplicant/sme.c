@@ -1881,12 +1881,10 @@ pfs_fail:
 #endif /* CONFIG_DPP2 */
 
 	wpa_s->mscs_setup_done = false;
-	if (wpa_s->current_bss && wpa_s->robust_av.valid_config) {
+	if (wpa_bss_ext_capab(wpa_s->current_bss, WLAN_EXT_CAPAB_MSCS) &&
+	    wpa_s->robust_av.valid_config) {
 		struct wpabuf *mscs_ie;
 		size_t mscs_ie_len, buf_len, *wpa_ie_len, max_ie_len;
-
-		if (!wpa_bss_ext_capab(wpa_s->current_bss, WLAN_EXT_CAPAB_MSCS))
-			goto mscs_fail;
 
 		buf_len = 3 +	/* MSCS descriptor IE header */
 			  1 +	/* Request type */

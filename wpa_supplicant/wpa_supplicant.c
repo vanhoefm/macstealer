@@ -3204,12 +3204,10 @@ pfs_fail:
 		wpa_ie_len += wpa_s->rsnxe_len;
 	}
 
-	if (bss && wpa_s->robust_av.valid_config) {
+	if (wpa_bss_ext_capab(bss, WLAN_EXT_CAPAB_MSCS) &&
+	    wpa_s->robust_av.valid_config) {
 		struct wpabuf *mscs_ie;
 		size_t mscs_ie_len, buf_len;
-
-		if (!wpa_bss_ext_capab(bss, WLAN_EXT_CAPAB_MSCS))
-			goto mscs_fail;
 
 		buf_len = 3 +	/* MSCS descriptor IE header */
 			  1 +	/* Request type */
