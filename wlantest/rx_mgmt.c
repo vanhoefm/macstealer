@@ -2139,6 +2139,56 @@ static int check_bip(struct wlantest *wt, const u8 *data, size_t len)
 }
 
 
+static u8 * try_tk(struct wpa_ptk *ptk, const u8 *data, size_t len,
+		   size_t *dlen)
+{
+	const struct ieee80211_hdr *hdr;
+	u8 *decrypted, *frame;
+
+	hdr = (const struct ieee80211_hdr *) data;
+	decrypted = ccmp_decrypt(ptk->tk, hdr, data + 24, len - 24, dlen);
+	if (!decrypted)
+		return NULL;
+
+	frame = os_malloc(24 + *dlen);
+	if (frame) {
+		os_memcpy(frame, data, 24);
+		os_memcpy(frame + 24, decrypted, *dlen);
+		*dlen += 24;
+	}
+	os_free(decrypted);
+	return frame;
+}
+
+
+static u8 * mgmt_ccmp_decrypt_tk(struct wlantest *wt, const u8 *data,
+				 size_t len, size_t *dlen)
+{
+	struct wlantest_ptk *ptk;
+	u8 *decrypted;
+	int prev_level = wpa_debug_level;
+	int keyid;
+
+	keyid = data[24 + 3] >> 6;
+
+	wpa_debug_level = MSG_WARNING;
+	dl_list_for_each(ptk, &wt->ptk, struct wlantest_ptk, list) {
+		decrypted = try_tk(&ptk->ptk, data, len, dlen);
+		if (decrypted) {
+			wpa_debug_level = prev_level;
+			add_note(wt, MSG_DEBUG,
+				 "Found TK match from the list of all known TKs");
+			write_decrypted_note(wt, decrypted, ptk->ptk.tk,
+					     ptk->ptk.tk_len, keyid);
+			return decrypted;
+		}
+	}
+	wpa_debug_level = prev_level;
+
+	return NULL;
+}
+
+
 static u8 * mgmt_ccmp_decrypt(struct wlantest *wt, const u8 *data, size_t len,
 			      size_t *dlen)
 {
@@ -2150,17 +2200,6 @@ static u8 * mgmt_ccmp_decrypt(struct wlantest *wt, const u8 *data, size_t len,
 	u8 pn[6], *rsc;
 
 	hdr = (const struct ieee80211_hdr *) data;
-	bss = bss_get(wt, hdr->addr3);
-	if (bss == NULL)
-		return NULL;
-	if (os_memcmp(hdr->addr1, hdr->addr3, ETH_ALEN) == 0)
-		sta = sta_get(bss, hdr->addr2);
-	else
-		sta = sta_get(bss, hdr->addr1);
-	if (sta == NULL || !sta->ptk_set) {
-		add_note(wt, MSG_MSGDUMP, "No PTK known to decrypt the frame");
-		return NULL;
-	}
 
 	if (len < 24 + 4)
 		return NULL;
@@ -2182,6 +2221,21 @@ static u8 * mgmt_ccmp_decrypt(struct wlantest *wt, const u8 *data, size_t len,
 		add_note(wt, MSG_INFO, "Unexpected non-zero KeyID %d in "
 			 "individually addressed Management frame from "
 			 MACSTR, keyid, MAC2STR(hdr->addr2));
+	}
+
+	bss = bss_get(wt, hdr->addr3);
+	if (bss == NULL)
+		return mgmt_ccmp_decrypt_tk(wt, data, len, dlen);
+	if (os_memcmp(hdr->addr1, hdr->addr3, ETH_ALEN) == 0)
+		sta = sta_get(bss, hdr->addr2);
+	else
+		sta = sta_get(bss, hdr->addr1);
+	if (sta == NULL || !sta->ptk_set) {
+		decrypted = mgmt_ccmp_decrypt_tk(wt, data, len, dlen);
+		if (!decrypted)
+			add_note(wt, MSG_MSGDUMP,
+				 "No PTK known to decrypt the frame");
+		return decrypted;
 	}
 
 	if (os_memcmp(hdr->addr1, hdr->addr3, ETH_ALEN) == 0)

@@ -323,6 +323,19 @@ size_t notes_len(struct wlantest *wt, size_t hdrlen)
 }
 
 
+void write_decrypted_note(struct wlantest *wt, const u8 *decrypted,
+			  const u8 *tk, size_t tk_len, int keyid)
+{
+	char tk_hex[65];
+
+	if (!decrypted)
+		return;
+
+	wpa_snprintf_hex(tk_hex, sizeof(tk_hex), tk, tk_len);
+	add_note(wt, MSG_EXCESSIVE, "TK[%d] %s", keyid, tk_hex);
+}
+
+
 int wlantest_relog(struct wlantest *wt)
 {
 	int ret = 0;

@@ -119,19 +119,6 @@ static void rx_data_process(struct wlantest *wt, const u8 *bssid,
 }
 
 
-static void write_decrypted_note(struct wlantest *wt, const u8 *decrypted,
-				 const u8 *tk, size_t tk_len, int keyid)
-{
-	char tk_hex[65];
-
-	if (!decrypted)
-		return;
-
-	wpa_snprintf_hex(tk_hex, sizeof(tk_hex), tk, tk_len);
-	add_note(wt, MSG_EXCESSIVE, "TK[%d] %s", keyid, tk_hex);
-}
-
-
 static u8 * try_ptk(int pairwise_cipher, struct wpa_ptk *ptk,
 		    const struct ieee80211_hdr *hdr,
 		    const u8 *data, size_t data_len, size_t *decrypted_len)
