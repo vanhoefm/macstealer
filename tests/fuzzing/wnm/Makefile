@@ -20,7 +20,7 @@ LIBS += $(SRC)/utils/libutils.a
 ELIBS += $(SRC)/crypto/libcrypto.a
 ELIBS += $(SRC)/tls/libtls.a
 
-OBJS += $(WPAS_SRC)/blacklist.o
+OBJS += $(WPAS_SRC)/bssid_ignore.o
 OBJS += $(WPAS_SRC)/bss.o
 OBJS += $(WPAS_SRC)/config.o
 OBJS += $(WPAS_SRC)/config_file.o
