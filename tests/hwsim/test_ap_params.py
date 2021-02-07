@@ -254,6 +254,29 @@ def test_ap_acl_mgmt(dev, apdev):
     if filename.startswith('/tmp/'):
         os.unlink(filename)
 
+def test_ap_acl_accept_changes(dev, apdev):
+    """MAC ACL accept list changes"""
+    ssid = "acl"
+    params = {}
+    params['ssid'] = ssid
+    params['macaddr_acl'] = "1"
+    hapd = hostapd.add_ap(apdev[0], params)
+    hapd.request("ACCEPT_ACL ADD_MAC " + dev[0].own_addr())
+    hapd.request("ACCEPT_ACL ADD_MAC " + dev[1].own_addr())
+    dev[0].scan_for_bss(apdev[0]['bssid'], freq="2412")
+    dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
+    dev[1].scan_for_bss(apdev[0]['bssid'], freq="2412")
+    dev[1].connect(ssid, key_mgmt="NONE", scan_freq="2412")
+    hapd.request("ACCEPT_ACL DEL_MAC " + dev[0].own_addr())
+    dev[0].wait_disconnected()
+    dev[0].request("DISCONNECT")
+    ev = dev[1].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1)
+    if ev is not None:
+        raise Exception("Unexpected disconnection")
+    hapd.request("ACCEPT_ACL CLEAR")
+    dev[1].wait_disconnected()
+    dev[1].request("DISCONNECT")
+
 @remote_compatible
 def test_ap_wds_sta(dev, apdev):
     """WPA2-PSK AP with STA using 4addr mode"""
