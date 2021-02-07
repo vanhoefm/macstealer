@@ -1646,7 +1646,7 @@ endif
 
 OBJS += src/drivers/driver_common.c
 
-OBJS += wpa_supplicant.c events.c blacklist.c wpas_glue.c scan.c
+OBJS += wpa_supplicant.c events.c bssid_ignore.c wpas_glue.c scan.c
 OBJS_t := $(OBJS) $(OBJS_l2) eapol_test.c
 OBJS_t += src/radius/radius_client.c
 OBJS_t += src/radius/radius.c

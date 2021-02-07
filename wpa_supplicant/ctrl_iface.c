@@ -49,7 +49,7 @@
 #include "scan.h"
 #include "ctrl_iface.h"
 #include "interworking.h"
-#include "blacklist.h"
+#include "bssid_ignore.h"
 #include "autoscan.h"
 #include "wnm_sta.h"
 #include "offchannel.h"

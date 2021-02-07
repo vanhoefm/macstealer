@@ -10,7 +10,7 @@
 
 #include "common.h"
 #include "wpa_supplicant_i.h"
-#include "blacklist.h"
+#include "bssid_ignore.h"
 
 /**
  * wpa_bssid_ignore_get - Get the ignore list entry for a BSSID

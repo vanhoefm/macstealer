@@ -32,7 +32,7 @@
 #include "common/dpp.h"
 #include "common/ptksa_cache.h"
 #include "crypto/random.h"
-#include "blacklist.h"
+#include "bssid_ignore.h"
 #include "wpas_glue.h"
 #include "wps_supplicant.h"
 #include "ibss_rsn.h"

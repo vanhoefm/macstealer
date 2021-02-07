@@ -11,7 +11,7 @@
 #include "utils/common.h"
 #include "utils/module_tests.h"
 #include "wpa_supplicant_i.h"
-#include "blacklist.h"
+#include "bssid_ignore.h"
 
 
 static int wpas_bssid_ignore_module_tests(void)

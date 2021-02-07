@@ -26,7 +26,7 @@
 #include "wpa_supplicant_i.h"
 #include "driver_i.h"
 #include "notify.h"
-#include "blacklist.h"
+#include "bssid_ignore.h"
 #include "bss.h"
 #include "scan.h"
 #include "ap.h"

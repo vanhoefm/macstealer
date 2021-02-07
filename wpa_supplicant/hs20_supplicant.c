@@ -21,7 +21,7 @@
 #include "config.h"
 #include "scan.h"
 #include "bss.h"
-#include "blacklist.h"
+#include "bssid_ignore.h"
 #include "gas_query.h"
 #include "interworking.h"
 #include "hs20_supplicant.h"

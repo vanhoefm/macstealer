@@ -44,7 +44,7 @@
 #include "common/ptksa_cache.h"
 #include "p2p/p2p.h"
 #include "fst/fst.h"
-#include "blacklist.h"
+#include "bssid_ignore.h"
 #include "wpas_glue.h"
 #include "wps_supplicant.h"
 #include "ibss_rsn.h"
