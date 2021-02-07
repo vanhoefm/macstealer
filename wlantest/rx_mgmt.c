@@ -51,6 +51,8 @@ static const char * mgmt_stype(u16 stype)
 		return "DEAUTH";
 	case WLAN_FC_STYPE_ACTION:
 		return "ACTION";
+	case WLAN_FC_STYPE_ACTION_NO_ACK:
+		return "ACTION-NO-ACK";
 	}
 	return "??";
 }
@@ -2062,7 +2064,8 @@ static int check_bip(struct wlantest *wt, const u8 *data, size_t len)
 	fc = le_to_host16(mgmt->frame_control);
 	stype = WLAN_FC_GET_STYPE(fc);
 
-	if (stype == WLAN_FC_STYPE_ACTION) {
+	if (stype == WLAN_FC_STYPE_ACTION ||
+	    stype == WLAN_FC_STYPE_ACTION_NO_ACK) {
 		if (len < 24 + 1)
 			return 0;
 		if (mgmt->u.action.category == WLAN_ACTION_PUBLIC)
@@ -2291,7 +2294,8 @@ static int check_mgmt_ccmp(struct wlantest *wt, const u8 *data, size_t len)
 	mgmt = (const struct ieee80211_mgmt *) data;
 	fc = le_to_host16(mgmt->frame_control);
 
-	if (WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION) {
+	if (WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION ||
+	    WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION_NO_ACK) {
 		if (len > 24 &&
 		    mgmt->u.action.category == WLAN_ACTION_PUBLIC)
 			return 0; /* Not a robust management frame */
@@ -2310,7 +2314,8 @@ static int check_mgmt_ccmp(struct wlantest *wt, const u8 *data, size_t len)
 	if ((bss->rsn_capab & WPA_CAPABILITY_MFPC) &&
 	    (sta->rsn_capab & WPA_CAPABILITY_MFPC) &&
 	    (sta->state == STATE3 ||
-	     WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION)) {
+	     WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION ||
+	     WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION_NO_ACK)) {
 		add_note(wt, MSG_INFO, "Robust individually-addressed "
 			 "management frame sent without CCMP by "
 			 MACSTR, MAC2STR(mgmt->sa));
@@ -2340,7 +2345,8 @@ void rx_mgmt(struct wlantest *wt, const u8 *data, size_t len)
 	if ((hdr->addr1[0] & 0x01) &&
 	    (stype == WLAN_FC_STYPE_DEAUTH ||
 	     stype == WLAN_FC_STYPE_DISASSOC ||
-	     stype == WLAN_FC_STYPE_ACTION)) {
+	     stype == WLAN_FC_STYPE_ACTION ||
+	     stype == WLAN_FC_STYPE_ACTION_NO_ACK)) {
 		if (check_bip(wt, data, len) < 0)
 			valid = 0;
 	}
@@ -2360,7 +2366,8 @@ void rx_mgmt(struct wlantest *wt, const u8 *data, size_t len)
 	    !(hdr->addr1[0] & 0x01) &&
 	    (stype == WLAN_FC_STYPE_DEAUTH ||
 	     stype == WLAN_FC_STYPE_DISASSOC ||
-	     stype == WLAN_FC_STYPE_ACTION)) {
+	     stype == WLAN_FC_STYPE_ACTION ||
+	     stype == WLAN_FC_STYPE_ACTION_NO_ACK)) {
 		decrypted = mgmt_ccmp_decrypt(wt, data, len, &dlen);
 		if (decrypted) {
 			write_pcap_decrypted(wt, decrypted, dlen, NULL, 0);
@@ -2374,7 +2381,8 @@ void rx_mgmt(struct wlantest *wt, const u8 *data, size_t len)
 	    !(hdr->addr1[0] & 0x01) &&
 	    (stype == WLAN_FC_STYPE_DEAUTH ||
 	     stype == WLAN_FC_STYPE_DISASSOC ||
-	     stype == WLAN_FC_STYPE_ACTION)) {
+	     stype == WLAN_FC_STYPE_ACTION ||
+	     stype == WLAN_FC_STYPE_ACTION_NO_ACK)) {
 		if (check_mgmt_ccmp(wt, data, len) < 0)
 			valid = 0;
 	}
@@ -2408,6 +2416,9 @@ void rx_mgmt(struct wlantest *wt, const u8 *data, size_t len)
 		rx_mgmt_disassoc(wt, data, len, valid);
 		break;
 	case WLAN_FC_STYPE_ACTION:
+		rx_mgmt_action(wt, data, len, valid);
+		break;
+	case WLAN_FC_STYPE_ACTION_NO_ACK:
 		rx_mgmt_action(wt, data, len, valid);
 		break;
 	}

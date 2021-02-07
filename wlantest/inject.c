@@ -68,7 +68,8 @@ static int is_robust_mgmt(u8 *frame, size_t len)
 	stype = WLAN_FC_GET_STYPE(fc);
 	if (stype == WLAN_FC_STYPE_DEAUTH || stype == WLAN_FC_STYPE_DISASSOC)
 		return 1;
-	if (stype == WLAN_FC_STYPE_ACTION) {
+	if (stype == WLAN_FC_STYPE_ACTION ||
+	    stype == WLAN_FC_STYPE_ACTION_NO_ACK) {
 		if (len < 25)
 			return 0;
 		if (mgmt->u.action.category != WLAN_ACTION_PUBLIC)

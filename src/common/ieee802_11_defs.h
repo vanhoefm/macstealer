@@ -50,6 +50,7 @@
 #define WLAN_FC_STYPE_AUTH		11
 #define WLAN_FC_STYPE_DEAUTH		12
 #define WLAN_FC_STYPE_ACTION		13
+#define WLAN_FC_STYPE_ACTION_NO_ACK	14
 
 /* control */
 #define WLAN_FC_STYPE_PSPOLL		10
