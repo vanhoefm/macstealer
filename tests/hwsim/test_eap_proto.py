@@ -5629,8 +5629,7 @@ def test_eap_proto_aka_errors(dev, apdev):
     tests = [(1, "=eap_aka_learn_ids"),
              (2, "=eap_aka_learn_ids"),
              (1, "eap_sim_parse_encr;eap_aka_process_challenge"),
-             (1, "wpabuf_dup;eap_aka_add_id_msg"),
-             (1, "wpabuf_resize;eap_aka_add_id_msg"),
+             (1, "wpabuf_alloc;eap_aka_add_id_msg"),
              (1, "eap_aka_getKey"),
              (1, "eap_aka_get_emsk"),
              (1, "eap_aka_get_session_id")]
