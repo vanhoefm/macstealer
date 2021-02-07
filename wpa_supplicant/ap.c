@@ -44,6 +44,7 @@ static void wpas_wps_ap_pin_timeout(void *eloop_data, void *user_ctx);
 #endif /* CONFIG_WPS */
 
 
+#ifdef CONFIG_P2P
 static bool is_chanwidth160_supported(struct hostapd_hw_modes *mode,
 				      struct hostapd_config *conf)
 {
@@ -63,6 +64,7 @@ static bool is_chanwidth160_supported(struct hostapd_hw_modes *mode,
 		return true;
 	return false;
 }
+#endif /* CONFIG_P2P */
 
 
 static void wpas_conf_ap_vht(struct wpa_supplicant *wpa_s,
