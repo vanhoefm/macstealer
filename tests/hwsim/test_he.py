@@ -67,6 +67,12 @@ def test_he_params(dev, apdev):
               "he_spr_non_srg_obss_pd_max_offset": "0",
               "he_spr_srg_obss_pd_min_offset": "0",
               "he_spr_srg_obss_pd_max_offset": "0",
+              "he_spr_srg_bss_colors": "1 2 10 63",
+              "he_spr_srg_partial_bssid": "0 1 3 63",
+              "he_6ghz_max_ampdu_len_exp": "7",
+              "he_6ghz_rx_ant_pat": "1",
+              "he_6ghz_tx_ant_pat": "1",
+              "he_6ghz_max_mpdu": "2",
               "he_oper_chwidth": "0",
               "he_oper_centr_freq_seg0_idx": "1",
               "he_oper_centr_freq_seg1_idx": "0"}
