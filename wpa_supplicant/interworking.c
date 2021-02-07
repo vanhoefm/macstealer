@@ -2482,7 +2482,7 @@ static void interworking_select_network(struct wpa_supplicant *wpa_s)
 		bss_load = cred_over_max_bss_load(wpa_s, cred, bss);
 		conn_capab = cred_conn_capab_missing(wpa_s, cred, bss);
 		wpa_msg(wpa_s, MSG_INFO, "%s" MACSTR " type=%s%s%s%s id=%d priority=%d sp_priority=%d",
-			excluded ? INTERWORKING_BLACKLISTED : INTERWORKING_AP,
+			excluded ? INTERWORKING_EXCLUDED : INTERWORKING_AP,
 			MAC2STR(bss->bssid), type,
 			bh ? " below_min_backhaul=1" : "",
 			bss_load ? " over_max_bss_load=1" : "",
