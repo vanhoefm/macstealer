@@ -604,6 +604,7 @@
 #define WLAN_ACTION_UNPROTECTED_DMG 20
 #define WLAN_ACTION_VHT 21
 #define WLAN_ACTION_FILS 26
+#define WLAN_ACTION_PROTECTED_FTM 34
 #define WLAN_ACTION_VENDOR_SPECIFIC_PROTECTED 126
 #define WLAN_ACTION_VENDOR_SPECIFIC 127
 /* Note: 128-255 used to report errors by setting category | 0x80 */
@@ -644,6 +645,7 @@
 #define WLAN_PA_FTM_REQUEST 32
 #define WLAN_PA_FTM 33
 #define WLAN_PA_FILS_DISCOVERY 34
+#define WLAN_PA_LOCATION_MEASUREMENT_REPORT 47
 
 /* Protected Dual of Public Action frames (IEEE Std 802.11-2016, 9.6.11,
  * Table 9-332) */
@@ -700,6 +702,11 @@
 #define WLAN_RRM_LINK_MEASUREMENT_REPORT 3
 #define WLAN_RRM_NEIGHBOR_REPORT_REQUEST 4
 #define WLAN_RRM_NEIGHBOR_REPORT_RESPONSE 5
+
+/* Protected Fine Timing Frame Action Field value */
+#define WLAN_PROT_FTM_REQUEST 1
+#define WLAN_PROT_FTM 2
+#define WLAN_PROT_FTM_REPORT 3
 
 /* Radio Measurement capabilities (from RM Enabled Capabilities element)
  * IEEE Std 802.11-2016, 9.4.2.45, Table 9-157 */

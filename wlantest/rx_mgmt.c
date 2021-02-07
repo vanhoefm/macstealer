@@ -1916,8 +1916,126 @@ static void rx_mgmt_action_sa_query(struct wlantest *wt,
 }
 
 
+static void
+rx_mgmt_location_measurement_report(struct wlantest *wt,
+				    const struct ieee80211_mgmt *mgmt,
+				    size_t len, bool no_ack)
+{
+	const u8 *pos = mgmt->u.action.u.public_action.variable;
+	const u8 *end = ((const u8 *) mgmt) + len;
+
+	if (end - pos < 1) {
+		add_note(wt, MSG_INFO,
+			 "Too short Location Measurement Report frame from "
+			 MACSTR, MAC2STR(mgmt->sa));
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "Location Measurement Report " MACSTR " --> "
+		   MACSTR " (dialog token %u)",
+		   MAC2STR(mgmt->sa), MAC2STR(mgmt->da), *pos);
+	pos++;
+
+	if (!no_ack)
+		add_note(wt, MSG_INFO,
+			 "Protected Fine Timing Measurement Report incorrectly as an Action frame from "
+			 MACSTR, MAC2STR(mgmt->sa));
+
+	wpa_hexdump(MSG_MSGDUMP, "Location Measurement Report contents",
+		    pos, end - pos);
+}
+
+
+static void rx_mgmt_action_no_bss_public(struct wlantest *wt,
+					 const struct ieee80211_mgmt *mgmt,
+					 size_t len, bool no_ack)
+{
+	switch (mgmt->u.action.u.public_action.action) {
+	case WLAN_PA_LOCATION_MEASUREMENT_REPORT:
+		rx_mgmt_location_measurement_report(wt, mgmt, len, no_ack);
+		break;
+	}
+}
+
+
+static void rx_mgmt_prot_ftm_request(struct wlantest *wt,
+				     const struct ieee80211_mgmt *mgmt,
+				     size_t len, bool no_ack)
+{
+	wpa_printf(MSG_DEBUG, "Protected Fine Timing Measurement Request "
+		   MACSTR " --> " MACSTR,
+		   MAC2STR(mgmt->sa), MAC2STR(mgmt->da));
+	if (no_ack)
+		add_note(wt, MSG_INFO,
+			 "Protected Fine Timing Measurement Request incorrectly as an Action No Ack frame from "
+			 MACSTR, MAC2STR(mgmt->sa));
+}
+
+
+static void rx_mgmt_prot_ftm(struct wlantest *wt,
+			     const struct ieee80211_mgmt *mgmt,
+			     size_t len, bool no_ack)
+{
+	wpa_printf(MSG_DEBUG, "Protected Fine Timing Measurement "
+		   MACSTR " --> " MACSTR,
+		   MAC2STR(mgmt->sa), MAC2STR(mgmt->da));
+	if (no_ack)
+		add_note(wt, MSG_INFO,
+			 "Protected Fine Timing Measurement incorrectly as an Action No Ack frame from "
+			 MACSTR, MAC2STR(mgmt->sa));
+}
+
+
+static void rx_mgmt_prot_ftm_report(struct wlantest *wt,
+				     const struct ieee80211_mgmt *mgmt,
+				     size_t len, bool no_ack)
+{
+	wpa_printf(MSG_DEBUG, "Protected Fine Timing Measurement Report "
+		   MACSTR " --> " MACSTR,
+		   MAC2STR(mgmt->sa), MAC2STR(mgmt->da));
+	if (!no_ack)
+		add_note(wt, MSG_INFO,
+			 "Protected Fine Timing Measurement Report incorrectly as an Action frame from "
+			 MACSTR, MAC2STR(mgmt->sa));
+}
+
+
+static void
+rx_mgmt_action_no_bss_protected_ftm(struct wlantest *wt,
+				    const struct ieee80211_mgmt *mgmt,
+				    size_t len, bool no_ack)
+{
+	switch (mgmt->u.action.u.public_action.action) {
+	case WLAN_PROT_FTM_REQUEST:
+		rx_mgmt_prot_ftm_request(wt, mgmt, len, no_ack);
+		break;
+	case WLAN_PROT_FTM:
+		rx_mgmt_prot_ftm(wt, mgmt, len, no_ack);
+		break;
+	case WLAN_PROT_FTM_REPORT:
+		rx_mgmt_prot_ftm_report(wt, mgmt, len, no_ack);
+		break;
+	}
+}
+
+
+static void rx_mgmt_action_no_bss(struct wlantest *wt,
+				  const struct ieee80211_mgmt *mgmt, size_t len,
+				  bool no_ack)
+{
+	switch (mgmt->u.action.category) {
+	case WLAN_ACTION_PUBLIC:
+		rx_mgmt_action_no_bss_public(wt, mgmt, len, no_ack);
+		break;
+	case WLAN_ACTION_PROTECTED_FTM:
+		rx_mgmt_action_no_bss_protected_ftm(wt, mgmt, len, no_ack);
+		break;
+	}
+}
+
+
 static void rx_mgmt_action(struct wlantest *wt, const u8 *data, size_t len,
-			   int valid)
+			   int valid, bool no_ack)
 {
 	const struct ieee80211_mgmt *mgmt;
 	struct wlantest_bss *bss;
@@ -1932,6 +2050,24 @@ static void rx_mgmt_action(struct wlantest *wt, const u8 *data, size_t len,
 			 MAC2STR(mgmt->bssid), mgmt->u.action.category);
 		return; /* Ignore group addressed Action frames for now */
 	}
+
+	if (len < 24 + 2) {
+		add_note(wt, MSG_INFO, "Too short Action frame from " MACSTR,
+			 MAC2STR(mgmt->sa));
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "ACTION%s " MACSTR " -> " MACSTR
+		   " BSSID=" MACSTR " (category=%u) (valid=%d)",
+		   no_ack ? "-NO-ACK" : "",
+		   MAC2STR(mgmt->sa), MAC2STR(mgmt->da), MAC2STR(mgmt->bssid),
+		   mgmt->u.action.category, valid);
+	wpa_hexdump(MSG_MSGDUMP, "ACTION payload", data + 24, len - 24);
+
+	if (is_broadcast_ether_addr(mgmt->bssid)) {
+		rx_mgmt_action_no_bss(wt, mgmt, len, no_ack);
+		return;
+	}
 	bss = bss_get(wt, mgmt->bssid);
 	if (bss == NULL)
 		return;
@@ -1941,18 +2077,6 @@ static void rx_mgmt_action(struct wlantest *wt, const u8 *data, size_t len,
 		sta = sta_get(bss, mgmt->sa);
 	if (sta == NULL)
 		return;
-
-	if (len < 24 + 1) {
-		add_note(wt, MSG_INFO, "Too short Action frame from " MACSTR,
-			 MAC2STR(mgmt->sa));
-		return;
-	}
-
-	wpa_printf(MSG_DEBUG, "ACTION " MACSTR " -> " MACSTR
-		   " (category=%u) (valid=%d)",
-		   MAC2STR(mgmt->sa), MAC2STR(mgmt->da),
-		   mgmt->u.action.category, valid);
-	wpa_hexdump(MSG_MSGDUMP, "ACTION payload", data + 24, len - 24);
 
 	if (mgmt->u.action.category != WLAN_ACTION_PUBLIC &&
 	    sta->state < STATE3) {
@@ -2423,10 +2547,10 @@ void rx_mgmt(struct wlantest *wt, const u8 *data, size_t len)
 		rx_mgmt_disassoc(wt, data, len, valid);
 		break;
 	case WLAN_FC_STYPE_ACTION:
-		rx_mgmt_action(wt, data, len, valid);
+		rx_mgmt_action(wt, data, len, valid, false);
 		break;
 	case WLAN_FC_STYPE_ACTION_NO_ACK:
-		rx_mgmt_action(wt, data, len, valid);
+		rx_mgmt_action(wt, data, len, valid, true);
 		break;
 	}
 
