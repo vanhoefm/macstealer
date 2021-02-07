@@ -582,17 +582,17 @@ def test_ap_open_select_network(dev, apdev):
 
     dev[0].select_network(id1)
     dev[0].wait_connected()
-    res = dev[0].request("BLACKLIST")
+    res = dev[0].request("BSSID_IGNORE")
     if bssid1 in res or bssid2 in res:
-        raise Exception("Unexpected blacklist entry")
+        raise Exception("Unexpected BSSID ignore list entry")
     hwsim_utils.test_connectivity(dev[0], hapd1)
 
     dev[0].select_network(id2)
     dev[0].wait_connected()
     hwsim_utils.test_connectivity(dev[0], hapd2)
-    res = dev[0].request("BLACKLIST")
+    res = dev[0].request("BSSID_IGNORE")
     if bssid1 in res or bssid2 in res:
-        raise Exception("Unexpected blacklist entry(2)")
+        raise Exception("Unexpected BSSID ignore list entry(2)")
 
 @remote_compatible
 def test_ap_open_disable_enable(dev, apdev):
@@ -913,9 +913,9 @@ def test_ap_open_disable_select(dev, apdev):
 
     dev[0].request("DISABLE_NETWORK %d" % id)
     dev[0].wait_disconnected()
-    res = dev[0].request("BLACKLIST")
+    res = dev[0].request("BSSID_IGNORE")
     if hapd1.own_addr() in res or hapd2.own_addr() in res:
-        raise Exception("Unexpected blacklist entry added")
+        raise Exception("Unexpected BSSID ignore list entry added")
     dev[0].request("SELECT_NETWORK %d" % id)
     dev[0].wait_connected()
 

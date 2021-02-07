@@ -26,8 +26,8 @@ def test_ap_roam_open(dev, apdev):
     dev[0].roam(apdev[0]['bssid'])
     hwsim_utils.test_connectivity(dev[0], hapd0)
 
-def test_ap_blacklist_all(dev, apdev, params):
-    """Ensure we clear the blacklist if all visible APs reject"""
+def test_ap_ignore_bssid_all(dev, apdev, params):
+    """Ensure we clear the ignore BSSID list if all visible APs reject"""
     hapd0 = hostapd.add_ap(apdev[0], {"ssid": "test-open", "max_num_sta": "0"})
     hapd1 = hostapd.add_ap(apdev[1], {"ssid": "test-open", "max_num_sta": "0"})
     bss0 = hapd0.own_addr()
@@ -43,13 +43,13 @@ def test_ap_blacklist_all(dev, apdev, params):
                    wait_connect=False, bssid=bss1)
     if not dev[0].wait_event(["CTRL-EVENT-AUTH-REJECT"], timeout=10):
         raise Exception("AP 1 didn't reject us")
-    blacklist = get_blacklist(dev[0])
-    logger.info("blacklist: " + str(blacklist))
+    ignore_list = get_bssid_ignore_list(dev[0])
+    logger.info("ignore list: " + str(ignore_list))
     dev[0].request("REMOVE_NETWORK all")
     dev[0].dump_monitor()
 
     hapd0.set("max_num_sta", "1")
-    # All visible APs were blacklisted; we should clear the blacklist and find
+    # All visible APs were ignored; we should clear the ignore list and find
     # the AP that now accepts us.
     dev[0].scan_for_bss(bss0, freq=2412)
     dev[0].connect("test-open", key_mgmt="NONE", scan_freq="2412", bssid=bss0)
@@ -141,8 +141,8 @@ def test_ap_roam_wpa2_psk_pmf_mismatch(dev, apdev):
         raise Exception("Unexpected BSSID reported after failed roam attempt: " + bssid)
     hwsim_utils.test_connectivity(dev[0], hapd0)
 
-def get_blacklist(dev):
-    return dev.request("BLACKLIST").splitlines()
+def get_bssid_ignore_list(dev):
+    return dev.request("BSSID_IGNORE").splitlines()
 
 def test_ap_reconnect_auth_timeout(dev, apdev, params):
     """Reconnect to 2nd AP and authentication times out"""
@@ -162,7 +162,7 @@ def test_ap_reconnect_auth_timeout(dev, apdev, params):
     hapd1 = hostapd.add_ap(apdev[1], params)
     bssid1 = hapd1.own_addr()
 
-    wpas.request("BLACKLIST " + bssid0)
+    wpas.request("BSSID_IGNORE " + bssid0)
 
     wpas.scan_for_bss(bssid1, freq=2412)
     wpas.request("DISCONNECT")
@@ -179,11 +179,11 @@ def test_ap_reconnect_auth_timeout(dev, apdev, params):
     if not ev:
         raise Exception("CTRL-EVENT-SCAN-STARTED not seen")
 
-    b = get_blacklist(wpas)
+    b = get_bssid_ignore_list(wpas)
     if '00:00:00:00:00:00' in b:
-        raise Exception("Unexpected blacklist contents: " + str(b))
+        raise Exception("Unexpected ignore list contents: " + str(b))
     if bssid1 not in b:
-        raise Exception("Unexpected blacklist contents: " + str(b))
+        raise Exception("Unexpected ignore list contents: " + str(b))
 
 def test_ap_roam_with_reassoc_auth_timeout(dev, apdev, params):
     """Roam using reassoc between two APs and authentication times out"""
@@ -216,9 +216,9 @@ def test_ap_roam_with_reassoc_auth_timeout(dev, apdev, params):
     if not ev:
         raise Exception("CTRL-EVENT-SCAN-STARTED not seen")
 
-    b = get_blacklist(wpas)
+    b = get_bssid_ignore_list(wpas)
     if bssid0 in b:
-        raise Exception("Unexpected blacklist contents: " + str(b))
+        raise Exception("Unexpected ignore list contents: " + str(b))
 
 def test_ap_roam_wpa2_psk_failed(dev, apdev, params):
     """Roam failure with WPA2-PSK AP due to wrong passphrase"""
