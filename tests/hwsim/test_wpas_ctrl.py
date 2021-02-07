@@ -266,14 +266,14 @@ def test_wpas_ctrl_network(dev):
              "f2:99:88:77:66:55 02:11:22:33:44:55/ff:00:ff:00:ff:00 12:34:56:78:90:ab",
              "02:11:22:33:44:55/ff:ff:ff:00:00:00 02:ae:be:ce:53:77/00:00:00:00:00:ff"]
     for val in tests:
-        dev[0].set_network(id, "bssid_blacklist", val)
-        res = dev[0].get_network(id, "bssid_blacklist")
+        dev[0].set_network(id, "bssid_ignore", val)
+        res = dev[0].get_network(id, "bssid_ignore")
         if res != val:
-            raise Exception("Unexpected bssid_blacklist value: %s != %s" % (res, val))
-        dev[0].set_network(id, "bssid_whitelist", val)
-        res = dev[0].get_network(id, "bssid_whitelist")
+            raise Exception("Unexpected bssid_ignore value: %s != %s" % (res, val))
+        dev[0].set_network(id, "bssid_accept", val)
+        res = dev[0].get_network(id, "bssid_accept")
         if res != val:
-            raise Exception("Unexpected bssid_whitelist value: %s != %s" % (res, val))
+            raise Exception("Unexpected bssid_accept value: %s != %s" % (res, val))
 
     tests = ["foo",
              "00:11:22:33:44:5",
@@ -281,8 +281,8 @@ def test_wpas_ctrl_network(dev):
              "00:11:22:33:44:55/",
              "00:11:22:33:44:55/66:77:88:99:aa:b"]
     for val in tests:
-        if "FAIL" not in dev[0].request("SET_NETWORK %d bssid_blacklist %s" % (id, val)):
-            raise Exception("Invalid bssid_blacklist value accepted")
+        if "FAIL" not in dev[0].request("SET_NETWORK %d bssid_ignore %s" % (id, val)):
+            raise Exception("Invalid bssid_ignore value accepted")
 
 @remote_compatible
 def test_wpas_ctrl_network_oom(dev):
