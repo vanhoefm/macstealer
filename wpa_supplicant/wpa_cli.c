@@ -1408,8 +1408,8 @@ static int wpa_cli_cmd_get_network(struct wpa_ctrl *ctrl, int argc,
 
 
 static const char *network_fields[] = {
-	"ssid", "scan_ssid", "bssid", "bssid_blacklist",
-	"bssid_whitelist", "psk", "proto", "key_mgmt",
+	"ssid", "scan_ssid", "bssid", "bssid_ignore",
+	"bssid_accept", "psk", "proto", "key_mgmt",
 	"bg_scan_period", "pairwise", "group", "auth_alg", "scan_freq",
 	"freq_list", "max_oper_chwidth", "ht40", "vht", "vht_center_freq1",
 	"vht_center_freq2", "ht", "edmg",

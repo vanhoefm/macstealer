@@ -442,47 +442,99 @@ static char * wpa_config_write_bssid_hint(const struct parse_data *data,
 #endif /* NO_CONFIG_WRITE */
 
 
+static int wpa_config_parse_bssid_ignore(const struct parse_data *data,
+					 struct wpa_ssid *ssid, int line,
+					 const char *value)
+{
+	return wpa_config_parse_addr_list(data, line, value,
+					  &ssid->bssid_ignore,
+					  &ssid->num_bssid_ignore,
+					  "bssid_ignore", 1, 1);
+}
+
+
+/* deprecated alias for bssid_ignore for backwards compatibility */
 static int wpa_config_parse_bssid_blacklist(const struct parse_data *data,
 					    struct wpa_ssid *ssid, int line,
 					    const char *value)
 {
 	return wpa_config_parse_addr_list(data, line, value,
-					  &ssid->bssid_blacklist,
-					  &ssid->num_bssid_blacklist,
-					  "bssid_blacklist", 1, 1);
+					  &ssid->bssid_ignore,
+					  &ssid->num_bssid_ignore,
+					  "bssid_ignore", 1, 1);
 }
 
 
 #ifndef NO_CONFIG_WRITE
+
+static char * wpa_config_write_bssid_ignore(const struct parse_data *data,
+					    struct wpa_ssid *ssid)
+{
+	return wpa_config_write_addr_list(data, ssid->bssid_ignore,
+					  ssid->num_bssid_ignore,
+					  "bssid_ignore");
+}
+
+
+/* deprecated alias for bssid_ignore for backwards compatibility */
 static char * wpa_config_write_bssid_blacklist(const struct parse_data *data,
 					       struct wpa_ssid *ssid)
 {
-	return wpa_config_write_addr_list(data, ssid->bssid_blacklist,
-					  ssid->num_bssid_blacklist,
-					  "bssid_blacklist");
+	return wpa_config_write_addr_list(data, ssid->bssid_ignore,
+					  ssid->num_bssid_ignore,
+					  "bssid_ignore");
 }
+
 #endif /* NO_CONFIG_WRITE */
 
 
+static int wpa_config_parse_bssid_accept(const struct parse_data *data,
+					 struct wpa_ssid *ssid, int line,
+					 const char *value)
+{
+	return wpa_config_parse_addr_list(data, line, value,
+					  &ssid->bssid_accept,
+					  &ssid->num_bssid_accept,
+					  "bssid_accept", 1, 1);
+}
+
+
+/* deprecated alias for bssid_accept for backwards compatibility */
 static int wpa_config_parse_bssid_whitelist(const struct parse_data *data,
 					    struct wpa_ssid *ssid, int line,
 					    const char *value)
 {
 	return wpa_config_parse_addr_list(data, line, value,
-					  &ssid->bssid_whitelist,
-					  &ssid->num_bssid_whitelist,
-					  "bssid_whitelist", 1, 1);
+					  &ssid->bssid_accept,
+					  &ssid->num_bssid_accept,
+					  "bssid_accept", 1, 1);
 }
 
 
 #ifndef NO_CONFIG_WRITE
+
+static char * wpa_config_write_bssid_accept(const struct parse_data *data,
+					    struct wpa_ssid *ssid)
+{
+	return wpa_config_write_addr_list(data, ssid->bssid_accept,
+					  ssid->num_bssid_accept,
+					  "bssid_accept");
+}
+
+
+/* deprecated alias for bssid_accept for backwards compatibility */
 static char * wpa_config_write_bssid_whitelist(const struct parse_data *data,
 					       struct wpa_ssid *ssid)
 {
-	return wpa_config_write_addr_list(data, ssid->bssid_whitelist,
-					  ssid->num_bssid_whitelist,
-					  "bssid_whitelist");
+	return wpa_config_write_addr_list(data, ssid->bssid_accept,
+					  ssid->num_bssid_accept,
+					  "bssid_accept");
 }
+
+#endif /* NO_CONFIG_WRITE */
+
+
+#ifndef NO_CONFIG_WRITE
 #endif /* NO_CONFIG_WRITE */
 
 
@@ -2362,8 +2414,10 @@ static const struct parse_data ssid_fields[] = {
 	{ INT_RANGE(scan_ssid, 0, 1) },
 	{ FUNC(bssid) },
 	{ FUNC(bssid_hint) },
-	{ FUNC(bssid_blacklist) },
-	{ FUNC(bssid_whitelist) },
+	{ FUNC(bssid_ignore) },
+	{ FUNC(bssid_accept) },
+	{ FUNC(bssid_blacklist) }, /* deprecated alias for bssid_ignore */
+	{ FUNC(bssid_whitelist) }, /* deprecated alias for bssid_accept */
 	{ FUNC_KEY(psk) },
 	{ INT(mem_only_psk) },
 	{ STR_KEY(sae_password) },
@@ -2763,8 +2817,8 @@ void wpa_config_free_ssid(struct wpa_ssid *ssid)
 	os_free(ssid->freq_list);
 	os_free(ssid->bgscan);
 	os_free(ssid->p2p_client_list);
-	os_free(ssid->bssid_blacklist);
-	os_free(ssid->bssid_whitelist);
+	os_free(ssid->bssid_ignore);
+	os_free(ssid->bssid_accept);
 #ifdef CONFIG_HT_OVERRIDES
 	os_free(ssid->ht_mcs);
 #endif /* CONFIG_HT_OVERRIDES */

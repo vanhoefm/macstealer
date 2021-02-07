@@ -767,8 +767,8 @@ static void wpa_config_write_network(FILE *f, struct wpa_ssid *ssid)
 	INT(scan_ssid);
 	write_bssid(f, ssid);
 	write_bssid_hint(f, ssid);
-	write_str(f, "bssid_blacklist", ssid);
-	write_str(f, "bssid_whitelist", ssid);
+	write_str(f, "bssid_ignore", ssid);
+	write_str(f, "bssid_accept", ssid);
 	write_psk(f, ssid);
 	INT(mem_only_psk);
 	STR(sae_password);

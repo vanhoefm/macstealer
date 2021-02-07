@@ -1217,23 +1217,23 @@ static bool wpa_scan_res_ok(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 		return false;
 	}
 
-	/* check blacklist */
-	if (ssid->num_bssid_blacklist &&
-	    addr_in_list(bss->bssid, ssid->bssid_blacklist,
-			 ssid->num_bssid_blacklist)) {
+	/* check the list of BSSIDs to ignore */
+	if (ssid->num_bssid_ignore &&
+	    addr_in_list(bss->bssid, ssid->bssid_ignore,
+			 ssid->num_bssid_ignore)) {
 		if (debug_print)
 			wpa_dbg(wpa_s, MSG_DEBUG,
-				"   skip - BSSID blacklisted");
+				"   skip - BSSID configured to be ignored");
 		return false;
 	}
 
-	/* if there is a whitelist, only accept those APs */
-	if (ssid->num_bssid_whitelist &&
-	    !addr_in_list(bss->bssid, ssid->bssid_whitelist,
-			  ssid->num_bssid_whitelist)) {
+	/* if there is a list of accepted BSSIDs, only accept those APs */
+	if (ssid->num_bssid_accept &&
+	    !addr_in_list(bss->bssid, ssid->bssid_accept,
+			  ssid->num_bssid_accept)) {
 		if (debug_print)
 			wpa_dbg(wpa_s, MSG_DEBUG,
-				"   skip - BSSID not in whitelist");
+				"   skip - BSSID not in list of accepted values");
 		return false;
 	}
 

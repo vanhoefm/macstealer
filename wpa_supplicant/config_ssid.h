@@ -153,16 +153,16 @@ struct wpa_ssid {
 	u8 bssid[ETH_ALEN];
 
 	/**
-	 * bssid_blacklist - List of inacceptable BSSIDs
+	 * bssid_ignore - List of inacceptable BSSIDs
 	 */
-	u8 *bssid_blacklist;
-	size_t num_bssid_blacklist;
+	u8 *bssid_ignore;
+	size_t num_bssid_ignore;
 
 	/**
-	 * bssid_blacklist - List of acceptable BSSIDs
+	 * bssid_accept - List of acceptable BSSIDs
 	 */
-	u8 *bssid_whitelist;
-	size_t num_bssid_whitelist;
+	u8 *bssid_accept;
+	size_t num_bssid_accept;
 
 	/**
 	 * bssid_set - Whether BSSID is configured for this network
