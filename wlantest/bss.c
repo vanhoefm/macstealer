@@ -293,8 +293,8 @@ void bss_update(struct wlantest *wt, struct wlantest_bss *bss,
 		   "pairwise=%s%s%s%s%s%s%s"
 		   "group=%s%s%s%s%s%s%s%s%s"
 		   "mgmt_group_cipher=%s%s%s%s%s"
-		   "key_mgmt=%s%s%s%s%s%s%s%s%s"
-		   "rsn_capab=%s%s%s%s%s%s%s",
+		   "key_mgmt=%s%s%s%s%s%s%s%s%s%s%s%s%s%s"
+		   "rsn_capab=%s%s%s%s%s%s%s%s%s%s",
 		   MAC2STR(bss->bssid),
 		   bss->proto == 0 ? "OPEN " : "",
 		   bss->proto & WPA_PROTO_WPA ? "WPA " : "",
@@ -337,7 +337,14 @@ void bss_update(struct wlantest *wt, struct wlantest_bss *bss,
 		   "EAP-SHA256 " : "",
 		   bss->key_mgmt & WPA_KEY_MGMT_PSK_SHA256 ?
 		   "PSK-SHA256 " : "",
+		   bss->key_mgmt & WPA_KEY_MGMT_OWE ? "OWE " : "",
+		   bss->key_mgmt & WPA_KEY_MGMT_PASN ? "PASN " : "",
 		   bss->key_mgmt & WPA_KEY_MGMT_OSEN ? "OSEN " : "",
+		   bss->key_mgmt & WPA_KEY_MGMT_DPP ? "DPP " : "",
+		   bss->key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B ?
+		   "EAP-SUITE-B " : "",
+		   bss->key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B_192 ?
+		   "EAP-SUITE-B-192 " : "",
 		   bss->rsn_capab & WPA_CAPABILITY_PREAUTH ? "PREAUTH " : "",
 		   bss->rsn_capab & WPA_CAPABILITY_NO_PAIRWISE ?
 		   "NO_PAIRWISE " : "",
@@ -345,6 +352,11 @@ void bss_update(struct wlantest *wt, struct wlantest_bss *bss,
 		   bss->rsn_capab & WPA_CAPABILITY_MFPC ? "MFPC " : "",
 		   bss->rsn_capab & WPA_CAPABILITY_PEERKEY_ENABLED ?
 		   "PEERKEY " : "",
+		   bss->rsn_capab & WPA_CAPABILITY_SPP_A_MSDU_CAPABLE ?
+		   "SPP-A-MSDU-CAPAB " : "",
+		   bss->rsn_capab & WPA_CAPABILITY_SPP_A_MSDU_REQUIRED ?
+		   "SPP-A-MSDU-REQUIRED " : "",
+		   bss->rsn_capab & WPA_CAPABILITY_PBAC ? "PBAC " : "",
 		   bss->rsn_capab & WPA_CAPABILITY_OCVC ? "OCVC " : "",
 		   bss->rsn_capab & WPA_CAPABILITY_EXT_KEY_ID_FOR_UNICAST ?
 		   "ExtKeyID " : "");

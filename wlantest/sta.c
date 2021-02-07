@@ -180,8 +180,8 @@ skip_rsn_wpa:
 	wpa_printf(MSG_INFO, "STA " MACSTR
 		   " proto=%s%s%s%s"
 		   "pairwise=%s%s%s%s%s%s%s"
-		   "key_mgmt=%s%s%s%s%s%s%s%s%s%s%s"
-		   "rsn_capab=%s%s%s%s%s%s",
+		   "key_mgmt=%s%s%s%s%s%s%s%s%s%s%s%s%s%s"
+		   "rsn_capab=%s%s%s%s%s%s%s%s%s%s",
 		   MAC2STR(sta->addr),
 		   sta->proto == 0 ? "OPEN " : "",
 		   sta->proto & WPA_PROTO_WPA ? "WPA " : "",
@@ -206,7 +206,10 @@ skip_rsn_wpa:
 		   "EAP-SHA256 " : "",
 		   sta->key_mgmt & WPA_KEY_MGMT_PSK_SHA256 ?
 		   "PSK-SHA256 " : "",
+		   sta->key_mgmt & WPA_KEY_MGMT_OWE ? "OWE " : "",
+		   sta->key_mgmt & WPA_KEY_MGMT_PASN ? "PASN " : "",
 		   sta->key_mgmt & WPA_KEY_MGMT_OSEN ? "OSEN " : "",
+		   sta->key_mgmt & WPA_KEY_MGMT_DPP ? "DPP " : "",
 		   sta->key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B ?
 		   "EAP-SUITE-B " : "",
 		   sta->key_mgmt & WPA_KEY_MGMT_IEEE8021X_SUITE_B_192 ?
@@ -218,5 +221,12 @@ skip_rsn_wpa:
 		   sta->rsn_capab & WPA_CAPABILITY_MFPC ? "MFPC " : "",
 		   sta->rsn_capab & WPA_CAPABILITY_PEERKEY_ENABLED ?
 		   "PEERKEY " : "",
-		   sta->rsn_capab & WPA_CAPABILITY_OCVC ? "OCVC " : "");
+		   sta->rsn_capab & WPA_CAPABILITY_SPP_A_MSDU_CAPABLE ?
+		   "SPP-A-MSDU-CAPAB " : "",
+		   sta->rsn_capab & WPA_CAPABILITY_SPP_A_MSDU_REQUIRED ?
+		   "SPP-A-MSDU-REQUIRED " : "",
+		   sta->rsn_capab & WPA_CAPABILITY_PBAC ? "PBAC " : "",
+		   sta->rsn_capab & WPA_CAPABILITY_OCVC ? "OCVC " : "",
+		   sta->rsn_capab & WPA_CAPABILITY_EXT_KEY_ID_FOR_UNICAST ?
+		   "ExtKeyID " : "");
 }
