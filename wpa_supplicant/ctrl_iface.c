@@ -2559,7 +2559,7 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 						  size_t buflen)
 {
 	u8 bssid[ETH_ALEN];
-	struct wpa_blacklist *e;
+	struct wpa_bssid_ignore *e;
 	char *pos, *end;
 	int ret;
 
@@ -2567,7 +2567,7 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 	if (*cmd == '\0') {
 		pos = buf;
 		end = buf + buflen;
-		e = wpa_s->blacklist;
+		e = wpa_s->bssid_ignore;
 		while (e) {
 			ret = os_snprintf(pos, end - pos, MACSTR "\n",
 					  MAC2STR(e->bssid));
@@ -2581,7 +2581,7 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 
 	cmd++;
 	if (os_strncmp(cmd, "clear", 5) == 0) {
-		wpa_blacklist_clear(wpa_s);
+		wpa_bssid_ignore_clear(wpa_s);
 		os_memcpy(buf, "OK\n", 3);
 		return 3;
 	}
@@ -2596,10 +2596,10 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 	 * Add the BSSID twice, so its count will be 2, causing it to be
 	 * skipped when processing scan results.
 	 */
-	ret = wpa_blacklist_add(wpa_s, bssid);
+	ret = wpa_bssid_ignore_add(wpa_s, bssid);
 	if (ret < 0)
 		return -1;
-	ret = wpa_blacklist_add(wpa_s, bssid);
+	ret = wpa_bssid_ignore_add(wpa_s, bssid);
 	if (ret < 0)
 		return -1;
 	os_memcpy(buf, "OK\n", 3);
@@ -8434,7 +8434,7 @@ static void wpa_supplicant_ctrl_iface_flush(struct wpa_supplicant *wpa_s)
 	wpa_s->consecutive_conn_failures = 0;
 
 	wpa_drv_radio_disable(wpa_s, 0);
-	wpa_blacklist_clear(wpa_s);
+	wpa_bssid_ignore_clear(wpa_s);
 	wpa_supplicant_ctrl_iface_remove_network(wpa_s, "all");
 	wpa_supplicant_ctrl_iface_remove_cred(wpa_s, "all");
 	wpa_config_flush_blobs(wpa_s->conf);

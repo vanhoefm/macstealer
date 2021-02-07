@@ -1,33 +1,33 @@
 /*
- * wpa_supplicant - Temporary BSSID blacklist
- * Copyright (c) 2003-2007, Jouni Malinen <j@w1.fi>
+ * wpa_supplicant - List of temporarily ignored BSSIDs
+ * Copyright (c) 2003-2021, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
  */
 
-#ifndef BLACKLIST_H
-#define BLACKLIST_H
+#ifndef BSSID_IGNORE_H
+#define BSSID_IGNORE_H
 
-struct wpa_blacklist {
-	struct wpa_blacklist *next;
+struct wpa_bssid_ignore {
+	struct wpa_bssid_ignore *next;
 	u8 bssid[ETH_ALEN];
 	int count;
-	/* Time of most recent blacklist event. */
-	struct os_reltime blacklist_start;
+	/* Time of the most recent trigger to ignore this BSSID. */
+	struct os_reltime start;
 	/*
-	 * Number of seconds after blacklist_start that the entry will be
-	 * considered blacklisted.
+	 * Number of seconds after start that the entey will be considered
+	 * valid.
 	 */
 	int timeout_secs;
 };
 
-struct wpa_blacklist * wpa_blacklist_get(struct wpa_supplicant *wpa_s,
+struct wpa_bssid_ignore * wpa_bssid_ignore_get(struct wpa_supplicant *wpa_s,
 					 const u8 *bssid);
-int wpa_blacklist_add(struct wpa_supplicant *wpa_s, const u8 *bssid);
-int wpa_blacklist_del(struct wpa_supplicant *wpa_s, const u8 *bssid);
-int wpa_blacklist_is_blacklisted(struct wpa_supplicant *wpa_s, const u8 *bssid);
-void wpa_blacklist_clear(struct wpa_supplicant *wpa_s);
-void wpa_blacklist_update(struct wpa_supplicant *wpa_s);
+int wpa_bssid_ignore_add(struct wpa_supplicant *wpa_s, const u8 *bssid);
+int wpa_bssid_ignore_del(struct wpa_supplicant *wpa_s, const u8 *bssid);
+int wpa_bssid_ignore_is_listed(struct wpa_supplicant *wpa_s, const u8 *bssid);
+void wpa_bssid_ignore_clear(struct wpa_supplicant *wpa_s);
+void wpa_bssid_ignore_update(struct wpa_supplicant *wpa_s);
 
-#endif /* BLACKLIST_H */
+#endif /* BSSID_IGNORE_H */

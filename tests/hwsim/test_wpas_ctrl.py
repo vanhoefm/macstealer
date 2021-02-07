@@ -1113,7 +1113,7 @@ def test_wpas_ctrl_bssid_ignore(dev):
 @remote_compatible
 def test_wpas_ctrl_bssid_ignore_oom(dev):
     """wpa_supplicant ctrl_iface BSSID_IGNORE and out-of-memory"""
-    with alloc_fail(dev[0], 1, "wpa_blacklist_add"):
+    with alloc_fail(dev[0], 1, "wpa_bssid_ignore_add"):
         if "FAIL" not in dev[0].request("BSSID_IGNORE aa:bb:cc:dd:ee:ff"):
             raise Exception("Unexpected success with allocation failure")
 

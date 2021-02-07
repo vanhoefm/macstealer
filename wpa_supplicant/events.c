@@ -1086,7 +1086,7 @@ static int disabled_freq(struct wpa_supplicant *wpa_s, int freq)
 
 static bool wpa_scan_res_ok(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 			    const u8 *match_ssid, size_t match_ssid_len,
-			    struct wpa_bss *bss, int blacklist_count,
+			    struct wpa_bss *bss, int bssid_ignore_count,
 			    bool debug_print);
 
 
@@ -1118,7 +1118,7 @@ static bool sae_pk_acceptable_bss_with_pk(struct wpa_supplicant *wpa_s,
 		if (bss->est_throughput < 2000)
 			return false;
 
-		count = wpa_blacklist_is_blacklisted(wpa_s, bss->bssid);
+		count = wpa_bssid_ignore_is_listed(wpa_s, bss->bssid);
 		if (wpa_scan_res_ok(wpa_s, ssid, match_ssid, match_ssid_len,
 				    bss, count, 0))
 			return true;
@@ -1131,7 +1131,7 @@ static bool sae_pk_acceptable_bss_with_pk(struct wpa_supplicant *wpa_s,
 
 static bool wpa_scan_res_ok(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 			    const u8 *match_ssid, size_t match_ssid_len,
-			    struct wpa_bss *bss, int blacklist_count,
+			    struct wpa_bss *bss, int bssid_ignore_count,
 			    bool debug_print)
 {
 	int res;
@@ -1179,10 +1179,10 @@ static bool wpa_scan_res_ok(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 	}
 
 #ifdef CONFIG_WPS
-	if ((ssid->key_mgmt & WPA_KEY_MGMT_WPS) && blacklist_count) {
+	if ((ssid->key_mgmt & WPA_KEY_MGMT_WPS) && bssid_ignore_count) {
 		if (debug_print)
 			wpa_dbg(wpa_s, MSG_DEBUG,
-				"   skip - blacklisted (WPS)");
+				"   skip - BSSID ignored (WPS)");
 		return false;
 	}
 
@@ -1478,7 +1478,7 @@ struct wpa_ssid * wpa_scan_res_match(struct wpa_supplicant *wpa_s,
 	int osen;
 	const u8 *match_ssid;
 	size_t match_ssid_len;
-	int blacklist_count;
+	int bssid_ignore_count;
 
 	ie = wpa_bss_get_vendor_ie(bss, WPA_IE_VENDOR_TYPE);
 	wpa_ie_len = ie ? ie[1] : 0;
@@ -1504,13 +1504,13 @@ struct wpa_ssid * wpa_scan_res_match(struct wpa_supplicant *wpa_s,
 			osen ? " osen=1" : "");
 	}
 
-	blacklist_count = wpa_blacklist_is_blacklisted(wpa_s, bss->bssid);
-	if (blacklist_count) {
+	bssid_ignore_count = wpa_bssid_ignore_is_listed(wpa_s, bss->bssid);
+	if (bssid_ignore_count) {
 		int limit = 1;
 		if (wpa_supplicant_enabled_networks(wpa_s) == 1) {
 			/*
 			 * When only a single network is enabled, we can
-			 * trigger blacklisting on the first failure. This
+			 * trigger BSSID ignoring on the first failure. This
 			 * should not be done with multiple enabled networks to
 			 * avoid getting forced to move into a worse ESS on
 			 * single error if there are no other BSSes of the
@@ -1518,11 +1518,11 @@ struct wpa_ssid * wpa_scan_res_match(struct wpa_supplicant *wpa_s,
 			 */
 			limit = 0;
 		}
-		if (blacklist_count > limit) {
+		if (bssid_ignore_count > limit) {
 			if (debug_print) {
 				wpa_dbg(wpa_s, MSG_DEBUG,
-					"   skip - blacklisted (count=%d limit=%d)",
-					blacklist_count, limit);
+					"   skip - BSSID ignored (count=%d limit=%d)",
+					bssid_ignore_count, limit);
 			}
 			return NULL;
 		}
@@ -1558,7 +1558,7 @@ struct wpa_ssid * wpa_scan_res_match(struct wpa_supplicant *wpa_s,
 
 	for (ssid = group; ssid; ssid = only_first_ssid ? NULL : ssid->pnext) {
 		if (wpa_scan_res_ok(wpa_s, ssid, match_ssid, match_ssid_len,
-				    bss, blacklist_count, debug_print))
+				    bss, bssid_ignore_count, debug_print))
 			return ssid;
 	}
 
@@ -1660,12 +1660,12 @@ struct wpa_bss * wpa_supplicant_pick_network(struct wpa_supplicant *wpa_s,
 				break;
 		}
 
-		if (selected == NULL && wpa_s->blacklist &&
+		if (selected == NULL && wpa_s->bssid_ignore &&
 		    !wpa_s->countermeasures) {
-			wpa_dbg(wpa_s, MSG_DEBUG, "No APs found - clear "
-				"blacklist and try again");
-			wpa_blacklist_clear(wpa_s);
-			wpa_s->blacklist_cleared++;
+			wpa_dbg(wpa_s, MSG_DEBUG,
+				"No APs found - clear BSSID ignore list and try again");
+			wpa_bssid_ignore_clear(wpa_s);
+			wpa_s->bssid_ignore_cleared = true;
 		} else if (selected == NULL)
 			break;
 	}
@@ -3578,7 +3578,7 @@ wpa_supplicant_event_michael_mic_failure(struct wpa_supplicant *wpa_s,
 		/* initialize countermeasures */
 		wpa_s->countermeasures = 1;
 
-		wpa_blacklist_add(wpa_s, wpa_s->bssid);
+		wpa_bssid_ignore_add(wpa_s, wpa_s->bssid);
 
 		wpa_msg(wpa_s, MSG_WARNING, "TKIP countermeasures started");
 

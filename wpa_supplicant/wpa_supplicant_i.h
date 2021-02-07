@@ -725,7 +725,7 @@ struct wpa_supplicant {
 	unsigned int keys_cleared; /* bitfield of key indexes that the driver is
 				    * known not to be configured with a key */
 
-	struct wpa_blacklist *blacklist;
+	struct wpa_bssid_ignore *bssid_ignore;
 
 	/* Number of connection failures since last successful connection */
 	unsigned int consecutive_conn_failures;
@@ -833,7 +833,7 @@ struct wpa_supplicant {
 	struct wps_er *wps_er;
 	unsigned int wps_run;
 	struct os_reltime wps_pin_start_time;
-	int blacklist_cleared;
+	bool bssid_ignore_cleared;
 
 	struct wpabuf *pending_eapol_rx;
 	struct os_reltime pending_eapol_rx_time;

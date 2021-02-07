@@ -223,7 +223,7 @@ static void wpa_supplicant_timeout(void *eloop_ctx, void *timeout_ctx)
 		bssid = wpa_s->pending_bssid;
 	wpa_msg(wpa_s, MSG_INFO, "Authentication with " MACSTR " timed out.",
 		MAC2STR(bssid));
-	wpa_blacklist_add(wpa_s, bssid);
+	wpa_bssid_ignore_add(wpa_s, bssid);
 	wpa_sm_notify_disassoc(wpa_s->wpa);
 	wpa_supplicant_deauthenticate(wpa_s, WLAN_REASON_DEAUTH_LEAVING);
 	wpa_s->reassociate = 1;
@@ -291,7 +291,7 @@ void wpa_supplicant_cancel_auth_timeout(struct wpa_supplicant *wpa_s)
 {
 	wpa_dbg(wpa_s, MSG_DEBUG, "Cancelling authentication timeout");
 	eloop_cancel_timeout(wpa_supplicant_timeout, wpa_s, NULL);
-	wpa_blacklist_del(wpa_s, wpa_s->bssid);
+	wpa_bssid_ignore_del(wpa_s, wpa_s->bssid);
 	os_free(wpa_s->last_con_fail_realm);
 	wpa_s->last_con_fail_realm = NULL;
 	wpa_s->last_con_fail_realm_len = 0;
@@ -578,7 +578,7 @@ static void wpa_supplicant_cleanup(struct wpa_supplicant *wpa_s)
 	wpa_s->ptksa = NULL;
 	wpa_sm_deinit(wpa_s->wpa);
 	wpa_s->wpa = NULL;
-	wpa_blacklist_clear(wpa_s);
+	wpa_bssid_ignore_clear(wpa_s);
 
 #ifdef CONFIG_PASN
 	wpas_pasn_auth_stop(wpa_s);
@@ -1200,7 +1200,7 @@ int wpa_supplicant_reload_configuration(struct wpa_supplicant *wpa_s)
 		wpa_s->reassociate = 1;
 		wpa_supplicant_req_scan(wpa_s, 0, 0);
 	}
-	wpa_blacklist_clear(wpa_s);
+	wpa_bssid_ignore_clear(wpa_s);
 	wpa_dbg(wpa_s, MSG_DEBUG, "Reconfiguration completed");
 	return 0;
 }
@@ -7388,7 +7388,7 @@ static int * get_bss_freqs_in_ess(struct wpa_supplicant *wpa_s)
 			continue;
 		if (bss->ssid_len == cbss->ssid_len &&
 		    os_memcmp(bss->ssid, cbss->ssid, bss->ssid_len) == 0 &&
-		    !wpa_blacklist_is_blacklisted(wpa_s, bss->bssid)) {
+		    !wpa_bssid_ignore_is_listed(wpa_s, bss->bssid)) {
 			add_freq(freqs, &num_freqs, bss->freq);
 			if (num_freqs == max_freqs)
 				break;
@@ -7418,7 +7418,7 @@ void wpas_connection_failed(struct wpa_supplicant *wpa_s, const u8 *bssid)
 	eloop_cancel_timeout(wpa_supplicant_timeout, wpa_s, NULL);
 
 	/*
-	 * There is no point in blacklisting the AP if this event is
+	 * There is no point in ignoring the AP temporarily if this event is
 	 * generated based on local request to disconnect.
 	 */
 	if (wpa_s->own_disconnect_req || wpa_s->own_reconnect_req) {
@@ -7435,13 +7435,13 @@ void wpas_connection_failed(struct wpa_supplicant *wpa_s, const u8 *bssid)
 	}
 
 	/*
-	 * Add the failed BSSID into the blacklist and speed up next scan
+	 * Add the failed BSSID into the ignore list and speed up next scan
 	 * attempt if there could be other APs that could accept association.
 	 */
-	count = wpa_blacklist_add(wpa_s, bssid);
+	count = wpa_bssid_ignore_add(wpa_s, bssid);
 	if (count == 1 && wpa_s->current_bss) {
 		/*
-		 * This BSS was not in the blacklist before. If there is
+		 * This BSS was not in the ignore list before. If there is
 		 * another BSS available for the same ESS, we should try that
 		 * next. Otherwise, we may as well try this one once more
 		 * before allowing other, likely worse, ESSes to be considered.
@@ -7450,7 +7450,7 @@ void wpas_connection_failed(struct wpa_supplicant *wpa_s, const u8 *bssid)
 		if (freqs) {
 			wpa_dbg(wpa_s, MSG_DEBUG, "Another BSS in this ESS "
 				"has been seen; try it next");
-			wpa_blacklist_add(wpa_s, bssid);
+			wpa_bssid_ignore_add(wpa_s, bssid);
 			/*
 			 * On the next scan, go through only the known channels
 			 * used in this ESS based on previous scans to speed up

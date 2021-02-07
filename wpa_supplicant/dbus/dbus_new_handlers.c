@@ -1702,7 +1702,8 @@ DBusMessage * wpas_dbus_handler_reassociate(DBusMessage *message,
  * Returns: NULL
  *
  * Handler function for notifying system there will be a expected disconnect.
- * This will prevent wpa_supplicant from adding blacklists upon next disconnect..
+ * This will prevent wpa_supplicant from adding the BSSID to the ignore list
+ * upon next disconnect.
  */
 DBusMessage * wpas_dbus_handler_expect_disconnect(DBusMessage *message,
 						  struct wpa_global *global)

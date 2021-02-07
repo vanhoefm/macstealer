@@ -1299,8 +1299,8 @@ void hs20_rx_deauth_imminent_notice(struct wpa_supplicant *wpa_s, u8 code,
 		code, reauth_delay, url);
 
 	if (code == HS20_DEAUTH_REASON_CODE_BSS) {
-		wpa_printf(MSG_DEBUG, "HS 2.0: Add BSS to blacklist");
-		wpa_blacklist_add(wpa_s, wpa_s->bssid);
+		wpa_printf(MSG_DEBUG, "HS 2.0: Add BSS to ignore list");
+		wpa_bssid_ignore_add(wpa_s, wpa_s->bssid);
 		/* TODO: For now, disable full ESS since some drivers may not
 		 * support disabling per BSS. */
 		if (wpa_s->current_ssid) {
