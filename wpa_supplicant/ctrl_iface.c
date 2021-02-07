@@ -2554,16 +2554,16 @@ static int wpa_supplicant_ctrl_iface_bssid(struct wpa_supplicant *wpa_s,
 }
 
 
-static int wpa_supplicant_ctrl_iface_blacklist(struct wpa_supplicant *wpa_s,
-					       char *cmd, char *buf,
-					       size_t buflen)
+static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
+						  char *cmd, char *buf,
+						  size_t buflen)
 {
 	u8 bssid[ETH_ALEN];
 	struct wpa_blacklist *e;
 	char *pos, *end;
 	int ret;
 
-	/* cmd: "BLACKLIST [<BSSID>]" */
+	/* cmd: "BSSID_IGNORE [<BSSID>]" */
 	if (*cmd == '\0') {
 		pos = buf;
 		end = buf + buflen;
@@ -2586,7 +2586,7 @@ static int wpa_supplicant_ctrl_iface_blacklist(struct wpa_supplicant *wpa_s,
 		return 3;
 	}
 
-	wpa_printf(MSG_DEBUG, "CTRL_IFACE: BLACKLIST bssid='%s'", cmd);
+	wpa_printf(MSG_DEBUG, "CTRL_IFACE: BSSID_IGNORE bssid='%s'", cmd);
 	if (hwaddr_aton(cmd, bssid)) {
 		wpa_printf(MSG_DEBUG, "CTRL_IFACE: invalid BSSID '%s'", cmd);
 		return -1;
@@ -10982,8 +10982,12 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	} else if (os_strncmp(buf, "BSSID ", 6) == 0) {
 		if (wpa_supplicant_ctrl_iface_bssid(wpa_s, buf + 6))
 			reply_len = -1;
+	} else if (os_strncmp(buf, "BSSID_IGNORE", 12) == 0) {
+		reply_len = wpa_supplicant_ctrl_iface_bssid_ignore(
+			wpa_s, buf + 12, reply, reply_size);
 	} else if (os_strncmp(buf, "BLACKLIST", 9) == 0) {
-		reply_len = wpa_supplicant_ctrl_iface_blacklist(
+		/* deprecated backwards compatibility alias for BSSID_IGNORE */
+		reply_len = wpa_supplicant_ctrl_iface_bssid_ignore(
 			wpa_s, buf + 9, reply, reply_size);
 	} else if (os_strncmp(buf, "LOG_LEVEL", 9) == 0) {
 		reply_len = wpa_supplicant_ctrl_iface_log_level(

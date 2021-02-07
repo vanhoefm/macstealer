@@ -1290,9 +1290,10 @@ static int wpa_cli_cmd_bssid(struct wpa_ctrl *ctrl, int argc, char *argv[])
 }
 
 
-static int wpa_cli_cmd_blacklist(struct wpa_ctrl *ctrl, int argc, char *argv[])
+static int wpa_cli_cmd_bssid_ignore(struct wpa_ctrl *ctrl, int argc,
+				    char *argv[])
 {
-	return wpa_cli_cmd(ctrl, "BLACKLIST", 0, argc, argv);
+	return wpa_cli_cmd(ctrl, "BSSID_IGNORE", 0, argc, argv);
 }
 
 
@@ -3324,11 +3325,15 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	{ "bssid", wpa_cli_cmd_bssid, wpa_cli_complete_network_id,
 	  cli_cmd_flag_none,
 	  "<network id> <BSSID> = set preferred BSSID for an SSID" },
-	{ "blacklist", wpa_cli_cmd_blacklist, wpa_cli_complete_bss,
+	{ "bssid_ignore", wpa_cli_cmd_bssid_ignore, wpa_cli_complete_bss,
 	  cli_cmd_flag_none,
-	  "<BSSID> = add a BSSID to the blacklist\n"
-	  "blacklist clear = clear the blacklist\n"
-	  "blacklist = display the blacklist" },
+	  "<BSSID> = add a BSSID to the list of temporarily ignored BSSs\n"
+	  "bssid_ignore clear = clear the list of temporarily ignored BSSIDs\n"
+	  "bssid_ignore = display the list of temporarily ignored BSSIDs" },
+	{ "blacklist", /* deprecated alias for bssid_ignore */
+	  wpa_cli_cmd_bssid_ignore, wpa_cli_complete_bss,
+	  cli_cmd_flag_none,
+	  "= deprecated alias for bssid_ignore" },
 	{ "log_level", wpa_cli_cmd_log_level, NULL,
 	  cli_cmd_flag_none,
 	  "<level> [<timestamp>] = update the log level/timestamp\n"
