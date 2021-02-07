@@ -2201,8 +2201,11 @@ static u8 * mgmt_ccmp_decrypt(struct wlantest *wt, const u8 *data, size_t len,
 	int keyid;
 	u8 *decrypted, *frame = NULL;
 	u8 pn[6], *rsc;
+	u16 fc;
+	u8 mask;
 
 	hdr = (const struct ieee80211_hdr *) data;
+	fc = le_to_host16(hdr->frame_control);
 
 	if (len < 24 + 4)
 		return NULL;
@@ -2214,7 +2217,11 @@ static u8 * mgmt_ccmp_decrypt(struct wlantest *wt, const u8 *data, size_t len,
 		return NULL;
 	}
 
-	if (data[24 + 2] != 0 || (data[24 + 3] & 0x1f) != 0) {
+	mask = 0x1f;
+	if (WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION ||
+	    WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION_NO_ACK)
+		mask &= ~0x10; /* FTM */
+	if (data[24 + 2] != 0 || (data[24 + 3] & mask) != 0) {
 		add_note(wt, MSG_INFO, "CCMP mgmt frame from " MACSTR " used "
 			 "non-zero reserved bit", MAC2STR(hdr->addr2));
 	}
