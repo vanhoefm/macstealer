@@ -177,7 +177,8 @@ static u8 * try_ptk(struct wlantest *wt, int pairwise_cipher,
 		enum michael_mic_result mic_res;
 
 		decrypted = tkip_decrypt(ptk->tk, hdr, data, data_len,
-					 decrypted_len, &mic_res);
+					 decrypted_len, &mic_res,
+					 &wt->tkip_frag);
 		if (decrypted && mic_res == MICHAEL_MIC_INCORRECT)
 			add_note(wt, MSG_INFO, "Invalid Michael MIC");
 		else if (decrypted && mic_res == MICHAEL_MIC_NOT_VERIFIED)
@@ -328,7 +329,7 @@ skip_replay_det:
 		enum michael_mic_result mic_res;
 
 		decrypted = tkip_decrypt(bss->gtk[keyid], hdr, data, len,
-					 &dlen, &mic_res);
+					 &dlen, &mic_res, &wt->tkip_frag);
 		if (decrypted && mic_res == MICHAEL_MIC_INCORRECT)
 			add_note(wt, MSG_INFO, "Invalid Michael MIC");
 		else if (decrypted && mic_res == MICHAEL_MIC_NOT_VERIFIED)
@@ -619,7 +620,7 @@ skip_replay_det:
 		enum michael_mic_result mic_res;
 
 		decrypted = tkip_decrypt(sta->ptk.tk, hdr, data, len, &dlen,
-					 &mic_res);
+					 &mic_res, &wt->tkip_frag);
 		if (decrypted && mic_res == MICHAEL_MIC_INCORRECT)
 			add_note(wt, MSG_INFO, "Invalid Michael MIC");
 		else if (decrypted && mic_res == MICHAEL_MIC_NOT_VERIFIED)

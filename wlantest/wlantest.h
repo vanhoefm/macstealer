@@ -184,6 +184,14 @@ struct wlantest_radius {
 #define MAX_CTRL_CONNECTIONS 10
 #define MAX_NOTES 10
 
+struct tkip_frag {
+	struct wpabuf *buf;
+	u8 ra[ETH_ALEN];
+	u8 ta[ETH_ALEN];
+	u16 sn;
+	u8 fn;
+};
+
 struct wlantest {
 	int monitor_sock;
 	int monitor_wired;
@@ -227,6 +235,8 @@ struct wlantest {
 
 	const char *write_file;
 	const char *pcapng_file;
+
+	struct tkip_frag tkip_frag;
 };
 
 void add_note(struct wlantest *wt, int level, const char *fmt, ...)
@@ -311,7 +321,7 @@ enum michael_mic_result {
 };
 u8 * tkip_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
 		  const u8 *data, size_t data_len, size_t *decrypted_len,
-		  enum michael_mic_result *mic_res);
+		  enum michael_mic_result *mic_res, struct tkip_frag *frag);
 u8 * tkip_encrypt(const u8 *tk, u8 *frame, size_t len, size_t hdrlen, u8 *qos,
 		  u8 *pn, int keyid, size_t *encrypted_len);
 void tkip_get_pn(u8 *pn, const u8 *data);
