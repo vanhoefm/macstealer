@@ -1277,6 +1277,7 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
 	int default_groups[] = { 19, 0 };
 	const u8 *pos, *end;
 	int sta_removed = 0;
+	bool success_status;
 
 	if (!groups)
 		groups = default_groups;
@@ -1562,9 +1563,12 @@ reply:
 	}
 
 remove_sta:
+	if (auth_transaction == 1)
+		success_status = sae_status_success(hapd, status_code);
+	else
+		success_status = status_code == WLAN_STATUS_SUCCESS;
 	if (!sta_removed && sta->added_unassoc &&
-	    (resp != WLAN_STATUS_SUCCESS ||
-	     status_code != WLAN_STATUS_SUCCESS)) {
+	    (resp != WLAN_STATUS_SUCCESS || !success_status)) {
 		hostapd_drv_sta_remove(hapd, sta->addr);
 		sta->added_unassoc = 0;
 	}
@@ -6188,6 +6192,7 @@ static void handle_auth_cb(struct hostapd_data *hapd,
 {
 	u16 auth_alg, auth_transaction, status_code;
 	struct sta_info *sta;
+	bool success_status;
 
 	sta = ap_get_sta(hapd, mgmt->da);
 	if (!sta) {
@@ -6226,7 +6231,12 @@ static void handle_auth_cb(struct hostapd_data *hapd,
 	}
 
 fail:
-	if (status_code != WLAN_STATUS_SUCCESS && sta->added_unassoc) {
+	success_status = status_code == WLAN_STATUS_SUCCESS;
+#ifdef CONFIG_SAE
+	if (auth_alg == WLAN_AUTH_SAE && auth_transaction == 1)
+		success_status = sae_status_success(hapd, status_code);
+#endif /* CONFIG_SAE */
+	if (!success_status && sta->added_unassoc) {
 		hostapd_drv_sta_remove(hapd, sta->addr);
 		sta->added_unassoc = 0;
 	}
