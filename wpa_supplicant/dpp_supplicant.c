@@ -1443,6 +1443,8 @@ static int wpas_dpp_handle_config_obj(struct wpa_supplicant *wpa_s,
 				      struct dpp_config_obj *conf)
 {
 	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_RECEIVED);
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_AKM "%s",
+		dpp_akm_str(conf->akm));
 	if (conf->ssid_len)
 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_SSID "%s",
 			wpa_ssid_txt(conf->ssid, conf->ssid_len));
