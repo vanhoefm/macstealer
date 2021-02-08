@@ -1460,6 +1460,21 @@ static int wpas_dpp_handle_config_obj(struct wpa_supplicant *wpa_s,
 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONNECTOR "%s",
 			conf->connector);
 	}
+	if (conf->passphrase[0]) {
+		char hex[64 * 2 + 1];
+
+		wpa_snprintf_hex(hex, sizeof(hex),
+				 (const u8 *) conf->passphrase,
+				 os_strlen(conf->passphrase));
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PASS "%s",
+			hex);
+	} else if (conf->psk_set) {
+		char hex[PMK_LEN * 2 + 1];
+
+		wpa_snprintf_hex(hex, sizeof(hex), conf->psk, PMK_LEN);
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PSK "%s",
+			hex);
+	}
 	if (conf->c_sign_key) {
 		char *hex;
 		size_t hexlen;
