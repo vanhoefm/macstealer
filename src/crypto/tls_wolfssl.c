@@ -534,7 +534,7 @@ static int tls_connection_private_key(void *tls_ctx,
 	if (private_key_blob) {
 		if (wolfSSL_use_PrivateKey_buffer(conn->ssl,
 						  private_key_blob, blob_len,
-						  SSL_FILETYPE_ASN1) < 0) {
+						  SSL_FILETYPE_ASN1) <= 0) {
 			wpa_printf(MSG_INFO,
 				   "SSL: use private DER blob failed");
 		} else {
@@ -545,11 +545,11 @@ static int tls_connection_private_key(void *tls_ctx,
 
 	if (!ok && private_key) {
 		if (wolfSSL_use_PrivateKey_file(conn->ssl, private_key,
-						SSL_FILETYPE_PEM) < 0) {
+						SSL_FILETYPE_PEM) <= 0) {
 			wpa_printf(MSG_INFO,
 				   "SSL: use private key PEM file failed");
 			if (wolfSSL_use_PrivateKey_file(conn->ssl, private_key,
-							SSL_FILETYPE_ASN1) < 0)
+							SSL_FILETYPE_ASN1) <= 0)
 			{
 				wpa_printf(MSG_INFO,
 					   "SSL: use private key DER file failed");
