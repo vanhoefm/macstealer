@@ -5391,6 +5391,14 @@ def test_dpp_chirp_configurator(dev, apdev):
     if "type=13" not in ev:
         raise Exception("Unexpected DPP frame received: " + ev)
 
+    ev = dev[1].wait_event(["DPP-TX"], timeout=10)
+    if ev is None:
+        raise Exception("Authentication Request TX not seen")
+    if "type=0" not in ev:
+        raise Exception("Unexpected DPP frame TX: " + ev)
+    if "dst=" + dev[0].own_addr() not in ev:
+        raise Exception("Unexpected Authentication Request destination: " + ev)
+
     wait_auth_success(dev[0], dev[1], dev[1], dev[0])
 
 def test_dpp_chirp_configurator_inits(dev, apdev):
