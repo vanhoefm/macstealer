@@ -709,7 +709,9 @@ static int wpas_dpp_auth_init_next(struct wpa_supplicant *wpa_s)
 	freq = auth->freq[auth->freq_idx++];
 	auth->curr_freq = freq;
 
-	if (is_zero_ether_addr(auth->peer_bi->mac_addr))
+	if (!is_zero_ether_addr(auth->peer_mac_addr))
+		dst = auth->peer_mac_addr;
+	else if (is_zero_ether_addr(auth->peer_bi->mac_addr))
 		dst = broadcast;
 	else
 		dst = auth->peer_bi->mac_addr;
@@ -2056,8 +2058,9 @@ wpas_dpp_rx_presence_announcement(struct wpa_supplicant *wpa_s, const u8 *src,
 
 	auth->neg_freq = freq;
 
-	if (!is_zero_ether_addr(peer_bi->mac_addr))
-		os_memcpy(auth->peer_mac_addr, peer_bi->mac_addr, ETH_ALEN);
+	/* The source address of the Presence Announcement frame overrides any
+	 * MAC address information from the bootstrapping information. */
+	os_memcpy(auth->peer_mac_addr, src, ETH_ALEN);
 
 	wpa_s->dpp_auth = auth;
 	if (wpas_dpp_auth_init_next(wpa_s) < 0) {

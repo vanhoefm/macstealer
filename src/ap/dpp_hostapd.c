@@ -495,7 +495,9 @@ static int hostapd_dpp_auth_init_next(struct hostapd_data *hapd)
 	freq = auth->freq[auth->freq_idx++];
 	auth->curr_freq = freq;
 
-	if (is_zero_ether_addr(auth->peer_bi->mac_addr))
+	if (!is_zero_ether_addr(auth->peer_mac_addr))
+		dst = auth->peer_mac_addr;
+	else if (is_zero_ether_addr(auth->peer_bi->mac_addr))
 		dst = broadcast;
 	else
 		dst = auth->peer_bi->mac_addr;
@@ -1299,8 +1301,9 @@ hostapd_dpp_rx_presence_announcement(struct hostapd_data *hapd, const u8 *src,
 
 	auth->neg_freq = freq;
 
-	if (!is_zero_ether_addr(peer_bi->mac_addr))
-		os_memcpy(auth->peer_mac_addr, peer_bi->mac_addr, ETH_ALEN);
+	/* The source address of the Presence Announcement frame overrides any
+	 * MAC address information from the bootstrapping information. */
+	os_memcpy(auth->peer_mac_addr, src, ETH_ALEN);
 
 	hapd->dpp_auth = auth;
 	if (hostapd_dpp_auth_init_next(hapd) < 0) {
