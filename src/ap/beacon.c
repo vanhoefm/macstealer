@@ -563,6 +563,12 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_IEEE80211AC */
 
+#ifdef CONFIG_IEEE80211AX
+	if (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax &&
+	    is_6ghz_op_class(hapd->iconf->op_class))
+		pos = hostapd_eid_txpower_envelope(hapd, pos);
+#endif /* CONFIG_IEEE80211AX */
+
 	if ((hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac) ||
 	    (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax))
 		pos = hostapd_eid_wb_chsw_wrapper(hapd, pos);
@@ -1290,6 +1296,12 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 		tailpos = hostapd_eid_txpower_envelope(hapd, tailpos);
 	}
 #endif /* CONFIG_IEEE80211AC */
+
+#ifdef CONFIG_IEEE80211AX
+	if (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax &&
+	    is_6ghz_op_class(hapd->iconf->op_class))
+		tailpos = hostapd_eid_txpower_envelope(hapd, tailpos);
+#endif /* CONFIG_IEEE80211AX */
 
 	if ((hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac) ||
 	    (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax))
