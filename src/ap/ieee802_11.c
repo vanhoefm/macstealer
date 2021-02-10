@@ -6790,7 +6790,7 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
 	if (i == mode->num_channels)
 		return eid;
 
-	switch (iface->conf->vht_oper_chwidth) {
+	switch (hostapd_get_oper_chwidth(iconf)) {
 	case CHANWIDTH_USE_HT:
 		if (iconf->secondary_channel == 0) {
 			/* Max Transmit Power count = 0 (20 MHz) */
