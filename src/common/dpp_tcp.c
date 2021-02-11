@@ -82,6 +82,7 @@ static void dpp_controller_auth_success(struct dpp_connection *conn,
 					int initiator);
 static void dpp_tcp_build_csr(void *eloop_ctx, void *timeout_ctx);
 static void dpp_tcp_gas_query_comeback(void *eloop_ctx, void *timeout_ctx);
+static void dpp_relay_conn_timeout(void *eloop_ctx, void *timeout_ctx);
 
 
 static void dpp_connection_free(struct dpp_connection *conn)
@@ -97,6 +98,7 @@ static void dpp_connection_free(struct dpp_connection *conn)
 			     conn, NULL);
 	eloop_cancel_timeout(dpp_tcp_build_csr, conn, NULL);
 	eloop_cancel_timeout(dpp_tcp_gas_query_comeback, conn, NULL);
+	eloop_cancel_timeout(dpp_relay_conn_timeout, conn, NULL);
 	wpabuf_free(conn->msg);
 	wpabuf_free(conn->msg_out);
 	dpp_auth_deinit(conn->auth);
@@ -352,6 +354,16 @@ static int dpp_ipaddr_to_sockaddr(struct sockaddr *addr, socklen_t *addrlen,
 }
 
 
+static void dpp_relay_conn_timeout(void *eloop_ctx, void *timeout_ctx)
+{
+	struct dpp_connection *conn = eloop_ctx;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Timeout while waiting for relayed connection to complete");
+	dpp_connection_remove(conn);
+}
+
+
 static struct dpp_connection *
 dpp_relay_new_conn(struct dpp_relay_controller *ctrl, const u8 *src,
 		   unsigned int freq)
@@ -412,8 +424,8 @@ dpp_relay_new_conn(struct dpp_relay_controller *ctrl, const u8 *src,
 		goto fail;
 	conn->write_eloop = 1;
 
-	/* TODO: eloop timeout to clear a connection if it does not complete
-	 * properly */
+	eloop_cancel_timeout(dpp_relay_conn_timeout, conn, NULL);
+	eloop_register_timeout(20, 0, dpp_relay_conn_timeout, conn, NULL);
 
 	dl_list_add(&ctrl->conn, &conn->list);
 	return conn;
