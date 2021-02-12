@@ -1099,13 +1099,19 @@ static void wpa_supplicant_terminate(int sig, void *signal_ctx)
 void wpa_supplicant_clear_status(struct wpa_supplicant *wpa_s)
 {
 	enum wpa_states old_state = wpa_s->wpa_state;
+	enum wpa_states new_state;
+
+	if (old_state == WPA_SCANNING)
+		new_state = WPA_SCANNING;
+	else
+		new_state = WPA_DISCONNECTED;
 
 	wpa_s->pairwise_cipher = 0;
 	wpa_s->group_cipher = 0;
 	wpa_s->mgmt_group_cipher = 0;
 	wpa_s->key_mgmt = 0;
 	if (wpa_s->wpa_state != WPA_INTERFACE_DISABLED)
-		wpa_supplicant_set_state(wpa_s, WPA_DISCONNECTED);
+		wpa_supplicant_set_state(wpa_s, new_state);
 
 	if (wpa_s->wpa_state != old_state)
 		wpas_notify_state_changed(wpa_s, wpa_s->wpa_state, old_state);
