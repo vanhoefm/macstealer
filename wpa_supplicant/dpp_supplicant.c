@@ -3628,6 +3628,17 @@ static void wpas_dpp_chirp_next(void *eloop_ctx, void *timeout_ctx)
 	if (wpa_s->dpp_chirp_freq == 0) {
 		if (wpa_s->dpp_chirp_round % 4 == 0 &&
 		    !wpa_s->dpp_chirp_scan_done) {
+			if (wpas_scan_scheduled(wpa_s)) {
+				wpa_printf(MSG_DEBUG,
+					   "DPP: Deferring chirp scan because another scan is planned already");
+				if (eloop_register_timeout(1, 0,
+							   wpas_dpp_chirp_next,
+							   wpa_s, NULL) < 0) {
+					wpas_dpp_chirp_stop(wpa_s);
+					return;
+				}
+				return;
+			}
 			wpa_printf(MSG_DEBUG,
 				   "DPP: Update channel list for chirping");
 			wpa_s->scan_req = MANUAL_SCAN_REQ;
