@@ -1290,7 +1290,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 #endif /* CONFIG_FST */
 
 #ifdef CONFIG_IEEE80211AC
-	if (hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac) {
+	if (hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac &&
+	    !is_6ghz_op_class(hapd->iconf->op_class)) {
 		tailpos = hostapd_eid_vht_capabilities(hapd, tailpos, 0);
 		tailpos = hostapd_eid_vht_operation(hapd, tailpos);
 		tailpos = hostapd_eid_txpower_envelope(hapd, tailpos);
