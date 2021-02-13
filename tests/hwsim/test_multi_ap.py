@@ -5,6 +5,7 @@
 # See README for more details.
 
 import hostapd
+from wpasupplicant import WpaSupplicant
 from utils import *
 
 def test_multi_ap_association(dev, apdev):
@@ -37,6 +38,41 @@ def run_multi_ap_association(dev, apdev, multi_ap, wait_connect=True):
 
     dev[0].connect("multi-ap", psk="12345678", scan_freq="2412",
                    multi_ap_backhaul_sta="1", wait_connect=wait_connect)
+
+def test_multi_ap_backhaul_roam_with_bridge(dev, apdev):
+    """Multi-AP backhaul BSS reassociation to another BSS with bridge"""
+    br_ifname = 'sta-br0'
+    ifname = 'wlan5'
+    try:
+        run_multi_ap_backhaul_roam_with_bridge(dev, apdev)
+    finally:
+        subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'down'])
+        subprocess.call(['brctl', 'delif', br_ifname, ifname])
+        subprocess.call(['brctl', 'delbr', br_ifname])
+        subprocess.call(['iw', ifname, 'set', '4addr', 'off'])
+
+def run_multi_ap_backhaul_roam_with_bridge(dev, apdev):
+    br_ifname = 'sta-br0'
+    ifname = 'wlan5'
+    wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
+    subprocess.call(['brctl', 'addbr', br_ifname])
+    subprocess.call(['brctl', 'setfd', br_ifname, '0'])
+    subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'up'])
+    subprocess.call(['iw', ifname, 'set', '4addr', 'on'])
+    subprocess.check_call(['brctl', 'addif', br_ifname, ifname])
+    wpas.interface_add(ifname, br_ifname=br_ifname)
+
+    params = hostapd.wpa2_params(ssid="multi-ap", passphrase="12345678")
+    params["multi_ap"] = "1"
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    wpas.connect("multi-ap", psk="12345678", scan_freq="2412",
+                 multi_ap_backhaul_sta="1")
+
+    hapd2 = hostapd.add_ap(apdev[1], params)
+    bssid2 = hapd2.own_addr()
+    wpas.scan_for_bss(bssid2, freq="2412")
+    wpas.roam(bssid2)
 
 def test_multi_ap_disabled_on_ap(dev, apdev):
     """Multi-AP association attempt when disabled on AP"""
