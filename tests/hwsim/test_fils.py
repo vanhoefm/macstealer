@@ -2330,3 +2330,37 @@ def test_fils_auth_ptk_rekey_ap_ext_key_id(dev, apdev, params):
         hwsim_utils.test_connectivity(dev[0], hapd)
     finally:
         dev[0].set("extended_key_id", "0")
+
+def test_fils_discovery_frame(dev, apdev, params):
+    """FILS Discovery frame generation"""
+    check_fils_capa(dev[0])
+    check_erp_capa(dev[0])
+
+    start_erp_as(msk_dump=os.path.join(params['logdir'], "msk.lst"))
+
+    bssid = apdev[0]['bssid']
+    params = hostapd.wpa2_eap_params(ssid="fils")
+    params['wpa_key_mgmt'] = "FILS-SHA256"
+    params['auth_server_port'] = "18128"
+    params['erp_send_reauth_start'] = '1'
+    params['erp_domain'] = 'example.com'
+    params['fils_realm'] = 'example.com'
+    params['wpa_group_rekey'] = '1'
+    params['fils_discovery_min_interval'] = '20'
+    params['fils_discovery_max_interval'] = '20'
+    hapd = hostapd.add_ap(apdev[0]['ifname'], params, no_enable=True)
+
+    if "OK" not in hapd.request("ENABLE"):
+        raise HwsimSkip("FILS Discovery frame transmission not supported")
+
+    ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=5)
+    if ev is None:
+        raise Exception("AP startup timed out")
+    if "AP-ENABLED" not in ev:
+        raise Exception("AP startup failed")
+
+    dev[0].request("ERP_FLUSH")
+    dev[0].connect("fils", key_mgmt="FILS-SHA256",
+                   eap="PSK", identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef",
+                   erp="1", scan_freq="2412")
