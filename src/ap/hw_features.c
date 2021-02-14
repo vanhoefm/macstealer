@@ -994,9 +994,9 @@ static void hostapd_notify_bad_chans(struct hostapd_iface *iface)
 	hostapd_logger(iface->bss[0], NULL,
 		       HOSTAPD_MODULE_IEEE80211,
 		       HOSTAPD_LEVEL_WARNING,
-		       "Configured channel (%d) or frequency (%d) not found from the channel list of the current mode (%d) %s",
+		       "Configured channel (%d) or frequency (%d) (secondary_channel=%d) not found from the channel list of the current mode (%d) %s",
 		       iface->conf->channel,
-		       iface->freq,
+		       iface->freq, iface->conf->secondary_channel,
 		       iface->current_mode->mode,
 		       hostapd_hw_mode_txt(iface->current_mode->mode));
 	hostapd_logger(iface->bss[0], NULL, HOSTAPD_MODULE_IEEE80211,
