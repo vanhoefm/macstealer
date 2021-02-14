@@ -88,13 +88,42 @@ static int wpa_write_wpa_ie(struct wpa_auth_config *conf, u8 *buf, size_t len)
 }
 
 
+static u16 wpa_own_rsn_capab(struct wpa_auth_config *conf)
+{
+	u16 capab = 0;
+
+	if (conf->rsn_preauth)
+		capab |= WPA_CAPABILITY_PREAUTH;
+	if (conf->wmm_enabled) {
+		/* 4 PTKSA replay counters when using WMM */
+		capab |= (RSN_NUM_REPLAY_COUNTERS_16 << 2);
+	}
+	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION) {
+		capab |= WPA_CAPABILITY_MFPC;
+		if (conf->ieee80211w == MGMT_FRAME_PROTECTION_REQUIRED)
+			capab |= WPA_CAPABILITY_MFPR;
+	}
+#ifdef CONFIG_OCV
+	if (conf->ocv)
+		capab |= WPA_CAPABILITY_OCVC;
+#endif /* CONFIG_OCV */
+#ifdef CONFIG_RSN_TESTING
+	if (rsn_testing)
+		capab |= BIT(8) | BIT(15);
+#endif /* CONFIG_RSN_TESTING */
+	if (conf->extended_key_id)
+		capab |= WPA_CAPABILITY_EXT_KEY_ID_FOR_UNICAST;
+
+	return capab;
+}
+
+
 int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 		     const u8 *pmkid)
 {
 	struct rsn_ie_hdr *hdr;
 	int num_suites, res;
 	u8 *pos, *count;
-	u16 capab;
 	u32 suite;
 
 	hdr = (struct rsn_ie_hdr *) buf;
@@ -284,29 +313,7 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 	WPA_PUT_LE16(count, num_suites);
 
 	/* RSN Capabilities */
-	capab = 0;
-	if (conf->rsn_preauth)
-		capab |= WPA_CAPABILITY_PREAUTH;
-	if (conf->wmm_enabled) {
-		/* 4 PTKSA replay counters when using WMM */
-		capab |= (RSN_NUM_REPLAY_COUNTERS_16 << 2);
-	}
-	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION) {
-		capab |= WPA_CAPABILITY_MFPC;
-		if (conf->ieee80211w == MGMT_FRAME_PROTECTION_REQUIRED)
-			capab |= WPA_CAPABILITY_MFPR;
-	}
-#ifdef CONFIG_OCV
-	if (conf->ocv)
-		capab |= WPA_CAPABILITY_OCVC;
-#endif /* CONFIG_OCV */
-#ifdef CONFIG_RSN_TESTING
-	if (rsn_testing)
-		capab |= BIT(8) | BIT(15);
-#endif /* CONFIG_RSN_TESTING */
-	if (conf->extended_key_id)
-		capab |= WPA_CAPABILITY_EXT_KEY_ID_FOR_UNICAST;
-	WPA_PUT_LE16(pos, capab);
+	WPA_PUT_LE16(pos, wpa_own_rsn_capab(conf));
 	pos += 2;
 
 	if (pmkid) {
