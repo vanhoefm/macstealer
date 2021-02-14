@@ -639,6 +639,8 @@ def test_ap_sae_tdls(dev, apdev):
     """SAE AP and two stations using TDLS"""
     check_sae_capab(dev[0])
     check_sae_capab(dev[1])
+    dev[0].request("SET sae_groups ")
+    dev[1].request("SET sae_groups ")
     params = hostapd.wpa2_params(ssid="test-wpa2-psk", passphrase="12345678")
     params['wpa_key_mgmt'] = 'SAE'
     params["ieee80211w"] = "2"
