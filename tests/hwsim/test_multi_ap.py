@@ -61,6 +61,7 @@ def run_multi_ap_backhaul_roam_with_bridge(dev, apdev):
     subprocess.call(['iw', ifname, 'set', '4addr', 'on'])
     subprocess.check_call(['brctl', 'addif', br_ifname, ifname])
     wpas.interface_add(ifname, br_ifname=br_ifname)
+    wpas.flush_scan_cache()
 
     params = hostapd.wpa2_params(ssid="multi-ap", passphrase="12345678")
     params["multi_ap"] = "1"
@@ -71,7 +72,7 @@ def run_multi_ap_backhaul_roam_with_bridge(dev, apdev):
 
     hapd2 = hostapd.add_ap(apdev[1], params)
     bssid2 = hapd2.own_addr()
-    wpas.scan_for_bss(bssid2, freq="2412")
+    wpas.scan_for_bss(bssid2, freq="2412", force_scan=True)
     wpas.roam(bssid2)
 
 def test_multi_ap_disabled_on_ap(dev, apdev):
