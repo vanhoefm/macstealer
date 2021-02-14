@@ -16,7 +16,7 @@
 #include "wpa_supplicant_i.h"
 #include "bss.h"
 #include "wnm_sta.h"
-#include "config.h"
+#include "../../../wpa_supplicant/config.h"
 #include "../fuzzer-common.h"
 
 

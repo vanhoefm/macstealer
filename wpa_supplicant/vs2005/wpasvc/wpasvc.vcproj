@@ -231,6 +231,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\src\utils\config.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\config.c"
 				>
 			</File>

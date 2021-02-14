@@ -94,6 +94,7 @@ OBJS += notify.c
 OBJS += bss.c
 OBJS += eap_register.c
 OBJS += src/utils/common.c
+OBJS += src/utils/config.c
 OBJS += src/utils/wpa_debug.c
 OBJS += src/utils/wpabuf.c
 OBJS += src/utils/bitfield.c

@@ -6,6 +6,7 @@ LIB_OBJS= \
 	base64.o \
 	bitfield.o \
 	common.o \
+	config.o \
 	crc32.o \
 	ip_addr.o \
 	json.o \

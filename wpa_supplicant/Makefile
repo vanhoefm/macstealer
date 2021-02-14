@@ -83,6 +83,7 @@ OBJS += notify.o
 OBJS += bss.o
 OBJS += eap_register.o
 OBJS += ../src/utils/common.o
+OBJS += ../src/utils/config.o
 OBJS += ../src/utils/wpa_debug.o
 OBJS += ../src/utils/wpabuf.o
 OBJS += ../src/utils/bitfield.o
