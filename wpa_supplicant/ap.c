@@ -266,6 +266,16 @@ int wpa_supplicant_conf_ap_ht(struct wpa_supplicant *wpa_s,
 				wpa_printf(MSG_DEBUG,
 					   "HT secondary channel offset %d for P2P group",
 					   conf->secondary_channel);
+			} else if (ssid->p2p_group && conf->secondary_channel &&
+				   conf->hw_mode != HOSTAPD_MODE_IEEE80211A) {
+				/* This ended up trying to configure invalid
+				 * 2.4 GHz channels (e.g., HT40+ on channel 11)
+				 * in some cases, so clear the secondary channel
+				 * configuration now to avoid such cases that
+				 * would lead to group formation failures. */
+				wpa_printf(MSG_DEBUG,
+					   "Disable HT secondary channel for P2P group on 2.4 GHz");
+				conf->secondary_channel = 0;
 			}
 #endif /* CONFIG_P2P */
 
