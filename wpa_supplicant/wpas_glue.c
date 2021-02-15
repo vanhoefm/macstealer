@@ -1477,11 +1477,12 @@ void wpa_supplicant_rsn_supp_set_config(struct wpa_supplicant *wpa_s,
 		    (wpa_s->drv_flags2 &
 		     WPA_DRIVER_FLAGS2_BEACON_PROTECTION_CLIENT))
 			conf.beacon_prot = ssid->beacon_prot;
-	}
+
 #ifdef CONFIG_PASN
 #ifdef CONFIG_TESTING_OPTIONS
-	conf.force_kdk_derivation = wpa_s->conf->force_kdk_derivation;
+		conf.force_kdk_derivation = wpa_s->conf->force_kdk_derivation;
 #endif /* CONFIG_TESTING_OPTIONS */
-#endif /* CONFIG_PASN*/
+#endif /* CONFIG_PASN */
+	}
 	wpa_sm_set_config(wpa_s->wpa, ssid ? &conf : NULL);
 }
