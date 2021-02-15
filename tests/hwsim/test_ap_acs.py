@@ -622,3 +622,43 @@ def test_ap_acs_rx_during(dev, apdev):
     finally:
         for i in range(3):
             dev[i].request("SCAN_INTERVAL 5")
+
+def test_ap_acs_he_24g(dev, apdev):
+    """Automatic channel selection on 2.4 GHz with HE"""
+    clear_scan_cache(apdev[0])
+    force_prev_ap_on_24g(apdev[0])
+
+    params = hostapd.wpa2_params(ssid="test-acs", passphrase="12345678")
+    params['channel'] = '0'
+    params['ieee80211ax'] = '1'
+    params['ht_capab'] = '[HT40+]'
+    hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
+    wait_acs(hapd)
+
+    freq = hapd.get_status_field("freq")
+    if int(freq) < 2400:
+        raise Exception("Unexpected frequency")
+
+    dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
+
+def test_ap_acs_he_24g_overlap(dev, apdev):
+    """Automatic channel selection on 2.4 GHz with HE (overlap)"""
+    clear_scan_cache(apdev[0])
+    force_prev_ap_on_24g(apdev[0])
+
+    params = {"ssid": "overlapping",
+              "channel": "6", "ieee80211n": "1"}
+    hostapd.add_ap(apdev[1], params)
+
+    params = hostapd.wpa2_params(ssid="test-acs", passphrase="12345678")
+    params['channel'] = '0'
+    params['ieee80211ax'] = '1'
+    params['ht_capab'] = '[HT40+]'
+    hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
+    wait_acs(hapd)
+
+    freq = hapd.get_status_field("freq")
+    if int(freq) < 2400:
+        raise Exception("Unexpected frequency")
+
+    dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
