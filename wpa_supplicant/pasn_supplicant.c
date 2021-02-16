@@ -689,11 +689,11 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 	/* TODO: How to handle protected TWT and SAE H2E? */
 	capab = 0;
 	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF)
-		capab |= WLAN_RSNX_CAPAB_SECURE_LTF;
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF);
 	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT)
-		capab |= WLAN_RSNX_CAPAB_SECURE_RTT;
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_RTT);
 	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG)
-		capab |= WLAN_RSNX_CAPAB_PROT_RANGE_NEG;
+		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
 	wpa_pasn_add_rsnxe(buf, capab);
 
 	ret = pasn_auth_frame_hash(pasn->akmp, pasn->cipher,
