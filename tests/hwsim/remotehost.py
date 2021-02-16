@@ -127,24 +127,24 @@ class Host():
 
         pid_file = t.name + ".pid"
 
-        if t.isAlive():
+        if t.is_alive():
             cmd = ["kill `cat " + pid_file + "`"]
             self.execute(cmd)
 
         # try again
         self.thread_wait(t, 5)
-        if t.isAlive():
+        if t.is_alive():
             cmd = ["kill `cat " + pid_file + "`"]
             self.execute(cmd)
 
         # try with -9
         self.thread_wait(t, 5)
-        if t.isAlive():
+        if t.is_alive():
             cmd = ["kill -9 `cat " + pid_file + "`"]
             self.execute(cmd)
 
         self.thread_wait(t, 5)
-        if t.isAlive():
+        if t.is_alive():
             raise Exception("thread still alive")
 
         self.execute(["rm", pid_file])
@@ -158,7 +158,7 @@ class Host():
             wait_str = str(wait) + "s"
 
         logger.debug(self.name + " thread_wait(" + wait_str + "): ")
-        if t.isAlive():
+        if t.is_alive():
             t.join(wait)
 
     def pending(self, s, timeout=0):

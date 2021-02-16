@@ -347,7 +347,7 @@ def ping_run(host, ip, result, ifname=None, addr_type="ipv4", deadline="5", qos=
 
 def ping_wait(host, thread, timeout=None):
     host.thread_wait(thread, timeout)
-    if thread.isAlive():
+    if thread.is_alive():
         raise Exception("ping thread still alive")
 
 def flush_arp_cache(host):
@@ -504,16 +504,16 @@ def iperf_run(server, client, server_ip, client_res, server_res,
 
 def iperf_wait(server, client, server_thread, client_thread, timeout=None, iperf="iperf"):
     client.thread_wait(client_thread, timeout)
-    if client_thread.isAlive():
+    if client_thread.is_alive():
         raise Exception("iperf client thread still alive")
 
     server.thread_wait(server_thread, 5)
-    if server_thread.isAlive():
+    if server_thread.is_alive():
         server.execute(["killall", "-s", "INT", iperf])
         time.sleep(1)
 
     server.thread_wait(server_thread, 5)
-    if server_thread.isAlive():
+    if server_thread.is_alive():
         raise Exception("iperf server thread still alive")
 
     return
