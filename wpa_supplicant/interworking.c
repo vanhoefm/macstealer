@@ -2793,6 +2793,7 @@ int anqp_send_req(struct wpa_supplicant *wpa_s, const u8 *dst, int freq,
 			wpa_printf(MSG_WARNING,
 				   "ANQP: Cannot send MBO query to unknown BSS "
 				   MACSTR, MAC2STR(dst));
+			wpabuf_free(extra_buf);
 			return -1;
 		}
 
