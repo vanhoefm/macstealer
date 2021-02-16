@@ -4165,7 +4165,7 @@ static void wpas_event_rx_mgmt_action(struct wpa_supplicant *wpa_s,
 
 #ifdef CONFIG_SME
 	if (category == WLAN_ACTION_SA_QUERY) {
-		sme_sa_query_rx(wpa_s, mgmt->sa, payload, plen);
+		sme_sa_query_rx(wpa_s, mgmt->da, mgmt->sa, payload, plen);
 		return;
 	}
 #endif /* CONFIG_SME */

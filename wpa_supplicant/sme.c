@@ -2883,11 +2883,17 @@ static void sme_process_sa_query_response(struct wpa_supplicant *wpa_s,
 }
 
 
-void sme_sa_query_rx(struct wpa_supplicant *wpa_s, const u8 *sa,
+void sme_sa_query_rx(struct wpa_supplicant *wpa_s, const u8 *da, const u8 *sa,
 		     const u8 *data, size_t len)
 {
 	if (len < 1 + WLAN_SA_QUERY_TR_ID_LEN)
 		return;
+	if (is_multicast_ether_addr(da)) {
+		wpa_printf(MSG_DEBUG,
+			   "IEEE 802.11: Ignore group-addressed SA Query frame (A1=" MACSTR " A2=" MACSTR ")",
+			   MAC2STR(da), MAC2STR(sa));
+		return;
+	}
 
 	wpa_dbg(wpa_s, MSG_DEBUG, "SME: Received SA Query frame from "
 		MACSTR " (trans_id %02x%02x)", MAC2STR(sa), data[1], data[2]);

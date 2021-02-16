@@ -241,6 +241,12 @@ void ieee802_11_sa_query_action(struct hostapd_data *hapd,
 			   (unsigned long) len);
 		return;
 	}
+	if (is_multicast_ether_addr(mgmt->da)) {
+		wpa_printf(MSG_DEBUG,
+			   "IEEE 802.11: Ignore group-addressed SA Query frame (A1=" MACSTR " A2=" MACSTR ")",
+			   MAC2STR(mgmt->da), MAC2STR(mgmt->sa));
+		return;
+	}
 
 	sta = ap_get_sta(hapd, sa);
 
