@@ -1122,11 +1122,11 @@ u8 * hostapd_eid_rsnxe(struct hostapd_data *hapd, u8 *eid, size_t len)
 	}
 
 	if (hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF)
-		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8);
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF);
 	if (hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT)
-		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_RTT - 8);
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_RTT);
 	if (hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG)
-		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG - 8);
+		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
 
 	flen = (capab & 0xff00) ? 2 : 1;
 	if (len < 2 + flen || !capab)
