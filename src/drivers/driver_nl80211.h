@@ -274,7 +274,7 @@ int wpa_driver_nl80211_set_mode(struct i802_bss *bss,
 int wpa_driver_nl80211_mlme(struct wpa_driver_nl80211_data *drv,
 			    const u8 *addr, int cmd, u16 reason_code,
 			    int local_state_change,
-			    struct nl_sock *nl_connect);
+			    struct i802_bss *bss);
 
 int nl80211_create_monitor_interface(struct wpa_driver_nl80211_data *drv);
 void nl80211_remove_monitor_interface(struct wpa_driver_nl80211_data *drv);
