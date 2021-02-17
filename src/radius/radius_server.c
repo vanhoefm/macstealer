@@ -35,11 +35,6 @@
  */
 #define RADIUS_MAX_SESSION 1000
 
-/**
- * RADIUS_MAX_MSG_LEN - Maximum message length for incoming RADIUS messages
- */
-#define RADIUS_MAX_MSG_LEN 3000
-
 static const struct eapol_callbacks radius_server_eapol_cb;
 
 struct radius_client;

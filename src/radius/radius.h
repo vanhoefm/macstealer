@@ -225,6 +225,8 @@ struct radius_msg;
 /* Default size to be allocated for attribute array */
 #define RADIUS_DEFAULT_ATTR_COUNT 16
 
+/* Maximum message length for incoming RADIUS messages */
+#define RADIUS_MAX_MSG_LEN 3000
 
 /* MAC address ASCII format for IEEE 802.1X use
  * (draft-congdon-radius-8021x-20.txt) */
