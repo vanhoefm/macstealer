@@ -467,8 +467,8 @@ static int send_and_recv(struct nl80211_global *global,
 	}
  out:
 	nl_cb_put(cb);
-	if (!valid_handler && valid_data == (void *) -1)
-		nl80211_nlmsg_clear(msg);
+	/* Always clear the message as it can potentially contain keys */
+	nl80211_nlmsg_clear(msg);
 	nlmsg_free(msg);
 	return err;
 }
@@ -3164,7 +3164,7 @@ static int issue_key_mgmt_set_key(struct wpa_driver_nl80211_data *drv,
 		nlmsg_free(msg);
 		return -1;
 	}
-	ret = send_and_recv_msgs(drv, msg, NULL, (void *) -1, NULL, NULL);
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
 	if (ret) {
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: Key management set key failed: ret=%d (%s)",
@@ -3204,7 +3204,7 @@ static int nl80211_set_pmk(struct wpa_driver_nl80211_data *drv,
 		return -ENOBUFS;
 	}
 
-	ret = send_and_recv_msgs(drv, msg, NULL, (void *) -1, NULL, NULL);
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "nl80211: Set PMK failed: ret=%d (%s)",
 			   ret, strerror(-ret));
@@ -3370,8 +3370,7 @@ static int wpa_driver_nl80211_set_key(struct i802_bss *bss,
 			goto fail;
 	}
 
-	ret = send_and_recv_msgs(drv, msg, NULL, key ? (void *) -1 : NULL,
-				 NULL, NULL);
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
 	if ((ret == -ENOENT || ret == -ENOLINK) && alg == WPA_ALG_NONE)
 		ret = 0;
 	if (ret)
@@ -6360,7 +6359,7 @@ skip_auth_type:
 		goto fail;
 
 	ret = send_and_recv_msgs_owner(drv, msg, nl_connect, 1, NULL,
-				       (void *) -1, NULL, NULL);
+				       NULL, NULL, NULL);
 	msg = NULL;
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "nl80211: MLME connect failed: ret=%d "
@@ -8710,7 +8709,7 @@ static int nl80211_pmkid(struct i802_bss *bss, int cmd,
 		return -ENOBUFS;
 	}
 
-	return send_and_recv_msgs(bss->drv, msg, NULL, (void *) -1, NULL, NULL);
+	return send_and_recv_msgs(bss->drv, msg, NULL, NULL, NULL, NULL);
 }
 
 
@@ -8980,7 +8979,7 @@ static void nl80211_set_rekey_info(void *priv, const u8 *kek, size_t kek_len,
 
 	nla_nest_end(msg, replay_nested);
 
-	ret = send_and_recv_msgs(drv, msg, NULL, (void *) -1, NULL, NULL);
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
 	if (ret == -EOPNOTSUPP) {
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: Driver does not support rekey offload");
