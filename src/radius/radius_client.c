@@ -816,7 +816,9 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 	struct hostapd_radius_servers *conf = radius->conf;
 	RadiusType msg_type = (RadiusType) sock_ctx;
 	int len, roundtrip;
-	unsigned char buf[RADIUS_MAX_MSG_LEN + 1];
+	unsigned char buf[RADIUS_MAX_MSG_LEN];
+	struct msghdr msghdr = {0};
+	struct iovec iov;
 	struct radius_msg *msg;
 	struct radius_hdr *hdr;
 	struct radius_rx_handler *handlers;
@@ -836,15 +838,22 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 		rconf = conf->auth_server;
 	}
 
-	len = recv(sock, buf, sizeof(buf), MSG_DONTWAIT);
+	iov.iov_base = buf;
+	iov.iov_len = RADIUS_MAX_MSG_LEN;
+	msghdr.msg_iov = &iov;
+	msghdr.msg_iovlen = 1;
+	msghdr.msg_flags = 0;
+	len = recvmsg(sock, &msghdr, MSG_DONTWAIT);
 	if (len < 0) {
-		wpa_printf(MSG_INFO, "recv[RADIUS]: %s", strerror(errno));
+		wpa_printf(MSG_INFO, "recvmsg[RADIUS]: %s", strerror(errno));
 		return;
 	}
+
 	hostapd_logger(radius->ctx, NULL, HOSTAPD_MODULE_RADIUS,
 		       HOSTAPD_LEVEL_DEBUG, "Received %d bytes from RADIUS "
 		       "server", len);
-	if (len == sizeof(buf)) {
+
+	if (msghdr.msg_flags & MSG_TRUNC) {
 		wpa_printf(MSG_INFO, "RADIUS: Possibly too long UDP frame for our buffer - dropping it");
 		return;
 	}
