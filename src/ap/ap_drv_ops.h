@@ -393,4 +393,14 @@ hostapd_drv_set_band(struct hostapd_data *hapd, u32 band_mask)
 	return hapd->driver->set_band(hapd->drv_priv, band_mask);
 }
 
+#ifdef ANDROID
+static inline int hostapd_drv_driver_cmd(struct hostapd_data *hapd,
+					 char *cmd, char *buf, size_t buf_len)
+{
+	if (!hapd->driver->driver_cmd)
+		return -1;
+	return hapd->driver->driver_cmd(hapd->drv_priv, cmd, buf, buf_len);
+}
+#endif /* ANDROID */
+
 #endif /* AP_DRV_OPS */
