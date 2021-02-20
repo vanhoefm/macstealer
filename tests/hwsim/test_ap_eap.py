@@ -5922,6 +5922,55 @@ def test_ap_wpa2_eap_tls_13(dev, apdev):
     dev[0].request("RECONNECT")
     dev[0].wait_connected()
 
+def test_ap_wpa2_eap_ttls_13(dev, apdev):
+    """EAP-TTLS and TLS 1.3"""
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    tls = dev[0].request("GET tls_library")
+    if "run=OpenSSL 1.1.1" not in tls:
+        raise HwsimSkip("TLS v1.3 not supported")
+    id = eap_connect(dev[0], hapd, "TTLS", "pap user",
+                     anonymous_identity="ttls", password="password",
+                     ca_cert="auth_serv/ca.pem",
+                     phase1="tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0",
+                     phase2="auth=PAP")
+    ver = dev[0].get_status_field("eap_tls_version")
+    if ver != "TLSv1.3":
+        raise Exception("Unexpected TLS version")
+
+    eap_reauth(dev[0], "TTLS")
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    dev[0].request("PMKSA_FLUSH")
+    dev[0].request("RECONNECT")
+    dev[0].wait_connected()
+
+def test_ap_wpa2_eap_peap_13(dev, apdev):
+    """PEAP and TLS 1.3"""
+    check_eap_capa(dev[0], "MSCHAPV2")
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    tls = dev[0].request("GET tls_library")
+    if "run=OpenSSL 1.1.1" not in tls:
+        raise HwsimSkip("TLS v1.3 not supported")
+    id = eap_connect(dev[0], hapd, "PEAP", "user",
+                     anonymous_identity="peap", password="password",
+                     ca_cert="auth_serv/ca.pem",
+                     phase1="tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0",
+                     phase2="auth=MSCHAPV2")
+    ver = dev[0].get_status_field("eap_tls_version")
+    if ver != "TLSv1.3":
+        raise Exception("Unexpected TLS version")
+
+    eap_reauth(dev[0], "PEAP")
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    dev[0].request("PMKSA_FLUSH")
+    dev[0].request("RECONNECT")
+    dev[0].wait_connected()
+
 def test_ap_wpa2_eap_tls_13_ec(dev, apdev):
     """EAP-TLS and TLS 1.3 (EC certificates)"""
     params = {"ssid": "test-wpa2-eap",
