@@ -61,6 +61,7 @@ def check_pasn_ptk(dev, hapd, cipher):
 
 def check_pasn_akmp_cipher(dev, hapd, akmp="PASN", cipher="CCMP",
                            group="19", status=0, fail=0, nid=""):
+    dev.flush_scan_cache()
     dev.scan(type="ONLY", freq=2412)
 
     cmd = "PASN_START bssid=%s akmp=%s cipher=%s group=%s" % (hapd.own_addr(), akmp, cipher, group)
@@ -440,6 +441,8 @@ def test_pasn_sae_while_connected_diff_channel(dev, apdev):
 def pasn_fils_setup(wpas, apdev, params, key_mgmt):
     check_fils_capa(wpas)
     check_erp_capa(wpas)
+
+    wpas.flush_scan_cache()
 
     start_erp_as(msk_dump=os.path.join(params['logdir'], "msk.lst"))
 
