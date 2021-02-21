@@ -729,7 +729,7 @@ def test_scan_setband(dev, apdev):
         if hapd2:
             hapd2.request("DISABLE")
         subprocess.call(['iw', 'reg', 'set', '00'])
-        for i in devs:
+        for d in devs:
             d.request("SET setband AUTO")
             d.flush_scan_cache()
 
