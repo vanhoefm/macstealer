@@ -36,6 +36,7 @@ void gas_server_tx_status(struct gas_server *gas, const u8 *dst, const u8 *data,
 			  size_t data_len, int ack);
 int gas_server_set_resp(struct gas_server *gas, void *resp_ctx,
 			struct wpabuf *resp);
+bool gas_server_response_sent(struct gas_server *gas, void *resp_ctx);
 
 #else /* CONFIG_GAS_SERVER */
 

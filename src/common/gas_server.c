@@ -489,6 +489,21 @@ int gas_server_set_resp(struct gas_server *gas, void *resp_ctx,
 }
 
 
+bool gas_server_response_sent(struct gas_server *gas, void *resp_ctx)
+{
+	struct gas_server_response *tmp;
+
+	dl_list_for_each(tmp, &gas->responses, struct gas_server_response,
+			 list) {
+		if (tmp == resp_ctx)
+			return tmp->resp &&
+				tmp->offset == wpabuf_len(tmp->resp);
+	}
+
+	return false;
+}
+
+
 struct gas_server * gas_server_init(void *ctx,
 				    void (*tx)(void *ctx, int freq,
 					       const u8 *da,

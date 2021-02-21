@@ -1918,9 +1918,22 @@ static void wpas_dpp_rx_conf_result(struct wpa_supplicant *wpa_s, const u8 *src,
 		   MAC2STR(src));
 
 	if (!auth || !auth->waiting_conf_result) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: No DPP Configuration waiting for result - drop");
-		return;
+		if (auth &&
+		    os_memcmp(src, auth->peer_mac_addr, ETH_ALEN) == 0 &&
+		    gas_server_response_sent(wpa_s->gas_server,
+					     auth->gas_server_ctx)) {
+			/* This could happen if the TX status event gets delayed
+			 * long enough for the Enrollee to have time to send
+			 * the next frame before the TX status gets processed
+			 * locally. */
+			wpa_printf(MSG_DEBUG,
+				   "DPP: GAS response was sent but TX status not yet received - assume it was ACKed since the Enrollee sent the next frame in the sequence");
+			auth->waiting_conf_result = 1;
+		} else {
+			wpa_printf(MSG_DEBUG,
+				   "DPP: No DPP Configuration waiting for result - drop");
+			return;
+		}
 	}
 
 	if (os_memcmp(src, auth->peer_mac_addr, ETH_ALEN) != 0) {
@@ -2969,6 +2982,7 @@ wpas_dpp_gas_req_handler(void *ctx, void *resp_ctx, const u8 *sa,
 	if (!resp)
 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	auth->conf_resp = resp;
+	auth->gas_server_ctx = resp_ctx;
 	return resp;
 }
 
@@ -3006,7 +3020,8 @@ wpas_dpp_gas_status_handler(void *ctx, struct wpabuf *resp, int ok)
 	eloop_cancel_timeout(wpas_dpp_auth_resp_retry_timeout, wpa_s, NULL);
 #ifdef CONFIG_DPP2
 	if (ok && auth->peer_version >= 2 &&
-	    auth->conf_resp_status == DPP_STATUS_OK) {
+	    auth->conf_resp_status == DPP_STATUS_OK &&
+	    !auth->waiting_conf_result) {
 		wpa_printf(MSG_DEBUG, "DPP: Wait for Configuration Result");
 		auth->waiting_conf_result = 1;
 		auth->conf_resp = NULL;
