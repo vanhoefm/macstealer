@@ -1233,7 +1233,7 @@ static int hostapd_ctrl_iface_get_config(struct hostapd_data *hapd,
 			return pos - buf;
 		pos += ret;
 
-		if (ssid->ssid) {
+		if (ssid->ssid_len) {
 			ret = os_snprintf(pos, end - pos,
 					  "multi_ap_backhaul_ssid=%s\n",
 					  wpa_ssid_txt(ssid->ssid,
