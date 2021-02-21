@@ -2145,6 +2145,24 @@ static void wpa_s_clear_sae_rejected(struct wpa_supplicant *wpa_s)
 }
 
 
+int wpas_restore_permanent_mac_addr(struct wpa_supplicant *wpa_s)
+{
+	if (wpa_drv_set_mac_addr(wpa_s, NULL) < 0) {
+		wpa_msg(wpa_s, MSG_INFO,
+			"Could not restore permanent MAC address");
+		return -1;
+	}
+	wpa_s->mac_addr_changed = 0;
+	if (wpa_supplicant_update_mac_addr(wpa_s) < 0) {
+		wpa_msg(wpa_s, MSG_INFO,
+			"Could not update MAC address information");
+		return -1;
+	}
+	wpa_msg(wpa_s, MSG_DEBUG, "Using permanent MAC address");
+	return 0;
+}
+
+
 static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit);
 
 /**
@@ -2205,18 +2223,8 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 			return;
 		wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
 	} else if (rand_style == 0 && wpa_s->mac_addr_changed) {
-		if (wpa_drv_set_mac_addr(wpa_s, NULL) < 0) {
-			wpa_msg(wpa_s, MSG_INFO,
-				"Could not restore permanent MAC address");
+		if (wpas_restore_permanent_mac_addr(wpa_s) < 0)
 			return;
-		}
-		wpa_s->mac_addr_changed = 0;
-		if (wpa_supplicant_update_mac_addr(wpa_s) < 0) {
-			wpa_msg(wpa_s, MSG_INFO,
-				"Could not update MAC address information");
-			return;
-		}
-		wpa_msg(wpa_s, MSG_DEBUG, "Using permanent MAC address");
 	}
 	wpa_s->last_ssid = ssid;
 

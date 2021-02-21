@@ -8572,6 +8572,8 @@ static void wpa_supplicant_ctrl_iface_flush(struct wpa_supplicant *wpa_s)
 	wpas_pasn_auth_stop(wpa_s);
 #endif /* CONFIG_PASN */
 
+	if (wpa_s->mac_addr_changed && wpa_s->conf->mac_addr == 0)
+		wpas_restore_permanent_mac_addr(wpa_s);
 }
 
 
