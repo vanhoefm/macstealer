@@ -5330,7 +5330,7 @@ static int print_bss_info(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
 			os_snprintf(title, sizeof(title), "anqp[%u]",
 				    elem->infoid);
 			pos = anqp_add_hex(pos, end, title, elem->payload);
-			if (elem->protected) {
+			if (elem->protected_response) {
 				ret = os_snprintf(pos, end - pos,
 						  "protected-anqp-info[%u]=1\n",
 						  elem->infoid);

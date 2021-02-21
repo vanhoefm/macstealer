@@ -2832,7 +2832,7 @@ int anqp_send_req(struct wpa_supplicant *wpa_s, const u8 *dst, int freq,
 
 static void anqp_add_extra(struct wpa_supplicant *wpa_s,
 			   struct wpa_bss_anqp *anqp, u16 info_id,
-			   const u8 *data, size_t slen, bool protected)
+			   const u8 *data, size_t slen, bool protected_response)
 {
 	struct wpa_bss_anqp_elem *tmp, *elem = NULL;
 
@@ -2857,7 +2857,7 @@ static void anqp_add_extra(struct wpa_supplicant *wpa_s,
 		wpabuf_free(elem->payload);
 	}
 
-	elem->protected = protected;
+	elem->protected_response = protected_response;
 	elem->payload = wpabuf_alloc_copy(data, slen);
 	if (!elem->payload) {
 		dl_list_del(&elem->list);
@@ -2900,7 +2900,7 @@ static void interworking_parse_rx_anqp_resp(struct wpa_supplicant *wpa_s,
 	const u8 *pos = data;
 	struct wpa_bss_anqp *anqp = NULL;
 	u8 type;
-	bool protected;
+	bool protected_response;
 
 	if (bss)
 		anqp = bss->anqp;
@@ -3001,10 +3001,11 @@ static void interworking_parse_rx_anqp_resp(struct wpa_supplicant *wpa_s,
 	case ANQP_VENUE_URL:
 		wpa_msg(wpa_s, MSG_INFO, RX_ANQP MACSTR " Venue URL",
 			MAC2STR(sa));
-		protected = pmf_in_use(wpa_s, sa);
-		anqp_add_extra(wpa_s, anqp, info_id, pos, slen, protected);
+		protected_response = pmf_in_use(wpa_s, sa);
+		anqp_add_extra(wpa_s, anqp, info_id, pos, slen,
+			       protected_response);
 
-		if (!protected) {
+		if (!protected_response) {
 			wpa_printf(MSG_DEBUG,
 				   "ANQP: Ignore Venue URL since PMF was not enabled");
 			break;
