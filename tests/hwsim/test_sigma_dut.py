@@ -5214,11 +5214,12 @@ def test_sigma_dut_client_privacy(dev, apdev, params):
         sigma_dut_cmd_check("sta_reset_default,interface," + ifname)
     finally:
         stop_sigma_dut(sigma)
-        dev[1].set("mac_addr", "0", allow_fail=True)
-        dev[1].set("rand_addr_lifetime", "60", allow_fail=True)
-        dev[1].set("preassoc_mac_addr", "0", allow_fail=True)
-        dev[1].set("gas_rand_mac_addr", "0", allow_fail=True)
-        dev[1].set("gas_rand_addr_lifetime", "60", allow_fail=True)
+        dev[0].set("mac_addr", "0", allow_fail=True)
+        dev[0].set("rand_addr_lifetime", "60", allow_fail=True)
+        dev[0].request("MAC_RAND_SCAN enable=0 all")
+        dev[0].set("preassoc_mac_addr", "0", allow_fail=True)
+        dev[0].set("gas_rand_mac_addr", "0", allow_fail=True)
+        dev[0].set("gas_rand_addr_lifetime", "60", allow_fail=True)
 
     out = run_tshark(os.path.join(logdir, "hwsim0.pcapng"),
                      "wlan.addr == " + addr,
