@@ -6202,6 +6202,15 @@ static void handle_auth_cb(struct hostapd_data *hapd,
 		return;
 	}
 
+	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
+		wpa_printf(MSG_INFO, "handle_auth_cb - too short payload (len=%lu)",
+			   (unsigned long) len);
+		auth_alg = 0;
+		auth_transaction = 0;
+		status_code = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto fail;
+	}
+
 	auth_alg = le_to_host16(mgmt->u.auth.auth_alg);
 	auth_transaction = le_to_host16(mgmt->u.auth.auth_transaction);
 	status_code = le_to_host16(mgmt->u.auth.status_code);
@@ -6210,12 +6219,6 @@ static void handle_auth_cb(struct hostapd_data *hapd,
 		hostapd_logger(hapd, mgmt->da, HOSTAPD_MODULE_IEEE80211,
 			       HOSTAPD_LEVEL_NOTICE,
 			       "did not acknowledge authentication response");
-		goto fail;
-	}
-
-	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
-		wpa_printf(MSG_INFO, "handle_auth_cb - too short payload (len=%lu)",
-			   (unsigned long) len);
 		goto fail;
 	}
 
