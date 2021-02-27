@@ -284,6 +284,8 @@ def test_wpas_config_file(dev, apdev, params):
             os.rmdir(config)
         except:
             pass
+        if not wpas.ifname:
+            wpas.interface_add("wlan5")
         wpas.dump_monitor()
         wpas.request("SET country 00")
         wpas.wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=1)
