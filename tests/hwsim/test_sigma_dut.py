@@ -3114,6 +3114,7 @@ def run_sigma_dut_ap_dpp_tcp_enrollee_init(dev, apdev):
     res = sigma_dut_cmd(cmd, timeout=10)
     if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
         raise Exception("Unexpected result: " + res)
+    sigma_dut_cmd_check("ap_reset_default")
 
 def test_sigma_dut_dpp_tcp_enrollee_init_mutual(dev, apdev):
     """sigma_dut DPP TCP Enrollee as initiator with mutual authentication"""
