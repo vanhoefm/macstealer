@@ -1372,6 +1372,13 @@ def test_radius_auth_force_client_addr(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-auth")
 
+def test_radius_auth_force_client_dev(dev, apdev):
+    """RADIUS client device specified"""
+    params = hostapd.wpa2_eap_params(ssid="radius-auth")
+    params['radius_client_dev'] = "lo"
+    hapd = hostapd.add_ap(apdev[0], params)
+    connect(dev[0], "radius-auth")
+
 @remote_compatible
 def test_radius_auth_force_invalid_client_addr(dev, apdev):
     """RADIUS client address specified and invalid address"""
