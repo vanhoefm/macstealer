@@ -996,6 +996,7 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 				case QCA_NL80211_VENDOR_SUBCMD_DO_ACS:
 					drv->capa.flags |=
 						WPA_DRIVER_FLAGS_ACS_OFFLOAD;
+					drv->qca_do_acs = 1;
 					break;
 				case QCA_NL80211_VENDOR_SUBCMD_SETBAND:
 					drv->setband_vendor_cmd_avail = 1;
@@ -1028,6 +1029,8 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 						WPA_DRIVER_FLAGS_ACS_OFFLOAD;
 					wpa_printf(MSG_DEBUG,
 						   "Enabled BRCM ACS");
+					drv->brcm_do_acs = 1;
+					break;
 				}
 #endif /* CONFIG_DRIVER_NL80211_BRCM */
 			}

@@ -10926,10 +10926,9 @@ static int add_acs_freq_list(struct nl_msg *msg, const int *freq_list)
 }
 
 
-static int wpa_driver_do_acs(void *priv, struct drv_acs_params *params)
+static int nl80211_qca_do_acs(struct wpa_driver_nl80211_data *drv,
+			      struct drv_acs_params *params)
 {
-	struct i802_bss *bss = priv;
-	struct wpa_driver_nl80211_data *drv = bss->drv;
 	struct nl_msg *msg;
 	struct nlattr *data;
 	int ret;
@@ -11607,10 +11606,9 @@ fail:
 
 
 #ifdef CONFIG_DRIVER_NL80211_BRCM
-static int wpa_driver_do_broadcom_acs(void *priv, struct drv_acs_params *params)
+static int wpa_driver_do_broadcom_acs(struct wpa_driver_nl80211_data *drv,
+				      struct drv_acs_params *params)
 {
-	struct i802_bss *bss = priv;
-	struct wpa_driver_nl80211_data *drv = bss->drv;
 	struct nl_msg *msg;
 	struct nlattr *data;
 	int freq_list_len;
@@ -11658,6 +11656,27 @@ fail:
 	return ret;
 }
 #endif /* CONFIG_DRIVER_NL80211_BRCM */
+
+
+static int nl80211_do_acs(void *priv, struct drv_acs_params *params)
+{
+#if defined(CONFIG_DRIVER_NL80211_QCA) || defined(CONFIG_DRIVER_NL80211_BRCM)
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+#endif /* CONFIG_DRIVER_NL80211_QCA || CONFIG_DRIVER_NL80211_BRCM */
+
+#ifdef CONFIG_DRIVER_NL80211_QCA
+	if (drv->qca_do_acs)
+		return nl80211_qca_do_acs(drv, params);
+#endif /* CONFIG_DRIVER_NL80211_QCA */
+
+#ifdef CONFIG_DRIVER_NL80211_BRCM
+	if (drv->brcm_do_acs)
+		return wpa_driver_do_broadcom_acs(drv, params);
+#endif /* CONFIG_DRIVER_NL80211_BRCM */
+
+	return -1;
+}
 
 
 static int nl80211_write_to_file(const char *name, unsigned int val)
@@ -12090,7 +12109,6 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #ifdef CONFIG_DRIVER_NL80211_QCA
 	.roaming = nl80211_roaming,
 	.disable_fils = nl80211_disable_fils,
-	.do_acs = wpa_driver_do_acs,
 	.set_band = nl80211_set_band,
 	.get_pref_freq_list = nl80211_get_pref_freq_list,
 	.set_prob_oper_freq = nl80211_set_prob_oper_freq,
@@ -12105,9 +12123,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.set_bssid_tmp_disallow = nl80211_set_bssid_tmp_disallow,
 	.add_sta_node = nl80211_add_sta_node,
 #endif /* CONFIG_DRIVER_NL80211_QCA */
-#ifdef CONFIG_DRIVER_NL80211_BRCM
-	.do_acs = wpa_driver_do_broadcom_acs,
-#endif /* CONFIG_DRIVER_NL80211_BRCM */
+	.do_acs = nl80211_do_acs,
 	.configure_data_frame_filters = nl80211_configure_data_frame_filters,
 	.get_ext_capab = nl80211_get_ext_capab,
 	.update_connect_params = nl80211_update_connection_params,
