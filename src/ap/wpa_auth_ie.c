@@ -1169,7 +1169,7 @@ bool wpa_auth_write_fd_rsn_info(struct wpa_authenticator *wpa_auth,
 	suite = wpa_cipher_to_suite(WPA_PROTO_RSN, conf->wpa_group);
 	if (suite == RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED)
 		cipher = 63; /* No cipher suite selected */
-	if ((suite >> 8) == 0x000fac && ((suite & 0xff) <= 13))
+	else if ((suite >> 8) == 0x000fac && ((suite & 0xff) <= 13))
 		cipher = suite & 0xff;
 	else
 		cipher = 62; /* vendor specific */
