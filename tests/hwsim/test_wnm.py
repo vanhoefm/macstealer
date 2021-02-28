@@ -1895,6 +1895,15 @@ def test_wnm_coloc_intf_reporting(dev, apdev):
             raise Exception("No Collocated Interference Report frame seen")
         if addr + " 0 " + binascii.hexlify(no_intf).decode() not in ev:
             raise Exception("Unexpected report values: " + ev)
+
+        if "FAIL" not in hapd.request("COLOC_INTF_REQ foo 1 5"):
+            raise Exception("Invalid COLOC_INTF_REQ accepted")
+        if "FAIL" not in hapd.request("COLOC_INTF_REQ 02:ff:ff:ff:ff:ff 1 5"):
+            raise Exception("COLOC_INTF_REQ for unknown STA accepted")
+        if "FAIL" not in hapd.request("COLOC_INTF_REQ %s 1" % addr):
+            raise Exception("Invalid COLOC_INTF_REQ accepted")
+        if "FAIL" not in hapd.request("COLOC_INTF_REQ %s" % addr):
+            raise Exception("Invalid COLOC_INTF_REQ accepted")
     finally:
         dev[0].set("coloc_intf_reporting", "0")
         dev[0].set("coloc_intf_elems", "")
