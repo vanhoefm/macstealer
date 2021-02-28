@@ -980,3 +980,17 @@ def test_hapd_ctrl_test_fail(dev, apdev):
         raise Exception("TEST_ALLOC_FAIL clearing failed")
     if "OK" not in hapd.request("TEST_FAIL "):
         raise Exception("TEST_FAIL clearing failed")
+
+def test_hapd_ctrl_setband(dev, apdev):
+    """hostapd and setband"""
+    ssid = "hapd-ctrl"
+    params = {"ssid": ssid}
+    hapd = hostapd.add_ap(apdev[0], params)
+    # The actual setband driver operations are not supported without vendor
+    # commands, so only check minimal parsing items here.
+    if "FAIL" not in hapd.request("SET setband foo"):
+        raise Exception("Invalid setband value accepted")
+    vals = ["5G", "6G", "2G", "2G,6G", "2G,5G,6G", "AUTO"]
+    for val in vals:
+        if "OK" not in hapd.request("SET setband " + val):
+            raise Exception("SET setband %s failed" % val)
