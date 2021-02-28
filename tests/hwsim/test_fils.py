@@ -1838,6 +1838,10 @@ def test_fils_and_ft_over_air_sha384(dev, apdev, params):
 
 def run_fils_and_ft_over_air(dev, apdev, params, key_mgmt):
     hapd, hapd2 = run_fils_and_ft_setup(dev, apdev, params, key_mgmt)
+    conf = hapd.request("GET_CONFIG")
+    if "key_mgmt=" + key_mgmt not in conf.splitlines():
+        logger.info("GET_CONFIG:\n" + conf)
+        raise Exception("GET_CONFIG did not report correct key_mgmt")
 
     logger.info("FT protocol using FT key hierarchy established during FILS authentication")
     dev[0].scan_for_bss(apdev[1]['bssid'], freq="2412", force_scan=True)

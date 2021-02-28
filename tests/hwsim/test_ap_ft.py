@@ -3201,6 +3201,10 @@ def test_ap_ft_eap_sha384(dev, apdev):
     params["ieee8021x"] = "1"
     params = dict(list(radius.items()) + list(params.items()))
     hapd0 = hostapd.add_ap(apdev[0], params)
+    conf = hapd0.request("GET_CONFIG")
+    if "key_mgmt=FT-EAP-SHA384" not in conf.splitlines():
+        logger.info("GET_CONFIG:\n" + conf)
+        raise Exception("GET_CONFIG did not report correct key_mgmt")
     params = ft_params2(ssid=ssid, passphrase=passphrase)
     params["ieee80211w"] = "2"
     params['wpa_key_mgmt'] = "FT-EAP-SHA384"

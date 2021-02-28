@@ -29,6 +29,10 @@ def test_owe(dev, apdev):
               "rsn_pairwise": "CCMP"}
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
+    conf = hapd.request("GET_CONFIG")
+    if "key_mgmt=OWE" not in conf.splitlines():
+        logger.info("GET_CONFIG:\n" + conf)
+        raise Exception("GET_CONFIG did not report correct key_mgmt")
 
     dev[0].scan_for_bss(bssid, freq="2412")
     bss = dev[0].get_bss(bssid)
