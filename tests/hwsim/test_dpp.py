@@ -2120,6 +2120,25 @@ def run_dpp_qr_code_hostapd_init_offchannel(dev, apdev, extra):
     wait_auth_success(dev[0], hapd, configurator=dev[0], enrollee=hapd,
                       stop_responder=True)
 
+def test_dpp_qr_code_hostapd_ignore_mismatch(dev, apdev):
+    """DPP QR Code and hostapd ignoring netaccessKey mismatch"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd)
+    conf_id = dev[0].dpp_configurator_add()
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/6", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    dev[0].set("dpp_configurator_params",
+               "conf=ap-dpp configurator=%d" % conf_id)
+    conf = '{"wi-fi_tech":"infra","discovery":{"ssid":"test"},"cred":{"akm":"dpp","signedConnector":"eyJ0eXAiOiJkcHBDb24iLCJraWQiOiJUbkdLaklsTlphYXRyRUFZcmJiamlCNjdyamtMX0FHVldYTzZxOWhESktVIiwiYWxnIjoiRVMyNTYifQ.eyJncm91cHMiOlt7Imdyb3VwSWQiOiIqIiwibmV0Um9sZSI6InN0YSJ9XSwibmV0QWNjZXNzS2V5Ijp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRGNEpFR0lQS1NaMFh2OXpkQ01qbS10bjVYcE1zWUlWWjl3eVNBejFnSSIsInkiOiJRR2NIV0FfNnJiVTlYRFhBenRvWC1NNVEzc3VUbk1hcUVoVUx0bjdTU1h3In19._sm6YswxMf6hJLVTyYoU1uYUeY2VVkUNjrzjSiEhY42StD_RWowStEE-9CRsdCvLmsTptZ72_g40vTFwdId20A","csign":{"kty":"EC","crv":"P-256","x":"W4-Y5N1Pkos3UWb9A5qme0KUYRtY3CVUpekx_MapZ9s","y":"Et-M4NSF4NGjvh2VCh4B1sJ9eSCZ4RNzP2DBdP137VE","kid":"TnGKjIlNZaatrEAYrbbjiB67rjkL_AGVWXO6q9hDJKU"}}}'
+    dev[0].set("dpp_config_obj_override", conf)
+    dev[0].dpp_listen(2437, role="configurator")
+    hapd.set("dpp_ignore_netaccesskey_mismatch", "1")
+    hapd.dpp_auth_init(uri=uri0, role="enrollee")
+    wait_auth_success(dev[0], hapd, configurator=dev[0], enrollee=hapd,
+                      stop_responder=True)
+
 def test_dpp_test_vector_p_256(dev, apdev):
     """DPP P-256 test vector (mutual auth)"""
     check_dpp_capab(dev[0])
@@ -2588,6 +2607,28 @@ def test_dpp_hostapd_configurator_fragmentation(dev, apdev):
     dev[0].dpp_listen(2412)
     conf = '{"wi-fi_tech":"infra", "discovery":{"ssid":"test"},"cred":{"akm":"psk","pass":"secret passphrase"}}' + 3000*' '
     hapd.set("dpp_config_obj_override", conf)
+    hapd.dpp_auth_init(peer=id1, configurator=conf_id, conf="sta-dpp")
+    wait_auth_success(dev[0], hapd, configurator=hapd, enrollee=dev[0],
+                      stop_responder=True)
+
+def test_dpp_hostapd_configurator_override_objects(dev, apdev):
+    """DPP with hostapd as configurator and override objects"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "1"})
+    check_dpp_capab(hapd)
+    conf_id = hapd.dpp_configurator_add()
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    id1 = hapd.dpp_qr_code(uri0)
+    res = hapd.request("DPP_BOOTSTRAP_INFO %d" % id1)
+    if "FAIL" in res:
+        raise Exception("DPP_BOOTSTRAP_INFO failed")
+    dev[0].dpp_listen(2412)
+    discovery = '{\n"ssid":"mywifi"\n}'
+    groups = '[\n  {"groupId":"home","netRole":"sta"},\n  {"groupId":"cottage","netRole":"sta"}\n]'
+    hapd.set("dpp_discovery_override", discovery)
+    hapd.set("dpp_groups_override", groups)
     hapd.dpp_auth_init(peer=id1, configurator=conf_id, conf="sta-dpp")
     wait_auth_success(dev[0], hapd, configurator=hapd, enrollee=dev[0],
                       stop_responder=True)
