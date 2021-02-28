@@ -16,9 +16,8 @@ import threading
 import time
 
 import hostapd
-from utils import HwsimSkip, alloc_fail, fail_test, wait_fail_trigger
+from utils import *
 from test_ap_eap import check_eap_capa, check_hlr_auc_gw_support, int_eap_server_params
-from test_erp import check_erp_capa
 
 try:
     import OpenSSL

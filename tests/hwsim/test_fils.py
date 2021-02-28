@@ -18,18 +18,8 @@ from tshark import run_tshark
 from wpasupplicant import WpaSupplicant
 import hwsim_utils
 from utils import *
-from test_erp import check_erp_capa, start_erp_as
+from test_erp import start_erp_as
 from test_ap_hs20 import ip_checksum
-
-def check_fils_capa(dev):
-    capa = dev.get_capability("fils")
-    if capa is None or "FILS" not in capa:
-        raise HwsimSkip("FILS not supported")
-
-def check_fils_sk_pfs_capa(dev):
-    capa = dev.get_capability("fils")
-    if capa is None or "FILS-SK-PFS" not in capa:
-        raise HwsimSkip("FILS-SK-PFS not supported")
 
 def test_fils_sk_full_auth(dev, apdev, params):
     """FILS SK full authentication"""

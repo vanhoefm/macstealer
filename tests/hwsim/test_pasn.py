@@ -19,8 +19,7 @@ import hostapd
 from wpasupplicant import WpaSupplicant
 from utils import *
 from hwsim import HWSimRadio
-from test_erp import check_erp_capa, start_erp_as
-from test_fils import check_fils_capa
+from test_erp import start_erp_as
 from test_ap_ft import run_roams, ft_params1, ft_params2
 
 def check_pasn_capab(dev):
