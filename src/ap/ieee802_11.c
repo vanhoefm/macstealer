@@ -2656,6 +2656,10 @@ fail:
 static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 			       struct wpabuf *wd)
 {
+#ifdef CONFIG_NO_RADIUS
+	wpa_printf(MSG_DEBUG, "PASN: FILS: RADIUS is not configured. Fail");
+	return -1;
+#else /* CONFIG_NO_RADIUS */
 	struct pasn_data *pasn = sta->pasn;
 	struct pasn_fils_data *fils = &pasn->fils;
 	struct ieee802_11_elems elems;
@@ -2740,11 +2744,6 @@ static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 		    FILS_SESSION_LEN);
 	os_memcpy(fils->session, elems.fils_session, FILS_SESSION_LEN);
 
-#ifdef CONFIG_NO_RADIUS
-	wpa_printf(MSG_DEBUG, "PASN: FILS: RADIUS is not configured. Fail");
-	return -1;
-#endif /* CONFIG_NO_RADIUS */
-
 	fils_wd = ieee802_11_defrag(&elems, WLAN_EID_EXTENSION,
 				    WLAN_EID_EXT_WRAPPED_DATA);
 
@@ -2775,6 +2774,7 @@ static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 
 	wpabuf_free(fils_wd);
 	return 0;
+#endif /* CONFIG_NO_RADIUS */
 }
 
 #endif /* CONFIG_FILS */
