@@ -13,6 +13,7 @@ import hostapd
 from wpasupplicant import WpaSupplicant
 import hwsim_utils
 from utils import *
+from test_erp import start_erp_as
 
 from test_ap_psk import parse_eapol, build_eapol, pmk_to_ptk, eapol_key_mic, recv_eapol, send_eapol, reply_eapol, build_eapol_key_3_4, aes_wrap, pad_key_data
 
@@ -1040,6 +1041,47 @@ def test_wpa2_ocv_ap_override_saquery_resp(dev, apdev):
     if "OK" not in dev[0].request("UNPROT_DEAUTH"):
         raise Exception("Triggering SA Query from the STA failed")
     check_ocv_failure(dev[0], "SA Query Response", "saqueryresp", bssid)
+
+def test_wpa2_ocv_ap_override_fils_assoc(dev, apdev, params):
+    """OCV on 2.4 GHz and AP override FILS association"""
+    check_fils_capa(dev[0])
+    check_erp_capa(dev[0])
+
+    start_erp_as(msk_dump=os.path.join(params['logdir'], "msk.lst"))
+
+    bssid = apdev[0]['bssid']
+    ssid = "test-wpa2-ocv"
+    params = hostapd.wpa2_eap_params(ssid=ssid)
+    params['wpa_key_mgmt'] = "FILS-SHA256"
+    params['auth_server_port'] = "18128"
+    params['erp_send_reauth_start'] = '1'
+    params['erp_domain'] = 'example.com'
+    params['fils_realm'] = 'example.com'
+    params['wpa_group_rekey'] = '1'
+    params["ieee80211w"] = "2"
+    params["ocv"] = "1"
+    params["oci_freq_override_fils_assoc"] = "2462"
+    try:
+        hapd = hostapd.add_ap(apdev[0], params)
+    except Exception as e:
+        if "Failed to set hostapd parameter ocv" in str(e):
+            raise HwsimSkip("OCV not supported")
+        raise
+    bssid = hapd.own_addr()
+    dev[0].request("ERP_FLUSH")
+    id = dev[0].connect(ssid, key_mgmt="FILS-SHA256",
+                        eap="PSK", identity="psk.user@example.com",
+                        password_hex="0123456789abcdef0123456789abcdef",
+                        erp="1", scan_freq="2412", ocv="1", ieee80211w="2")
+
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+
+    dev[0].dump_monitor()
+    dev[0].select_network(id, freq=2412)
+
+    check_ocv_failure(dev[0], "FILS Association Response", "fils-assoc", bssid)
+    dev[0].request("DISCONNECT")
 
 @remote_compatible
 def test_wpa2_ocv_no_pmf(dev, apdev):
