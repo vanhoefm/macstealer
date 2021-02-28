@@ -614,6 +614,17 @@ def test_ap_tx_queue_params_invalid(dev, apdev):
     if "FAIL" not in hapd.request('SET wmm_ac_bk_cwmax 3'):
         raise Exception("AC cwMax < cwMin accepted")
 
+    hapd.request("SET tx_queue_data2_cwmax 1023")
+    hapd.set("wmm_ac_bk_cwmax", "10")
+    # Invalid IEs to cause WMM parameter update failing
+    hapd.set("vendor_elements", "dd04112233")
+    hapd.set("wmm_ac_be_cwmin", "3")
+    # Valid IEs to cause WMM parameter update succeeding
+    hapd.set("vendor_elements", "dd0411223344")
+    hapd.set("wmm_ac_be_cwmin", "3")
+
+    dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
+
 def test_ap_beacon_rate_legacy(dev, apdev):
     """Open AP with Beacon frame TX rate 5.5 Mbps"""
     hapd = hostapd.add_ap(apdev[0], {'ssid': 'beacon-rate'})
