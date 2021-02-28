@@ -2308,10 +2308,12 @@ int hostapd_setup_interface(struct hostapd_iface *iface)
 {
 	int ret;
 
+	if (!iface->conf)
+		return -1;
 	ret = setup_interface(iface);
 	if (ret) {
 		wpa_printf(MSG_ERROR, "%s: Unable to setup interface.",
-			   iface->conf ? iface->conf->bss[0]->iface : "N/A");
+			   iface->conf->bss[0]->iface);
 		return -1;
 	}
 
