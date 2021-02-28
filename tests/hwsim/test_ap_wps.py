@@ -10453,6 +10453,10 @@ def run_ap_wps_ap_timeout(dev, apdev, cmd):
     ev = hapd.wait_event(["WPS-TIMEOUT"], timeout=130)
     if ev is None and "PBC" in cmd:
         raise Exception("WPS-TIMEOUT not reported")
+    if "PBC" in cmd and \
+       "PBC Status: Timed-out" not in hapd.request("WPS_GET_STATUS"):
+        raise Exception("PBC status not shown correctly")
+
     time.sleep(5)
     dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq="2412", force_scan=True)
