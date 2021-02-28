@@ -232,6 +232,9 @@ def test_ap_wpa2_ptk_rekey_blocked_ap(dev, apdev):
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params['wpa_deny_ptk0_rekey'] = "2"
     hapd = hostapd.add_ap(apdev[0], params)
+    conf = hapd.request("GET_CONFIG").splitlines()
+    if "wpa_deny_ptk0_rekey=2" not in conf:
+        raise Exception("wpa_deny_ptk0_rekey value not in GET_CONFIG")
     dev[0].connect(ssid, psk=passphrase, wpa_ptk_rekey="1", scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Key negotiation completed",
                             "CTRL-EVENT-DISCONNECTED"])
