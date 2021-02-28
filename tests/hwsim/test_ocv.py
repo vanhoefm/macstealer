@@ -14,7 +14,7 @@ from wpasupplicant import WpaSupplicant
 import hwsim_utils
 from utils import *
 from test_erp import start_erp_as
-
+from test_ap_ft import ft_params1, ft_params2
 from test_ap_psk import parse_eapol, build_eapol, pmk_to_ptk, eapol_key_mic, recv_eapol, send_eapol, reply_eapol, build_eapol_key_3_4, aes_wrap, pad_key_data
 
 #TODO: Refuse setting up AP with OCV but without MFP support
@@ -1081,6 +1081,41 @@ def test_wpa2_ocv_ap_override_fils_assoc(dev, apdev, params):
     dev[0].select_network(id, freq=2412)
 
     check_ocv_failure(dev[0], "FILS Association Response", "fils-assoc", bssid)
+    dev[0].request("DISCONNECT")
+
+def test_wpa2_ocv_ap_override_ft_assoc(dev, apdev):
+    """OCV on 2.4 GHz and AP override FT reassociation"""
+    ssid = "test-wpa2-ocv"
+    passphrase = "qwertyuiop"
+    params = ft_params1(ssid=ssid, passphrase=passphrase)
+    params["ieee80211w"] = "2"
+    params["ocv"] = "1"
+    params["oci_freq_override_fils_assoc"] = "2462"
+    try:
+        hapd0 = hostapd.add_ap(apdev[0], params)
+    except Exception as e:
+        if "Failed to set hostapd parameter ocv" in str(e):
+            raise HwsimSkip("OCV not supported")
+        raise
+    params = ft_params2(ssid=ssid, passphrase=passphrase)
+    params["ieee80211w"] = "2"
+    params["ocv"] = "1"
+    params["oci_freq_override_ft_assoc"] = "2462"
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    dev[0].connect(ssid, key_mgmt="FT-PSK", psk=passphrase,
+                   scan_freq="2412", ocv="1", ieee80211w="2")
+
+    bssid = dev[0].get_status_field("bssid")
+    bssid0 = hapd0.own_addr()
+    bssid1 = hapd1.own_addr()
+    target = bssid0 if bssid == bssid1 else bssid1
+
+    dev[0].scan_for_bss(target, freq="2412")
+    if "OK" not in dev[0].request("ROAM " + target):
+        raise Exception("ROAM failed")
+
+    check_ocv_failure(dev[0], "FT Reassociation Response", "ft-assoc", target)
     dev[0].request("DISCONNECT")
 
 @remote_compatible
