@@ -3312,13 +3312,11 @@ static void wpas_update_fils_connect_params(struct wpa_supplicant *wpa_s)
 	if (!wpa_ie)
 		return;
 
-	if (params.auth_alg != WPA_AUTH_ALG_FILS) {
-		os_free(wpa_ie);
-		return;
+	if (params.auth_alg == WPA_AUTH_ALG_FILS) {
+		wpa_s->auth_alg = params.auth_alg;
+		wpa_drv_update_connect_params(wpa_s, &params, mask);
 	}
 
-	wpa_s->auth_alg = params.auth_alg;
-	wpa_drv_update_connect_params(wpa_s, &params, mask);
 	os_free(wpa_ie);
 }
 #endif /* CONFIG_FILS && IEEE8021X_EAPOL */
