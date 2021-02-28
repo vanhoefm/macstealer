@@ -122,6 +122,21 @@ def run_multi_ap_wps(dev, apdev, params, params_backhaul=None, add_apdev=False,
 
     # WPS with multi-ap station dev[0]
     hapd = hostapd.add_ap(apdev[0], params)
+    conf = hapd.request("GET_CONFIG").splitlines()
+    if "ssid=" + params['ssid'] not in conf:
+        raise Exception("GET_CONFIG did not show correct ssid entry")
+    if "multi_ap" in params and \
+       "multi_ap=" + params["multi_ap"] not in conf:
+        raise Exception("GET_CONFIG did not show correct multi_ap entry")
+    if "multi_ap_backhaul_ssid" in params and \
+       "multi_ap_backhaul_ssid=" + params["multi_ap_backhaul_ssid"].strip('"') not in conf:
+        raise Exception("GET_CONFIG did not show correct multi_ap_backhaul_ssid entry")
+    if "wpa" in params and "multi_ap_backhaul_wpa_passphrase" in params and \
+       "multi_ap_backhaul_wpa_passphrase=" + params["multi_ap_backhaul_wpa_passphrase"] not in conf:
+        raise Exception("GET_CONFIG did not show correct multi_ap_backhaul_wpa_passphrase entry")
+    if "multi_ap_backhaul_wpa_psk" in params and \
+       "multi_ap_backhaul_wpa_psk=" + params["multi_ap_backhaul_wpa_psk"] not in conf:
+        raise Exception("GET_CONFIG did not show correct multi_ap_backhaul_wpa_psk entry")
     hapd.request("WPS_PBC")
     if "PBC Status: Active" not in hapd.request("WPS_GET_STATUS"):
         raise Exception("PBC status not shown correctly")
