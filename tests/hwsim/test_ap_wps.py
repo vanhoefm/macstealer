@@ -726,6 +726,8 @@ def test_ap_wps_random_ap_pin(dev, apdev):
         raise Exception("Invalid WPS_AP_PIN accepted")
     if "FAIL" not in hapd.request("WPS_AP_PIN foo"):
         raise Exception("Invalid WPS_AP_PIN accepted")
+    if "FAIL" not in hapd.request("WPS_AP_PIN set " + 9*'1'):
+        raise Exception("Invalid WPS_AP_PIN accepted")
 
 def test_ap_wps_reg_config(dev, apdev):
     """WPS registrar configuring an AP using AP PIN"""
