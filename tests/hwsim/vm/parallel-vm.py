@@ -344,6 +344,23 @@ def show_progress(scr):
     scr.refresh()
     time.sleep(0.3)
 
+def known_output(tests, line):
+    if not line:
+        return True
+    if line in tests:
+        return True
+    known = ["START ", "PASS ", "FAIL ", "SKIP ", "REASON ", "ALL-PASSED",
+             "READY",
+             "  ", "Exception: ", "Traceback (most recent call last):",
+             "./run-all.sh: running",
+             "./run-all.sh: passing",
+             "Test run completed", "Logfiles are at", "Starting test run",
+             "passed all", "skipped ", "failed tests:"]
+    for k in known:
+        if line.startswith(k):
+            return True
+    return False
+
 def main():
     import argparse
     import os
@@ -616,6 +633,16 @@ def main():
         print("Missing items (SKIP):", missing_items)
     if other_reasons:
         print("Other skip reasons:", other_reasons)
+
+    for i in range(num_servers):
+        unknown = ""
+        for line in vm[i]['out'].splitlines():
+            if not known_output(tests, line):
+                unknown += line + "\n"
+        if unknown:
+            print("\nVM %d - unexpected stdout output:\n%s" % (i, unknown))
+        if vm[i]['err']:
+            print("\nVM %d - unexpected stderr output:\n%s\n" % (i, vm[i]['err']))
 
     if codecov:
         print("Code coverage - preparing report")
