@@ -7273,6 +7273,13 @@ def run_openssl_systemwide_policy(iface, apdev, test_params):
     logger.info("Start wpa_supplicant: " + str(arg))
     subprocess.call(arg, env={'OPENSSL_CONF': openssl_cnf})
     wpas = WpaSupplicant(ifname=iface)
+    try:
+        finish_openssl_systemwide_policy(wpas)
+    finally:
+        wpas.close_monitor()
+        wpas.request("TERMINATE")
+
+def finish_openssl_systemwide_policy(wpas):
     if "PONG" not in wpas.request("PING"):
         raise Exception("Could not PING wpa_supplicant")
     tls = wpas.request("GET tls_library")
@@ -7304,8 +7311,6 @@ def run_openssl_systemwide_policy(iface, apdev, test_params):
     wpas.set_network_quoted(id, "phase1", "tls_disable_tlsv1_0=0")
     wpas.select_network(id, freq="2412")
     wpas.wait_connected()
-
-    wpas.request("TERMINATE")
 
 def test_ap_wpa2_eap_tls_tod(dev, apdev):
     """EAP-TLS server certificate validation and TOD-STRICT"""
