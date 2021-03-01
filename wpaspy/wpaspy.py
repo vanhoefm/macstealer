@@ -21,14 +21,14 @@ class Ctrl:
         self.path = path
         self.port = port
 
-        try:
-            mode = os.stat(path).st_mode
-            if stat.S_ISSOCK(mode):
-                self.udp = False
-            else:
+        self.udp = False
+        if not path.startswith('/'):
+            try:
+                mode = os.stat(path).st_mode
+                if not stat.S_ISSOCK(mode):
+                    self.udp = True
+            except:
                 self.udp = True
-        except:
-            self.udp = True
 
         if not self.udp:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
