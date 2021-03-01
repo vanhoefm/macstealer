@@ -75,6 +75,17 @@ def test_ap_change_ssid_wps(dev, apdev):
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
 
+def test_ap_reload_invalid(dev, apdev):
+    """hostapd RELOAD with invalid configuration"""
+    params = hostapd.wpa2_params(ssid="test-wpa2-psk-start",
+                                 passphrase="12345678")
+    hapd = hostapd.add_ap(apdev[0], params)
+    # Enable IEEE 802.11d without specifying country code
+    hapd.set("ieee80211d", "1")
+    if "FAIL" not in hapd.request("RELOAD"):
+        raise Exception("RELOAD command succeeded")
+    dev[0].connect("test-wpa2-psk-start", psk="12345678", scan_freq="2412")
+
 def multi_check(apdev, dev, check, scan_opt=True):
     id = []
     num_bss = len(check)
