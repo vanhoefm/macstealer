@@ -414,6 +414,7 @@ void hostapd_free_hapd_data(struct hostapd_data *hapd)
 	}
 
 	wpabuf_free(hapd->time_adv);
+	hapd->time_adv = NULL;
 
 #ifdef CONFIG_INTERWORKING
 	gas_serv_deinit(hapd);
