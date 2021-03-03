@@ -3376,7 +3376,7 @@ static void hostapd_dpp_relay_gas_resp_tx(void *ctx, const u8 *addr,
 {
 	struct hostapd_data *hapd = ctx;
 
-	gas_serv_req_dpp_processing(hapd, addr, dialog_token, prot, buf);
+	gas_serv_req_dpp_processing(hapd, addr, dialog_token, prot, buf, 0);
 }
 
 #endif /* CONFIG_DPP2 */
