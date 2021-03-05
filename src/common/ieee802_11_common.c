@@ -2232,6 +2232,9 @@ int oper_class_bw_to_int(const struct oper_class_map *map)
 
 int center_idx_to_bw_6ghz(u8 idx)
 {
+	/* Channel: 2 */
+	if (idx == 2)
+		return 0; /* 20 MHz */
 	/* channels: 1, 5, 9, 13... */
 	if ((idx & 0x3) == 0x1)
 		return 0; /* 20 MHz */
