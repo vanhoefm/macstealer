@@ -1942,3 +1942,10 @@ def test_wnm_bss_transition_mgmt_disabled(dev, apdev):
             raise Exception("Unexpected BSS Transition Management Response")
     finally:
         dev[0].set("disable_btm", "0")
+
+def test_wnm_time_adv_restart(dev, apdev):
+    """WNM time advertisement and interface restart"""
+    hapd = start_wnm_ap(apdev[0], time_adv=True)
+    hapd.disable()
+    hapd.enable()
+    dev[0].connect("test-wnm", key_mgmt="NONE", scan_freq="2412")
