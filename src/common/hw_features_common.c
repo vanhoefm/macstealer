@@ -572,13 +572,19 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 		/* fall through */
 	case CHANWIDTH_80MHZ:
 		data->bandwidth = 80;
-		if ((oper_chwidth == CHANWIDTH_80MHZ &&
-		     center_segment1) ||
-		    (oper_chwidth == CHANWIDTH_80P80MHZ &&
-		     !center_segment1) ||
-		    !sec_channel_offset) {
+		if (!sec_channel_offset) {
 			wpa_printf(MSG_ERROR,
-				   "80/80+80 MHz: center segment 1 wrong or no second channel offset");
+				   "80/80+80 MHz: no second channel offset");
+			return -1;
+		}
+		if (oper_chwidth == CHANWIDTH_80MHZ && center_segment1) {
+			wpa_printf(MSG_ERROR,
+				   "80 MHz: center segment 1 configured");
+			return -1;
+		}
+		if (oper_chwidth == CHANWIDTH_80P80MHZ && !center_segment1) {
+			wpa_printf(MSG_ERROR,
+				   "80+80 MHz: center segment 1 not configured");
 			return -1;
 		}
 		if (!center_segment0) {
