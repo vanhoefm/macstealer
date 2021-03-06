@@ -941,6 +941,8 @@ static void sme_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	struct wpa_connect_work *cwork = work->ctx;
 	struct wpa_supplicant *wpa_s = work->wpa_s;
 
+	wpa_s->roam_in_progress = false;
+
 	if (deinit) {
 		if (work->started)
 			wpa_s->connect_work = NULL;
@@ -981,6 +983,11 @@ void sme_authenticate(struct wpa_supplicant *wpa_s,
 		return;
 	}
 
+	if (wpa_s->roam_in_progress) {
+		wpa_dbg(wpa_s, MSG_DEBUG,
+			"SME: Reject sme_authenticate() in favor of explicit roam request");
+		return;
+	}
 	if (radio_work_pending(wpa_s, "sme-connect")) {
 		/*
 		 * The previous sme-connect work might no longer be valid due to

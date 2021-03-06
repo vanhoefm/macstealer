@@ -621,6 +621,7 @@ struct wpa_supplicant {
 	u8 pending_bssid[ETH_ALEN]; /* If wpa_state == WPA_ASSOCIATING, this
 				     * field contains the target BSSID. */
 	int reassociate; /* reassociation requested */
+	bool roam_in_progress; /* roam in progress */
 	unsigned int reassoc_same_bss:1; /* reassociating to the same BSS */
 	unsigned int reassoc_same_ess:1; /* reassociating to the same ESS */
 	int disconnected; /* all connections disabled; i.e., do no reassociate
