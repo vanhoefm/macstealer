@@ -52,6 +52,15 @@ def test_sae(dev, apdev):
     pmk_w = dev[0].get_pmk(id)
     if pmk_h != pmk_w:
         raise Exception("Fetched PMK does not match: hostapd %s, wpa_supplicant %s" % (pmk_h, pmk_w))
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    pmk_h2 = hapd.request("GET_PMK " + dev[0].own_addr())
+    if pmk_h != pmk_h2:
+        raise Exception("Fetched PMK from PMKSA cache does not match: %s, %s" % (pmk_h, pmk_h2))
+    if "FAIL" not in hapd.request("GET_PMK foo"):
+        raise Exception("Invalid GET_PMK did not return failure")
+    if "FAIL" not in hapd.request("GET_PMK 02:ff:ff:ff:ff:ff"):
+        raise Exception("GET_PMK for unknown STA did not return failure")
 
 @remote_compatible
 def test_sae_password_ecc(dev, apdev):
