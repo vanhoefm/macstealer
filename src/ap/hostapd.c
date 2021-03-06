@@ -1,6 +1,6 @@
 /*
  * hostapd / Initialization and configuration
- * Copyright (c) 2002-2019, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2002-2021, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -430,6 +430,7 @@ void hostapd_free_hapd_data(struct hostapd_data *hapd)
 		       hapd->tmp_eap_user.identity_len);
 	bin_clear_free(hapd->tmp_eap_user.password,
 		       hapd->tmp_eap_user.password_len);
+	os_memset(&hapd->tmp_eap_user, 0, sizeof(hapd->tmp_eap_user));
 #endif /* CONFIG_SQLITE */
 
 #ifdef CONFIG_MESH
