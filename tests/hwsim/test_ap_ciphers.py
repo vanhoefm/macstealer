@@ -649,12 +649,24 @@ def test_ap_cipher_replay_protection_sta_gtk_gcmp(dev, apdev):
         raise HwsimSkip("GCMP not supported")
     run_ap_cipher_replay_protection_sta(dev, apdev, "GCMP", keytype=KT_GTK)
 
+def test_ap_cipher_replay_protection_sta_igtk(dev, apdev):
+    """CCMP replay protection on STA (IGTK)"""
+    run_ap_cipher_replay_protection_sta(dev, apdev, "CCMP", keytype=KT_IGTK)
+
+def test_ap_cipher_replay_protection_sta_bigtk(dev, apdev):
+    """CCMP replay protection on STA (BIGTK)"""
+    run_ap_cipher_replay_protection_sta(dev, apdev, "CCMP", keytype=KT_BIGTK)
+
 def run_ap_cipher_replay_protection_sta(dev, apdev, cipher, keytype=KT_PTK):
     params = {"ssid": "test-wpa2-psk",
               "wpa_passphrase": "12345678",
               "wpa": "2",
               "wpa_key_mgmt": "WPA-PSK",
               "rsn_pairwise": cipher}
+    if keytype == KT_IGTK or keytype == KT_BIGTK:
+        params['ieee80211w'] = '2'
+    if keytype == KT_BIGTK:
+        params['beacon_prot'] = '1'
     hapd = hostapd.add_ap(apdev[0], params)
 
     Wlantest.setup(hapd)
@@ -663,9 +675,13 @@ def run_ap_cipher_replay_protection_sta(dev, apdev, cipher, keytype=KT_PTK):
     wt.add_passphrase("12345678")
 
     phy = dev[0].get_driver_status_field("phyname")
-    dev[0].connect("test-wpa2-psk", psk="12345678",
+    dev[0].connect("test-wpa2-psk", psk="12345678", ieee80211w='1',
+                   beacon_prot='1',
                    pairwise=cipher, group=cipher, scan_freq="2412")
     hapd.wait_sta()
+
+    if keytype == KT_BIGTK:
+        time.sleep(1)
 
     if cipher != "TKIP":
         replays = get_tk_replay_counter(phy, keytype)
@@ -680,12 +696,29 @@ def run_ap_cipher_replay_protection_sta(dev, apdev, cipher, keytype=KT_PTK):
         if replays != 0:
             raise Exception("Unexpected replay reported (2)")
 
+    if keytype == KT_IGTK:
+        hapd.request("DEAUTHENTICATE ff:ff:ff:ff:ff:ff test=1")
+        ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
+        if ev:
+            dev[0].wait_connected()
+
     addr = "ff:ff:ff:ff:ff:ff" if keytype != KT_PTK else dev[0].own_addr()
-    if "OK" not in hapd.request("RESET_PN " + addr):
+    cmd = "RESET_PN " + addr
+    if keytype == KT_IGTK:
+        cmd += " IGTK"
+    if keytype == KT_BIGTK:
+        cmd += " BIGTK"
+    if "OK" not in hapd.request(cmd):
         raise Exception("RESET_PN failed")
     time.sleep(0.1)
-    hwsim_utils.test_connectivity(dev[0], hapd, timeout=1,
-                                  success_expected=False)
+    if keytype == KT_IGTK:
+        hapd.request("DEAUTHENTICATE ff:ff:ff:ff:ff:ff test=1")
+        ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
+    elif keytype == KT_BIGTK:
+        time.sleep(1)
+    else:
+        hwsim_utils.test_connectivity(dev[0], hapd, timeout=1,
+                                      success_expected=False)
 
     if cipher != "TKIP":
         replays = get_tk_replay_counter(phy, keytype)
