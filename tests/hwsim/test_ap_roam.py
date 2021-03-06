@@ -1,5 +1,5 @@
 # Roaming tests
-# Copyright (c) 2013-2019, Jouni Malinen <j@w1.fi>
+# Copyright (c) 2013-2021, Jouni Malinen <j@w1.fi>
 #
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
@@ -376,3 +376,20 @@ def test_ap_roam_signal_level_override(dev, apdev):
     if dst != dev[0].get_status_field('bssid'):
         raise Exception("Unexpected AP after roam")
     dev[0].dump_monitor()
+
+def test_ap_roam_during_scan(dev, apdev):
+    """Roam command during a scan operation"""
+    hapd0 = hostapd.add_ap(apdev[0], {"ssid": "test-open"})
+    dev[0].scan_for_bss(hapd0.own_addr(), freq=2412)
+    dev[0].connect("test-open", key_mgmt="NONE")
+    hapd1 = hostapd.add_ap(apdev[1], {"ssid": "test-open"})
+    dev[0].scan_for_bss(hapd1.own_addr(), freq=2412)
+    if "OK" not in dev[0].request("SCAN"):
+        raise Exception("Failed to start scan")
+    if "OK" not in dev[0].request("ROAM " + hapd1.own_addr()):
+        raise Exception("Failed to issue ROAM")
+    ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED"], timeout=10)
+    if ev is None:
+        raise Exception("Connection not reported after ROAM")
+    if hapd1.own_addr() not in ev:
+        raise Exception("Connected to unexpected AP")
