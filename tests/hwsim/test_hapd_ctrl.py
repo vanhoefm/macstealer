@@ -856,6 +856,7 @@ def test_hapd_ctrl_ext_io_errors(dev, apdev):
     tests = ["MGMT_TX 1",
              "MGMT_TX 1q",
              "MGMT_RX_PROCESS freq=2412",
+             "MGMT_TX_STATUS_PROCESS style=1 ok=0 buf=12345678",
              "EAPOL_RX foo",
              "EAPOL_RX 00:11:22:33:44:55 1",
              "EAPOL_RX 00:11:22:33:44:55 1q"]
@@ -873,7 +874,10 @@ def test_hapd_ctrl_ext_io_errors(dev, apdev):
     tests = ["MGMT_RX_PROCESS freq=2412",
              "MGMT_RX_PROCESS freq=2412 ssi_signal=0",
              "MGMT_RX_PROCESS freq=2412 frame=1",
-             "MGMT_RX_PROCESS freq=2412 frame=1q"]
+             "MGMT_RX_PROCESS freq=2412 frame=1q",
+             "MGMT_TX_STATUS_PROCESS style=1 ok=0",
+             "MGMT_TX_STATUS_PROCESS style=1 ok=0 buf=1234567",
+             "MGMT_TX_STATUS_PROCESS style=1 ok=0 buf=1234567q"]
     for t in tests:
         if "FAIL" not in hapd.request(t):
             raise Exception("Invalid command accepted: " + t)
