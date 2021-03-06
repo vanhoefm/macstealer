@@ -392,6 +392,7 @@ void hostapd_free_hapd_data(struct hostapd_data *hapd)
 #ifdef CONFIG_DPP
 	hostapd_dpp_deinit(hapd);
 	gas_query_ap_deinit(hapd->gas);
+	hapd->gas = NULL;
 #endif /* CONFIG_DPP */
 
 	authsrv_deinit(hapd);
