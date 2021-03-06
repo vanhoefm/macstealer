@@ -1218,3 +1218,53 @@ def test_ap_vht80_to_24g_ht(dev, apdev):
     finally:
         dev[0].request("DISCONNECT")
         clear_regdom(hapd, dev)
+
+def test_ap_vht_csa_invalid(dev, apdev):
+    """VHT CSA with invalid parameters"""
+    csa_supported(dev[0])
+    try:
+        hapd = None
+        params = {"ssid": "vht",
+                  "country_code": "US",
+                  "hw_mode": "a",
+                  "channel": "149",
+                  "ht_capab": "[HT40+]",
+                  "ieee80211n": "1",
+                  "ieee80211ac": "0"}
+        hapd = hostapd.add_ap(apdev[0], params)
+
+        tests = ["5 5765 center_freq1=5180",
+                 "5 5765 bandwidth=40",
+                 "5 5765 bandwidth=40 center_freq2=5180",
+                 "5 5765 bandwidth=40 sec_channel_offset=1 center_freq1=5180",
+                 "5 5765 bandwidth=40 sec_channel_offset=-1 center_freq1=5180",
+                 "5 5765 bandwidth=40 sec_channel_offset=2 center_freq1=5180",
+                 "5 5765 bandwidth=80",
+                 "5 5765 bandwidth=80 sec_channel_offset=-1",
+                 "5 5765 bandwidth=80 center_freq1=5755",
+                 "5 5765 bandwidth=80 sec_channel_offset=1 center_freq1=5180",
+                 "5 5765 bandwidth=80 sec_channel_offset=-1 center_freq1=5180",
+                 "5 5765 bandwidth=80 sec_channel_offset=2 center_freq1=5180",
+                 "5 5765 bandwidth=80 sec_channel_offset=-1 center_freq1=5775 center_freq2=5775",
+                 "5 5765 bandwidth=160",
+                 "5 5765 bandwidth=160 center_freq1=5755",
+                 "5 5765 bandwidth=160 center_freq1=5755 center_freq2=5755",
+                 "5 5765 bandwidth=160 center_freq1=5755 center_freq2=5755 sec_channel_offset=-1",
+                 "5 5765 bandwidth=160 center_freq1=5754 sec_channel_offset=1",
+                 "5 5765 bandwidth=160 center_freq1=5755 sec_channel_offset=2",
+                 "5 5765 sec_channel_offset=-1"]
+        for t in tests:
+            if "FAIL" not in hapd.request("CHAN_SWITCH " + t):
+                raise Exception("Invalid CHAN_SWITCH accepted: " + t)
+
+        hapd.request("CHAN_SWITCH 5 5765 bandwidth=160 center_freq1=5755 sec_channel_offset=1")
+        ev = hapd.wait_event(["AP-CSA-FINISHED"], timeout=10)
+        if ev is None:
+            raise Exception("Timeout on AP-CSA-FINISHED")
+
+        hapd.request("CHAN_SWITCH 5 5765 bandwidth=160 center_freq1=5775 sec_channel_offset=-1")
+        time.sleep(1)
+    finally:
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
