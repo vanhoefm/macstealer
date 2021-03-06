@@ -9725,11 +9725,18 @@ static int nl80211_switch_channel(void *priv, struct csa_settings *settings)
 	int csa_off_len = 0;
 	int i;
 
-	wpa_printf(MSG_DEBUG, "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d width=%d cf1=%d cf2=%d)",
+	wpa_printf(MSG_DEBUG,
+		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d%s%s%s)",
 		   settings->cs_count, settings->block_tx,
-		   settings->freq_params.freq, settings->freq_params.bandwidth,
+		   settings->freq_params.freq,
+		   settings->freq_params.channel,
+		   settings->freq_params.sec_channel_offset,
+		   settings->freq_params.bandwidth,
 		   settings->freq_params.center_freq1,
-		   settings->freq_params.center_freq2);
+		   settings->freq_params.center_freq2,
+		   settings->freq_params.ht_enabled ? " ht" : "",
+		   settings->freq_params.vht_enabled ? " vht" : "",
+		   settings->freq_params.he_enabled ? " he" : "");
 
 	if (!(drv->capa.flags & WPA_DRIVER_FLAGS_AP_CSA)) {
 		wpa_printf(MSG_DEBUG, "nl80211: Driver does not support channel switch command");
