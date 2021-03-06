@@ -779,6 +779,69 @@ def test_ap_vht80_csa(dev, apdev):
         dev[0].request("DISCONNECT")
         clear_regdom(hapd, dev)
 
+def test_ap_vht_csa_vht80p80(dev, apdev):
+    """VHT CSA with VHT80+80 getting enabled"""
+    csa_supported(dev[0])
+    try:
+        hapd = None
+        params = {"ssid": "vht",
+                  "country_code": "US",
+                  "hw_mode": "a",
+                  "channel": "149",
+                  "ht_capab": "[HT40+]",
+                  "ieee80211n": "1",
+                  "ieee80211ac": "0"}
+        hapd = hostapd.add_ap(apdev[0], params)
+        bssid = hapd.own_addr()
+
+        dev[0].connect("vht", key_mgmt="NONE", scan_freq="5745")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        #if "OK" not in hapd.request("CHAN_SWITCH 5 5765 sec_channel_offset=-1 center_freq1=5775 center_freq2=5210 bandwidth=80 vht"):
+        if "OK" not in hapd.request("CHAN_SWITCH 5 5180 sec_channel_offset=1 center_freq1=5210 center_freq2=5775 bandwidth=80 vht"):
+            raise Exception("CHAN_SWITCH command failed")
+        ev = hapd.wait_event(["AP-CSA-FINISHED"], timeout=10)
+        if ev is None:
+            raise Exception("CSA finished event timed out")
+        if "freq=5180" not in ev:
+            raise Exception("Unexpected channel in CSA finished event")
+        ev = dev[0].wait_event(["CTRL-EVENT-CHANNEL-SWITCH"], timeout=5)
+        if ev is None:
+            raise Exception("Channel switch event not seen")
+        if "freq=5180" not in ev:
+            raise Exception("Channel mismatch: " + ev)
+        ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.5)
+        if ev is not None:
+            raise Exception("Unexpected disconnection event from station")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        dev[1].connect("vht", key_mgmt="NONE", scan_freq="5180")
+        hwsim_utils.test_connectivity(dev[1], hapd)
+
+        if dev[1].get_status_field("ieee80211ac") != '1':
+            raise Exception("VHT not enabled as part of channel switch")
+        sig = dev[1].request("SIGNAL_POLL").splitlines()
+        logger.info("SIGNAL_POLL(1): " + str(sig))
+        if "FREQUENCY=5180" not in sig:
+            raise Exception("Correct FREQUENCY missing from SIGNAL_POLL")
+        if "WIDTH=80+80 MHz" not in sig:
+            raise Exception("Correct WIDTH missing from SIGNAL_POLL")
+        if "CENTER_FRQ1=5210" not in sig:
+            raise Exception("Correct CENTER_FRQ1 missing from SIGNAL_POLL")
+        if "CENTER_FRQ2=5775" not in sig:
+            raise Exception("Correct CENTER_FRQ1 missing from SIGNAL_POLL")
+
+        sig = dev[0].request("SIGNAL_POLL").splitlines()
+        logger.info("SIGNAL_POLL(0): " + str(sig))
+    finally:
+        dev[0].request("DISCONNECT")
+        dev[1].request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev[0].flush_scan_cache()
+        dev[1].flush_scan_cache()
+
 def test_ap_vht_csa_vht40(dev, apdev):
     """VHT CSA with VHT40 getting enabled"""
     csa_supported(dev[0])
