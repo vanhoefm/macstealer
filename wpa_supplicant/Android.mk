@@ -103,6 +103,7 @@ OBJS += src/utils/crc32.c
 OBJS += wmm_ac.c
 OBJS += op_classes.c
 OBJS += rrm.c
+OBJS += twt.c
 OBJS += robust_av.c
 OBJS_p = wpa_passphrase.c
 OBJS_p += src/utils/common.c
