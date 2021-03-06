@@ -168,6 +168,11 @@ def test_ap_wpa2_psk_file_keyid(dev, apdev, params):
 
     check_disconnect(dev, [True, True, False])
 
+    with open(psk_file, 'w') as f:
+        f.write('broken\n')
+    if "FAIL" not in hapd.request("RELOAD_WPA_PSK"):
+        raise Exception("RELOAD_WPA_PSK succeeded with invalid file")
+
 @remote_compatible
 def test_ap_wpa2_psk_mem(dev, apdev):
     """WPA2-PSK AP with passphrase only in memory"""
