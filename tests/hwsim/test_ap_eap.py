@@ -5350,6 +5350,15 @@ def test_ap_wpa2_eap_sql(dev, apdev, params):
         eap_connect(dev[1], hapd, "TTLS", "user-pap",
                     anonymous_identity="ttls", password="password",
                     ca_cert="auth_serv/ca.pem", phase2="auth=PAP")
+        dev[0].request("REMOVE_NETWORK all")
+        dev[1].request("REMOVE_NETWORK all")
+        dev[0].wait_disconnected()
+        dev[1].wait_disconnected()
+        hapd.disable()
+        hapd.enable()
+        eap_connect(dev[0], hapd, "TTLS", "user-mschapv2",
+                    anonymous_identity="ttls", password="password",
+                    ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAPV2")
     finally:
         os.remove(dbfile)
 
