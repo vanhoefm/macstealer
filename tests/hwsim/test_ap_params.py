@@ -201,7 +201,13 @@ def test_ap_acl_mgmt(dev, apdev):
     if "01:01:01:01:01:01 VLAN_ID=0" not in deny:
         raise Exception("Missing deny entry")
 
+    if "OK" not in hapd.request("ACCEPT_ACL DEL_MAC 22:33:44:55:66:77"):
+        raise Exception("DEL_MAC with empty list failed")
+    if "FAIL" not in hapd.request("ACCEPT_ACL ADD_MAC 22:33:44:55:66"):
+        raise Exception("ADD_MAC with invalid MAC address accepted")
     hapd.request("ACCEPT_ACL ADD_MAC 22:33:44:55:66:77")
+    if "FAIL" not in hapd.request("ACCEPT_ACL DEL_MAC 22:33:44:55:66"):
+        raise Exception("DEL_MAC with invalid MAC address accepted")
     hapd.request("DENY_ACL ADD_MAC 22:33:44:55:66:88 VLAN_ID=2")
 
     accept = hapd.request("ACCEPT_ACL SHOW").splitlines()
