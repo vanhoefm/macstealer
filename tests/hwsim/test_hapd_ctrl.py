@@ -1038,3 +1038,22 @@ def test_hapd_ctrl_get_capability(dev, apdev):
         raise Exception("Invalid GET_CAPABILITY accepted")
     res = hapd.request("GET_CAPABILITY dpp")
     logger.info("DPP capability: " + res)
+
+def test_hapd_ctrl_pmksa_add_failures(dev, apdev):
+    """hostapd PMKSA_ADD failures"""
+    ssid = "hapd-ctrl"
+    params = {"ssid": ssid}
+    hapd = hostapd.add_ap(apdev[0], params)
+    tests = ["q",
+             "22:22:22:22:22:22",
+             "22:22:22:22:22:22 q",
+             "22:22:22:22:22:22 " + 16*'00',
+             "22:22:22:22:22:22 " + 16*"00" + " " + 10*"00",
+             "22:22:22:22:22:22 " + 16*"00" + " q",
+             "22:22:22:22:22:22 " + 16*"00" + " " + 200*"00",
+             "22:22:22:22:22:22 " + 16*"00" + " " + 32*"00" + " 12345",
+             "22:22:22:22:22:22 " + 16*"00" + " " + 32*"00" + " 12345 1",
+             ""]
+    for t in tests:
+        if "FAIL" not in hapd.request("PMKSA_ADD " + t):
+            raise Exception("Invalid PMKSA_ADD accepted: " + t)
