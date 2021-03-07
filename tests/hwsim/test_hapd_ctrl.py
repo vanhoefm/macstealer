@@ -1057,3 +1057,15 @@ def test_hapd_ctrl_pmksa_add_failures(dev, apdev):
     for t in tests:
         if "FAIL" not in hapd.request("PMKSA_ADD " + t):
             raise Exception("Invalid PMKSA_ADD accepted: " + t)
+
+def test_hapd_ctrl_attach_errors(dev, apdev):
+    """hostapd ATTACH errors"""
+    params = {"ssid": "hapd-ctrl"}
+    hapd = hostapd.add_ap(apdev[0], params)
+    hglobal = hostapd.HostapdGlobal(apdev[0])
+    with alloc_fail(hapd, 1, "ctrl_iface_attach"):
+        if "FAIL" not in hapd.request("ATTACH foo"):
+            raise Exception("Invalid ATTACH accepted")
+    with alloc_fail(hapd, 1, "ctrl_iface_attach"):
+        if "FAIL" not in hglobal.request("ATTACH foo"):
+            raise Exception("Invalid ATTACH accepted")
