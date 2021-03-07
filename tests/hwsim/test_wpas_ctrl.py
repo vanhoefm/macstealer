@@ -1344,6 +1344,32 @@ def test_wpas_ctrl_rsp(dev, apdev):
         if "OK" not in dev[0].request("CTRL-RSP-%s-%d:" % (req, id)):
             raise Exception("Request failed unexpectedly")
 
+def test_wpas_ctrl_vendor_test(dev, apdev):
+    """wpas_supplicant and VENDOR test command"""
+    OUI_QCA = 0x001374
+    QCA_NL80211_VENDOR_SUBCMD_TEST = 1
+    QCA_WLAN_VENDOR_ATTR_TEST = 8
+    attr = struct.pack("@HHI", 4 + 4, QCA_WLAN_VENDOR_ATTR_TEST, 123)
+    cmd = "VENDOR %x %d %s" % (OUI_QCA, QCA_NL80211_VENDOR_SUBCMD_TEST, binascii.hexlify(attr).decode())
+
+    res = dev[0].request(cmd)
+    if "FAIL" in res:
+        raise Exception("VENDOR command failed")
+    val, = struct.unpack("@I", binascii.unhexlify(res))
+    if val != 125:
+        raise Exception("Incorrect response value")
+
+    res = dev[0].request(cmd + " nested=1")
+    if "FAIL" in res:
+        raise Exception("VENDOR command failed")
+    val, = struct.unpack("@I", binascii.unhexlify(res))
+    if val != 125:
+        raise Exception("Incorrect response value")
+
+    res = dev[0].request(cmd + " nested=0")
+    if "FAIL" not in res:
+        raise Exception("VENDOR command with invalid (not nested) data accepted")
+
 @remote_compatible
 def test_wpas_ctrl_vendor(dev, apdev):
     """wpa_supplicant ctrl_iface VENDOR"""

@@ -911,6 +911,36 @@ def test_hapd_ctrl_ext_io_errors(dev, apdev):
         if "FAIL" not in hapd.request("DATA_TEST_FRAME 112233445566778899aabbccddeeff"):
             raise Exception("DATA_TEST_FRAME accepted during OOM")
 
+def test_hapd_ctrl_vendor_test(dev, apdev):
+    """hostapd and VENDOR test command"""
+    ssid = "hapd-ctrl"
+    params = {"ssid": ssid}
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    OUI_QCA = 0x001374
+    QCA_NL80211_VENDOR_SUBCMD_TEST = 1
+    QCA_WLAN_VENDOR_ATTR_TEST = 8
+    attr = struct.pack("@HHI", 4 + 4, QCA_WLAN_VENDOR_ATTR_TEST, 123)
+    cmd = "VENDOR %x %d %s" % (OUI_QCA, QCA_NL80211_VENDOR_SUBCMD_TEST, binascii.hexlify(attr).decode())
+
+    res = hapd.request(cmd)
+    if "FAIL" in res:
+        raise Exception("VENDOR command failed")
+    val, = struct.unpack("@I", binascii.unhexlify(res))
+    if val != 125:
+        raise Exception("Incorrect response value")
+
+    res = hapd.request(cmd + " nested=1")
+    if "FAIL" in res:
+        raise Exception("VENDOR command failed")
+    val, = struct.unpack("@I", binascii.unhexlify(res))
+    if val != 125:
+        raise Exception("Incorrect response value")
+
+    res = hapd.request(cmd + " nested=0")
+    if "FAIL" not in res:
+        raise Exception("VENDOR command with invalid (not nested) data accepted")
+
 def test_hapd_ctrl_vendor_errors(dev, apdev):
     """hostapd and VENDOR errors"""
     ssid = "hapd-ctrl"
