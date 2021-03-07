@@ -811,6 +811,9 @@ def test_rrm_beacon_req_table(dev, apdev):
 
     tests = ["REQ_BEACON ",
              "REQ_BEACON q",
+             "REQ_BEACON 11:22:33:44:55:66",
+             "REQ_BEACON 11:22:33:44:55:66 req_mode=q",
+             "REQ_BEACON 11:22:33:44:55:66 req_mode=11",
              "REQ_BEACON 11:22:33:44:55:66 1",
              "REQ_BEACON 11:22:33:44:55:66 1q",
              "REQ_BEACON 11:22:33:44:55:66 11223344556677889900aabbccddeeff"]
