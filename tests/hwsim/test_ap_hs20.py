@@ -6330,6 +6330,10 @@ def run_ap_hs20_terms_and_conditions_sql(dev, apdev, params, url_template,
                 raise Exeception("Unexpected number of rows in current_sessions (%d; expected %d)" % (len(rows), 1))
             logger.info("current_sessions: " + str(rows))
 
+        tests = ["foo", "disconnect q", "coa %s" % dev[0].own_addr()]
+        for t in tests:
+            if "FAIL" not in authsrv.request("DAC_REQUEST " + t):
+                raise Exception("Invalid DAC_REQUEST accepted: " + t)
         if "OK" not in authsrv.request("DAC_REQUEST coa %s t_c_clear" % dev[0].own_addr()):
             raise Exception("DAC_REQUEST failed")
 
