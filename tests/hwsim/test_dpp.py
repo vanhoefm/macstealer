@@ -5503,6 +5503,26 @@ def test_dpp_chirp_ap(dev, apdev):
                       timeout=20)
     update_hapd_config(hapd)
 
+def test_dpp_chirp_ap_errors(dev, apdev):
+    """DPP chirp errors in hostapd"""
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "start_disabled": "1"})
+    check_dpp_capab(hapd, min_ver=2)
+
+    id_h = hapd.dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri = hapd.request("DPP_BOOTSTRAP_GET_URI %d" % id_h)
+    tests = ["",
+             "own=%d" % (id_h + 1),
+             "own=%d iter=-1" % id_h,
+             "own=%d listen=0" % id_h]
+    for t in tests:
+        if "FAIL" not in hapd.request("DPP_CHIRP " + t):
+            raise Exception("Invalid DPP_CHIRP accepted: " + t)
+    if "OK" not in hapd.request("DPP_CHIRP own=%d iter=5" % id_h):
+        raise Exception("DPP_CHIRP failed")
+
+    hapd.request("DPP_STOP_CHIRP")
+
 def start_dpp_pfs_ap(apdev, pfs, sae=False):
     params = {"ssid": "dpp",
               "wpa": "2",
