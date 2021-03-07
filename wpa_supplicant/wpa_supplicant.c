@@ -4773,6 +4773,12 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 	wpa_dbg(wpa_s, MSG_DEBUG, "RX EAPOL from " MACSTR, MAC2STR(src_addr));
 	wpa_hexdump(MSG_MSGDUMP, "RX EAPOL", buf, len);
 
+	if (wpa_s->own_disconnect_req) {
+		wpa_printf(MSG_DEBUG,
+			   "Drop received EAPOL frame as we are disconnecting");
+		return;
+	}
+
 #ifdef CONFIG_TESTING_OPTIONS
 	if (wpa_s->ignore_auth_resp) {
 		wpa_printf(MSG_INFO, "RX EAPOL - ignore_auth_resp active!");
