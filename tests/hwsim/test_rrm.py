@@ -90,6 +90,10 @@ def test_rrm_neighbor_db(dev, apdev):
     if "FAIL" not in hapd.request("SET_NEIGHBOR 00:11:22:33:44:55 ssid=test1 nr=" + nr):
         raise Exception("Set neighbor succeeded unexpectedly")
 
+    # Bad SSID end
+    if "FAIL" not in hapd.request("SET_NEIGHBOR 00:11:22:33:44:55 ssid=\"test1 nr=" + nr):
+        raise Exception("Set neighbor succeeded unexpectedly")
+
     # No SSID
     if "FAIL" not in hapd.request("SET_NEIGHBOR 00:11:22:33:44:55 nr=" + nr):
         raise Exception("Set neighbor succeeded unexpectedly")
