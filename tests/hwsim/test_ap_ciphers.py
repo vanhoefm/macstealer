@@ -1067,6 +1067,35 @@ def test_ap_wpa2_plaintext_group_m1_pmf(dev, apdev):
         raise Exception("RESEND_GROUP_M1 failed")
     time.sleep(0.1)
 
+def test_ap_wpa2_test_command_failures(dev, apdev):
+    """EAPOL/key config test command failures"""
+    params = hostapd.wpa2_params(ssid="test-wpa2-psk", passphrase="12345678")
+    hapd = hostapd.add_ap(apdev[0], params)
+    tests = ["RESEND_M1 foo",
+             "RESEND_M1 22:22:22:22:22:22",
+             "RESEND_M3 foo",
+             "RESEND_M3 22:22:22:22:22:22",
+             "RESEND_GROUP_M1 foo",
+             "RESEND_GROUP_M1 22:22:22:22:22:22",
+             "SET_KEY foo",
+             "SET_KEY 3 foo",
+             "SET_KEY 3 22:22:22:22:22:22",
+             "SET_KEY 3 22:22:22:22:22:22 1",
+             "SET_KEY 3 22:22:22:22:22:22 1 1",
+             "SET_KEY 3 22:22:22:22:22:22 1 1 q",
+             "SET_KEY 3 22:22:22:22:22:22 1 1 112233445566",
+             "SET_KEY 3 22:22:22:22:22:22 1 1 112233445566 1",
+             "SET_KEY 3 22:22:22:22:22:22 1 1 112233445566 12",
+             "SET_KEY 3 22:22:22:22:22:22 1 1 112233445566 12 1",
+             "SET_KEY 3 22:22:22:22:22:22 1 1 112233445566 12 1 ",
+             "RESET_PN ff:ff:ff:ff:ff:ff BIGTK",
+             "RESET_PN ff:ff:ff:ff:ff:ff IGTK",
+             "RESET_PN 22:22:22:22:22:22",
+             "RESET_PN foo"]
+    for t in tests:
+        if "FAIL" not in hapd.request(t):
+            raise Exception("Invalid command accepted: " + t)
+
 def test_ap_wpa2_gtk_initial_rsc_tkip(dev, apdev):
     """Initial group cipher RSC (TKIP)"""
     skip_without_tkip(dev[0])
