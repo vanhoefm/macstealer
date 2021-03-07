@@ -4985,6 +4985,20 @@ def run_dpp_tcp_conf_init(dev0, dev1, cap_lo, port=None, conf="sta-dpp"):
     time.sleep(0.5)
     wt.close()
 
+def test_dpp_tcp_controller_management_hostapd(dev, apdev, params):
+    """DPP Controller management in hostapd"""
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured"})
+    check_dpp_capab(hapd)
+    conf_id = hapd.dpp_configurator_add()
+    if "OK" not in hapd.request("DPP_CONTROLLER_START"):
+        raise Exception("Failed to start Controller")
+    if "FAIL" not in hapd.request("DPP_CONTROLLER_START"):
+        raise Exception("DPP_CONTROLLER_START succeeded while already running Controller")
+    hapd.request("DPP_CONTROLLER_STOP")
+    hapd.dpp_configurator_remove(conf_id)
+    if "FAIL" not in hapd.request("DPP_CONFIGURATOR_REMOVE %d" % conf_id):
+        raise Exception("Removal of unknown Configurator accepted")
+
 def test_dpp_tcp_controller_start_failure(dev, apdev, params):
     """DPP Controller startup failure"""
     check_dpp_capab(dev[0])
