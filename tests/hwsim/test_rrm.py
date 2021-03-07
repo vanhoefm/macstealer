@@ -208,6 +208,13 @@ def test_rrm_neighbor_db(dev, apdev):
     if apdev[0]['bssid'] not in res:
         raise Exception("Own BSS not visible in SHOW_NEIGHBOR output")
 
+def test_rrm_neighbor_db_disabled(dev, apdev):
+    """hostapd ctrl_iface SHOW_NEIGHBOR while neighbor report disabled"""
+    params = {"ssid": "test"}
+    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    if "FAIL" not in hapd.request("SHOW_NEIGHBOR"):
+        raise Exception("SHOW_NEIGHBOR accepted")
+
 def test_rrm_neighbor_rep_req(dev, apdev):
     """wpa_supplicant ctrl_iface NEIGHBOR_REP_REQUEST"""
     check_rrm_support(dev[0])
