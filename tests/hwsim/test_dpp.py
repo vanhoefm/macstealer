@@ -2550,6 +2550,34 @@ def test_dpp_pkex_hostapd_initiator(dev, apdev):
     wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
                       stop_initiator=True)
 
+def test_dpp_pkex_hostapd_errors(dev, apdev):
+    """DPP PKEX errors with hostapd"""
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd)
+    id0 = hapd.dpp_bootstrap_gen(type="pkex")
+    tests = ["own=%d" % id0,
+             "own=%d identifier=foo" % id0,
+             ""]
+    for t in tests:
+        if "FAIL" not in hapd.request("DPP_PKEX_ADD " + t):
+            raise Exception("Invalid DPP_PKEX_ADD accepted: " + t)
+
+    res = hapd.request("DPP_PKEX_ADD own=%d code=foo" % id0)
+    if "FAIL" in res:
+        raise Exception("Failed to add PKEX responder")
+    if "OK" not in hapd.request("DPP_PKEX_REMOVE " + res):
+        raise Exception("Failed to remove PKEX responder")
+    if "FAIL" not in hapd.request("DPP_PKEX_REMOVE " + res):
+        raise Exception("Unknown PKEX responder removal accepted")
+
+    res = hapd.request("DPP_PKEX_ADD own=%d code=foo" % id0)
+    if "FAIL" in res:
+        raise Exception("Failed to add PKEX responder")
+    if "OK" not in hapd.request("DPP_PKEX_REMOVE *"):
+        raise Exception("Failed to flush PKEX responders")
+    hapd.request("DPP_PKEX_REMOVE *")
+
 def test_dpp_hostapd_configurator(dev, apdev):
     """DPP with hostapd as configurator/initiator"""
     check_dpp_capab(dev[0])
