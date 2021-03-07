@@ -1028,3 +1028,13 @@ def test_hapd_ctrl_setband(dev, apdev):
     for val in vals:
         if "OK" not in hapd.request("SET setband " + val):
             raise Exception("SET setband %s failed" % val)
+
+def test_hapd_ctrl_get_capability(dev, apdev):
+    """hostapd GET_CAPABILITY"""
+    ssid = "hapd-ctrl"
+    params = {"ssid": ssid}
+    hapd = hostapd.add_ap(apdev[0], params)
+    if "FAIL" not in hapd.request("GET_CAPABILITY "):
+        raise Exception("Invalid GET_CAPABILITY accepted")
+    res = hapd.request("GET_CAPABILITY dpp")
+    logger.info("DPP capability: " + res)
