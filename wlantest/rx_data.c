@@ -250,8 +250,13 @@ static void rx_data_bss_prot_group(struct wlantest *wt,
 	if (bss->gtk_len[keyid] == 0 &&
 	    (bss->group_cipher != WPA_CIPHER_WEP40 ||
 	     dl_list_empty(&wt->wep))) {
-		add_note(wt, MSG_MSGDUMP, "No GTK known to decrypt the frame "
-			 "(A2=" MACSTR " KeyID=%d)",
+		decrypted = try_all_ptk(wt, bss->group_cipher, hdr, keyid,
+					data, len, &dlen);
+		if (decrypted)
+			goto process;
+		add_note(wt, MSG_MSGDUMP,
+			 "No GTK known to decrypt the frame (A2=" MACSTR
+			 " KeyID=%d)",
 			 MAC2STR(hdr->addr2), keyid);
 		return;
 	}
@@ -304,6 +309,7 @@ skip_replay_det:
 		wpa_snprintf_hex(gtk, sizeof(gtk), bss->gtk[keyid],
 				 bss->gtk_len[keyid]);
 		add_note(wt, MSG_EXCESSIVE, "GTK[%d] %s", keyid, gtk);
+	process:
 		rx_data_process(wt, bss->bssid, NULL, dst, src, decrypted,
 				dlen, 1, NULL);
 		if (!replay)
