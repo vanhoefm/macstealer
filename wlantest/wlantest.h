@@ -170,6 +170,7 @@ struct wlantest_bss {
 	u8 r0kh_id[FT_R0KH_ID_MAX_LEN];
 	size_t r0kh_id_len;
 	u8 r1kh_id[FT_R1KH_ID_LEN];
+	bool mesh;
 };
 
 struct wlantest_radius {

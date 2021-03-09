@@ -227,6 +227,8 @@ void bss_update(struct wlantest *wt, struct wlantest_bss *bss,
 	if (elems->mdie)
 		os_memcpy(bss->mdid, elems->mdie, 2);
 
+	bss->mesh = elems->mesh_id != NULL;
+
 	if (!update)
 		return;
 
