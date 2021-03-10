@@ -1361,6 +1361,8 @@ struct ieee80211_ampe_ie {
 #define DPP_CC_OUI_TYPE 0x1e
 #define SAE_PK_IE_VENDOR_TYPE 0x506f9a1f
 #define SAE_PK_OUI_TYPE 0x1f
+#define QM_IE_VENDOR_TYPE 0x506f9a22
+#define QM_IE_OUI_TYPE 0x22
 
 #define MULTI_AP_SUB_ELEM_TYPE 0x06
 #define MULTI_AP_TEAR_DOWN BIT(4)
@@ -2445,5 +2447,32 @@ enum mscs_description_subelem {
  * IEEE P802.11ax/D8.0 26.17.2.3.2, AP behavior for fast passive scanning
  */
 #define FD_MAX_INTERVAL_6GHZ                  20 /* TUs */
+
+/* Protected Vendor-specific QoS Management Action frame identifiers - WFA */
+#define QM_ACTION_VENDOR_TYPE 0x506f9a1a
+#define QM_ACTION_OUI_TYPE 0x1a
+
+/* QoS Management Action frame OUI subtypes */
+#define QM_DSCP_POLICY_QUERY 0
+#define QM_DSCP_POLICY_REQ 1
+#define QM_DSCP_POLICY_RESP 2
+
+/* QoS Management attributes */
+enum qm_attr_id {
+	QM_ATTR_PORT_RANGE = 1,
+	QM_ATTR_DSCP_POLICY = 2,
+	QM_ATTR_TCLAS = 3,
+	QM_ATTR_DOMAIN_NAME = 4,
+};
+
+/* DSCP Policy attribute - Request Type */
+enum dscp_policy_request_type {
+	DSCP_POLICY_REQ_ADD = 0, /* ADD/UPDATE */
+	DSCP_POLICY_REQ_REMOVE = 1,
+};
+
+/* Request/Response Control field of DSCP Policy Request/Response frame */
+#define DSCP_POLICY_CTRL_MORE	BIT(0)
+#define DSCP_POLICY_CTRL_RESET	BIT(1)
 
 #endif /* IEEE802_11_DEFS_H */
