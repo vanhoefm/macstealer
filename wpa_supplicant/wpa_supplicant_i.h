@@ -1519,7 +1519,7 @@ int wpas_twt_send_setup(struct wpa_supplicant *wpa_s, u8 dtok, int exponent,
 			int mantissa, u8 min_twt, int setup_cmd, u64 twt,
 			bool requestor, bool trigger, bool implicit,
 			bool flow_type, u8 flow_id, bool protection,
-			u8 twt_channel);
+			u8 twt_channel, u8 control);
 int wpas_twt_send_teardown(struct wpa_supplicant *wpa_s, u8 flags);
 
 void wpas_rrm_reset(struct wpa_supplicant *wpa_s);

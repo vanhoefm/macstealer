@@ -30,7 +30,7 @@ int wpas_twt_send_setup(struct wpa_supplicant *wpa_s, u8 dtok, int exponent,
 			int mantissa, u8 min_twt, int setup_cmd, u64 twt,
 			bool requestor, bool trigger, bool implicit,
 			bool flow_type, u8 flow_id, bool protection,
-			u8 twt_channel)
+			u8 twt_channel, u8 control)
 {
 	struct wpabuf *buf;
 	u16 req_type = 0;
@@ -62,8 +62,7 @@ int wpas_twt_send_setup(struct wpa_supplicant *wpa_s, u8 dtok, int exponent,
 	wpabuf_put_u8(buf, WLAN_EID_TWT);
 	wpabuf_put_u8(buf, 15); /* len */
 
-	wpabuf_put_u8(buf, BIT(4)); /* Control field:
-				     * B4 = TWT Information Frame Disabled */
+	wpabuf_put_u8(buf, control);
 
 	if (requestor)
 		req_type |= BIT(0); /* This STA is a TWT Requesting STA */

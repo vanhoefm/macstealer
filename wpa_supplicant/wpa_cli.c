@@ -3821,7 +3821,7 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	},
 	{ "twt_setup",
 	  wpa_cli_cmd_twt_setup, NULL, cli_cmd_flag_none,
-	  "[dialog=<token>] [exponent=<exponent>] [mantissa=<mantissa>] [min_twt=<Min TWT>] [setup_cmd=<setup-cmd>] [twt=<u64>] [requestor=0|1] [trigger=0|1] [implicit=0|1] [flow_type=0|1] [flow_id=<3-bit-id>] [protection=0|1] [twt_channel=<twt chanel id>] = Send TWT Setup frame"
+	  "[dialog=<token>] [exponent=<exponent>] [mantissa=<mantissa>] [min_twt=<Min TWT>] [setup_cmd=<setup-cmd>] [twt=<u64>] [requestor=0|1] [trigger=0|1] [implicit=0|1] [flow_type=0|1] [flow_id=<3-bit-id>] [protection=0|1] [twt_channel=<twt chanel id>] [control=<control-u8>] = Send TWT Setup frame"
 	},
 	{ "twt_teardown",
 	  wpa_cli_cmd_twt_teardown, NULL, cli_cmd_flag_none,

@@ -9809,6 +9809,8 @@ static int wpas_ctrl_iface_send_twt_setup(struct wpa_supplicant *wpa_s,
 	int flow_id = 0;
 	bool protection = false;
 	u8 twt_channel = 0;
+	u8 control = BIT(4); /* Control field (IEEE P802.11ax/D8.0 Figure
+			      * 9-687): B4 = TWT Information Frame Disabled */
 	const char *tok_s;
 
 	tok_s = os_strstr(cmd, " dialog=");
@@ -9863,9 +9865,14 @@ static int wpas_ctrl_iface_send_twt_setup(struct wpa_supplicant *wpa_s,
 	if (tok_s)
 		twt_channel = atoi(tok_s + os_strlen(" twt_channel="));
 
+	tok_s = os_strstr(cmd, " control=");
+	if (tok_s)
+		control = atoi(tok_s + os_strlen(" control="));
+
 	return wpas_twt_send_setup(wpa_s, dtok, exponent, mantissa, min_twt,
 				   setup_cmd, twt, requestor, trigger, implicit,
-				   flow_type, flow_id, protection, twt_channel);
+				   flow_type, flow_id, protection, twt_channel,
+				   control);
 }
 
 
