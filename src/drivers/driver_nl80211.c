@@ -5888,6 +5888,14 @@ static int nl80211_ht_vht_overrides(struct nl_msg *msg,
 	}
 #endif /* CONFIG_VHT_OVERRIDES */
 
+#ifdef CONFIG_HE_OVERRIDES
+	if (params->disable_he) {
+		wpa_printf(MSG_DEBUG, "  * HE disabled");
+		if (nla_put_flag(msg, NL80211_ATTR_DISABLE_HE))
+			return -1;
+	}
+#endif /* CONFIG_HE_OVERRIDES */
+
 	return 0;
 }
 
