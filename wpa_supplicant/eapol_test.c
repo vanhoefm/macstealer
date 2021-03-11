@@ -1025,6 +1025,7 @@ static void wpa_init_conf(struct eapol_test_data *e,
 		*pos++ = a[1];
 		*pos++ = a[2];
 		*pos++ = a[3];
+		as->addr.af = AF_INET;
 	}
 #else /* CONFIG_NATIVE_WINDOWS or CONFIG_ANSI_C_EXTRA */
 	if (hostapd_parse_ip_addr(authsrv, &as->addr) < 0) {
