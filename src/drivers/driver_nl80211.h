@@ -149,7 +149,7 @@ struct wpa_driver_nl80211_data {
 	unsigned int ignore_next_local_disconnect:1;
 	unsigned int ignore_next_local_deauth:1;
 	unsigned int hostapd:1;
-	unsigned int start_mode_ap:1;
+	unsigned int start_mode_sta:1;
 	unsigned int start_iface_up:1;
 	unsigned int test_use_roc_tx:1;
 	unsigned int ignore_deauth_event:1;
