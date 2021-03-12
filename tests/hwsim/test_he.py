@@ -26,6 +26,22 @@ def test_he_open(dev, apdev):
     if hapd.get_status_field("ieee80211ax") != "1":
         raise Exception("STATUS did not indicate ieee80211ac=1")
     dev[0].connect("he", key_mgmt="NONE", scan_freq="2412")
+    sta = hapd.get_sta(dev[0].own_addr())
+    if "[HE]" not in sta['flags']:
+        raise Exception("Missing STA flag: HE")
+
+def test_he_disabled_on_sta(dev, apdev):
+    """HE AP and HE disabled on STA"""
+    params = {"ssid": "he",
+              "ieee80211ax": "1",
+              "he_bss_color": "42",
+              "he_mu_edca_ac_be_ecwmin": "7",
+              "he_mu_edca_ac_be_ecwmax": "15"}
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect("he", key_mgmt="NONE", scan_freq="2412", disable_he="1")
+    sta = hapd.get_sta(dev[0].own_addr())
+    if "[HE]" in sta['flags']:
+        raise Exception("Unexpected STA flag: HE")
 
 def test_he_params(dev, apdev):
     """HE AP parameters"""

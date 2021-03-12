@@ -1092,6 +1092,7 @@ class WpaSupplicant:
                       "wep_tx_keyidx", "scan_freq", "freq_list", "eap",
                       "eapol_flags", "fragment_size", "scan_ssid", "auth_alg",
                       "wpa_ptk_rekey", "disable_ht", "disable_vht", "bssid",
+                      "disable_he",
                       "disable_max_amsdu", "ampdu_factor", "ampdu_density",
                       "disable_ht40", "disable_sgi", "disable_ldpc",
                       "ht40_intolerant", "update_identifier", "mac_addr",
