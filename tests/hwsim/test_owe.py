@@ -64,10 +64,12 @@ def test_owe_groups(dev, apdev):
     dev[0].scan_for_bss(bssid, freq="2412")
     for group in [19, 20, 21]:
         dev[0].connect("owe", key_mgmt="OWE", owe_group=str(group))
+        hapd.wait_sta()
         hwsim_utils.test_connectivity(dev[0], hapd)
         dev[0].request("REMOVE_NETWORK all")
         dev[0].wait_disconnected()
         dev[0].dump_monitor()
+        hapd.dump_monitor()
 
 def test_owe_pmksa_caching(dev, apdev):
     """Opportunistic Wireless Encryption and PMKSA caching"""
@@ -150,10 +152,12 @@ def test_owe_and_psk(dev, apdev):
 
     dev[0].scan_for_bss(bssid, freq="2412")
     dev[0].connect("owe+psk", psk="12345678")
+    hapd.wait_sta()
     hwsim_utils.test_connectivity(dev[0], hapd)
 
     dev[1].scan_for_bss(bssid, freq="2412")
     dev[1].connect("owe+psk", key_mgmt="OWE")
+    hapd.wait_sta()
     hwsim_utils.test_connectivity(dev[1], hapd)
 
 def test_owe_transition_mode(dev, apdev):
@@ -217,6 +221,7 @@ def run_owe_transition_mode(dev, apdev, adv_bssid0=None, adv_bssid1=None):
 
     id = dev[0].connect("owe-test", key_mgmt="OWE", ieee80211w="2",
                         scan_freq="2412")
+    hapd.wait_sta()
     hwsim_utils.test_connectivity(dev[0], hapd)
     val = dev[0].get_status_field("key_mgmt")
     if val != "OWE":
@@ -239,6 +244,7 @@ def run_owe_transition_mode(dev, apdev, adv_bssid0=None, adv_bssid1=None):
     dev[0].scan_for_bss(bssid, freq="2412")
     dev[0].select_network(id, 2412)
     dev[0].wait_connected()
+    hapd.wait_sta()
     hwsim_utils.test_connectivity(dev[0], hapd)
 
 def test_owe_transition_mode_ifname(dev, apdev):
