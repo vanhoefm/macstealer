@@ -592,11 +592,9 @@ static int dpp_parse_recipient_infos(const u8 *pos, size_t len,
 	 * Shall always use the pwri CHOICE.
 	 */
 
-	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_CONTEXT_SPECIFIC || hdr.tag != 3) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected CHOICE [3] (pwri) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(pos, end - pos, &hdr) < 0 || !hdr.constructed ||
+	    !asn1_is_cs_tag(&hdr, 3)) {
+		asn1_unexpected(&hdr, "DPP: Expected CHOICE [3] (pwri)");
 		return -1;
 	}
 	wpa_hexdump(MSG_MSGDUMP, "DPP: PasswordRecipientInfo",
@@ -629,11 +627,10 @@ static int dpp_parse_recipient_infos(const u8 *pos, size_t len,
 	wpa_hexdump(MSG_MSGDUMP, "DPP: Remaining PasswordRecipientInfo after version",
 		    pos, end - pos);
 
-	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_CONTEXT_SPECIFIC || hdr.tag != 0) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected keyDerivationAlgorithm [0] - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(pos, end - pos, &hdr) < 0 || !hdr.constructed ||
+	    !asn1_is_cs_tag(&hdr, 0)) {
+		asn1_unexpected(&hdr,
+				"DPP: Expected keyDerivationAlgorithm [0]");
 		return -1;
 	}
 	pos = hdr.payload;
@@ -672,11 +669,9 @@ static int dpp_parse_recipient_infos(const u8 *pos, size_t len,
 	pos = hdr.payload;
 
 	if (asn1_get_next(pos, e_end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_OCTETSTRING) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected OCTETSTRING (salt.specified) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_octetstring(&hdr)) {
+		asn1_unexpected(&hdr,
+				"DPP: Expected OCTETSTRING (salt.specified)");
 		return -1;
 	}
 	wpa_hexdump(MSG_MSGDUMP, "DPP: salt.specified",
@@ -752,11 +747,9 @@ static int dpp_parse_recipient_infos(const u8 *pos, size_t len,
 	 * EncryptedKey ::= OCTET STRING
 	 */
 	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_OCTETSTRING) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected OCTETSTRING (pwri.encryptedKey) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_octetstring(&hdr)) {
+		asn1_unexpected(&hdr,
+				"DPP: Expected OCTETSTRING (pwri.encryptedKey)");
 		return -1;
 	}
 	wpa_hexdump(MSG_MSGDUMP, "DPP: pwri.encryptedKey",
@@ -825,11 +818,10 @@ static int dpp_parse_encrypted_content_info(const u8 *pos, const u8 *end,
 
 	/* encryptedContent [0] IMPLICIT EncryptedContent OPTIONAL
 	 * EncryptedContent ::= OCTET STRING */
-	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_CONTEXT_SPECIFIC || hdr.tag != 0) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected [0] IMPLICIT (EncryptedContent) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(pos, end - pos, &hdr) < 0 || hdr.constructed ||
+	    !asn1_is_cs_tag(&hdr, 0)) {
+		asn1_unexpected(&hdr,
+				"DPP: Expected [0] IMPLICIT (EncryptedContent)");
 		return -1;
 	}
 	wpa_hexdump(MSG_MSGDUMP, "DPP: EncryptedContent",
@@ -884,11 +876,9 @@ static int dpp_parse_enveloped_data(const u8 *env_data, size_t env_data_len,
 		return -1;
 	}
 
-	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL || hdr.tag != ASN1_TAG_SET) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected SET (RecipientInfos) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(pos, end - pos, &hdr) < 0 || !asn1_is_set(&hdr)) {
+		asn1_unexpected(&hdr,
+				"DPP: Expected SET (RecipientInfos)");
 		return -1;
 	}
 
@@ -977,11 +967,9 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 	 *    (Contains DER encoding of ECPrivateKey)
 	 */
 	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_OCTETSTRING) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected OCTETSTRING (PrivateKey) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_octetstring(&hdr)) {
+		asn1_unexpected(&hdr,
+				"DPP: Expected OCTETSTRING (PrivateKey)");
 		goto fail;
 	}
 	wpa_hexdump_key(MSG_MSGDUMP, "DPP: PrivateKey",
@@ -1007,11 +995,9 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 	 *
 	 * Exactly one instance of type Attribute in OneAsymmetricKey.
 	 */
-	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_CONTEXT_SPECIFIC || hdr.tag != 0) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected [0] Attributes - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(pos, end - pos, &hdr) < 0 || !hdr.constructed ||
+	    !asn1_is_cs_tag(&hdr, 0)) {
+		asn1_unexpected(&hdr, "DPP: Expected [0] Attributes");
 		goto fail;
 	}
 	wpa_hexdump_key(MSG_MSGDUMP, "DPP: Attributes",
@@ -1025,11 +1011,8 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 	pos = hdr.payload;
 	end = hdr.payload + hdr.length;
 
-	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL || hdr.tag != ASN1_TAG_SET) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected SET (Attributes) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(pos, end - pos, &hdr) < 0 || !asn1_is_set(&hdr)) {
+		asn1_unexpected(&hdr, "DPP: Expected SET (Attributes)");
 		goto fail;
 	}
 	if (hdr.payload + hdr.length < end) {
@@ -1075,11 +1058,8 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 		goto fail;
 	}
 
-	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL || hdr.tag != ASN1_TAG_SET) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected SET (Attribute) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(pos, end - pos, &hdr) < 0 || !asn1_is_set(&hdr)) {
+		asn1_unexpected(&hdr, "DPP: Expected SET (Attribute)");
 		goto fail;
 	}
 	pos = hdr.payload;
@@ -1109,11 +1089,8 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 	 *    (Contains DER encoding of ECPrivateKey)
 	 */
 	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_OCTETSTRING) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected OCTETSTRING (PrivateKey) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_octetstring(&hdr)) {
+		asn1_unexpected(&hdr, "DPP: Expected OCTETSTRING (PrivateKey)");
 		goto fail;
 	}
 	wpa_hexdump_key(MSG_MSGDUMP, "DPP: privacyProtectionKey",
@@ -1136,11 +1113,9 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 				    key->pp_key);
 
 	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_UTF8STRING) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Expected UTF8STRING (configurationTemplate) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_utf8string(&hdr)) {
+		asn1_unexpected(&hdr,
+				"DPP: Expected UTF8STRING (configurationTemplate)");
 		goto fail;
 	}
 	wpa_hexdump_ascii_key(MSG_MSGDUMP, "DPP: configurationTemplate",
@@ -1154,11 +1129,9 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 
 	if (pos < end) {
 		if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-		    hdr.class != ASN1_CLASS_UNIVERSAL ||
-		    hdr.tag != ASN1_TAG_UTF8STRING) {
-			wpa_printf(MSG_DEBUG,
-				   "DPP: Expected UTF8STRING (connectorTemplate) - found class %d tag 0x%x",
-				   hdr.class, hdr.tag);
+		    !asn1_is_utf8string(&hdr)) {
+			asn1_unexpected(&hdr,
+					"DPP: Expected UTF8STRING (connectorTemplate)");
 			goto fail;
 		}
 		wpa_hexdump_ascii_key(MSG_MSGDUMP, "DPP: connectorTemplate",
