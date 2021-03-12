@@ -2817,6 +2817,7 @@ def test_ap_hs20_osen_single_ssid(dev, apdev):
 def test_ap_hs20_network_preference(dev, apdev):
     """Hotspot 2.0 network selection with preferred home network"""
     check_eap_capa(dev[0], "MSCHAPV2")
+    dev[0].flush_scan_cache()
     bssid = apdev[0]['bssid']
     params = hs20_ap_params()
     hostapd.add_ap(apdev[0], params)
@@ -2858,6 +2859,7 @@ def test_ap_hs20_network_preference(dev, apdev):
 def test_ap_hs20_network_preference2(dev, apdev):
     """Hotspot 2.0 network selection with preferred credential"""
     check_eap_capa(dev[0], "MSCHAPV2")
+    dev[0].flush_scan_cache()
     bssid2 = apdev[1]['bssid']
     params = hostapd.wpa2_params(ssid="home", passphrase="12345678")
     hostapd.add_ap(apdev[1], params)
@@ -2899,6 +2901,7 @@ def test_ap_hs20_network_preference2(dev, apdev):
 def test_ap_hs20_network_preference3(dev, apdev):
     """Hotspot 2.0 network selection with two credential (one preferred)"""
     check_eap_capa(dev[0], "MSCHAPV2")
+    dev[0].flush_scan_cache()
     bssid = apdev[0]['bssid']
     params = hs20_ap_params()
     hostapd.add_ap(apdev[0], params)
@@ -2940,6 +2943,7 @@ def test_ap_hs20_network_preference3(dev, apdev):
 def test_ap_hs20_network_preference4(dev, apdev):
     """Hotspot 2.0 network selection with username vs. SIM credential"""
     check_eap_capa(dev[0], "MSCHAPV2")
+    dev[0].flush_scan_cache()
     bssid = apdev[0]['bssid']
     params = hs20_ap_params()
     hostapd.add_ap(apdev[0], params)
