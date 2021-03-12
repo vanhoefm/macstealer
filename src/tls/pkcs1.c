@@ -236,11 +236,9 @@ int pkcs1_v15_sig_ver(struct crypto_public_key *pk,
 	 *
 	 */
 	if (asn1_get_next(decrypted, decrypted_len, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_SEQUENCE) {
-		wpa_printf(MSG_DEBUG,
-			   "PKCS #1: Expected SEQUENCE (DigestInfo) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_sequence(&hdr)) {
+		asn1_unexpected(&hdr,
+				"PKCS #1: Expected SEQUENCE (DigestInfo)");
 		os_free(decrypted);
 		return -1;
 	}
@@ -259,11 +257,9 @@ int pkcs1_v15_sig_ver(struct crypto_public_key *pk,
 	 */
 
 	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_SEQUENCE) {
-		wpa_printf(MSG_DEBUG,
-			   "PKCS #1: Expected SEQUENCE (AlgorithmIdentifier) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_sequence(&hdr)) {
+		asn1_unexpected(&hdr,
+				"PKCS #1: Expected SEQUENCE (AlgorithmIdentifier)");
 		os_free(decrypted);
 		return -1;
 	}
@@ -310,11 +306,9 @@ int pkcs1_v15_sig_ver(struct crypto_public_key *pk,
 	pos = da_end;
 
 	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
-	    hdr.class != ASN1_CLASS_UNIVERSAL ||
-	    hdr.tag != ASN1_TAG_OCTETSTRING) {
-		wpa_printf(MSG_DEBUG,
-			   "PKCS #1: Expected OCTETSTRING (Digest) - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	    !asn1_is_octetstring(&hdr)) {
+		asn1_unexpected(&hdr,
+				"PKCS #1: Expected OCTETSTRING (Digest)");
 		os_free(decrypted);
 		return -1;
 	}
