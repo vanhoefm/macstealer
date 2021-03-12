@@ -1124,7 +1124,7 @@ def test_he_twt(dev, apdev):
         raise Exception("TWT_SETUP failed")
     if "OK" not in dev[0].request("TWT_TEARDOWN"):
         raise Exception("TWT_SETUP failed")
-    if "OK" not in dev[0].request("TWT_SETUP dialog=123 exponent=9 mantissa=10 min_twt=254 setup_cmd=1 twt=1234567890 requestor=1 trigger=0 implicit=0 flow_type=0 flow_id=2 protection=1 twt_channel=3"):
+    if "OK" not in dev[0].request("TWT_SETUP dialog=123 exponent=9 mantissa=10 min_twt=254 setup_cmd=1 twt=1234567890 requestor=1 trigger=0 implicit=0 flow_type=0 flow_id=2 protection=1 twt_channel=3 control=16"):
         raise Exception("TWT_SETUP failed")
     if "OK" not in dev[0].request("TWT_TEARDOWN flags=255"):
         raise Exception("TWT_SETUP failed")
