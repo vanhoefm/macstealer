@@ -1213,6 +1213,7 @@ void eap_sim_report_notification(void *msg_ctx, int notification, int aka)
 int eap_sim_anonymous_username(const u8 *id, size_t id_len)
 {
 	static const char *anonymous_id_prefix = "anonymous@";
+	const char *decorated;
 	size_t anonymous_id_len = os_strlen(anonymous_id_prefix);
 
 	if (id_len > anonymous_id_len &&
@@ -1225,6 +1226,15 @@ int eap_sim_anonymous_username(const u8 *id, size_t id_len)
 
 	if (id_len > 1 && id[0] == '@')
 		return 1; /* '@realm' */
+
+	/* RFC 7542 decorated username, for example:
+	 * homerealm.example.org!anonymous@otherrealm.example.net */
+	decorated = os_strrchr((const char *) id, '!');
+	if (decorated) {
+		decorated++;
+		return eap_sim_anonymous_username((const u8 *) decorated,
+						  os_strlen(decorated));
+	}
 
 	return 0;
 }
