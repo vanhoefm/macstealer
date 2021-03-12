@@ -187,12 +187,19 @@ static int cavp_rsa_sig_ver(const char *fname)
 int main(int argc, char *argv[])
 {
 	int ret = 0;
+	int i;
 
 	wpa_debug_level = 0;
+	wpa_debug_show_keys = 1;
 
-	if (cavp_rsa_sig_ver("CAVP/SigVer15_186-3.rsp"))
+	for (i = 1; i < argc; i++) {
+		if (cavp_rsa_sig_ver(argv[i]))
+			ret++;
+	}
+
+	if (argc < 2 && cavp_rsa_sig_ver("CAVP/SigVer15_186-3.rsp"))
 		ret++;
-	if (cavp_rsa_sig_ver("CAVP/SigVer15EMTest.txt"))
+	if (argc < 2 && cavp_rsa_sig_ver("CAVP/SigVer15EMTest.txt"))
 		ret++;
 
 	return ret;
