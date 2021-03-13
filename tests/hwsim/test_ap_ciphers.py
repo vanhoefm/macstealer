@@ -419,6 +419,7 @@ def test_ap_cipher_wpa_sae(dev, apdev):
     """WPA-PSK/TKIP and SAE mixed AP - WPA IE and RSNXE coexistence"""
     skip_with_fips(dev[0])
     skip_without_tkip(dev[0])
+    check_sae_capab(dev[0])
     ssid = "test-wpa-sae"
     passphrase = "12345678"
     params = {"ssid": ssid,
