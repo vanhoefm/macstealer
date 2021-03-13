@@ -131,6 +131,39 @@ static int asn1_valid_der(struct asn1_hdr *hdr)
 		return 0;
 	if (hdr->tag == ASN1_TAG_NULL && hdr->length != 0)
 		return 0;
+
+	/* Check for allowed primitive/constructed values */
+	if (hdr->constructed &&
+	    (hdr->tag == ASN1_TAG_BOOLEAN ||
+	     hdr->tag == ASN1_TAG_INTEGER ||
+	     hdr->tag == ASN1_TAG_NULL ||
+	     hdr->tag == ASN1_TAG_OID ||
+	     hdr->tag == ANS1_TAG_RELATIVE_OID ||
+	     hdr->tag == ASN1_TAG_REAL ||
+	     hdr->tag == ASN1_TAG_ENUMERATED ||
+	     hdr->tag == ASN1_TAG_BITSTRING ||
+	     hdr->tag == ASN1_TAG_OCTETSTRING ||
+	     hdr->tag == ASN1_TAG_NUMERICSTRING ||
+	     hdr->tag == ASN1_TAG_PRINTABLESTRING ||
+	     hdr->tag == ASN1_TAG_T61STRING ||
+	     hdr->tag == ASN1_TAG_VIDEOTEXSTRING ||
+	     hdr->tag == ASN1_TAG_VISIBLESTRING ||
+	     hdr->tag == ASN1_TAG_IA5STRING ||
+	     hdr->tag == ASN1_TAG_GRAPHICSTRING ||
+	     hdr->tag == ASN1_TAG_GENERALSTRING ||
+	     hdr->tag == ASN1_TAG_UNIVERSALSTRING ||
+	     hdr->tag == ASN1_TAG_UTF8STRING ||
+	     hdr->tag == ASN1_TAG_BMPSTRING ||
+	     hdr->tag == ASN1_TAG_CHARACTERSTRING ||
+	     hdr->tag == ASN1_TAG_UTCTIME ||
+	     hdr->tag == ASN1_TAG_GENERALIZEDTIME ||
+	     hdr->tag == ASN1_TAG_TIME))
+		return 0;
+	if (!hdr->constructed &&
+	    (hdr->tag == ASN1_TAG_SEQUENCE ||
+	     hdr->tag == ASN1_TAG_SET))
+		return 0;
+
 	return 1;
 }
 
