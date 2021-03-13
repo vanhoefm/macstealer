@@ -85,6 +85,108 @@ struct wpabuf * asn1_build_alg_id(const struct asn1_oid *oid,
 				  const struct wpabuf *params);
 struct wpabuf * asn1_encaps(struct wpabuf *buf, u8 class, u8 tag);
 
+static inline bool asn1_is_oid(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_OID;
+}
+
+static inline bool asn1_is_boolean(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_BOOLEAN;
+}
+
+static inline bool asn1_is_integer(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_INTEGER;
+}
+
+static inline bool asn1_is_enumerated(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_ENUMERATED;
+}
+
+static inline bool asn1_is_sequence(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_SEQUENCE;
+}
+
+static inline bool asn1_is_set(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_SET;
+}
+
+static inline bool asn1_is_octetstring(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_OCTETSTRING;
+}
+
+static inline bool asn1_is_bitstring(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_BITSTRING;
+}
+
+static inline bool asn1_is_utctime(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_UTCTIME;
+}
+
+static inline bool asn1_is_generalizedtime(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_GENERALIZEDTIME;
+}
+
+static inline bool asn1_is_string_type(const struct asn1_hdr *hdr)
+{
+	if (hdr->class != ASN1_CLASS_UNIVERSAL || hdr->constructed)
+		return false;
+	return hdr->tag == ASN1_TAG_UTF8STRING ||
+		hdr->tag == ASN1_TAG_NUMERICSTRING ||
+		hdr->tag == ASN1_TAG_PRINTABLESTRING ||
+		hdr->tag == ASN1_TAG_T61STRING ||
+		hdr->tag == ASN1_TAG_VIDEOTEXSTRING ||
+		hdr->tag == ASN1_TAG_IA5STRING ||
+		hdr->tag == ASN1_TAG_GRAPHICSTRING ||
+		hdr->tag == ASN1_TAG_VISIBLESTRING ||
+		hdr->tag == ASN1_TAG_GENERALSTRING ||
+		hdr->tag == ASN1_TAG_UNIVERSALSTRING ||
+		hdr->tag == ASN1_TAG_CHARACTERSTRING ||
+		hdr->tag == ASN1_TAG_BMPSTRING;
+}
+
+static inline bool asn1_is_bmpstring(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_BMPSTRING;
+}
+
+static inline bool asn1_is_utf8string(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_UTF8STRING;
+}
+
+static inline bool asn1_is_null(const struct asn1_hdr *hdr)
+{
+	return hdr->class == ASN1_CLASS_UNIVERSAL &&
+		hdr->tag == ASN1_TAG_NULL;
+}
+
+static inline bool asn1_is_cs_tag(const struct asn1_hdr *hdr, unsigned int tag)
+{
+	return hdr->class == ASN1_CLASS_CONTEXT_SPECIFIC &&
+		hdr->tag == tag;
+}
+
 extern const struct asn1_oid asn1_sha1_oid;
 extern const struct asn1_oid asn1_sha256_oid;
 extern const struct asn1_oid asn1_ec_public_key_oid;
