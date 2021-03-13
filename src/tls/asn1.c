@@ -186,18 +186,35 @@ int asn1_get_next(const u8 *buf, size_t len, struct asn1_hdr *hdr)
 	hdr->constructed = !!(hdr->identifier & (1 << 5));
 
 	if ((hdr->identifier & 0x1f) == 0x1f) {
+		size_t ext_len = 0;
+
 		hdr->tag = 0;
+		if (pos == end || (*pos & 0x7f) == 0) {
+			wpa_printf(MSG_DEBUG,
+				   "ASN.1: Invalid extended tag (first octet has to be included with at least one nonzero bit for the tag value)");
+			return -1;
+		}
 		do {
 			if (pos >= end) {
 				wpa_printf(MSG_DEBUG, "ASN.1: Identifier "
 					   "underflow");
 				return -1;
 			}
+			ext_len++;
 			tmp = *pos++;
 			wpa_printf(MSG_MSGDUMP, "ASN.1: Extended tag data: "
 				   "0x%02x", tmp);
 			hdr->tag = (hdr->tag << 7) | (tmp & 0x7f);
 		} while (tmp & 0x80);
+		wpa_printf(MSG_MSGDUMP, "ASN.1: Extended Tag: 0x%x (len=%zu)",
+			   hdr->tag, ext_len);
+		if ((hdr->class != ASN1_CLASS_PRIVATE && hdr->tag < 31) ||
+		    ext_len * 7 > sizeof(hdr->tag) * 8) {
+			wpa_printf(MSG_DEBUG,
+				   "ASN.1: Invalid or unsupported (too large) extended Tag: 0x%x (len=%zu)",
+				   hdr->tag, ext_len);
+			return -1;
+		}
 	} else
 		hdr->tag = hdr->identifier & 0x1f;
 
