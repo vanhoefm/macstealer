@@ -114,7 +114,8 @@ def check_sae_capab(dev):
         raise HwsimSkip("SAE not supported")
 
 def check_sae_pk_capab(dev):
-    if "PK" not in dev.get_capability("sae"):
+    capab = dev.get_capability("sae")
+    if capab is None or "PK" not in capab:
         raise HwsimSkip("SAE-PK not supported")
 
 def check_erp_capa(dev):
