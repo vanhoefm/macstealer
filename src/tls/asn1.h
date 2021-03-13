@@ -23,6 +23,7 @@
 #define ASN1_TAG_EMBEDDED_PDV	0x0B /* not yet parsed */
 #define ASN1_TAG_UTF8STRING	0x0C /* not yet parsed */
 #define ANS1_TAG_RELATIVE_OID	0x0D
+#define ASN1_TAG_TIME		0x0E
 #define ASN1_TAG_SEQUENCE	0x10 /* shall be constructed */
 #define ASN1_TAG_SET		0x11
 #define ASN1_TAG_NUMERICSTRING	0x12 /* not yet parsed */
