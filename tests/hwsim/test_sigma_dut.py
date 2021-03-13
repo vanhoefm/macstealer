@@ -4662,6 +4662,7 @@ def test_sigma_dut_ap_beacon_prot(dev, apdev, params):
 
 def test_sigma_dut_ap_transition_disable(dev, apdev, params):
     """sigma_dut controlled AP and transition disabled indication"""
+    check_sae_capab(dev[0])
     logdir = params['prefix'] + ".sigma-hostapd"
 
     with HWSimRadio() as (radio, iface):
@@ -4687,6 +4688,7 @@ def test_sigma_dut_ap_transition_disable(dev, apdev, params):
 
 def test_sigma_dut_ap_transition_disable_change(dev, apdev, params):
     """sigma_dut controlled AP and transition disabled indication change"""
+    check_sae_capab(dev[0])
     logdir = params['prefix'] + ".sigma-hostapd"
 
     with HWSimRadio() as (radio, iface):
