@@ -205,7 +205,11 @@ int asn1_get_next(const u8 *buf, size_t len, struct asn1_hdr *hdr)
 
 	hdr->payload = pos;
 
-	return asn1_valid_der(hdr) ? 0 : -1;
+	if (!asn1_valid_der(hdr)) {
+		asn1_print_hdr(hdr, "ASN.1: Invalid DER encoding: ");
+		return -1;
+	}
+	return 0;
 }
 
 
@@ -272,12 +276,9 @@ int asn1_get_oid(const u8 *buf, size_t len, struct asn1_oid *oid,
 {
 	struct asn1_hdr hdr;
 
-	if (asn1_get_next(buf, len, &hdr) < 0 || hdr.length == 0)
-		return -1;
-
-	if (hdr.class != ASN1_CLASS_UNIVERSAL || hdr.tag != ASN1_TAG_OID) {
-		wpa_printf(MSG_DEBUG, "ASN.1: Expected OID - found class %d "
-			   "tag 0x%x", hdr.class, hdr.tag);
+	if (asn1_get_next(buf, len, &hdr) < 0 || hdr.length == 0 ||
+	    !asn1_is_oid(&hdr)) {
+		asn1_unexpected(&hdr, "ASN.1: Expected OID");
 		return -1;
 	}
 
@@ -376,13 +377,9 @@ int asn1_get_integer(const u8 *buf, size_t len, int *integer, const u8 **next)
 	const u8 *pos;
 	int value;
 
-	if (asn1_get_next(buf, len, &hdr) < 0 || hdr.length == 0)
-		return -1;
-
-	if (hdr.class != ASN1_CLASS_UNIVERSAL || hdr.tag != ASN1_TAG_INTEGER) {
-		wpa_printf(MSG_DEBUG,
-			   "ASN.1: Expected INTEGER - found class %d tag 0x%x",
-			   hdr.class, hdr.tag);
+	if (asn1_get_next(buf, len, &hdr) < 0 || hdr.length == 0 ||
+	    !asn1_is_integer(&hdr)) {
+		asn1_unexpected(&hdr, "ASN.1: Expected INTEGER");
 		return -1;
 	}
 
@@ -409,12 +406,8 @@ int asn1_get_integer(const u8 *buf, size_t len, int *integer, const u8 **next)
 int asn1_get_sequence(const u8 *buf, size_t len, struct asn1_hdr *hdr,
 		      const u8 **next)
 {
-	if (asn1_get_next(buf, len, hdr) < 0 ||
-	    hdr->class != ASN1_CLASS_UNIVERSAL ||
-	    hdr->tag != ASN1_TAG_SEQUENCE) {
-		wpa_printf(MSG_DEBUG,
-			   "ASN.1: Expected SEQUENCE - found class %d tag 0x%x",
-			   hdr->class, hdr->tag);
+	if (asn1_get_next(buf, len, hdr) < 0 || !asn1_is_sequence(hdr)) {
+		asn1_unexpected(hdr, "ASN.1: Expected SEQUENCE");
 		return -1;
 	}
 
