@@ -305,6 +305,7 @@ def test_dpp_configurator_enrollee_brainpoolP512r1(dev, apdev):
 
 def test_dpp_configurator_enroll_conf(dev, apdev):
     """DPP Configurator enrolling followed by use of the new Configurator"""
+    check_dpp_capab(dev[0], min_ver=2)
     try:
         dev[0].set("dpp_config_processing", "2")
         run_dpp_configurator_enroll_conf(dev, apdev)
@@ -5995,6 +5996,7 @@ def dpp_sign_cert(cacert, cakey, csr_der):
 
 def test_dpp_enterprise(dev, apdev, params):
     """DPP and enterprise EAP-TLS provisioning"""
+    check_dpp_capab(dev[0], min_ver=2)
     try:
         dev[0].set("dpp_config_processing", "2")
         run_dpp_enterprise(dev, apdev, params)
