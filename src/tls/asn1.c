@@ -231,6 +231,11 @@ int asn1_get_next(const u8 *buf, size_t len, struct asn1_hdr *hdr)
 		}
 		tmp &= 0x7f; /* number of subsequent octets */
 		hdr->length = 0;
+		if (tmp == 0 || pos == end || *pos == 0) {
+			wpa_printf(MSG_DEBUG,
+				   "ASN.1: Definite long form of the length does not start with a nonzero value");
+			return -1;
+		}
 		if (tmp > 4) {
 			wpa_printf(MSG_DEBUG, "ASN.1: Too long length field");
 			return -1;
@@ -242,6 +247,11 @@ int asn1_get_next(const u8 *buf, size_t len, struct asn1_hdr *hdr)
 				return -1;
 			}
 			hdr->length = (hdr->length << 8) | *pos++;
+		}
+		if (hdr->length < 128) {
+			wpa_printf(MSG_DEBUG,
+				   "ASN.1: Definite long form of the length used with too short length");
+			return -1;
 		}
 	} else {
 		/* Short form - length 0..127 in one octet */
