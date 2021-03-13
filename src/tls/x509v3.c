@@ -2070,7 +2070,6 @@ int x509_check_signature(struct x509_certificate *issuer,
 skip_digest_oid:
 	/* Digest ::= OCTET STRING */
 	pos = da_end;
-	end = data + data_len;
 
 	if (asn1_get_next(pos, end - pos, &hdr) < 0 ||
 	    hdr.class != ASN1_CLASS_UNIVERSAL ||
