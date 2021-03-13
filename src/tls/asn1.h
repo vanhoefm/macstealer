@@ -27,7 +27,7 @@
 #define ASN1_TAG_SET		0x11
 #define ASN1_TAG_NUMERICSTRING	0x12 /* not yet parsed */
 #define ASN1_TAG_PRINTABLESTRING	0x13
-#define ASN1_TAG_TG1STRING	0x14 /* not yet parsed */
+#define ASN1_TAG_T61STRING	0x14 /* not yet parsed */
 #define ASN1_TAG_VIDEOTEXSTRING	0x15 /* not yet parsed */
 #define ASN1_TAG_IA5STRING	0x16
 #define ASN1_TAG_UTCTIME	0x17
