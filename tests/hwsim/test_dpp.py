@@ -3652,6 +3652,67 @@ def test_dpp_proto_network_introduction(dev, apdev):
                    dpp_csign=params1_csign, dpp_connector=params1_sta_connector,
                    dpp_netaccesskey=params1_sta_netaccesskey)
 
+def test_dpp_hostapd_auth_conf_timeout(dev, apdev):
+    """DPP Authentication Confirm timeout in hostapd"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured"})
+    check_dpp_capab(hapd)
+    id_h = hapd.dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri_h = hapd.request("DPP_BOOTSTRAP_GET_URI %d" % id_h)
+    hapd.dpp_listen(2412)
+    dev[0].set("dpp_test", "88")
+    dev[0].dpp_auth_init(uri=uri_h)
+    ev = hapd.wait_event(["DPP-FAIL"], timeout=10)
+    if ev is None:
+        raise Exception("DPP-FAIL not reported")
+    if "No Auth Confirm received" not in ev:
+        raise Exception("Unexpected failure reason: " + ev)
+
+def test_dpp_hostapd_auth_resp_retries(dev, apdev):
+    """DPP Authentication Response retries in hostapd"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured"})
+    check_dpp_capab(hapd)
+
+    hapd.set("dpp_resp_max_tries", "3")
+    hapd.set("dpp_resp_retry_time", "100")
+
+    id_h = hapd.dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri_h = hapd.request("DPP_BOOTSTRAP_GET_URI %d" % id_h)
+    id0b = dev[0].dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri0b = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0b)
+    hapd.dpp_listen(2412, qr="mutual")
+    dev[0].dpp_auth_init(uri=uri_h, own=id0b)
+
+    ev = dev[0].wait_event(["DPP-RESPONSE-PENDING"], timeout=5)
+    if ev is None:
+        raise Exception("Pending response not reported")
+    ev = hapd.wait_event(["DPP-SCAN-PEER-QR-CODE"], timeout=5)
+    if ev is None:
+        raise Exception("QR Code scan for mutual authentication not requested")
+
+    # Stop Initiator from listening to frames to force retransmission of the
+    # DPP Authentication Response frame with Status=0
+    dev[0].request("DPP_STOP_LISTEN")
+
+    hapd.dump_monitor()
+    dev[0].dump_monitor()
+
+    id0b = hapd.dpp_qr_code(uri0b)
+
+    ev = hapd.wait_event(["DPP-TX "], timeout=5)
+    if ev is None or "type=1" not in ev:
+        raise Exception("DPP Authentication Response not sent")
+    ev = hapd.wait_event(["DPP-TX-STATUS"], timeout=5)
+    if ev is None:
+        raise Exception("TX status for DPP Authentication Response not reported")
+    if "result=FAILED" not in ev:
+        raise Exception("Unexpected TX status for Authentication Response: " + ev)
+
+    ev = hapd.wait_event(["DPP-TX "], timeout=15)
+    if ev is None or "type=1" not in ev:
+        raise Exception("DPP Authentication Response retransmission not sent")
+
 def test_dpp_qr_code_no_chan_list_unicast(dev, apdev):
     """DPP QR Code and no channel list (unicast)"""
     run_dpp_qr_code_chan_list(dev, apdev, True, 2417, None)
