@@ -313,6 +313,20 @@ def test_radius_acct_interim(dev, apdev):
     req_e = int(as_mib_end['radiusAccServTotalRequests'])
     if req_e < req_s + 3:
         raise Exception("Unexpected RADIUS server acct MIB value (req_e=%d req_s=%d)" % (req_e, req_s))
+    # Disable Accounting server and wait for interim update retries to fail and
+    # expire.
+    as_hapd.disable()
+    time.sleep(15)
+    as_hapd.enable()
+    ok = False
+    for i in range(10):
+        time.sleep(1)
+        as_mib = as_hapd.get_mib(param="radius_server")
+        if int(as_mib['radiusAccServTotalRequests']) > 0:
+            ok = True
+            break
+    if not ok:
+        raise Exception("Accounting updates did not seen after server restart")
 
 def test_radius_acct_interim_unreachable(dev, apdev):
     """RADIUS Accounting interim update with unreachable server"""
