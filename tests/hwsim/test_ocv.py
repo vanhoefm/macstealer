@@ -1190,3 +1190,15 @@ def test_wpa2_ocv_no_oci_workaround(dev, apdev):
         raise Exception("Could not set TEST_ASSOC_IE")
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412", ocv="0",
                    ieee80211w="1")
+
+def test_wpa2_ocv_without_pmf(dev, apdev):
+    """OCV without PMF"""
+    params = {"channel": "6",
+              "ieee80211n": "1",
+              "ieee80211w": "1",
+              "ocv": "1"}
+    hapd, ssid, passphrase = ocv_setup_ap(apdev[0], params)
+    hapd.disable()
+    hapd.set("ieee80211w", "0")
+    if "FAIL" not in hapd.request("ENABLE"):
+        raise Exception("OCV without PMF accepted")
