@@ -1128,3 +1128,43 @@ def test_he_twt(dev, apdev):
         raise Exception("TWT_SETUP failed")
     if "OK" not in dev[0].request("TWT_TEARDOWN flags=255"):
         raise Exception("TWT_SETUP failed")
+
+def test_he_6ghz_security(dev, apdev):
+    """HE AP and 6 GHz security parameter validation"""
+    params = {"ssid": "he",
+              "ieee80211ax": "1",
+              "op_class": "131",
+              "channel": "1"}
+    hapd = hostapd.add_ap(apdev[0], params, no_enable=True)
+
+    # Pre-RSNA security methods are not allowed in 6 GHz
+    if "FAIL" not in hapd.request("ENABLE"):
+        raise Exception("Invalid configuration accepted(1)")
+
+    # Management frame protection is required in 6 GHz"
+    hapd.set("wpa", "2")
+    hapd.set("wpa_passphrase", "12345678")
+    hapd.set("wpa_key_mgmt", "SAE")
+    hapd.set("rsn_pairwise", "CCMP")
+    hapd.set("ieee80211w", "1")
+    if "FAIL" not in hapd.request("ENABLE"):
+        raise Exception("Invalid configuration accepted(2)")
+
+    # Invalid AKM suite for 6 GHz
+    hapd.set("ieee80211w", "2")
+    hapd.set("wpa_key_mgmt", "SAE WPA-PSK")
+    if "FAIL" not in hapd.request("ENABLE"):
+        raise Exception("Invalid configuration accepted(3)")
+
+    # Invalid pairwise cipher suite for 6 GHz
+    hapd.set("wpa_key_mgmt", "SAE")
+    hapd.set("rsn_pairwise", "CCMP TKIP")
+    if "FAIL" not in hapd.request("ENABLE"):
+        raise Exception("Invalid configuration accepted(4)")
+
+    # Invalid group cipher suite for 6 GHz
+    hapd.set("wpa_key_mgmt", "SAE")
+    hapd.set("rsn_pairwise", "CCMP")
+    hapd.set("group_cipher", "TKIP")
+    if "FAIL" not in hapd.request("ENABLE"):
+        raise Exception("Invalid configuration accepted(5)")
