@@ -1511,6 +1511,16 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
 	} else if (os_strcasecmp(cmd, "dpp_configurator_params") == 0) {
 		os_free(hapd->dpp_configurator_params);
 		hapd->dpp_configurator_params = os_strdup(value);
+	} else if (os_strcasecmp(cmd, "dpp_init_max_tries") == 0) {
+		hapd->dpp_init_max_tries = atoi(value);
+	} else if (os_strcasecmp(cmd, "dpp_init_retry_time") == 0) {
+		hapd->dpp_init_retry_time = atoi(value);
+	} else if (os_strcasecmp(cmd, "dpp_resp_wait_time") == 0) {
+		hapd->dpp_resp_wait_time = atoi(value);
+	} else if (os_strcasecmp(cmd, "dpp_resp_max_tries") == 0) {
+		hapd->dpp_resp_max_tries = atoi(value);
+	} else if (os_strcasecmp(cmd, "dpp_resp_retry_time") == 0) {
+		hapd->dpp_resp_retry_time = atoi(value);
 #endif /* CONFIG_DPP */
 	} else if (os_strcasecmp(cmd, "setband") == 0) {
 		ret = hostapd_ctrl_iface_set_band(hapd, value);
