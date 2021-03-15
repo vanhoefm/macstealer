@@ -10655,6 +10655,22 @@ static int wpas_ctrl_iface_pasn_start(struct wpa_supplicant *wpa_s, char *cmd)
 
 	return wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group, id);
 }
+
+
+static int wpas_ctrl_iface_pasn_deauthenticate(struct wpa_supplicant *wpa_s,
+					       const char *cmd)
+{
+	u8 bssid[ETH_ALEN];
+
+	if (os_strncmp(cmd, "bssid=", 6) != 0 || hwaddr_aton(cmd + 6, bssid)) {
+		wpa_printf(MSG_DEBUG,
+			   "CTRL: PASN_DEAUTH without valid BSSID");
+		return -1;
+	}
+
+	return wpas_pasn_deauthenticate(wpa_s, bssid);
+}
+
 #endif /* CONFIG_PASN */
 
 
@@ -11576,6 +11592,9 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		wpas_pasn_auth_stop(wpa_s);
 	} else if (os_strcmp(buf, "PTKSA_CACHE_LIST") == 0) {
 		reply_len = ptksa_cache_list(wpa_s->ptksa, reply, reply_size);
+	} else if (os_strncmp(buf, "PASN_DEAUTH ", 12) == 0) {
+		if (wpas_ctrl_iface_pasn_deauthenticate(wpa_s, buf + 12) < 0)
+			reply_len = -1;
 #endif /* CONFIG_PASN */
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);

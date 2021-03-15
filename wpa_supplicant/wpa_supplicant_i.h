@@ -1737,4 +1737,6 @@ int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		      const struct ieee80211_mgmt *mgmt, size_t len);
 
+int wpas_pasn_deauthenticate(struct wpa_supplicant *wpa_s, const u8 *bssid);
+
 #endif /* WPA_SUPPLICANT_I_H */

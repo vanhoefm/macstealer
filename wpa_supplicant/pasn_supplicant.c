@@ -1526,3 +1526,59 @@ int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 
 	return 0;
 }
+
+
+int wpas_pasn_deauthenticate(struct wpa_supplicant *wpa_s, const u8 *bssid)
+{
+	struct wpa_bss *bss;
+	struct wpabuf *buf;
+	struct ieee80211_mgmt *deauth;
+	int ret;
+
+	if (os_memcmp(wpa_s->bssid, bssid, ETH_ALEN) == 0) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Cannot deauthenticate from current BSS");
+		return -1;
+	}
+
+	wpa_printf(MSG_DEBUG, "PASN: deauth: Flushing all PTKSA entries for "
+		   MACSTR, MAC2STR(bssid));
+	ptksa_cache_flush(wpa_s->ptksa, bssid, WPA_CIPHER_NONE);
+
+	bss = wpa_bss_get_bssid(wpa_s, bssid);
+	if (!bss) {
+		wpa_printf(MSG_DEBUG, "PASN: deauth: BSS not found");
+		return -1;
+	}
+
+	buf = wpabuf_alloc(64);
+	if (!buf) {
+		wpa_printf(MSG_DEBUG, "PASN: deauth: Failed wpabuf allocate");
+		return -1;
+	}
+
+	deauth = wpabuf_put(buf, offsetof(struct ieee80211_mgmt,
+					  u.deauth.variable));
+
+	deauth->frame_control = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
+					     (WLAN_FC_STYPE_DEAUTH << 4));
+
+	os_memcpy(deauth->da, bssid, ETH_ALEN);
+	os_memcpy(deauth->sa, wpa_s->own_addr, ETH_ALEN);
+	os_memcpy(deauth->bssid, bssid, ETH_ALEN);
+	deauth->u.deauth.reason_code =
+		host_to_le16(WLAN_REASON_PREV_AUTH_NOT_VALID);
+
+	/*
+	 * Since we do not expect any response from the AP, implement the
+	 * Deauthentication frame transmission using direct call to the driver
+	 * without a radio work.
+	 */
+	ret = wpa_drv_send_mlme(wpa_s, wpabuf_head(buf), wpabuf_len(buf), 1,
+				bss->freq, 0);
+
+	wpabuf_free(buf);
+	wpa_printf(MSG_DEBUG, "PASN: deauth: send_mlme ret=%d", ret);
+
+	return ret;
+}

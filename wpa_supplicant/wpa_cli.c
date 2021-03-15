@@ -3210,6 +3210,13 @@ static int wpa_cli_cmd_ptksa_cache_list(struct wpa_ctrl *ctrl, int argc,
 	return wpa_cli_cmd(ctrl, "PTKSA_CACHE_LIST", 0, argc, argv);
 }
 
+
+static int wpa_cli_cmd_pasn_deauth(struct wpa_ctrl *ctrl, int argc,
+				   char *argv[])
+{
+	return wpa_cli_cmd(ctrl, "PASN_DEAUTH", 1, argc, argv);
+}
+
 #endif /* CONFIG_PASN */
 
 
@@ -3913,6 +3920,9 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	{ "ptksa_cache_list", wpa_cli_cmd_ptksa_cache_list, NULL,
 	  cli_cmd_flag_none,
 	  "= Get the PTKSA Cache" },
+	{ "pasn_deauth", wpa_cli_cmd_pasn_deauth, NULL,
+	  cli_cmd_flag_none,
+	  "bssid=<BSSID> = Remove PASN PTKSA state" },
 #endif /* CONFIG_PASN */
 	{ NULL, NULL, NULL, cli_cmd_flag_none, NULL }
 };
