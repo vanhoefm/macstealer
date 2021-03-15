@@ -2881,11 +2881,11 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 {
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
 	u8 mic[WPA_PASN_MAX_MIC_LEN];
-	u8 mic_len, frame_len, data_len;
+	u8 mic_len;
 	u8 *ptr;
 	const u8 *frame, *data, *rsn_ie, *rsnxe_ie;
 	u8 *data_buf = NULL;
-	size_t rsn_ie_len;
+	size_t rsn_ie_len, frame_len, data_len;
 	int ret;
 
 	wpa_printf(MSG_DEBUG, "PASN: Building frame 2: status=%u", status);
