@@ -874,6 +874,9 @@ struct hostapd_bss_config {
 	 * secure LTF. Allow forcing KDK derivation for testing purposes.
 	 */
 	int force_kdk_derivation;
+
+	/* If set, corrupt the MIC in the 2nd Authentication frame of PASN */
+	int pasn_corrupt_mic;
 #endif /* CONFIG_TESTING_OPTIONS */
 
 	int *pasn_groups;

@@ -2995,6 +2995,13 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 		goto fail;
 	}
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (hapd->conf->pasn_corrupt_mic) {
+		wpa_printf(MSG_DEBUG, "PASN: frame 2: Corrupt MIC");
+		mic[0] = ~mic[0];
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
 	os_memcpy(ptr, mic, mic_len);
 
 done:

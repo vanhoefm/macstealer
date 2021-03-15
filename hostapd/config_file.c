@@ -4664,6 +4664,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 #ifdef CONFIG_TESTING_OPTIONS
 	} else if (os_strcmp(buf, "force_kdk_derivation") == 0) {
 		bss->force_kdk_derivation = atoi(pos);
+	} else if (os_strcmp(buf, "pasn_corrupt_mic") == 0) {
+		bss->pasn_corrupt_mic = atoi(pos);
 #endif /* CONFIG_TESTING_OPTIONS */
 	} else if (os_strcmp(buf, "pasn_groups") == 0) {
 		if (hostapd_parse_intlist(&bss->pasn_groups, pos)) {

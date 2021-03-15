@@ -779,6 +779,13 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
 		goto fail;
 	}
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (wpa_s->conf->pasn_corrupt_mic) {
+		wpa_printf(MSG_DEBUG, "PASN: frame 3: Corrupt MIC");
+		mic[0] = ~mic[0];
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
 	os_memcpy(ptr, mic, mic_len);
 
 	pasn->trans_seq++;
