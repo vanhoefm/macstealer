@@ -687,6 +687,10 @@ static int auth_sae_send_confirm(struct hostapd_data *hapd,
 	return reply_res;
 }
 
+#endif /* CONFIG_SAE */
+
+
+#if defined(CONFIG_SAE) || defined(CONFIG_PASN)
 
 static int use_anti_clogging(struct hostapd_data *hapd)
 {
@@ -697,22 +701,26 @@ static int use_anti_clogging(struct hostapd_data *hapd)
 		return 1;
 
 	for (sta = hapd->sta_list; sta; sta = sta->next) {
+#ifdef CONFIG_SAE
 		if (!sta->sae)
 			continue;
 		if (sta->sae->state != SAE_COMMITTED &&
 		    sta->sae->state != SAE_CONFIRMED)
 			continue;
 		open++;
+#endif /* CONFIG_SAE */
 		if (open >= hapd->conf->anti_clogging_threshold)
 			return 1;
 	}
 
+#ifdef CONFIG_SAE
 	/* In addition to already existing open SAE sessions, check whether
 	 * there are enough pending commit messages in the processing queue to
 	 * potentially result in too many open sessions. */
 	if (open + dl_list_len(&hapd->sae_commit_queue) >=
 	    hapd->conf->anti_clogging_threshold)
 		return 1;
+#endif /* CONFIG_SAE */
 
 	return 0;
 }
@@ -834,6 +842,10 @@ static struct wpabuf * auth_build_token_req(struct hostapd_data *hapd,
 	return buf;
 }
 
+#endif /* defined(CONFIG_SAE) || defined(CONFIG_PASN) */
+
+
+#ifdef CONFIG_SAE
 
 static int sae_check_big_sync(struct hostapd_data *hapd, struct sta_info *sta)
 {
