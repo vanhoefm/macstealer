@@ -680,7 +680,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 		wrapped_data = WPA_PASN_WRAPPED_DATA_NO;
 
 	wpa_pasn_add_parameter_ie(buf, pasn->group, wrapped_data,
-				  pubkey, NULL, -1);
+				  pubkey, true, NULL, -1);
 
 	if (wpa_pasn_add_wrapped_data(buf, wrapped_data_buf) < 0)
 		goto fail;
@@ -753,7 +753,7 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
 		wrapped_data = WPA_PASN_WRAPPED_DATA_NO;
 
 	wpa_pasn_add_parameter_ie(buf, pasn->group, wrapped_data,
-				  NULL, NULL, -1);
+				  NULL, false, NULL, -1);
 
 	if (wpa_pasn_add_wrapped_data(buf, wrapped_data_buf) < 0)
 		goto fail;
@@ -1226,7 +1226,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 	u8 mic[WPA_PASN_MAX_MIC_LEN], out_mic[WPA_PASN_MAX_MIC_LEN];
 	u8 mic_len;
 	u16 status;
-	int ret;
+	int ret, inc_y;
 	u16 fc = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
 			      (WLAN_FC_STYPE_AUTH << 4));
 
@@ -1344,9 +1344,21 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		goto fail;
 	}
 
-	secret = crypto_ecdh_set_peerkey(pasn->ecdh, 0,
-					 pasn_params.pubkey,
-					 pasn_params.pubkey_len);
+	if (pasn_params.pubkey[0] == WPA_PASN_PUBKEY_UNCOMPRESSED) {
+		inc_y = 1;
+	} else if (pasn_params.pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_0 ||
+		   pasn_params.pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_1) {
+		inc_y = 0;
+	} else {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Invalid first octet in pubkey=0x%x",
+			   pasn_params.pubkey[0]);
+		goto fail;
+	}
+
+	secret = crypto_ecdh_set_peerkey(pasn->ecdh, inc_y,
+					 pasn_params.pubkey + 1,
+					 pasn_params.pubkey_len - 1);
 
 	if (!secret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive shared secret");

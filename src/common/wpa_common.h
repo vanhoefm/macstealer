@@ -546,6 +546,11 @@ struct wpa_pasn_params_data {
 	const u8 *pubkey;
 };
 
+/* See RFC 5480 section 2.2 */
+#define WPA_PASN_PUBKEY_COMPRESSED_0 0x02
+#define WPA_PASN_PUBKEY_COMPRESSED_1 0x03
+#define WPA_PASN_PUBKEY_UNCOMPRESSED 0x04
+
 int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
 		     int use_sha384);
 
@@ -657,7 +662,7 @@ int wpa_pasn_add_rsne(struct wpabuf *buf, const u8 *pmkid,
 
 void wpa_pasn_add_parameter_ie(struct wpabuf *buf, u16 pasn_group,
 			       u8 wrapped_data_format,
-			       struct wpabuf *pubkey,
+			       struct wpabuf *pubkey, bool compressed,
 			       struct wpabuf *comeback, int after);
 
 int wpa_pasn_add_wrapped_data(struct wpabuf *buf,

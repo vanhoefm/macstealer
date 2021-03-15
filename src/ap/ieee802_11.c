@@ -2937,7 +2937,7 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 
 	wpa_pasn_add_parameter_ie(buf, sta->pasn->group,
 				  sta->pasn->wrapped_data_format,
-				  pubkey, NULL, 0);
+				  pubkey, true, NULL, 0);
 
 	if (wpa_pasn_add_wrapped_data(buf, wrapped_data_buf) < 0)
 		goto fail;
@@ -3034,7 +3034,7 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 	const int *groups = hapd->conf->pasn_groups;
 	static const int default_groups[] = { 19, 0 };
 	u16 status = WLAN_STATUS_SUCCESS;
-	int ret;
+	int ret, inc_y;
 	bool derive_keys;
 	u32 i;
 
@@ -3118,9 +3118,22 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 
 	sta->pasn->group = pasn_params.group;
 
-	secret = crypto_ecdh_set_peerkey(sta->pasn->ecdh, 0,
-					 pasn_params.pubkey,
-					 pasn_params.pubkey_len);
+	if (pasn_params.pubkey[0] == WPA_PASN_PUBKEY_UNCOMPRESSED) {
+		inc_y = 1;
+	} else if (pasn_params.pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_0 ||
+		   pasn_params.pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_1) {
+		inc_y = 0;
+	} else {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Invalid first octet in pubkey=0x%x",
+			   pasn_params.pubkey[0]);
+		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		goto send_resp;
+	}
+
+	secret = crypto_ecdh_set_peerkey(sta->pasn->ecdh, inc_y,
+					 pasn_params.pubkey + 1,
+					 pasn_params.pubkey_len - 1);
 	if (!secret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive shared secret");
 		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
