@@ -5837,6 +5837,9 @@ static void handle_deauth(struct hostapd_data *hapd,
 		" reason_code=%d",
 		MAC2STR(mgmt->sa), le_to_host16(mgmt->u.deauth.reason_code));
 
+	/* Clear the PTKSA cache entries for PASN */
+	ptksa_cache_flush(hapd->ptksa, mgmt->sa, WPA_CIPHER_NONE);
+
 	sta = ap_get_sta(hapd, mgmt->sa);
 	if (sta == NULL) {
 		wpa_msg(hapd->msg_ctx, MSG_DEBUG, "Station " MACSTR " trying "
