@@ -655,7 +655,7 @@ struct hostapd_bss_config {
 	struct wpabuf *vendor_elements;
 	struct wpabuf *assocresp_elements;
 
-	unsigned int sae_anti_clogging_threshold;
+	unsigned int anti_clogging_threshold;
 	unsigned int sae_sync;
 	int sae_require_mfp;
 	int sae_confirm_immediate;
