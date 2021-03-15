@@ -46,10 +46,12 @@ def start_pasn_ap(apdev, params):
             raise HwsimSkip("PASN not supported")
         raise
 
-def check_pasn_ptk(dev, hapd, cipher):
+def check_pasn_ptk(dev, hapd, cipher, fail_ptk=False):
     sta_ptksa = dev.get_ptksa(hapd.own_addr(), cipher)
     ap_ptksa = hapd.get_ptksa(dev.own_addr(), cipher)
     if not (sta_ptksa and ap_ptksa):
+        if fail_ptk:
+            return
         raise Exception("Could not get PTKSA entry")
 
     logger.info("sta: TK: %s KDK: %s" % (sta_ptksa['tk'], sta_ptksa['kdk']))
@@ -57,9 +59,12 @@ def check_pasn_ptk(dev, hapd, cipher):
 
     if sta_ptksa['tk'] != ap_ptksa['tk'] or sta_ptksa['kdk'] != ap_ptksa['kdk']:
         raise Exception("TK/KDK mismatch")
+    elif fail_ptk:
+        raise Exception("TK/KDK match although key derivation should have failed")
 
 def check_pasn_akmp_cipher(dev, hapd, akmp="PASN", cipher="CCMP",
-                           group="19", status=0, fail=0, nid=""):
+                           group="19", status=0, fail=0, nid="",
+                           fail_ptk=False):
     dev.flush_scan_cache()
     dev.scan(type="ONLY", freq=2412)
 
@@ -88,7 +93,7 @@ def check_pasn_akmp_cipher(dev, hapd, akmp="PASN", cipher="CCMP",
     if status:
         return
 
-    check_pasn_ptk(dev, hapd, cipher)
+    check_pasn_ptk(dev, hapd, cipher, fail_ptk)
 
 @remote_compatible
 def test_pasn_ccmp(dev, apdev):
@@ -636,3 +641,31 @@ def test_pasn_ft_eap_sha384(dev, apdev):
         pasn_hapd = hapd0
 
     check_pasn_akmp_cipher(dev[0], pasn_hapd, "FT-EAP-SHA384", "CCMP")
+
+def test_pasn_sta_mic_error(dev, apdev):
+    """PASN authentication with WPA2/CCMP AP with corrupted MIC on station"""
+    params = pasn_ap_params("PASN", "CCMP", "19")
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    try:
+        # When forcing MIC corruption, the exchange would be still successful
+        # on the station side, but the AP would fail the exchange and would not
+        # store the keys.
+        dev[0].set("pasn_corrupt_mic", "1")
+        check_pasn_akmp_cipher(dev[0], hapd, "PASN", "CCMP", fail_ptk=True)
+    finally:
+        dev[0].set("pasn_corrupt_mic", "0")
+
+    # Now verify the successful case
+    check_pasn_akmp_cipher(dev[0], hapd, "PASN", "CCMP")
+
+def test_pasn_ap_mic_error(dev, apdev):
+    """PASN authentication with WPA2/CCMP AP with corrupted MIC on AP"""
+    params = pasn_ap_params("PASN", "CCMP", "19")
+    hapd0 = hostapd.add_ap(apdev[0], params)
+
+    params['pasn_corrupt_mic'] = "1"
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    check_pasn_akmp_cipher(dev[0], hapd1, "PASN", "CCMP", status=1)
+    check_pasn_akmp_cipher(dev[0], hapd0, "PASN", "CCMP")
