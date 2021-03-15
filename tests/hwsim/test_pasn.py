@@ -65,9 +65,10 @@ def check_pasn_akmp_cipher(dev, hapd, akmp="PASN", cipher="CCMP",
 
     cmd = "PASN_START bssid=%s akmp=%s cipher=%s group=%s" % (hapd.own_addr(), akmp, cipher, group)
 
-    resp = dev.request(cmd)
     if nid != "":
         cmd += " nid=%s" % nid
+
+    resp = dev.request(cmd)
 
     if fail:
         if "OK" in resp:
