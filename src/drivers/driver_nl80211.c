@@ -4040,6 +4040,19 @@ static int wpa_driver_nl80211_send_mlme(struct i802_bss *bss, const u8 *data,
 		}
 	}
 
+#ifdef CONFIG_PASN
+	if (is_sta_interface(drv->nlmode) &&
+	    WLAN_FC_GET_TYPE(fc) == WLAN_FC_TYPE_MGMT &&
+	     WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_DEAUTH) {
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: send_mlme: allow Deauthentication frame for PASN");
+
+		use_cookie = 0;
+		offchanok = 1;
+		goto send_frame_cmd;
+	}
+#endif /* CONFIG_PASN */
+
 	if (freq == 0 && drv->nlmode == NL80211_IFTYPE_ADHOC) {
 		freq = nl80211_get_assoc_freq(drv);
 		wpa_printf(MSG_DEBUG,
