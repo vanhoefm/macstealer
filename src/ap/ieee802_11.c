@@ -2887,6 +2887,7 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 	u8 *data_buf = NULL;
 	size_t rsn_ie_len, frame_len, data_len;
 	int ret;
+	const u8 *pmkid = NULL;
 
 	wpa_printf(MSG_DEBUG, "PASN: Building frame 2: status=%u", status);
 
@@ -2900,7 +2901,22 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 	if (status != WLAN_STATUS_SUCCESS)
 		goto done;
 
-	if (wpa_pasn_add_rsne(buf, pmksa ? pmksa->pmkid : NULL,
+	if (pmksa) {
+		pmkid = pmksa->pmkid;
+#ifdef CONFIG_SAE
+	} else if (sta->pasn->akmp == WPA_KEY_MGMT_SAE) {
+		wpa_printf(MSG_DEBUG, "PASN: Use SAE PMKID");
+		pmkid = sta->pasn->sae.pmkid;
+#endif /* CONFIG_SAE */
+#ifdef CONFIG_FILS
+	} else if (sta->pasn->akmp == WPA_KEY_MGMT_FILS_SHA256 ||
+		   sta->pasn->akmp == WPA_KEY_MGMT_FILS_SHA384) {
+		wpa_printf(MSG_DEBUG, "PASN: Use FILS ERP PMKID");
+		pmkid = sta->pasn->fils.erp_pmkid;
+#endif /* CONFIG_FILS */
+	}
+
+	if (wpa_pasn_add_rsne(buf, pmkid,
 			      sta->pasn->akmp, sta->pasn->cipher) < 0)
 		goto fail;
 
