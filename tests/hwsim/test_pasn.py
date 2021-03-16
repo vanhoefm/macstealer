@@ -46,9 +46,10 @@ def start_pasn_ap(apdev, params):
             raise HwsimSkip("PASN not supported")
         raise
 
-def check_pasn_ptk(dev, hapd, cipher, fail_ptk=False):
+def check_pasn_ptk(dev, hapd, cipher, fail_ptk=False, clear_keys=True):
     sta_ptksa = dev.get_ptksa(hapd.own_addr(), cipher)
     ap_ptksa = hapd.get_ptksa(dev.own_addr(), cipher)
+
     if not (sta_ptksa and ap_ptksa):
         if fail_ptk:
             return
@@ -61,6 +62,17 @@ def check_pasn_ptk(dev, hapd, cipher, fail_ptk=False):
         raise Exception("TK/KDK mismatch")
     elif fail_ptk:
         raise Exception("TK/KDK match although key derivation should have failed")
+    elif clear_keys:
+        cmd = "PASN_DEAUTH bssid=%s" % hapd.own_addr()
+        dev.request(cmd)
+
+        # Wait a little to let the AP process the deauth
+        time.sleep(0.2)
+
+        sta_ptksa = dev.get_ptksa(hapd.own_addr(), cipher)
+        ap_ptksa = hapd.get_ptksa(dev.own_addr(), cipher)
+        if sta_ptksa or ap_ptksa:
+            raise Exception("TK/KDK not deleted as expected")
 
 def check_pasn_akmp_cipher(dev, hapd, akmp="PASN", cipher="CCMP",
                            group="19", status=0, fail=0, nid="",
@@ -293,7 +305,7 @@ def test_pasn_sae_kdk(dev, apdev):
         dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE",
                        scan_freq="2412")
 
-        check_pasn_ptk(dev[0], hapd, "CCMP")
+        check_pasn_ptk(dev[0], hapd, "CCMP", clear_keys=False)
     finally:
         dev[0].set("force_kdk_derivation", "0")
 
@@ -328,7 +340,7 @@ def check_pasn_fils_kdk(dev, apdev, params, key_mgmt):
         hapd.wait_sta()
         hwsim_utils.test_connectivity(dev[0], hapd)
 
-        check_pasn_ptk(dev[0], hapd, "CCMP")
+        check_pasn_ptk(dev[0], hapd, "CCMP", clear_keys=False)
 
         dev[0].request("DISCONNECT")
         dev[0].wait_disconnected()
@@ -348,7 +360,7 @@ def check_pasn_fils_kdk(dev, apdev, params, key_mgmt):
         hapd.wait_sta()
         hwsim_utils.test_connectivity(dev[0], hapd)
 
-        check_pasn_ptk(dev[0], hapd, "CCMP")
+        check_pasn_ptk(dev[0], hapd, "CCMP", clear_keys=False)
     finally:
         dev[0].set("force_kdk_derivation", "0")
 
