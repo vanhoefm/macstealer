@@ -700,6 +700,10 @@ enum qca_radiotap_vendor_ids {
  *	used with this event are defined in enum
  *	qca_wlan_vendor_attr_mbssid_tx_vdev_status.
  *
+ * @QCA_NL80211_VENDOR_SUBCMD_CONCURRENT_MULTI_STA_POLICY: Vendor command to
+ *	configure the concurrent session policies when multiple STA interfaces
+ *	are (getting) active. The attributes used by this command are defined
+ *	in enum qca_wlan_vendor_attr_concurrent_sta_policy.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -886,6 +890,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UPDATE_SSID = 194,
 	QCA_NL80211_VENDOR_SUBCMD_WIFI_FW_STATS = 195,
 	QCA_NL80211_VENDOR_SUBCMD_MBSSID_TX_VDEV_STATUS = 196,
+	QCA_NL80211_VENDOR_SUBCMD_CONCURRENT_MULTI_STA_POLICY = 197,
 };
 
 enum qca_wlan_vendor_attr {
@@ -2398,6 +2403,26 @@ enum qca_wlan_vendor_attr_config {
 	 * will update the RX NSS based on QCA_WLAN_VENDOR_ATTR_CONFIG_RX_NSS.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_NSS = 78,
+
+	/*
+	 * 8-bit unsigned value. This attribute, when set, indicates whether the
+	 * specified interface is the primary STA interface when there are more
+	 * than one STA interfaces concurrently active.
+	 *
+	 * This configuration helps the firmware/hardware to support certain
+	 * features (e.g., roaming) on this primary interface, if the same
+	 * cannot be supported on the concurrent STA interfaces simultaneously.
+	 *
+	 * This configuration is only applicable for a single STA interface on
+	 * a device and gives the priority for it only over other concurrent STA
+	 * interfaces.
+	 *
+	 * If the device is a multi wiphy/soc, this configuration applies to a
+	 * single STA interface across the wiphys.
+	 *
+	 * 1-Enable (is the primary STA), 0-Disable (is not the primary STA)
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_CONCURRENT_STA_PRIMARY = 79,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
@@ -10706,6 +10731,58 @@ enum qca_wlan_vendor_attr_mbssid_tx_vdev_status {
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_MAX =
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_concurrent_sta_policy_config - Concurrent STA policies
+ *
+ * @QCA_WLAN_CONCURRENT_STA_POLICY_PREFER_PRIMARY: Preference to the primary
+ * STA interface has to be given while selecting the connection policies
+ * (e.g., BSSID, band, TX/RX chains, etc.) for the subsequent STA interface.
+ * An interface is set as primary through the attribute
+ * QCA_WLAN_VENDOR_ATTR_CONFIG_CONCURRENT_STA_PRIMARY. This policy is not
+ * applicable if the primary interface has not been set earlier.
+ *
+ * The intention is not to downgrade the primary STA performance, such as:
+ * - Do not reduce the number of TX/RX chains of primary connection.
+ * - Do not optimize DBS vs. MCC/SCC, if DBS ends up reducing the number of
+ *   chains.
+ * - If using MCC, should set the MCC duty cycle of the primary connection to
+ *   be higher than the secondary connection.
+ *
+ * @QCA_WLAN_CONCURRENT_STA_POLICY_UNBIASED: The connection policies for the
+ * subsequent STA connection shall be chosen to balance with the existing
+ * concurrent STA's performance.
+ * Such as
+ * - Can choose MCC or DBS mode depending on the MCC efficiency and hardware
+ *   capability.
+ * - If using MCC, set the MCC duty cycle of the primary connection to be equal
+ *   to the secondary.
+ * - Prefer BSSID candidates which will help provide the best "overall"
+ *   performance for all the STA connections.
+ */
+enum qca_wlan_concurrent_sta_policy_config {
+	QCA_WLAN_CONCURRENT_STA_POLICY_PREFER_PRIMARY = 0,
+	QCA_WLAN_CONCURRENT_STA_POLICY_UNBIASED = 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_concurrent_sta_policy - Defines attributes
+ * used by QCA_NL80211_VENDOR_SUBCMD_CONCURRENT_MULTI_STA_POLICY vendor command.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_CONCURRENT_STA_POLICY_CONFIG:
+ * u8 attribute. Configures the concurrent STA policy configuration.
+ * Possible values are defined in enum qca_wlan_concurrent_sta_policy_config.
+ */
+enum qca_wlan_vendor_attr_concurrent_sta_policy {
+	QCA_WLAN_VENDOR_ATTR_CONCURRENT_STA_POLICY_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_CONCURRENT_STA_POLICY_CONFIG = 1,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_CONCURRENT_STA_POLICY_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_CONCURRENT_STA_POLICY_MAX =
+	QCA_WLAN_VENDOR_ATTR_CONCURRENT_STA_POLICY_AFTER_LAST - 1,
+
 };
 
 /**
