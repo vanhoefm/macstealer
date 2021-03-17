@@ -8512,6 +8512,9 @@ enum qca_wlan_vendor_attr_twt_setup {
  * @QCA_WLAN_VENDOR_TWT_STATUS_ROAM_INITIATED_TERMINATE: FW terminated the TWT
  * session due to roaming. Used on the TWT_TERMINATE notification from the
  * firmware.
+ * @QCA_WLAN_VENDOR_TWT_STATUS_SCC_MCC_CONCURRENCY_TERMINATE: FW terminated the
+ * TWT session due to SCC (Single Channel Concurrency) and MCC (Multi Channel
+ * Concurrency). Used on the TWT_TERMINATE notification from the firmware.
  */
 enum qca_wlan_vendor_twt_status {
 	QCA_WLAN_VENDOR_TWT_STATUS_OK = 0,
@@ -8532,6 +8535,7 @@ enum qca_wlan_vendor_twt_status {
 	QCA_WLAN_VENDOR_TWT_STATUS_PARAMS_NOT_IN_RANGE = 15,
 	QCA_WLAN_VENDOR_TWT_STATUS_PEER_INITIATED_TERMINATE = 16,
 	QCA_WLAN_VENDOR_TWT_STATUS_ROAM_INITIATED_TERMINATE = 17,
+	QCA_WLAN_VENDOR_TWT_STATUS_SCC_MCC_CONCURRENCY_TERMINATE = 18,
 };
 
 /**
