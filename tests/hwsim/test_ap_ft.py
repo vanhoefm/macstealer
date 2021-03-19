@@ -221,6 +221,10 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
     dev.scan_for_bss(ap2['bssid'], freq="2412")
 
     for i in range(0, roams):
+        dev.dump_monitor()
+        hapd1ap.dump_monitor()
+        hapd2ap.dump_monitor()
+
         # Roaming artificially fast can make data test fail because the key is
         # set later.
         time.sleep(0.01)
@@ -239,10 +243,17 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
             raise Exception("Did not connect to correct AP")
         if (i == 0 or i == roams - 1) and test_connectivity:
             hapd2ap.wait_sta()
+            dev.dump_monitor()
+            hapd1ap.dump_monitor()
+            hapd2ap.dump_monitor()
             if conndev:
                 hwsim_utils.test_connectivity_iface(dev, hapd2ap, conndev)
             else:
                 hwsim_utils.test_connectivity(dev, hapd2ap)
+
+        dev.dump_monitor()
+        hapd1ap.dump_monitor()
+        hapd2ap.dump_monitor()
 
         if only_one_way:
             return
@@ -262,6 +273,9 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
             raise Exception("Did not connect to correct AP")
         if (i == 0 or i == roams - 1) and test_connectivity:
             hapd1ap.wait_sta()
+            dev.dump_monitor()
+            hapd1ap.dump_monitor()
+            hapd2ap.dump_monitor()
             if conndev:
                 hwsim_utils.test_connectivity_iface(dev, hapd1ap, conndev)
             else:
