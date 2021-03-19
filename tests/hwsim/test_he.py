@@ -24,7 +24,7 @@ def test_he_open(dev, apdev):
               "he_mu_edca_ac_be_ecwmax": "15"}
     hapd = hostapd.add_ap(apdev[0], params)
     if hapd.get_status_field("ieee80211ax") != "1":
-        raise Exception("STATUS did not indicate ieee80211ac=1")
+        raise Exception("STATUS did not indicate ieee80211ax=1")
     dev[0].connect("he", key_mgmt="NONE", scan_freq="2412")
     sta = hapd.get_sta(dev[0].own_addr())
     if "[HE]" not in sta['flags']:
@@ -94,7 +94,7 @@ def test_he_params(dev, apdev):
               "he_oper_centr_freq_seg1_idx": "0"}
     hapd = hostapd.add_ap(apdev[0], params)
     if hapd.get_status_field("ieee80211ax") != "1":
-        raise Exception("STATUS did not indicate ieee80211ac=1")
+        raise Exception("STATUS did not indicate ieee80211ax=1")
     dev[0].connect("he", key_mgmt="NONE", scan_freq="2412")
 
 def he_supported():
