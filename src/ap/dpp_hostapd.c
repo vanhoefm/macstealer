@@ -1189,6 +1189,7 @@ static void hostapd_dpp_rx_conf_result(struct hostapd_data *hapd, const u8 *src,
 		wpa_printf(MSG_DEBUG, "DPP: Wait for Connection Status Result");
 		eloop_cancel_timeout(hostapd_dpp_config_result_wait_timeout,
 				     hapd, NULL);
+		auth->waiting_conn_status_result = 1;
 		eloop_cancel_timeout(
 			hostapd_dpp_conn_status_result_wait_timeout,
 			hapd, NULL);
