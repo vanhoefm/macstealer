@@ -5311,6 +5311,49 @@ def run_dpp_conn_status(dev, apdev, result=0, assoc_reject=False):
     if result == 10 and "channel_list=" not in ev:
         raise Exception("Channel list not reported for no-AP")
 
+def test_dpp_conn_status_success_hostapd_configurator(dev, apdev):
+    """DPP connection status - success with hostapd as Configurator"""
+    try:
+        run_dpp_conn_status_hostapd_configurator(dev, apdev)
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+
+def run_dpp_conn_status_hostapd_configurator(dev, apdev):
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "1"})
+    check_dpp_capab(hapd)
+    conf_id = hapd.dpp_configurator_add()
+
+    cmd = "DPP_CONFIGURATOR_SIGN conf=ap-dpp configurator=%d" % conf_id
+    res = hapd.request(cmd)
+    if "FAIL" in res:
+        raise Exception("Failed to generate own configuration")
+    update_hapd_config(hapd)
+
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    id1 = hapd.dpp_qr_code(uri0)
+    res = hapd.request("DPP_BOOTSTRAP_INFO %d" % id1)
+    if "FAIL" in res:
+        raise Exception("DPP_BOOTSTRAP_INFO failed")
+    if "type=QRCODE" not in res:
+        raise Exception("DPP_BOOTSTRAP_INFO did not report correct type")
+    if "mac_addr=" + dev[0].own_addr() not in res:
+        raise Exception("DPP_BOOTSTRAP_INFO did not report correct mac_addr")
+    dev[0].set("dpp_config_processing", "2")
+    dev[0].dpp_listen(2412)
+    hapd.dpp_auth_init(peer=id1, configurator=conf_id, conf="sta-dpp",
+                       conn_status=True)
+    res = wait_auth_success(dev[0], hapd, configurator=hapd, enrollee=dev[0])
+    if 'wait_conn_status' not in res:
+        raise Exception("Configurator did not request connection status")
+    ev = hapd.wait_event(["DPP-CONN-STATUS-RESULT"], timeout=20)
+    if ev is None:
+        raise Exception("No connection status reported")
+    if "result=0" not in ev:
+        raise Exception("Unexpected connection status: " + ev)
+
 def test_dpp_mud_url(dev, apdev):
     """DPP MUD URL"""
     check_dpp_capab(dev[0])
