@@ -1469,6 +1469,8 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
 		hapd->ext_mgmt_frame_handling = atoi(value);
 	} else if (os_strcasecmp(cmd, "ext_eapol_frame_io") == 0) {
 		hapd->ext_eapol_frame_io = atoi(value);
+	} else if (os_strcasecmp(cmd, "force_backlog_bytes") == 0) {
+		hapd->force_backlog_bytes = atoi(value);
 #ifdef CONFIG_DPP
 	} else if (os_strcasecmp(cmd, "dpp_config_obj_override") == 0) {
 		os_free(hapd->dpp_config_obj_override);
