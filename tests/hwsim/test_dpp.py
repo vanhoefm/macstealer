@@ -2648,6 +2648,50 @@ def test_dpp_hostapd_configurator_fragmentation(dev, apdev):
     wait_auth_success(dev[0], hapd, configurator=hapd, enrollee=dev[0],
                       stop_responder=True)
 
+def test_dpp_hostapd_enrollee_fragmentation(dev, apdev):
+    """DPP and hostapd as Enrollee with GAS fragmentation"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd)
+    conf_id = dev[0].dpp_configurator_add()
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/6", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    conf = '{"wi-fi_tech":"infra", "discovery":{"ssid":"test"},"cred":{"akm":"psk","pass":"secret passphrase"}}' + 3000*' '
+    dev[0].set("dpp_config_obj_override", conf)
+    dev[0].set("dpp_configurator_params",
+               " conf=ap-dpp configurator=%d" % conf_id)
+    dev[0].dpp_listen(2437, role="configurator")
+    hapd.dpp_auth_init(uri=uri0, role="enrollee")
+    wait_auth_success(dev[0], hapd, configurator=dev[0], enrollee=hapd,
+                      stop_responder=True)
+
+def test_dpp_hostapd_enrollee_gas_timeout(dev, apdev):
+    """DPP and hostapd as Enrollee with GAS timeout"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd)
+    conf_id = dev[0].dpp_configurator_add()
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/6", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    conf = '{"wi-fi_tech":"infra", "discovery":{"ssid":"test"},"cred":{"akm":"psk","pass":"secret passphrase"}}' + 3000*' '
+    dev[0].set("dpp_config_obj_override", conf)
+    dev[0].set("dpp_configurator_params",
+               "conf=ap-dpp configurator=%d" % conf_id)
+    dev[0].set("ext_mgmt_frame_handling", "1")
+    dev[0].dpp_listen(2437, role="configurator")
+    hapd.dpp_auth_init(uri=uri0, role="enrollee")
+
+    for i in range(3):
+        msg = dev[0].mgmt_rx()
+        cmd = "MGMT_RX_PROCESS freq={} datarate={} ssi_signal={} frame={}".format(msg['freq'], msg['datarate'], msg['ssi_signal'], binascii.hexlify(msg['frame']).decode())
+        if "OK" not in dev[0].request(cmd):
+            raise Exception("MGMT_RX_PROCESS failed")
+    ev = hapd.wait_event(["GAS-QUERY-DONE"], timeout=10)
+    if "result=TIMEOUT" not in ev:
+        raise Exception("GAS timeout not reported")
+
 def test_dpp_hostapd_configurator_override_objects(dev, apdev):
     """DPP with hostapd as configurator and override objects"""
     check_dpp_capab(dev[0])
