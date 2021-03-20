@@ -451,6 +451,10 @@ static int wpa_supplicant_get_pmk(struct wpa_sm *sm,
 		buf = wpa_sm_alloc_eapol(sm, IEEE802_1X_TYPE_EAPOL_START,
 					 NULL, 0, &buflen, NULL);
 		if (buf) {
+			/* Set and reset eapFail to allow EAP state machine to
+			 * proceed with new authentication. */
+			eapol_sm_notify_eap_fail(sm->eapol, true);
+			eapol_sm_notify_eap_fail(sm->eapol, false);
 			wpa_sm_ether_send(sm, sm->bssid, ETH_P_EAPOL,
 					  buf, buflen);
 			os_free(buf);
