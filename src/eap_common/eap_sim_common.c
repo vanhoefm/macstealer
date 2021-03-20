@@ -1210,10 +1210,24 @@ void eap_sim_report_notification(void *msg_ctx, int notification, int aka)
 }
 
 
+static const u8 * get_last_char(const u8 *val, size_t len, char c)
+{
+	while (len > 0) {
+		const u8 *pos = &val[len - 1];
+
+		if (*pos == (u8) c)
+			return pos;
+		len--;
+	}
+
+	return NULL;
+}
+
+
 int eap_sim_anonymous_username(const u8 *id, size_t id_len)
 {
 	static const char *anonymous_id_prefix = "anonymous@";
-	const char *decorated;
+	const u8 *decorated;
 	size_t anonymous_id_len = os_strlen(anonymous_id_prefix);
 
 	if (id_len > anonymous_id_len &&
@@ -1229,11 +1243,11 @@ int eap_sim_anonymous_username(const u8 *id, size_t id_len)
 
 	/* RFC 7542 decorated username, for example:
 	 * homerealm.example.org!anonymous@otherrealm.example.net */
-	decorated = os_strrchr((const char *) id, '!');
+	decorated = get_last_char(id, id_len, '!');
 	if (decorated) {
 		decorated++;
-		return eap_sim_anonymous_username((const u8 *) decorated,
-						  os_strlen(decorated));
+		return eap_sim_anonymous_username(decorated,
+						  id + id_len - decorated);
 	}
 
 	return 0;
