@@ -5648,6 +5648,74 @@ def test_dpp_chirp_ap(dev, apdev):
                       timeout=20)
     update_hapd_config(hapd)
 
+@long_duration_test
+def test_dpp_chirp_ap_5g(dev, apdev):
+    """DPP chirp by an AP on 5 GHz"""
+    check_dpp_capab(dev[0], min_ver=2)
+
+    try:
+        hapd = None
+        hapd2 = None
+
+        params = {"ssid": "unconfigured",
+                  "country_code": "US",
+                  "hw_mode": "a",
+                  "channel": "40",
+                  "dpp_configurator_connectivity": "1"}
+        hapd2 = hostapd.add_ap(apdev[1], params)
+        check_dpp_capab(hapd2, min_ver=2)
+
+        params = {"ssid": "unconfigured",
+                  "country_code": "US",
+                  "hw_mode": "a",
+                  "channel": "36",
+                  "start_disabled": "1"}
+        hapd = hostapd.add_ap(apdev[0], params)
+        check_dpp_capab(hapd, min_ver=2)
+
+        id_h = hapd.dpp_bootstrap_gen(chan="81/1", mac=True)
+        uri = hapd.request("DPP_BOOTSTRAP_GET_URI %d" % id_h)
+
+        # First, check chirping iteration and timeout
+        if "OK" not in hapd.request("DPP_CHIRP own=%d iter=2" % id_h):
+            raise Exception("DPP_CHIRP failed")
+        chan1 = 0
+        chan6 = 0
+        chan40 = 0
+        chan149 = 0
+        for i in range(30):
+            ev = hapd.wait_event(["DPP-CHIRP-STOPPED", "DPP-TX "], timeout=60)
+            if ev is None:
+                raise Exception("DPP chirp stop not reported")
+            if "DPP-CHIRP-STOPPED" in ev:
+                break
+            if "type=13" not in ev:
+                continue
+            freq = int(ev.split(' ')[2].split('=')[1])
+            if freq == 2412:
+                chan1 += 1
+            elif freq == 2437:
+                chan6 += 1
+            elif freq == 5200:
+                chan40 += 1
+            elif freq == 5745:
+                chan149 += 1
+        if not chan1 or not chan6 or not chan40 or not chan149:
+            raise Exception("Chirp not sent on all channels")
+
+        # Then, check successful chirping
+        conf_id = dev[0].dpp_configurator_add()
+        idc = dev[0].dpp_qr_code(uri)
+        dev[0].dpp_bootstrap_set(idc, conf="ap-dpp", configurator=conf_id)
+        dev[0].dpp_listen(5200)
+        if "OK" not in hapd.request("DPP_CHIRP own=%d iter=5" % id_h):
+            raise Exception("DPP_CHIRP failed")
+        wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
+                          timeout=20)
+        update_hapd_config(hapd)
+    finally:
+        clear_regdom(hapd, dev)
+
 def test_dpp_chirp_ap_errors(dev, apdev):
     """DPP chirp errors in hostapd"""
     hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
