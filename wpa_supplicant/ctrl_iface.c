@@ -10598,15 +10598,18 @@ static int wpas_ctrl_iface_pasn_start(struct wpa_supplicant *wpa_s, char *cmd)
 	u8 bssid[ETH_ALEN];
 	int akmp = -1, cipher = -1, got_bssid = 0;
 	u16 group = 0xFFFF;
-	int id = 0;
+	u8 *comeback = NULL;
+	size_t comeback_len = 0;
+	int id = 0, ret = -1;
 
 	/*
 	 * Entry format: bssid=<BSSID> akmp=<AKMP> cipher=<CIPHER> group=<group>
+	 *    [comeback=<hexdump>]
 	 */
 	while ((token = str_token(cmd, " ", &context))) {
 		if (os_strncmp(token, "bssid=", 6) == 0) {
 			if (hwaddr_aton(token + 6, bssid))
-				return -1;
+				goto out;
 			got_bssid = 1;
 		} else if (os_strcmp(token, "akmp=PASN") == 0) {
 			akmp = WPA_KEY_MGMT_PASN;
@@ -10640,20 +10643,34 @@ static int wpas_ctrl_iface_pasn_start(struct wpa_supplicant *wpa_s, char *cmd)
 			group = atoi(token + 6);
 		} else if (os_strncmp(token, "nid=", 4) == 0) {
 			id = atoi(token + 4);
+		} else if (os_strncmp(token, "comeback=", 9) == 0) {
+			comeback_len = os_strlen(token + 9);
+			if (comeback || !comeback_len || comeback_len % 2)
+				goto out;
+
+			comeback_len /= 2;
+			comeback = os_malloc(comeback_len);
+			if (!comeback ||
+			    hexstr2bin(token + 9, comeback, comeback_len))
+				goto out;
 		} else {
 			wpa_printf(MSG_DEBUG,
 				   "CTRL: PASN Invalid parameter: '%s'",
 				   token);
-			return -1;
+			goto out;
 		}
 	}
 
 	if (!got_bssid || akmp == -1 || cipher == -1 || group == 0xFFFF) {
 		wpa_printf(MSG_DEBUG,"CTRL: PASN missing parameter");
-		return -1;
+		goto out;
 	}
 
-	return wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group, id);
+	ret = wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group, id,
+				   comeback, comeback_len);
+out:
+	os_free(comeback);
+	return ret;
 }
 
 

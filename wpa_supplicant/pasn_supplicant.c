@@ -33,6 +33,7 @@ struct wpa_pasn_auth_work {
 	int cipher;
 	u16 group;
 	int network_id;
+	struct wpabuf *comeback;
 };
 
 
@@ -56,8 +57,30 @@ static void wpas_pasn_cancel_auth_work(struct wpa_supplicant *wpa_s)
 
 
 static void wpas_pasn_auth_status(struct wpa_supplicant *wpa_s, const u8 *bssid,
-				  int akmp, int cipher, u8 status)
+				  int akmp, int cipher, u8 status,
+				  struct wpabuf *comeback,
+				  u16 comeback_after)
 {
+	if (comeback) {
+		size_t comeback_len = wpabuf_len(comeback);
+		size_t buflen = comeback_len * 2 + 1;
+		char *comeback_txt = os_malloc(buflen);
+
+		if (comeback_txt) {
+			wpa_snprintf_hex(comeback_txt, buflen,
+					 wpabuf_head(comeback), comeback_len);
+
+			wpa_msg(wpa_s, MSG_INFO, PASN_AUTH_STATUS MACSTR
+				" akmp=%s, status=%u comeback_after=%u comeback=%s",
+				MAC2STR(bssid),
+				wpa_key_mgmt_txt(akmp, WPA_PROTO_RSN),
+				status, comeback_after, comeback_txt);
+
+			os_free(comeback_txt);
+			return;
+		}
+	}
+
 	wpa_msg(wpa_s, MSG_INFO,
 		PASN_AUTH_STATUS MACSTR " akmp=%s, status=%u",
 		MAC2STR(bssid), wpa_key_mgmt_txt(akmp, WPA_PROTO_RSN),
@@ -612,7 +635,8 @@ static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
 }
 
 
-static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
+static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
+					      struct wpabuf *comeback)
 {
 	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
@@ -680,7 +704,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s)
 		wrapped_data = WPA_PASN_WRAPPED_DATA_NO;
 
 	wpa_pasn_add_parameter_ie(buf, pasn->group, wrapped_data,
-				  pubkey, true, NULL, -1);
+				  pubkey, true, comeback, -1);
 
 	if (wpa_pasn_add_wrapped_data(buf, wrapped_data_buf) < 0)
 		goto fail;
@@ -828,6 +852,10 @@ static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 	wpabuf_free(pasn->beacon_rsne_rsnxe);
 	pasn->beacon_rsne_rsnxe = NULL;
 
+	wpabuf_free(pasn->comeback);
+	pasn->comeback = NULL;
+	pasn->comeback_after = 0;
+
 #ifdef CONFIG_SAE
 	sae_clear_data(&pasn->sae);
 #endif /* CONFIG_SAE */
@@ -946,7 +974,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 			   int akmp, int cipher, u16 group, int freq,
 			   const u8 *beacon_rsne, u8 beacon_rsne_len,
 			   const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
-			   int network_id)
+			   int network_id, struct wpabuf *comeback)
 {
 	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpa_ssid *ssid = NULL;
@@ -1023,7 +1051,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 		   MAC2STR(pasn->bssid), pasn->akmp, pasn->cipher,
 		   pasn->group);
 
-	frame = wpas_pasn_build_auth_1(wpa_s);
+	frame = wpas_pasn_build_auth_1(wpa_s, comeback);
 	if (!frame) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed building 1st auth frame");
 		goto fail;
@@ -1105,6 +1133,8 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 					     wpa_s, NULL);
 			wpa_s->pasn_auth_work = NULL;
 		}
+
+		wpabuf_free(awork->comeback);
 		os_free(awork);
 		return;
 	}
@@ -1132,16 +1162,22 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	ret = wpas_pasn_start(wpa_s, awork->bssid, awork->akmp, awork->cipher,
 			      awork->group, bss->freq, rsne, *(rsne + 1) + 2,
 			      rsnxe, rsnxe ? *(rsnxe + 1) + 2 : 0,
-			      awork->network_id);
+			      awork->network_id, awork->comeback);
 	if (ret) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Failed to start PASN authentication");
 		goto fail;
 	}
 
+	/* comeback token is no longer needed at this stage */
+	wpabuf_free(awork->comeback);
+	awork->comeback = NULL;
+
 	wpa_s->pasn_auth_work = work;
 	return;
 fail:
+	wpabuf_free(awork->comeback);
+	awork->comeback = NULL;
 	os_free(awork);
 	work->ctx = NULL;
 	radio_work_done(work);
@@ -1149,7 +1185,8 @@ fail:
 
 
 int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
-			 int akmp, int cipher, u16 group, int network_id)
+			 int akmp, int cipher, u16 group, int network_id,
+			 const u8 *comeback, size_t comeback_len)
 {
 	struct wpa_pasn_auth_work *awork;
 	struct wpa_bss *bss;
@@ -1195,8 +1232,17 @@ int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	awork->group = group;
 	awork->network_id = network_id;
 
+	if (comeback && comeback_len) {
+		awork->comeback = wpabuf_alloc_copy(comeback, comeback_len);
+		if (!awork->comeback) {
+			os_free(awork);
+			return -1;
+		}
+	}
+
 	if (radio_add_work(wpa_s, bss->freq, "pasn-start-auth", 1,
 			   wpas_pasn_auth_start_cb, awork) < 0) {
+		wpabuf_free(awork->comeback);
 		os_free(awork);
 		return -1;
 	}
@@ -1216,9 +1262,30 @@ void wpas_pasn_auth_stop(struct wpa_supplicant *wpa_s)
 	wpa_printf(MSG_DEBUG, "PASN: Stopping authentication");
 
 	wpas_pasn_auth_status(wpa_s, pasn->bssid, pasn->akmp, pasn->cipher,
-			      pasn->status);
+			      pasn->status, pasn->comeback,
+			      pasn->comeback_after);
 
 	wpas_pasn_reset(wpa_s);
+}
+
+
+static int wpas_pasn_immediate_retry(struct wpa_supplicant *wpa_s,
+				     struct wpas_pasn *pasn,
+				     struct wpa_pasn_params_data *params)
+{
+	int akmp = pasn->akmp;
+	int cipher = pasn->cipher;
+	u16 group = pasn->group;
+	u8 bssid[ETH_ALEN];
+	int network_id = pasn->ssid ? pasn->ssid->id : 0;
+
+	wpa_printf(MSG_DEBUG, "PASN: Immediate retry");
+	os_memcpy(bssid, pasn->bssid, ETH_ALEN);
+	wpas_pasn_reset(wpa_s);
+
+	return wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group,
+				    network_id,
+				    params->comeback, params->comeback_len);
 }
 
 
@@ -1315,10 +1382,26 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		goto fail;
 	}
 
-	/* TODO: handle comeback flow */
 	if (status == WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Authentication temporarily rejected");
+
+		if (pasn_params.comeback && pasn_params.comeback_len) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Comeback token available. After=%u",
+				   pasn_params.after);
+
+			if (!pasn_params.after)
+				return wpas_pasn_immediate_retry(wpa_s, pasn,
+								 &pasn_params);
+
+			pasn->comeback = wpabuf_alloc_copy(
+				pasn_params.comeback, pasn_params.comeback_len);
+			if (pasn->comeback)
+				pasn->comeback_after = pasn_params.after;
+		}
+
+		pasn->status = status;
 		goto fail;
 	}
 
@@ -1456,7 +1539,11 @@ fail:
 	 * the frame and terminate the authentication exchange. However, better
 	 * reply to the AP with an error status.
 	 */
-	pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+	if (status == WLAN_STATUS_SUCCESS)
+		pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+	else
+		pasn->status = status;
+
 	wpas_pasn_auth_stop(wpa_s);
 	return -1;
 }
