@@ -5874,6 +5874,40 @@ def run_dpp_nfc_negotiated_handover(dev, curve0=None, curve1=None,
                          conf=conf)
     wait_auth_success(dev[1], dev[0], configurator=dev[0], enrollee=dev[1])
 
+def test_dpp_nfc_errors_hostapd(dev, apdev):
+    """DPP NFC operation failures in hostapd"""
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+
+    id0 = dev[0].dpp_bootstrap_gen(type="nfc-uri", chan="81/11", mac=True,
+                                   curve="secp384r1")
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd)
+
+    id_h = hapd.dpp_bootstrap_gen(type="nfc-uri", chan="81/6", mac=True)
+    uri_h = hapd.request("DPP_BOOTSTRAP_GET_URI %d" % id_h)
+
+    tests = ["",
+             "own=123456789",
+             "own=%d" % id_h,
+             "own=%d uri=%s" % (id_h, "foo")]
+    for t in tests:
+        if "FAIL" not in hapd.request("DPP_NFC_HANDOVER_REQ " + t):
+            raise Exception("Invalid DPP_NFC_HANDOVER_REQ accepted")
+        if "FAIL" not in hapd.request("DPP_NFC_HANDOVER_SEL " + t):
+            raise Exception("Invalid DPP_NFC_HANDOVER_SEL accepted")
+
+    # DPP: Peer (NFC Handover Selector) used different curve
+    if "FAIL" not in hapd.request("DPP_NFC_HANDOVER_SEL own=%d uri=%s" % (id_h, uri0)):
+        raise Exception("Invalid DPP_NFC_HANDOVER_SEL accepted")
+
+    # DPP: No common channel found
+    if "FAIL" not in hapd.request("DPP_NFC_HANDOVER_REQ own=%d uri=%s" % (id_h, uri0)):
+        raise Exception("DPP_NFC_HANDOVER_REQ with local error accepted")
+
 def test_dpp_with_p2p_device(dev, apdev):
     """DPP exchange when driver uses a separate P2P Device interface"""
     check_dpp_capab(dev[0])
