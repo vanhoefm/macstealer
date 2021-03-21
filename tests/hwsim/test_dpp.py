@@ -5793,6 +5793,24 @@ def test_dpp_nfc_uri_hostapd(dev, apdev):
     dev[0].dpp_auth_init(nfc_uri=uri, configurator=conf_id, conf="ap-dpp")
     wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd)
 
+def test_dpp_nfc_uri_hostapd_tag_read(dev, apdev):
+    """DPP bootstrapping via NFC URI record (hostapd reading tag)"""
+    check_dpp_capab(dev[0])
+
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured"})
+    check_dpp_capab(hapd)
+
+    id = dev[0].dpp_bootstrap_gen(type="nfc-uri", chan="81/1", mac=True)
+    uri = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id)
+    info = dev[0].request("DPP_BOOTSTRAP_INFO %d" % id)
+    conf_id = dev[0].dpp_configurator_add()
+    dev[0].set("dpp_configurator_params",
+               "conf=ap-dpp configurator=%d" % conf_id)
+    dev[0].dpp_listen(2412)
+
+    hapd.dpp_auth_init(nfc_uri=uri, role="enrollee")
+    wait_auth_success(dev[0], hapd, configurator=dev[0], enrollee=hapd)
+
 def test_dpp_nfc_negotiated_handover(dev, apdev):
     """DPP bootstrapping via NFC negotiated handover"""
     run_dpp_nfc_negotiated_handover(dev)
