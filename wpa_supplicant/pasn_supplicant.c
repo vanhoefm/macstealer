@@ -636,7 +636,7 @@ static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
 
 
 static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
-					      struct wpabuf *comeback)
+					      const struct wpabuf *comeback)
 {
 	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
