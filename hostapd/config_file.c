@@ -4675,6 +4675,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 				   line, pos);
 			return 1;
 		}
+	} else if (os_strcmp(buf, "pasn_comeback_after") == 0) {
+		bss->pasn_comeback_after = atoi(pos);
 #endif /* CONFIG_PASN */
 	} else {
 		wpa_printf(MSG_ERROR,

@@ -880,6 +880,12 @@ struct hostapd_bss_config {
 #endif /* CONFIG_TESTING_OPTIONS */
 
 	int *pasn_groups;
+
+	/*
+	 * The time in TUs after which the non-AP STA is requested to retry the
+	 * PASN authentication in case there are too many parallel operations.
+	 */
+	u16 pasn_comeback_after;
 #endif /* CONFIG_PASN */
 
 	unsigned int unsol_bcast_probe_resp_interval;

@@ -702,13 +702,15 @@ static int use_anti_clogging(struct hostapd_data *hapd)
 
 	for (sta = hapd->sta_list; sta; sta = sta->next) {
 #ifdef CONFIG_SAE
-		if (!sta->sae)
-			continue;
-		if (sta->sae->state != SAE_COMMITTED &&
-		    sta->sae->state != SAE_CONFIRMED)
-			continue;
-		open++;
+		if (sta->sae &&
+		    (sta->sae->state == SAE_COMMITTED ||
+		     sta->sae->state == SAE_CONFIRMED))
+			open++;
 #endif /* CONFIG_SAE */
+#ifdef CONFIG_PASN
+		if (sta->pasn && sta->pasn->ecdh)
+			open++;
+#endif /* CONFIG_PASN */
 		if (open >= hapd->conf->anti_clogging_threshold)
 			return 1;
 	}
@@ -806,7 +808,8 @@ static struct wpabuf * auth_build_token_req(struct hostapd_data *hapd,
 	if (buf == NULL)
 		return NULL;
 
-	wpabuf_put_le16(buf, group); /* Finite Cyclic Group */
+	if (group)
+		wpabuf_put_le16(buf, group); /* Finite Cyclic Group */
 
 	if (h2e) {
 		/* Encapsulate Anti-clogging Token field in a container IE */
@@ -2891,6 +2894,54 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 }
 
 
+static void handle_auth_pasn_comeback(struct hostapd_data *hapd,
+				      struct sta_info *sta, u16 group)
+{
+	struct wpabuf *buf, *comeback;
+	int ret;
+
+	wpa_printf(MSG_DEBUG,
+		   "PASN: Building comeback frame 2. Comeback after=%u",
+		   hapd->conf->pasn_comeback_after);
+
+	buf = wpabuf_alloc(1500);
+	if (!buf)
+		return;
+
+	wpa_pasn_build_auth_header(buf, hapd->own_addr, hapd->own_addr,
+				   sta->addr, 2,
+				   WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY);
+
+	/*
+	 * Do not include the group as a part of the token since it is not going
+	 * to be used.
+	 */
+	comeback = auth_build_token_req(hapd, 0, sta->addr, 0);
+	if (!comeback) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: Failed sending auth with comeback");
+		wpabuf_free(buf);
+		return;
+	}
+
+	wpa_pasn_add_parameter_ie(buf, group,
+				  WPA_PASN_WRAPPED_DATA_NO,
+				  NULL, 0, comeback,
+				  hapd->conf->pasn_comeback_after);
+	wpabuf_free(comeback);
+
+	wpa_printf(MSG_DEBUG,
+		   "PASN: comeback: STA=" MACSTR, MAC2STR(sta->addr));
+
+	ret = hostapd_drv_send_mlme(hapd, wpabuf_head(buf), wpabuf_len(buf), 0,
+				    NULL, 0, 0);
+	if (ret)
+		wpa_printf(MSG_INFO, "PASN: Failed to send comeback frame 2");
+
+	wpabuf_free(buf);
+}
+
+
 static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 				 struct sta_info *sta,
 				 struct rsn_pmksa_cache_entry *pmksa,
@@ -3131,6 +3182,25 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 		wpa_printf(MSG_DEBUG, "PASN: Invalid public key");
 		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 		goto send_resp;
+	}
+
+	if (pasn_params.comeback) {
+		wpa_printf(MSG_DEBUG, "PASN: Checking peer comeback token");
+
+		ret = check_comeback_token(hapd, sta->addr,
+					   pasn_params.comeback,
+					   pasn_params.comeback_len);
+
+		if (ret) {
+			wpa_printf(MSG_DEBUG, "PASN: Invalid comeback token");
+			status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+			goto send_resp;
+		}
+	} else if (use_anti_clogging(hapd)) {
+		wpa_printf(MSG_DEBUG, "PASN: Respond with comeback");
+		handle_auth_pasn_comeback(hapd, sta, pasn_params.group);
+		ap_free_sta(hapd, sta);
+		return;
 	}
 
 	sta->pasn->ecdh = crypto_ecdh_init(pasn_params.group);
