@@ -37,6 +37,14 @@ struct wpa_pasn_auth_work {
 };
 
 
+static void wpas_pasn_free_auth_work(struct wpa_pasn_auth_work *awork)
+{
+	wpabuf_free(awork->comeback);
+	awork->comeback = NULL;
+	os_free(awork);
+}
+
+
 static void wpas_pasn_auth_work_timeout(void *eloop_ctx, void *timeout_ctx)
 {
 	struct wpa_supplicant *wpa_s = eloop_ctx;
@@ -1134,8 +1142,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 			wpa_s->pasn_auth_work = NULL;
 		}
 
-		wpabuf_free(awork->comeback);
-		os_free(awork);
+		wpas_pasn_free_auth_work(awork);
 		return;
 	}
 
@@ -1176,9 +1183,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	wpa_s->pasn_auth_work = work;
 	return;
 fail:
-	wpabuf_free(awork->comeback);
-	awork->comeback = NULL;
-	os_free(awork);
+	wpas_pasn_free_auth_work(awork);
 	work->ctx = NULL;
 	radio_work_done(work);
 }
@@ -1235,15 +1240,14 @@ int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	if (comeback && comeback_len) {
 		awork->comeback = wpabuf_alloc_copy(comeback, comeback_len);
 		if (!awork->comeback) {
-			os_free(awork);
+			wpas_pasn_free_auth_work(awork);
 			return -1;
 		}
 	}
 
 	if (radio_add_work(wpa_s, bss->freq, "pasn-start-auth", 1,
 			   wpas_pasn_auth_start_cb, awork) < 0) {
-		wpabuf_free(awork->comeback);
-		os_free(awork);
+		wpas_pasn_free_auth_work(awork);
 		return -1;
 	}
 
