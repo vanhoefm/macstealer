@@ -12035,6 +12035,23 @@ static int nl80211_dpp_listen(void *priv, bool enable)
 #endif /* CONFIG_DPP */
 
 
+#ifdef CONFIG_TESTING_OPTIONS
+static int testing_nl80211_register_frame(void *priv, u16 type,
+					  const u8 *match, size_t match_len,
+					  bool multicast)
+{
+	struct i802_bss *bss = priv;
+	struct nl_sock *handle;
+
+	if (!bss->nl_mgmt)
+		return -1;
+	handle = (void *) (((intptr_t) bss->nl_mgmt) ^ ELOOP_SOCKET_INVALID);
+	return nl80211_register_frame(bss, handle, type, match, match_len,
+				      multicast);
+}
+#endif /* CONFIG_TESTING_OPTIONS */
+
+
 const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.name = "nl80211",
 	.desc = "Linux nl80211/cfg80211",
@@ -12173,4 +12190,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #ifdef CONFIG_DPP
 	.dpp_listen = nl80211_dpp_listen,
 #endif /* CONFIG_DPP */
+#ifdef CONFIG_TESTING_OPTIONS
+	.register_frame = testing_nl80211_register_frame,
+#endif /* CONFIG_TESTING_OPTIONS */
 };

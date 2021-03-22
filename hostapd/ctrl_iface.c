@@ -2564,6 +2564,34 @@ static int hostapd_ctrl_get_pmk(struct hostapd_data *hapd, const char *cmd,
 	return wpa_snprintf_hex(buf, buflen, pmk, pmk_len);
 }
 
+
+static int hostapd_ctrl_register_frame(struct hostapd_data *hapd,
+				       const char *cmd)
+{
+	u16 type;
+	char *pos, *end;
+	u8 match[10];
+	size_t match_len;
+	bool multicast = false;
+
+	type = strtol(cmd, &pos, 16);
+	if (*pos != ' ')
+		return -1;
+	pos++;
+	end = os_strchr(pos, ' ');
+	if (end) {
+		match_len = end - pos;
+		multicast = os_strstr(end, "multicast") != NULL;
+	} else {
+		match_len = os_strlen(pos) / 2;
+	}
+	if (hexstr2bin(pos, match, match_len))
+		return -1;
+
+	return hostapd_drv_register_frame(hapd, type, match, match_len,
+					  multicast);
+}
+
 #endif /* CONFIG_TESTING_OPTIONS */
 
 
@@ -3648,6 +3676,9 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 	} else if (os_strncmp(buf, "GET_PMK ", 8) == 0) {
 		reply_len = hostapd_ctrl_get_pmk(hapd, buf + 8, reply,
 						 reply_size);
+	} else if (os_strncmp(buf, "REGISTER_FRAME ", 15) == 0) {
+		if (hostapd_ctrl_register_frame(hapd, buf + 16) < 0)
+			reply_len = -1;
 #endif /* CONFIG_TESTING_OPTIONS */
 	} else if (os_strncmp(buf, "CHAN_SWITCH ", 12) == 0) {
 		if (hostapd_ctrl_iface_chan_switch(hapd->iface, buf + 12))
