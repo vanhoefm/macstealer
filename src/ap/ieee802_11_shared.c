@@ -451,7 +451,7 @@ static void hostapd_ext_capab_byte(struct hostapd_data *hapd, u8 *pos, int idx)
 u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid)
 {
 	u8 *pos = eid;
-	u8 len = 12, i;
+	u8 len = EXT_CAPA_MAX_LEN, i;
 
 	if (len < hapd->iface->extended_capa_len)
 		len = hapd->iface->extended_capa_len;
@@ -464,6 +464,11 @@ u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid)
 		if (i < hapd->iface->extended_capa_len) {
 			*pos &= ~hapd->iface->extended_capa_mask[i];
 			*pos |= hapd->iface->extended_capa[i];
+		}
+
+		if (i < EXT_CAPA_MAX_LEN) {
+			*pos &= ~hapd->conf->ext_capa_mask[i];
+			*pos |= hapd->conf->ext_capa[i];
 		}
 	}
 

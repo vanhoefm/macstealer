@@ -267,6 +267,8 @@ struct airtime_sta_weight {
 	u8 addr[ETH_ALEN];
 };
 
+#define EXT_CAPA_MAX_LEN 15
+
 /**
  * struct hostapd_bss_config - Per-BSS configuration
  */
@@ -889,6 +891,9 @@ struct hostapd_bss_config {
 #endif /* CONFIG_PASN */
 
 	unsigned int unsol_bcast_probe_resp_interval;
+
+	u8 ext_capa_mask[EXT_CAPA_MAX_LEN];
+	u8 ext_capa[EXT_CAPA_MAX_LEN];
 };
 
 /**
