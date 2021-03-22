@@ -2458,12 +2458,13 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		bss->ieee802_1x = atoi(pos);
 	} else if (os_strcmp(buf, "eapol_version") == 0) {
 		int eapol_version = atoi(pos);
-
 #ifdef CONFIG_MACSEC
-		if (eapol_version < 1 || eapol_version > 3) {
+		int max_ver = 3;
 #else /* CONFIG_MACSEC */
-		if (eapol_version < 1 || eapol_version > 2) {
+		int max_ver = 2;
 #endif /* CONFIG_MACSEC */
+
+		if (eapol_version < 1 || eapol_version > max_ver) {
 			wpa_printf(MSG_ERROR,
 				   "Line %d: invalid EAPOL version (%d): '%s'.",
 				   line, eapol_version, pos);
