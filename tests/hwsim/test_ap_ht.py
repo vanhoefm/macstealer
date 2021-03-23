@@ -1447,19 +1447,19 @@ def test_ap_ht_op_class_117(dev, apdev):
 def test_ap_ht_op_class_118(dev, apdev):
     """HT20 on operationg class 118"""
     for o in [False, True]:
-        run_op_class(dev, apdev, "a", "60", "RS", "", "0", "5300", 118,
+        run_op_class(dev, apdev, "a", "60", "PA", "", "0", "5300", 118,
                      use_op_class=o)
 
 def test_ap_ht_op_class_119(dev, apdev):
     """HT40 on operationg class 119"""
     for o in [False, True]:
-        run_op_class(dev, apdev, "a", "60", "RS", "[HT40+]", "1", "5300", 119,
+        run_op_class(dev, apdev, "a", "60", "PA", "[HT40+]", "1", "5300", 119,
                      use_op_class=o)
 
 def test_ap_ht_op_class_120(dev, apdev):
     """HT40 on operationg class 120"""
     for o in [False, True]:
-        run_op_class(dev, apdev, "a", "64", "RS", "[HT40-]", "-1", "5320", 120,
+        run_op_class(dev, apdev, "a", "64", "PA", "[HT40-]", "-1", "5320", 120,
                      use_op_class=o)
 
 def test_ap_ht_op_class_121(dev, apdev):
