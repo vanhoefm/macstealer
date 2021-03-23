@@ -6284,6 +6284,25 @@ def test_dpp_pfs_ap_0_sta_ver1(dev, apdev):
     hapd = start_dpp_pfs_ap(apdev[0], 0)
     run_dpp_pfs_sta(dev[0], 0, pfs_expected=False)
 
+def test_dpp_pfs_errors(dev, apdev):
+    """DPP PFS error cases"""
+    check_dpp_capab(dev[0], min_ver=2)
+    hapd = start_dpp_pfs_ap(apdev[0], 1)
+    tests = [(1, "dpp_pfs_init"),
+             (1, "crypto_ecdh_init;dpp_pfs_init"),
+             (1, "wpabuf_alloc;dpp_pfs_init")]
+    for count, func in tests:
+        with alloc_fail(dev[0], count, func):
+            dev[0].connect("dpp", key_mgmt="DPP", scan_freq="2412",
+                           ieee80211w="2", dpp_pfs="1",
+                           dpp_csign=params1_csign,
+                           dpp_connector=params1_sta_connector,
+                           dpp_netaccesskey=params1_sta_netaccesskey)
+            dev[0].request("REMOVE_NETWORK all")
+            dev[0].wait_disconnected()
+            dev[0].dump_monitor()
+            hapd.dump_monitor()
+
 def test_dpp_reconfig_connector(dev, apdev):
     """DPP reconfiguration connector"""
     try:
