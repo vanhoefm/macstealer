@@ -4267,7 +4267,7 @@ int wpa_wnmsleep_bigtk_subelem(struct wpa_state_machine *sm, u8 *pos)
 	wpa_printf(MSG_DEBUG, "WNM: BIGTK Key ID %u in WNM-Sleep Mode exit",
 		   gsm->GN_bigtk);
 	wpa_hexdump_key(MSG_DEBUG, "WNM: BIGTK in WNM-Sleep Mode exit",
-			gsm->IGTK[gsm->GN_bigtk - 6], len);
+			gsm->BIGTK[gsm->GN_bigtk - 6], len);
 
 	return pos - start;
 }
