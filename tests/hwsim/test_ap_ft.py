@@ -137,7 +137,7 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
               sae_password_id=None, sae_and_psk=False, pmksa_caching=False,
               roam_with_reassoc=False, also_non_ft=False, only_one_way=False,
               wait_before_roam=0, return_after_initial=False, ieee80211w="1",
-              sae_transition=False):
+              sae_transition=False, beacon_prot=False):
     logger.info("Connect to first AP")
 
     copts = {}
@@ -151,6 +151,8 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
         copts["group_mgmt"] = group_mgmt
     if ocv:
         copts["ocv"] = ocv
+    if beacon_prot:
+        copts["beacon_prot"] = "1"
     if eap:
         if pmksa_caching:
             copts["ft_eap_pmksa_caching"] = "1"
@@ -491,15 +493,23 @@ def test_ap_ft_pmf_required_over_ds(dev, apdev):
     """WPA2-PSK-FT AP with PMF required on STA (over DS)"""
     run_ap_ft_pmf(dev, apdev, "2", over_ds=True)
 
-def run_ap_ft_pmf(dev, apdev, ieee80211w, over_ds=False):
+def test_ap_ft_pmf_beacon_prot(dev, apdev):
+    """WPA2-PSK-FT AP with PMF and beacon protection"""
+    run_ap_ft_pmf(dev, apdev, "1", beacon_prot=True)
+
+def run_ap_ft_pmf(dev, apdev, ieee80211w, over_ds=False, beacon_prot=False):
     ssid = "test-ft"
     passphrase = "12345678"
 
     params = ft_params1(ssid=ssid, passphrase=passphrase)
     params["ieee80211w"] = "2"
+    if beacon_prot:
+        params["beacon_prot"] = "1"
     hapd0 = hostapd.add_ap(apdev[0], params)
     params = ft_params2(ssid=ssid, passphrase=passphrase)
     params["ieee80211w"] = "2"
+    if beacon_prot:
+        params["beacon_prot"] = "1"
     hapd1 = hostapd.add_ap(apdev[1], params)
 
     Wlantest.setup(hapd0)
@@ -508,7 +518,7 @@ def run_ap_ft_pmf(dev, apdev, ieee80211w, over_ds=False):
     wt.add_passphrase(passphrase)
 
     run_roams(dev[0], apdev, hapd0, hapd1, ssid, passphrase,
-              ieee80211w=ieee80211w, over_ds=over_ds)
+              ieee80211w=ieee80211w, over_ds=over_ds, beacon_prot=beacon_prot)
 
 def test_ap_ft_pmf_required_mismatch(dev, apdev):
     """WPA2-PSK-FT AP with PMF required on STA but AP2 not enabling PMF"""
