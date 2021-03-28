@@ -512,6 +512,19 @@ static int wpa_supplicant_ctrl_iface_set(struct wpa_supplicant *wpa_s,
 	} else if (os_strcasecmp(cmd, "EAPOL::maxStart") == 0) {
 		eapol_sm_configure(wpa_s->eapol,
 				   -1, -1, -1, atoi(value));
+#ifdef CONFIG_TESTING_OPTIONS
+	} else if (os_strcasecmp(cmd, "EAPOL::portControl") == 0) {
+		if (os_strcmp(value, "Auto") == 0)
+			eapol_sm_notify_portControl(wpa_s->eapol, Auto);
+		else if (os_strcmp(value, "ForceUnauthorized") == 0)
+			eapol_sm_notify_portControl(wpa_s->eapol,
+						    ForceUnauthorized);
+		else if (os_strcmp(value, "ForceAuthorized") == 0)
+			eapol_sm_notify_portControl(wpa_s->eapol,
+						    ForceAuthorized);
+		else
+			ret = -1;
+#endif /* CONFIG_TESTING_OPTIONS */
 	} else if (os_strcasecmp(cmd, "dot11RSNAConfigPMKLifetime") == 0) {
 		if (wpa_sm_set_param(wpa_s->wpa, RSNA_PMK_LIFETIME,
 				     atoi(value))) {
