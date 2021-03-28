@@ -1067,6 +1067,43 @@ def test_ap_wps_pbc_overlap_2sta(dev, apdev):
     dev[0].flush_scan_cache()
     dev[1].flush_scan_cache()
 
+def test_ap_wps_pbc_session_workaround(dev, apdev):
+    """WPS PBC session overlap workaround"""
+    ssid = "test-wps-pbc-overlap"
+    hapd = hostapd.add_ap(apdev[0],
+                          {"ssid": ssid, "eap_server": "1", "wps_state": "2",
+                           "wpa_passphrase": "12345678", "wpa": "2",
+                           "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP"})
+    bssid = hapd.own_addr()
+    hapd.request("WPS_PBC")
+    dev[0].scan_for_bss(bssid, freq="2412")
+    dev[0].request("WPS_PBC " + bssid)
+    dev[0].wait_connected(timeout=30)
+
+    dev[0].request("REMOVE_NETWORK all")
+    dev[0].wait_disconnected(timeout=30)
+    dev[0].dump_monitor()
+    # Trigger AP/Registrar to ignore PBC activation immediately after
+    # successfully completed provisioning
+    dev[0].request("WPS_PBC " + bssid)
+    ev = dev[0].wait_event(["CTRL-EVENT-SCAN-RESULTS"], timeout=10)
+    if ev is None:
+        raise Exception("No scan results reported")
+    dev[0].request("WPS_CANCEL")
+    dev[0].dump_monitor()
+
+    # Verify that PBC session overlap does not prevent connection
+    hapd.request("WPS_PBC")
+    dev[1].scan_for_bss(bssid, freq="2412")
+    dev[1].request("WPS_PBC " + bssid)
+    dev[1].wait_connected()
+    dev[1].request("REMOVE_NETWORK all")
+    dev[1].wait_disconnected()
+
+    hapd.request("DISABLE")
+    dev[0].flush_scan_cache()
+    dev[1].flush_scan_cache()
+
 @remote_compatible
 def test_ap_wps_cancel(dev, apdev):
     """WPS AP cancelling enabled config method"""
