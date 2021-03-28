@@ -44,10 +44,12 @@ from wpasupplicant import WpaSupplicant
 from utils import *
 from test_ap_eap import int_eap_server_params
 
-def wps_start_ap(apdev, ssid="test-wps-conf"):
+def wps_start_ap(apdev, ssid="test-wps-conf", extra_cred=None):
     params = {"ssid": ssid, "eap_server": "1", "wps_state": "2",
               "wpa_passphrase": "12345678", "wpa": "2",
               "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP"}
+    if extra_cred:
+        params['extra_cred'] = extra_cred
     return hostapd.add_ap(apdev, params)
 
 @remote_compatible
@@ -10552,3 +10554,15 @@ def start_wps_er(dev):
     ev = dev.wait_event(["WPS-ER-AP-ADD"], timeout=15)
     if ev is None:
         raise Exception("AP discovery timed out")
+
+def test_ap_wps_registrar_init_errors(dev, apdev):
+    """WPS Registrar init errors"""
+    hapd = wps_start_ap(apdev[0], extra_cred="wps-mixed-cred")
+    hapd.disable()
+    tests = [(1, "wps_registrar_init"),
+             (1, "wpabuf_alloc_copy;wps_registrar_init"),
+             (1, "wps_set_ie;wps_registrar_init")]
+    for count, func in tests:
+        with alloc_fail(hapd, count, func):
+            if "FAIL" not in hapd.request("ENABLE"):
+                raise Exception("ENABLE succeeded unexpectedly")
