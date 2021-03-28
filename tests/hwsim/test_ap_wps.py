@@ -10475,3 +10475,43 @@ def run_ap_wps_ap_timeout(dev, apdev, cmd):
     logger.info("BSS after timeout: " + str(bss))
     if bss['ie'].endswith("0106ffffffffffff"):
         raise Exception("Authorized MAC not removed")
+
+def test_ap_wps_er_unsubscribe_errors(dev, apdev):
+    """WPS ER and UNSUBSCRIBE errors"""
+    start_wps_ap(apdev[0])
+    tests = [(1, "http_client_url_parse;wps_er_ap_unsubscribe"),
+             (1, "wpabuf_alloc;wps_er_ap_unsubscribe"),
+             (1, "http_client_addr;wps_er_ap_unsubscribe")]
+    try:
+        for count, func in tests:
+            start_wps_er(dev[0])
+            with alloc_fail(dev[0], count, func):
+                dev[0].request("WPS_ER_STOP")
+            dev[0].request("REMOVE_NETWORK all")
+            dev[0].wait_disconnected()
+            dev[0].dump_monitor()
+    finally:
+        dev[0].request("WPS_ER_STOP")
+
+def start_wps_ap(apdev):
+    ssid = "wps-er-ap-config"
+    ap_pin = "12345670"
+    ap_uuid = "27ea801a-9e5c-4e73-bd82-f89cbcd10d7e"
+    params = {"ssid": ssid, "eap_server": "1", "wps_state": "2",
+              "wpa_passphrase": "12345678", "wpa": "2",
+              "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP",
+              "device_name": "Wireless AP", "manufacturer": "Company",
+              "model_name": "WAP", "model_number": "123",
+              "serial_number": "12345", "device_type": "6-0050F204-1",
+              "os_version": "01020300",
+              "config_methods": "label push_button",
+              "ap_pin": ap_pin, "uuid": ap_uuid, "upnp_iface": "lo"}
+    hostapd.add_ap(apdev, params)
+
+def start_wps_er(dev):
+    ssid = "wps-er-ap-config"
+    dev.connect(ssid, psk="12345678", scan_freq="2412")
+    dev.request("WPS_ER_START ifname=lo")
+    ev = dev.wait_event(["WPS-ER-AP-ADD"], timeout=15)
+    if ev is None:
+        raise Exception("AP discovery timed out")
