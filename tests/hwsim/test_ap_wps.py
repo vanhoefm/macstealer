@@ -4358,10 +4358,12 @@ def wps_er_stop(dev, sock, server, on_alloc_fail=False):
             raise Exception("No WPS-ER-AP-REMOVE event on max-age timeout")
     dev.request("WPS_ER_STOP")
 
-def run_wps_er_proto_test(dev, handler, no_event_url=False, location_url=None):
+def run_wps_er_proto_test(dev, handler, no_event_url=False, location_url=None,
+                          max_age=1):
     try:
         uuid = '27ea801a-9e5c-4e73-bd82-f89cbcd10d7e'
-        server, sock = wps_er_start(dev, handler, location_url=location_url)
+        server, sock = wps_er_start(dev, handler, location_url=location_url,
+                                    max_age=max_age)
         global wps_event_url
         wps_event_url = None
         server.handle_request()
@@ -5104,6 +5106,15 @@ def test_ap_wps_er_http_client(dev, apdev):
             self.wfile.write(b"GET / HTTP/1.1\r\n\r\n")
     run_wps_er_proto_test(dev[0], WPSAPHTTPServer_req_as_resp,
                           no_event_url=True)
+
+def test_ap_wps_er_http_client_timeout(dev, apdev):
+    """WPS ER and HTTP client timeout"""
+    class WPSAPHTTPServer_timeout(WPSAPHTTPServer):
+        def handle_upnp_info(self):
+            time.sleep(31)
+            self.wfile.write(b"GET / HTTP/1.1\r\n\r\n")
+    run_wps_er_proto_test(dev[0], WPSAPHTTPServer_timeout,
+                          no_event_url=True, max_age=60)
 
 def test_ap_wps_init_oom(dev, apdev):
     """wps_init OOM cases"""
