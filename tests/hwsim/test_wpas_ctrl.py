@@ -1402,6 +1402,8 @@ def test_wpas_ctrl_driver_event(dev, apdev):
     """wpa_supplicant ctrl_iface DRIVER_EVENT"""
     if "FAIL" not in dev[0].request("DRIVER_EVENT foo"):
         raise Exception("Invalid DRIVER_EVENT accepted")
+    if "OK" not in dev[0].request("DRIVER_EVENT ASSOC reassoc=1 req_ies=0000 resp_ies=0000 resp_frame=0000 beacon_ies=0000 freq=2412 wmm::info_bitmap=0 wmm::uapsd_queues=0 addr=02:02:02:02:02:02 authorized=0 key_replay_ctr=00 ptk_kck=00 ptk_kek=00 subnet_status=0 fils_erp_next_seq_num=0 fils_pmk=00 fils_pmkid=" + 16*"00"):
+        raise Exception("DRIVER_EVENT ASSOC did not succeed")
 
 @remote_compatible
 def test_wpas_ctrl_eapol_rx(dev, apdev):

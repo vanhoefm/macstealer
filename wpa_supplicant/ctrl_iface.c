@@ -9313,6 +9313,132 @@ fail:
 }
 
 
+static int wpas_ctrl_iface_driver_event_assoc(struct wpa_supplicant *wpa_s,
+					      char *param)
+{
+	union wpa_event_data event;
+	struct assoc_info *ai;
+	char *ctx = NULL;
+	int ret = -1;
+	struct wpabuf *req_ies = NULL;
+	struct wpabuf *resp_ies = NULL;
+	struct wpabuf *resp_frame = NULL;
+	struct wpabuf *beacon_ies = NULL;
+	struct wpabuf *key_replay_ctr = NULL;
+	struct wpabuf *ptk_kck = NULL;
+	struct wpabuf *ptk_kek = NULL;
+	struct wpabuf *fils_pmk = NULL;
+	char *str, *pos;
+	u8 addr[ETH_ALEN];
+	u8 fils_pmkid[PMKID_LEN];
+
+	os_memset(&event, 0, sizeof(event));
+	ai = &event.assoc_info;
+
+	while ((str = str_token(param, " ", &ctx))) {
+		pos = os_strchr(str, '=');
+		if (!pos)
+			goto fail;
+		*pos++ = '\0';
+
+		if (os_strcmp(str, "reassoc") == 0) {
+			ai->reassoc = atoi(pos);
+		} else if (os_strcmp(str, "req_ies") == 0) {
+			wpabuf_free(req_ies);
+			req_ies = wpabuf_parse_bin(pos);
+			if (!req_ies)
+				goto fail;
+			ai->req_ies = wpabuf_head(req_ies);
+			ai->req_ies_len = wpabuf_len(req_ies);
+		} else if (os_strcmp(str, "resp_ies") == 0) {
+			wpabuf_free(resp_ies);
+			resp_ies = wpabuf_parse_bin(pos);
+			if (!resp_ies)
+				goto fail;
+			ai->resp_ies = wpabuf_head(resp_ies);
+			ai->resp_ies_len = wpabuf_len(resp_ies);
+		} else if (os_strcmp(str, "resp_frame") == 0) {
+			wpabuf_free(resp_frame);
+			resp_frame = wpabuf_parse_bin(pos);
+			if (!resp_frame)
+				goto fail;
+			ai->resp_frame = wpabuf_head(resp_frame);
+			ai->resp_frame_len = wpabuf_len(resp_frame);
+		} else if (os_strcmp(str, "beacon_ies") == 0) {
+			wpabuf_free(beacon_ies);
+			beacon_ies = wpabuf_parse_bin(pos);
+			if (!beacon_ies)
+				goto fail;
+			ai->beacon_ies = wpabuf_head(beacon_ies);
+			ai->beacon_ies_len = wpabuf_len(beacon_ies);
+		} else if (os_strcmp(str, "freq") == 0) {
+			ai->freq = atoi(pos);
+		} else if (os_strcmp(str, "wmm::info_bitmap") == 0) {
+			ai->wmm_params.info_bitmap = atoi(pos);
+		} else if (os_strcmp(str, "wmm::uapsd_queues") == 0) {
+			ai->wmm_params.uapsd_queues = atoi(pos);
+		} else if (os_strcmp(str, "addr") == 0) {
+			if (hwaddr_aton(pos, addr))
+				goto fail;
+			ai->addr = addr;
+		} else if (os_strcmp(str, "authorized") == 0) {
+			ai->authorized = atoi(pos);
+		} else if (os_strcmp(str, "key_replay_ctr") == 0) {
+			wpabuf_free(key_replay_ctr);
+			key_replay_ctr = wpabuf_parse_bin(pos);
+			if (!key_replay_ctr)
+				goto fail;
+			ai->key_replay_ctr = wpabuf_head(key_replay_ctr);
+			ai->key_replay_ctr_len = wpabuf_len(key_replay_ctr);
+		} else if (os_strcmp(str, "ptk_kck") == 0) {
+			wpabuf_free(ptk_kck);
+			ptk_kck = wpabuf_parse_bin(pos);
+			if (!ptk_kck)
+				goto fail;
+			ai->ptk_kck = wpabuf_head(ptk_kck);
+			ai->ptk_kck_len = wpabuf_len(ptk_kck);
+		} else if (os_strcmp(str, "ptk_kek") == 0) {
+			wpabuf_free(ptk_kek);
+			ptk_kek = wpabuf_parse_bin(pos);
+			if (!ptk_kek)
+				goto fail;
+			ai->ptk_kek = wpabuf_head(ptk_kek);
+			ai->ptk_kek_len = wpabuf_len(ptk_kek);
+		} else if (os_strcmp(str, "subnet_status") == 0) {
+			ai->subnet_status = atoi(pos);
+		} else if (os_strcmp(str, "fils_erp_next_seq_num") == 0) {
+			ai->fils_erp_next_seq_num = atoi(pos);
+		} else if (os_strcmp(str, "fils_pmk") == 0) {
+			wpabuf_free(fils_pmk);
+			fils_pmk = wpabuf_parse_bin(pos);
+			if (!fils_pmk)
+				goto fail;
+			ai->fils_pmk = wpabuf_head(fils_pmk);
+			ai->fils_pmk_len = wpabuf_len(fils_pmk);
+		} else if (os_strcmp(str, "fils_pmkid") == 0) {
+			if (hexstr2bin(pos, fils_pmkid, PMKID_LEN) < 0)
+				goto fail;
+			ai->fils_pmkid = fils_pmkid;
+		} else {
+			goto fail;
+		}
+	}
+
+	wpa_supplicant_event(wpa_s, EVENT_ASSOC, &event);
+	ret = 0;
+fail:
+	wpabuf_free(req_ies);
+	wpabuf_free(resp_ies);
+	wpabuf_free(resp_frame);
+	wpabuf_free(beacon_ies);
+	wpabuf_free(key_replay_ctr);
+	wpabuf_free(ptk_kck);
+	wpabuf_free(ptk_kek);
+	wpabuf_free(fils_pmk);
+	return ret;
+}
+
+
 static int wpas_ctrl_iface_driver_event(struct wpa_supplicant *wpa_s, char *cmd)
 {
 	char *pos, *param;
@@ -9345,6 +9471,8 @@ static int wpas_ctrl_iface_driver_event(struct wpa_supplicant *wpa_s, char *cmd)
 		return 0;
 	} else if (os_strcmp(cmd, "SCAN_RES") == 0) {
 		return wpas_ctrl_iface_driver_scan_res(wpa_s, param);
+	} else if (os_strcmp(cmd, "ASSOC") == 0) {
+		return wpas_ctrl_iface_driver_event_assoc(wpa_s, param);
 	} else {
 		wpa_dbg(wpa_s, MSG_DEBUG, "Testing - unknown driver event: %s",
 			cmd);
