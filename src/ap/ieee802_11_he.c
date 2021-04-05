@@ -216,7 +216,10 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
 
 		params |= HE_OPERATION_6GHZ_OPER_INFO;
 
-		/* 6 GHz Operation Information field */
+		/* 6 GHz Operation Information field
+		 * IEEE P802.11ax/D8.0, 9.4.2.249 HE Operation element,
+		 * Figure 9-788k
+		 */
 		*pos++ = hapd->iconf->channel; /* Primary Channel */
 
 		/* Control: Channel Width */
@@ -226,6 +229,18 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
 			*pos++ = center_idx_to_bw_6ghz(seg0);
 
 		/* Channel Center Freq Seg0/Seg1 */
+		if (hapd->iconf->he_oper_chwidth == 2) {
+			/*
+			 * Seg 0 indicates the channel center frequency index of
+			 * the 160 MHz channel.
+			 */
+			seg1 = seg0;
+			if (hapd->iconf->channel < seg0)
+				seg0 -= 8;
+			else
+				seg0 += 8;
+		}
+
 		*pos++ = seg0;
 		*pos++ = seg1;
 		/* Minimum Rate */
