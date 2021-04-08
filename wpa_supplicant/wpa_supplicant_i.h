@@ -539,6 +539,7 @@ struct wpas_pasn {
 	int cipher;
 	u16 group;
 	int freq;
+	size_t kdk_len;
 
 	u8 trans_seq;
 	u8 status;

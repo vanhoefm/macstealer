@@ -2646,7 +2646,7 @@ static void pasn_fils_auth_resp(struct hostapd_data *hapd,
 			      wpabuf_head(pasn->secret),
 			      wpabuf_len(pasn->secret),
 			      &sta->pasn->ptk, sta->pasn->akmp,
-			      sta->pasn->cipher, WPA_KDK_MAX_LEN);
+			      sta->pasn->cipher, sta->pasn->kdk_len);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed to derive PTK");
 		goto fail;
@@ -2883,7 +2883,7 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 	ret = pasn_pmk_to_ptk(pmk, pmk_len, sta->addr, hapd->own_addr,
 			      wpabuf_head(secret), wpabuf_len(secret),
 			      &sta->pasn->ptk, sta->pasn->akmp,
-			      sta->pasn->cipher, WPA_KDK_MAX_LEN);
+			      sta->pasn->cipher, sta->pasn->kdk_len);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive PTK");
 		return -1;
@@ -3150,6 +3150,15 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 
 	sta->pasn->akmp = rsn_data.key_mgmt;
 	sta->pasn->cipher = rsn_data.pairwise_cipher;
+
+	if (hapd->conf->force_kdk_derivation ||
+	    ((hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF) &&
+	     elems.rsnxe && elems.rsnxe_len >= 2 &&
+	     (WPA_GET_LE16(elems.rsnxe) & BIT(WLAN_RSNX_CAPAB_SECURE_LTF))))
+		sta->pasn->kdk_len = WPA_KDK_MAX_LEN;
+	else
+		sta->pasn->kdk_len = 0;
+	wpa_printf(MSG_DEBUG, "PASN: kdk_len=%zu", sta->pasn->kdk_len);
 
 	if (!elems.pasn_params || !elems.pasn_params_len) {
 		wpa_printf(MSG_DEBUG,

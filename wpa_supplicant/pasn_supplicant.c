@@ -1052,6 +1052,17 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	pasn->cipher = cipher;
 	pasn->group = group;
 	pasn->freq = freq;
+
+	if (wpa_s->conf->force_kdk_derivation ||
+	    (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF &&
+	     beacon_rsnxe && beacon_rsnxe_len >= 4 &&
+	     (WPA_GET_LE16(beacon_rsnxe + 2) &
+	      BIT(WLAN_RSNX_CAPAB_SECURE_LTF))))
+		pasn->kdk_len = WPA_KDK_MAX_LEN;
+	else
+		pasn->kdk_len = 0;
+	wpa_printf(MSG_DEBUG, "PASN: kdk_len=%zu", pasn->kdk_len);
+
 	os_memcpy(pasn->bssid, bssid, ETH_ALEN);
 
 	wpa_printf(MSG_DEBUG,
@@ -1480,7 +1491,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 			      wpa_s->own_addr, pasn->bssid,
 			      wpabuf_head(secret), wpabuf_len(secret),
 			      &pasn->ptk, pasn->akmp, pasn->cipher,
-			      WPA_KDK_MAX_LEN);
+			      pasn->kdk_len);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive PTK");
 		goto fail;
