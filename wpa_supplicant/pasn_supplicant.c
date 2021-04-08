@@ -102,19 +102,7 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpa_supplicant *wpa_s)
 {
 	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf = NULL;
-	const char *password = NULL;
 	int ret;
-
-	if (pasn->ssid) {
-		password = pasn->ssid->sae_password;
-		if (!password)
-			password = pasn->ssid->passphrase;
-	}
-
-	if (!password) {
-		wpa_printf(MSG_DEBUG, "PASN: SAE without a password");
-		return NULL;
-	}
 
 	ret = sae_set_group(&pasn->sae, pasn->group);
 	if (ret) {
@@ -122,10 +110,9 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpa_supplicant *wpa_s)
 		return NULL;
 	}
 
-	/* TODO: SAE H2E */
-	ret = sae_prepare_commit(wpa_s->own_addr, pasn->bssid,
-				 (const u8 *) password, os_strlen(password), 0,
-				 &pasn->sae);
+	ret = sae_prepare_commit_pt(&pasn->sae, pasn->ssid->pt,
+				    wpa_s->own_addr, pasn->bssid,
+				    NULL, NULL);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
 		return NULL;
@@ -140,7 +127,7 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpa_supplicant *wpa_s)
 
 	wpabuf_put_le16(buf, WLAN_AUTH_SAE);
 	wpabuf_put_le16(buf, 1);
-	wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
+	wpabuf_put_le16(buf, WLAN_STATUS_SAE_HASH_TO_ELEMENT);
 
 	sae_write_commit(&pasn->sae, buf, NULL, 0);
 	pasn->sae.state = SAE_COMMITTED;
@@ -186,14 +173,14 @@ static int wpas_pasn_wd_sae_rx(struct wpa_supplicant *wpa_s, struct wpabuf *wd)
 	wpa_printf(MSG_DEBUG, "PASN: SAE: commit: alg=%u, seq=%u, status=%u",
 		   alg, seq, status);
 
-	/* TODO: SAE H2E */
-	if (alg != WLAN_AUTH_SAE || seq != 1 || status != WLAN_STATUS_SUCCESS) {
+	if (alg != WLAN_AUTH_SAE || seq != 1 ||
+	    status != WLAN_STATUS_SAE_HASH_TO_ELEMENT) {
 		wpa_printf(MSG_DEBUG, "PASN: SAE: dropping peer commit");
 		return -1;
 	}
 
 	res = sae_parse_commit(&pasn->sae, data + 6, len - 6, NULL, 0, groups,
-			       0);
+			       1);
 	if (res != WLAN_STATUS_SUCCESS) {
 		wpa_printf(MSG_DEBUG, "PASN: SAE failed parsing commit");
 		return -1;
@@ -269,6 +256,31 @@ static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpa_supplicant *wpa_s)
 	pasn->sae.state = SAE_CONFIRMED;
 
 	return buf;
+}
+
+
+static int wpas_pasn_sae_setup_pt(struct wpa_supplicant *wpa_s,
+				  struct wpa_ssid *ssid, int group)
+{
+	const char *password = ssid->sae_password;
+	int groups[2] = { group, 0 };
+
+	if (!password)
+		password = ssid->passphrase;
+
+	if (!password) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE without a password");
+		return -1;
+	}
+
+	if (ssid->pt)
+		return 0; /* PT already derived */
+
+	ssid->pt = sae_derive_pt(groups, ssid->ssid, ssid->ssid_len,
+				 (const u8 *) password, os_strlen(password),
+				 ssid->sae_password_id);
+
+	return ssid->pt ? 0 : -1;
 }
 
 #endif /* CONFIG_SAE */
@@ -718,8 +730,8 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 		goto fail;
 
 	/* Add own RNSXE */
-	/* TODO: How to handle protected TWT and SAE H2E? */
 	capab = 0;
+	capab |= BIT(WLAN_RSNX_CAPAB_SAE_H2E);
 	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF)
 		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF);
 	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT)
@@ -1008,6 +1020,20 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 				   "PASN: No network profile found for SAE");
 			return -1;
 		}
+
+		if (beacon_rsnxe_len < 3 ||
+		    !(beacon_rsnxe[2] & BIT(WLAN_RSNX_CAPAB_SAE_H2E))) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: AP does not support SAE H2E");
+			return -1;
+		}
+
+		if (wpas_pasn_sae_setup_pt(wpa_s, ssid, group) < 0) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Failed to derive PT");
+			return -1;
+		}
+
 		pasn->sae.state = SAE_NOTHING;
 		pasn->sae.send_confirm = 0;
 		pasn->ssid = ssid;

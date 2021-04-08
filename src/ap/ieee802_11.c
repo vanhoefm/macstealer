@@ -2383,11 +2383,12 @@ static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
 				     struct wpabuf *wd)
 {
 	struct pasn_data *pasn = sta->pasn;
-	const char *password = NULL;
+	const char *password;
 	const u8 *data;
 	size_t buf_len;
 	u16 res, alg, seq, status;
 	int groups[] = { pasn->group, 0 };
+	struct sae_pt *pt = NULL;
 	int ret;
 
 	if (!wd)
@@ -2409,8 +2410,8 @@ static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
 	wpa_printf(MSG_DEBUG, "PASN: SAE commit: alg=%u, seq=%u, status=%u",
 		   alg, seq, status);
 
-	/* TODO: SAE H2E */
-	if (alg != WLAN_AUTH_SAE || seq != 1 || status != WLAN_STATUS_SUCCESS) {
+	if (alg != WLAN_AUTH_SAE || seq != 1 ||
+	    status != WLAN_STATUS_SAE_HASH_TO_ELEMENT) {
 		wpa_printf(MSG_DEBUG, "PASN: Dropping peer SAE commit");
 		return -1;
 	}
@@ -2424,15 +2425,14 @@ static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
 		return -1;
 	}
 
-	password = sae_get_password(hapd, sta, NULL, NULL, NULL, NULL);
-	if (!password) {
-		wpa_printf(MSG_DEBUG, "PASN: No SAE password found");
+	password = sae_get_password(hapd, sta, NULL, NULL, &pt, NULL);
+	if (!password || !pt) {
+		wpa_printf(MSG_DEBUG, "PASN: No SAE PT found");
 		return -1;
 	}
 
-	ret = sae_prepare_commit(hapd->own_addr, sta->addr,
-				 (const u8 *) password, os_strlen(password), 0,
-				 &pasn->sae);
+	ret = sae_prepare_commit_pt(&pasn->sae, pt, hapd->own_addr, sta->addr,
+				    NULL, NULL);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
 		return -1;
@@ -2529,7 +2529,7 @@ static struct wpabuf * pasn_get_sae_wd(struct hostapd_data *hapd,
 	len_ptr = wpabuf_put(buf, 2);
 	wpabuf_put_le16(buf, WLAN_AUTH_SAE);
 	wpabuf_put_le16(buf, 1);
-	wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
+	wpabuf_put_le16(buf, WLAN_STATUS_SAE_HASH_TO_ELEMENT);
 
 	/* Write the actual commit and update the length accordingly */
 	sae_write_commit(&pasn->sae, buf, NULL, 0);
