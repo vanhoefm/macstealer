@@ -803,3 +803,20 @@ def test_pasn_comeback_multi(dev, apdev):
             raise Exception("PASN: unexpected status")
 
         check_pasn_ptk(dev[i], hapd, "CCMP")
+
+def test_pasn_kdk_derivation(dev, apdev):
+    """PASN authentication with forced KDK derivation"""
+    check_pasn_capab(dev[0])
+
+    params = pasn_ap_params("PASN", "CCMP", "19")
+    hapd0 = start_pasn_ap(apdev[0], params)
+
+    params['force_kdk_derivation'] = "1"
+    hapd1 = start_pasn_ap(apdev[1], params)
+
+    try:
+        check_pasn_akmp_cipher(dev[0], hapd0, "PASN", "CCMP")
+        dev[0].set("force_kdk_derivation", "1")
+        check_pasn_akmp_cipher(dev[0], hapd1, "PASN", "CCMP")
+    finally:
+        dev[0].set("force_kdk_derivation", "0")
