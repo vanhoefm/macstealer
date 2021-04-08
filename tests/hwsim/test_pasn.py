@@ -386,8 +386,8 @@ def test_pasn_sae(dev, apdev):
     params['wpa_key_mgmt'] = 'SAE PASN'
     hapd = start_pasn_ap(apdev[0], params)
 
-    dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE", scan_freq="2412",
-                   only_add_network=True)
+    dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                   scan_freq="2412", only_add_network=True)
 
     # first test with a valid PSK
     check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="0")
@@ -750,8 +750,8 @@ def test_pasn_comeback_after_0_sae(dev, apdev):
     params['pasn_comeback_after'] = '0'
     hapd = start_pasn_ap(apdev[0], params)
 
-    dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE", scan_freq="2412",
-                   only_add_network=True)
+    dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                   scan_freq="2412", only_add_network=True)
 
     # first test with a valid PSK
     check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="0")
@@ -784,7 +784,7 @@ def test_pasn_comeback_multi(dev, apdev):
     for i in range(0, 2):
         dev[i].flush_scan_cache()
         dev[i].scan(type="ONLY", freq=2412)
-        id[i] = dev[i].connect("test-sae", psk="12345678", key_mgmt="SAE",
+        id[i] = dev[i].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
                                scan_freq="2412", only_add_network=True)
 
     for i in range(0, 2):
