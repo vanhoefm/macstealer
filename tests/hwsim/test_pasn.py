@@ -232,18 +232,23 @@ def test_pasn_sae_pmksa_cache(dev, apdev):
     params = hostapd.wpa2_params(ssid="test-sae",
                                  passphrase="12345678")
     params['wpa_key_mgmt'] = 'SAE PASN'
+    params['sae_pwe'] = "2"
     hapd = start_pasn_ap(apdev[0], params)
 
-    dev[0].set("sae_groups", "19")
-    dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE", scan_freq="2412")
+    try:
+        dev[0].set("sae_groups", "19")
+        dev[0].set("sae_pwe", "2")
+        dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE", scan_freq="2412")
 
-    hapd.wait_sta()
-    hwsim_utils.test_connectivity(dev[0], hapd)
+        hapd.wait_sta()
+        hwsim_utils.test_connectivity(dev[0], hapd)
 
-    dev[0].request("DISCONNECT")
-    dev[0].wait_disconnected()
+        dev[0].request("DISCONNECT")
+        dev[0].wait_disconnected()
 
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP")
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP")
+    finally:
+        dev[0].set("sae_pwe", "0")
 
 def check_pasn_fils_pmksa_cache(dev, apdev, params, key_mgmt):
     check_fils_capa(dev[0])
@@ -299,16 +304,19 @@ def test_pasn_sae_kdk(dev, apdev):
         params = hostapd.wpa2_params(ssid="test-sae",
                                      passphrase="12345678")
         params['wpa_key_mgmt'] = 'SAE PASN'
+        params['sae_pwe'] = "2"
         params['force_kdk_derivation'] = "1"
         hapd = start_pasn_ap(apdev[0], params)
 
         dev[0].set("force_kdk_derivation", "1")
+        dev[0].set("sae_pwe", "2")
         dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE",
                        scan_freq="2412")
 
         check_pasn_ptk(dev[0], hapd, "CCMP", clear_keys=False)
     finally:
         dev[0].set("force_kdk_derivation", "0")
+        dev[0].set("sae_pwe", "0")
 
 
 def check_pasn_fils_kdk(dev, apdev, params, key_mgmt):
@@ -384,23 +392,28 @@ def test_pasn_sae(dev, apdev):
     params = hostapd.wpa2_params(ssid="test-pasn-sae",
                                  passphrase="12345678")
     params['wpa_key_mgmt'] = 'SAE PASN'
+    params['sae_pwe'] = "2"
     hapd = start_pasn_ap(apdev[0], params)
 
-    dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
-                   scan_freq="2412", only_add_network=True)
+    try:
+        dev[0].set("sae_pwe", "2")
+        dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                       scan_freq="2412", only_add_network=True)
 
-    # first test with a valid PSK
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="0")
+        # first test with a valid PSK
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="0")
 
-    # And now with PMKSA caching
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP")
+        # And now with PMKSA caching
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP")
 
-    # And now with a wrong passphrase
-    if "FAIL" in dev[0].request("PMKSA_FLUSH"):
-        raise Exception("PMKSA_FLUSH failed")
+        # And now with a wrong passphrase
+        if "FAIL" in dev[0].request("PMKSA_FLUSH"):
+            raise Exception("PMKSA_FLUSH failed")
 
-    dev[0].set_network_quoted(0, "psk", "12345678787")
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", status=1, nid="0")
+        dev[0].set_network_quoted(0, "psk", "12345678787")
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", status=1, nid="0")
+    finally:
+        dev[0].set("sae_pwe", "0")
 
 @remote_compatible
 def test_pasn_sae_while_connected_same_channel(dev, apdev):
@@ -412,18 +425,23 @@ def test_pasn_sae_while_connected_same_channel(dev, apdev):
                                  passphrase="12345678")
     hapd = hostapd.add_ap(apdev[0], params)
 
-    dev[0].connect("test-pasn-wpa2-psk", psk="12345678", scan_freq="2412")
+    try:
+        dev[0].set("sae_pwe", "2")
+        dev[0].connect("test-pasn-wpa2-psk", psk="12345678", scan_freq="2412")
 
-    params = hostapd.wpa2_params(ssid="test-pasn-sae",
-                                 passphrase="12345678")
+        params = hostapd.wpa2_params(ssid="test-pasn-sae",
+                                     passphrase="12345678")
 
-    params['wpa_key_mgmt'] = 'SAE PASN'
-    hapd = start_pasn_ap(apdev[1], params)
+        params['wpa_key_mgmt'] = 'SAE PASN'
+        params['sae_pwe'] = "2"
+        hapd = start_pasn_ap(apdev[1], params)
 
-    dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
-                   scan_freq="2412", only_add_network=True)
+        dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                       scan_freq="2412", only_add_network=True)
 
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="1")
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="1")
+    finally:
+        dev[0].set("sae_pwe", "0")
 
 @remote_compatible
 def test_pasn_sae_while_connected_diff_channel(dev, apdev):
@@ -443,18 +461,23 @@ def test_pasn_sae_while_connected_diff_channel(dev, apdev):
         params['channel'] = "6"
         hapd = hostapd.add_ap(apdev[0], params)
 
-        wpas.connect("test-pasn-wpa2-psk", psk="12345678", scan_freq="2437")
+        try:
+            wpas.set("sae_pwe", "2")
+            wpas.connect("test-pasn-wpa2-psk", psk="12345678", scan_freq="2437")
 
-        params = hostapd.wpa2_params(ssid="test-pasn-sae",
-                                     passphrase="12345678")
+            params = hostapd.wpa2_params(ssid="test-pasn-sae",
+                                         passphrase="12345678")
 
-        params['wpa_key_mgmt'] = 'SAE PASN'
-        hapd = start_pasn_ap(apdev[1], params)
+            params['wpa_key_mgmt'] = 'SAE PASN'
+            params['sae_pwe'] = "2"
+            hapd = start_pasn_ap(apdev[1], params)
 
-        wpas.connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
-                       scan_freq="2412", only_add_network=True)
+            wpas.connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                           scan_freq="2412", only_add_network=True)
 
-        check_pasn_akmp_cipher(wpas, hapd, "SAE", "CCMP", nid="1")
+            check_pasn_akmp_cipher(wpas, hapd, "SAE", "CCMP", nid="1")
+        finally:
+            wpas.set("sae_pwe", "0")
 
 def pasn_fils_setup(wpas, apdev, params, key_mgmt):
     check_fils_capa(wpas)
@@ -748,23 +771,28 @@ def test_pasn_comeback_after_0_sae(dev, apdev):
     params['wpa_key_mgmt'] = 'SAE PASN'
     params['anti_clogging_threshold'] = '0'
     params['pasn_comeback_after'] = '0'
+    params['sae_pwe'] = "2"
     hapd = start_pasn_ap(apdev[0], params)
 
-    dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
-                   scan_freq="2412", only_add_network=True)
+    try:
+        dev[0].set("sae_pwe", "2")
+        dev[0].connect("test-pasn-sae", psk="12345678", key_mgmt="SAE",
+                       scan_freq="2412", only_add_network=True)
 
-    # first test with a valid PSK
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="0")
+        # first test with a valid PSK
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", nid="0")
 
-    # And now with PMKSA caching
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP")
+        # And now with PMKSA caching
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP")
 
-    # And now with a wrong passphrase
-    if "FAIL" in dev[0].request("PMKSA_FLUSH"):
-        raise Exception("PMKSA_FLUSH failed")
+        # And now with a wrong passphrase
+        if "FAIL" in dev[0].request("PMKSA_FLUSH"):
+            raise Exception("PMKSA_FLUSH failed")
 
-    dev[0].set_network_quoted(0, "psk", "12345678787")
-    check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", status=1, nid="0")
+        dev[0].set_network_quoted(0, "psk", "12345678787")
+        check_pasn_akmp_cipher(dev[0], hapd, "SAE", "CCMP", status=1, nid="0")
+    finally:
+        dev[0].set("sae_pwe", "0")
 
 @remote_compatible
 def test_pasn_comeback_multi(dev, apdev):
