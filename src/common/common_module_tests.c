@@ -394,7 +394,7 @@ static int sae_tests(void)
 	if (!buf ||
 	    sae_set_group(&sae, 19) < 0 ||
 	    sae_prepare_commit(addr1, addr2, (const u8 *) pw, os_strlen(pw),
-			       NULL, &sae) < 0)
+			       &sae) < 0)
 		goto fail;
 
 	/* Override local values based on SAE test vector */

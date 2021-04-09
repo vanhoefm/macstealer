@@ -572,7 +572,7 @@ static struct wpabuf * auth_build_sae_commit(struct hostapd_data *hapd,
 
 	if (update && !use_pt &&
 	    sae_prepare_commit(hapd->own_addr, sta->addr,
-			       (u8 *) password, os_strlen(password), rx_id,
+			       (u8 *) password, os_strlen(password),
 			       sta->sae) < 0) {
 		wpa_printf(MSG_DEBUG, "SAE: Could not pick PWE");
 		return NULL;
