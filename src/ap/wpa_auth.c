@@ -2283,8 +2283,7 @@ static int wpa_derive_ptk(struct wpa_state_machine *sm, const u8 *snonce,
 
 	if (sm->wpa_auth->conf.force_kdk_derivation ||
 	    (sm->wpa_auth->conf.secure_ltf &&
-	     sm->rsnxe && sm->rsnxe_len >= 4 &&
-	     sm->rsnxe[3] & BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8)))
+	     ieee802_11_rsnx_capab(sm->rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF)))
 		kdk_len = WPA_KDK_MAX_LEN;
 	else
 		kdk_len = 0;
@@ -2338,8 +2337,7 @@ int fils_auth_pmk_to_ptk(struct wpa_state_machine *sm, const u8 *pmk,
 
 	if (sm->wpa_auth->conf.force_kdk_derivation ||
 	    (sm->wpa_auth->conf.secure_ltf &&
-	     sm->rsnxe && sm->rsnxe_len >= 4 &&
-	     sm->rsnxe[3] & BIT(WLAN_RSNX_CAPAB_SECURE_LTF - 8)))
+	     ieee802_11_rsnx_capab(sm->rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF)))
 		kdk_len = WPA_KDK_MAX_LEN;
 	else
 		kdk_len = 0;

@@ -1021,8 +1021,8 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 			return -1;
 		}
 
-		if (beacon_rsnxe_len < 3 ||
-		    !(beacon_rsnxe[2] & BIT(WLAN_RSNX_CAPAB_SAE_H2E))) {
+		if (!ieee802_11_rsnx_capab(beacon_rsnxe,
+					   WLAN_RSNX_CAPAB_SAE_H2E)) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: AP does not support SAE H2E");
 			return -1;
@@ -1081,9 +1081,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 
 	if (wpa_s->conf->force_kdk_derivation ||
 	    (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF &&
-	     beacon_rsnxe && beacon_rsnxe_len >= 4 &&
-	     (WPA_GET_LE16(beacon_rsnxe + 2) &
-	      BIT(WLAN_RSNX_CAPAB_SECURE_LTF))))
+	     ieee802_11_rsnx_capab(beacon_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF)))
 		pasn->kdk_len = WPA_KDK_MAX_LEN;
 	else
 		pasn->kdk_len = 0;

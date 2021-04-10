@@ -3012,19 +3012,17 @@ static int wpa_supplicant_ctrl_iface_scan_result(
 					    ie2, 2 + ie2[1]);
 	}
 	rsnxe = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
-	if (rsnxe && rsnxe[1] >= 1) {
-		if (rsnxe[2] & BIT(WLAN_RSNX_CAPAB_SAE_H2E)) {
-			ret = os_snprintf(pos, end - pos, "[SAE-H2E]");
-			if (os_snprintf_error(end - pos, ret))
-				return -1;
-			pos += ret;
-		}
-		if (rsnxe[2] & BIT(WLAN_RSNX_CAPAB_SAE_PK)) {
-			ret = os_snprintf(pos, end - pos, "[SAE-PK]");
-			if (os_snprintf_error(end - pos, ret))
-				return -1;
-			pos += ret;
-		}
+	if (ieee802_11_rsnx_capab(rsnxe, WLAN_RSNX_CAPAB_SAE_H2E)) {
+		ret = os_snprintf(pos, end - pos, "[SAE-H2E]");
+		if (os_snprintf_error(end - pos, ret))
+			return -1;
+		pos += ret;
+	}
+	if (ieee802_11_rsnx_capab(rsnxe, WLAN_RSNX_CAPAB_SAE_PK)) {
+		ret = os_snprintf(pos, end - pos, "[SAE-PK]");
+		if (os_snprintf_error(end - pos, ret))
+			return -1;
+		pos += ret;
 	}
 	osen_ie = wpa_bss_get_vendor_ie(bss, OSEN_IE_VENDOR_TYPE);
 	if (osen_ie)
@@ -5112,19 +5110,17 @@ static int print_bss_info(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
 						    mesh ? "RSN" : "WPA2", ie2,
 						    2 + ie2[1]);
 		rsnxe = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
-		if (rsnxe && rsnxe[1] >= 1) {
-			if (rsnxe[2] & BIT(WLAN_RSNX_CAPAB_SAE_H2E)) {
-				ret = os_snprintf(pos, end - pos, "[SAE-H2E]");
-				if (os_snprintf_error(end - pos, ret))
-					return -1;
-				pos += ret;
-			}
-			if (rsnxe[2] & BIT(WLAN_RSNX_CAPAB_SAE_PK)) {
-				ret = os_snprintf(pos, end - pos, "[SAE-PK]");
-				if (os_snprintf_error(end - pos, ret))
-					return -1;
-				pos += ret;
-			}
+		if (ieee802_11_rsnx_capab(rsnxe, WLAN_RSNX_CAPAB_SAE_H2E)) {
+			ret = os_snprintf(pos, end - pos, "[SAE-H2E]");
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
+		}
+		if (ieee802_11_rsnx_capab(rsnxe, WLAN_RSNX_CAPAB_SAE_PK)) {
+			ret = os_snprintf(pos, end - pos, "[SAE-PK]");
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
 		}
 		osen_ie = wpa_bss_get_vendor_ie(bss, OSEN_IE_VENDOR_TYPE);
 		if (osen_ie)

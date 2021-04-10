@@ -1102,14 +1102,11 @@ static bool sae_pk_acceptable_bss_with_pk(struct wpa_supplicant *wpa_s,
 	dl_list_for_each(bss, &wpa_s->bss, struct wpa_bss, list) {
 		int count;
 		const u8 *ie;
-		u8 rsnxe_capa = 0;
 
 		if (bss == orig_bss)
 			continue;
 		ie = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
-		if (ie && ie[1] >= 1)
-			rsnxe_capa = ie[2];
-		if (!(rsnxe_capa & BIT(WLAN_RSNX_CAPAB_SAE_PK)))
+		if (!(ieee802_11_rsnx_capab(ie, WLAN_RSNX_CAPAB_SAE_PK)))
 			continue;
 
 		/* TODO: Could be more thorough in checking what kind of
