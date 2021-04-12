@@ -1873,7 +1873,7 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 
 static void wpas_ext_capab_byte(struct wpa_supplicant *wpa_s, u8 *pos, int idx)
 {
-	bool scs = true;
+	bool scs = true, mscs = true;
 
 	*pos = 0x00;
 
@@ -1940,7 +1940,12 @@ static void wpas_ext_capab_byte(struct wpa_supplicant *wpa_s, u8 *pos, int idx)
 #endif /* CONFIG_FILS */
 		break;
 	case 10: /* Bits 80-87 */
-		*pos |= 0x20; /* Bit 85 - Mirrored SCS */
+#ifdef CONFIG_TESTING_OPTIONS
+		if (wpa_s->disable_mscs_support)
+			mscs = false;
+#endif /* CONFIG_TESTING_OPTIONS */
+		if (mscs)
+			*pos |= 0x20; /* Bit 85 - Mirrored SCS */
 		break;
 	}
 }
@@ -3239,6 +3244,10 @@ pfs_fail:
 		wpa_ie_len += wpa_s->rsnxe_len;
 	}
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (wpa_s->disable_mscs_support)
+		goto mscs_end;
+#endif /* CONFIG_TESTING_OPTIONS */
 	if (wpa_bss_ext_capab(bss, WLAN_EXT_CAPAB_MSCS) &&
 	    wpa_s->robust_av.valid_config) {
 		struct wpabuf *mscs_ie;
@@ -3254,7 +3263,7 @@ pfs_fail:
 		if (!mscs_ie) {
 			wpa_printf(MSG_INFO,
 				   "MSCS: Failed to allocate MSCS IE");
-			goto mscs_fail;
+			goto mscs_end;
 		}
 
 		wpas_populate_mscs_descriptor_ie(&wpa_s->robust_av, mscs_ie);
@@ -3268,7 +3277,7 @@ pfs_fail:
 
 		wpabuf_free(mscs_ie);
 	}
-mscs_fail:
+mscs_end:
 
 	if (ssid->multi_ap_backhaul_sta) {
 		size_t multi_ap_ie_len;
