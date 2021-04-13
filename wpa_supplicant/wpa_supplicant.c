@@ -1914,6 +1914,11 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 	     wpa_key_mgmt_sae_ext_key(wpa_s->key_mgmt)) &&
 	    sae_pwe != 3)
 		sae_pwe = 1;
+	if (bss && is_6ghz_freq(bss->freq) && sae_pwe == 0) {
+		wpa_dbg(wpa_s, MSG_DEBUG,
+			"RSN: Enable SAE hash-to-element mode for 6 GHz BSS");
+		sae_pwe = 2;
+	}
 	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_SAE_PWE, sae_pwe);
 #ifdef CONFIG_SAE_PK
 	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_SAE_PK,
