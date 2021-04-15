@@ -156,6 +156,24 @@ dpp_relay_controller_get(struct dpp_global *dpp, const u8 *pkhash)
 }
 
 
+static struct dpp_relay_controller *
+dpp_relay_controller_get_ctx(struct dpp_global *dpp, void *cb_ctx)
+{
+	struct dpp_relay_controller *ctrl;
+
+	if (!dpp)
+		return NULL;
+
+	dl_list_for_each(ctrl, &dpp->controllers, struct dpp_relay_controller,
+			 list) {
+		if (cb_ctx == ctrl->cb_ctx)
+			return ctrl;
+	}
+
+	return NULL;
+}
+
+
 static void dpp_controller_gas_done(struct dpp_connection *conn)
 {
 	struct dpp_authentication *auth = conn->auth;
@@ -477,7 +495,8 @@ static int dpp_relay_tx(struct dpp_connection *conn, const u8 *hdr,
 
 int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 			const u8 *buf, size_t len, unsigned int freq,
-			const u8 *i_bootstrap, const u8 *r_bootstrap)
+			const u8 *i_bootstrap, const u8 *r_bootstrap,
+			void *cb_ctx)
 {
 	struct dpp_relay_controller *ctrl;
 	struct dpp_connection *conn;
@@ -505,8 +524,7 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 	    type == DPP_PA_RECONFIG_ANNOUNCEMENT) {
 		/* TODO: Could send this to all configured Controllers. For now,
 		 * only the first Controller is supported. */
-		ctrl = dl_list_first(&dpp->controllers,
-				     struct dpp_relay_controller, list);
+		ctrl = dpp_relay_controller_get_ctx(dpp, cb_ctx);
 	} else {
 		if (!r_bootstrap)
 			return -1;
