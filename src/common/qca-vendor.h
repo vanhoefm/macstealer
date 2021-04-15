@@ -712,6 +712,11 @@ enum qca_radiotap_vendor_ids {
  *	configurations, concurrency combinations, etc. The attributes used
  *	with this command are defined in
  *	enum qca_wlan_vendor_attr_usable_channels.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_GET_RADAR_HISTORY: This vendor subcommand is used
+ *	to get DFS radar history from the driver to userspace. The driver
+ *	returns QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_ENTRIES attribute with an
+ *	array of nested entries.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -900,6 +905,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_MBSSID_TX_VDEV_STATUS = 196,
 	QCA_NL80211_VENDOR_SUBCMD_CONCURRENT_MULTI_STA_POLICY = 197,
 	QCA_NL80211_VENDOR_SUBCMD_USABLE_CHANNELS = 198,
+	QCA_NL80211_VENDOR_SUBCMD_GET_RADAR_HISTORY = 199,
 };
 
 enum qca_wlan_vendor_attr {
@@ -10928,6 +10934,38 @@ enum qca_wlan_vendor_attr_usable_channels {
 	QCA_WLAN_VENDOR_ATTR_USABLE_CHANNELS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_USABLE_CHANNELS_MAX =
 	QCA_WLAN_VENDOR_ATTR_USABLE_CHANNELS_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_radar_history: Used by the vendor command
+ * QCA_NL80211_VENDOR_SUBCMD_GET_RADAR_HISTORY to get DFS radar history.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_ENTRIES: Nested attribute to carry
+ *	the list of radar history entries.
+ *	Each entry contains freq, timestamp, and radar signal detect flag.
+ *	The driver shall add an entry when CAC has finished, or radar signal
+ *	has been detected post AP beaconing. The driver shall maintain at least
+ *	8 entries in order to save CAC result for a 160 MHz channel.
+ * @QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_FREQ: u32 attribute.
+ *	Channel frequency in MHz.
+ * @QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_TIMESTAMP: u64 nanoseconds.
+ *	CLOCK_BOOTTIME timestamp when this entry is updated due to CAC
+ *	or radar detection.
+ * @QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_DETECTED: NLA_FLAG attribute.
+ *	This flag indicates radar signal has been detected.
+ */
+enum qca_wlan_vendor_attr_radar_history {
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_INVALID = 0,
+
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_ENTRIES = 1,
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_FREQ = 2,
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_TIMESTAMP = 3,
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_DETECTED = 4,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_LAST,
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_MAX =
+	QCA_WLAN_VENDOR_ATTR_RADAR_HISTORY_LAST - 1,
 };
 
 #endif /* QCA_VENDOR_H */
