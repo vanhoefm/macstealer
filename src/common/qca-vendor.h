@@ -6511,6 +6511,8 @@ enum qca_wlan_vendor_hang_reason {
 	QCA_WLAN_HANG_SUSPEND_NO_CREDIT = 25,
 	/* Bus failure */
 	QCA_WLAN_HANG_BUS_FAILURE = 26,
+	/* tasklet/credit latency found */
+	QCA_WLAN_HANG_TASKLET_CREDIT_LATENCY_DETECT = 27,
 };
 
 /**
