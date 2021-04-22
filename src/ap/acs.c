@@ -375,7 +375,11 @@ acs_survey_chan_interference_factor(struct hostapd_iface *iface,
 static int acs_usable_bw40_chan(const struct hostapd_channel_data *chan)
 {
 	const int allowed[] = { 5180, 5220, 5260, 5300, 5500, 5540, 5580, 5620,
-				5660, 5745, 5785, 4920, 4960 };
+				5660, 5745, 5785, 4920, 4960, 5955, 5995, 6035,
+				6075, 6115, 6155, 6195, 6235, 6275, 6315, 6355,
+				6395, 6435, 6475, 6515, 6555, 6595, 6635, 6675,
+				6715, 6755, 6795, 6835, 6875, 6915, 6955, 6995,
+				7035, 7075 };
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(allowed); i++)
@@ -388,7 +392,9 @@ static int acs_usable_bw40_chan(const struct hostapd_channel_data *chan)
 
 static int acs_usable_bw80_chan(const struct hostapd_channel_data *chan)
 {
-	const int allowed[] = { 5180, 5260, 5550, 5580, 5660, 5745 };
+	const int allowed[] = { 5180, 5260, 5550, 5580, 5660, 5745, 5955, 6035,
+				6115, 6195, 6275, 6355, 6435, 6515, 6595, 6675,
+				6755, 6835, 6915, 6995 };
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(allowed); i++)
@@ -401,7 +407,8 @@ static int acs_usable_bw80_chan(const struct hostapd_channel_data *chan)
 
 static int acs_usable_bw160_chan(const struct hostapd_channel_data *chan)
 {
-	const int allowed[] = { 5180, 5500 };
+	const int allowed[] = { 5180, 5500, 5955, 6115, 6275, 6435, 6595, 6755,
+				6915 };
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(allowed); i++)
@@ -678,8 +685,9 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 		/* HT40 on 5 GHz has a limited set of primary channels as per
 		 * 11n Annex J */
 		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
-		    iface->conf->ieee80211n &&
-		    iface->conf->secondary_channel &&
+		    ((iface->conf->ieee80211n &&
+		      iface->conf->secondary_channel) ||
+		     is_6ghz_freq(chan->freq)) &&
 		    !acs_usable_bw40_chan(chan)) {
 			wpa_printf(MSG_DEBUG,
 				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",

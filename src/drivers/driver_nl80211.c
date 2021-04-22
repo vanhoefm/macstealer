@@ -10963,7 +10963,8 @@ static int add_acs_ch_list(struct nl_msg *msg, const int *freq_list)
 		 * compatibility.
 		 */
 		if (!(freq >= 2412 && freq <= 2484) &&
-		    !(freq >= 5180 && freq <= 5900))
+		    !(freq >= 5180 && freq <= 5900) &&
+		    !(freq >= 5945 && freq <= 7115))
 			continue;
 		hw_mode = ieee80211_freq_to_chan(freq, &ch_list[num_channels]);
 		if (hw_mode != NUM_HOSTAPD_MODES)
