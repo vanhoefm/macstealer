@@ -841,6 +841,12 @@ acs_find_ideal_chan(struct hostapd_iface *iface)
 	u32 bw;
 	struct hostapd_hw_modes *mode;
 
+	if (is_6ghz_op_class(iface->conf->op_class)) {
+		bw = op_class_to_bandwidth(iface->conf->op_class);
+		n_chans = bw / 20;
+		goto bw_selected;
+	}
+
 	/* TODO: HT40- support */
 
 	if (iface->conf->ieee80211n &&
@@ -866,6 +872,7 @@ acs_find_ideal_chan(struct hostapd_iface *iface)
 
 	bw = num_chan_to_bw(n_chans);
 
+bw_selected:
 	/* TODO: VHT/HE80+80. Update acs_adjust_center_freq() too. */
 
 	wpa_printf(MSG_DEBUG,
