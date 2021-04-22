@@ -372,40 +372,40 @@ acs_survey_chan_interference_factor(struct hostapd_iface *iface,
 }
 
 
-static int acs_usable_ht40_chan(const struct hostapd_channel_data *chan)
+static int acs_usable_bw40_chan(const struct hostapd_channel_data *chan)
 {
-	const int allowed[] = { 36, 44, 52, 60, 100, 108, 116, 124, 132, 149,
-				157, 184, 192 };
+	const int allowed[] = { 5180, 5220, 5260, 5300, 5500, 5540, 5580, 5620,
+				5660, 5745, 5785, 4920, 4960 };
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(allowed); i++)
-		if (chan->chan == allowed[i])
+		if (chan->freq == allowed[i])
 			return 1;
 
 	return 0;
 }
 
 
-static int acs_usable_vht80_chan(const struct hostapd_channel_data *chan)
+static int acs_usable_bw80_chan(const struct hostapd_channel_data *chan)
 {
-	const int allowed[] = { 36, 52, 100, 116, 132, 149 };
+	const int allowed[] = { 5180, 5260, 5550, 5580, 5660, 5745 };
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(allowed); i++)
-		if (chan->chan == allowed[i])
+		if (chan->freq == allowed[i])
 			return 1;
 
 	return 0;
 }
 
 
-static int acs_usable_vht160_chan(const struct hostapd_channel_data *chan)
+static int acs_usable_bw160_chan(const struct hostapd_channel_data *chan)
 {
-	const int allowed[] = { 36, 100 };
+	const int allowed[] = { 5180, 5500 };
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(allowed); i++)
-		if (chan->chan == allowed[i])
+		if (chan->freq == allowed[i])
 			return 1;
 
 	return 0;
@@ -680,8 +680,9 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
 		    iface->conf->ieee80211n &&
 		    iface->conf->secondary_channel &&
-		    !acs_usable_ht40_chan(chan)) {
-			wpa_printf(MSG_DEBUG, "ACS: Channel %d: not allowed as primary channel for HT40",
+		    !acs_usable_bw40_chan(chan)) {
+			wpa_printf(MSG_DEBUG,
+				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
 				   chan->chan);
 			continue;
 		}
@@ -690,18 +691,18 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax)) {
 			if (hostapd_get_oper_chwidth(iface->conf) ==
 			    CHANWIDTH_80MHZ &&
-			    !acs_usable_vht80_chan(chan)) {
+			    !acs_usable_bw80_chan(chan)) {
 				wpa_printf(MSG_DEBUG,
-					   "ACS: Channel %d: not allowed as primary channel for VHT80",
+					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
 					   chan->chan);
 				continue;
 			}
 
 			if (hostapd_get_oper_chwidth(iface->conf) ==
 			    CHANWIDTH_160MHZ &&
-			    !acs_usable_vht160_chan(chan)) {
+			    !acs_usable_bw160_chan(chan)) {
 				wpa_printf(MSG_DEBUG,
-					   "ACS: Channel %d: not allowed as primary channel for VHT160",
+					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
 					   chan->chan);
 				continue;
 			}
