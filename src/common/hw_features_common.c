@@ -114,7 +114,7 @@ int allowed_ht40_channel_pair(enum hostapd_hw_mode mode,
 {
 	int ok, first;
 	int allowed[] = { 36, 44, 52, 60, 100, 108, 116, 124, 132, 140,
-			  149, 157, 165, 184, 192 };
+			  149, 157, 165, 173, 184, 192 };
 	size_t k;
 	int ht40_plus, pri_chan, sec_chan;
 
