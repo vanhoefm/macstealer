@@ -7575,6 +7575,21 @@ enum qca_wlan_he_om_ctrl_ch_bw {
 };
 
 /**
+ * enum qca_wlan_keep_alive_data_type - Keep alive data type configuration
+ *
+ * Indicates the frame types to use for keep alive data.
+ *
+ * @QCA_WLAN_KEEP_ALIVE_DEFAULT: Driver default type used for keep alive.
+ * @QCA_WLAN_KEEP_ALIVE_DATA: Data frame type for keep alive.
+ * @QCA_WLAN_KEEP_ALIVE_MGMT: Management frame type for keep alive.
+ */
+enum qca_wlan_keep_alive_data_type {
+	QCA_WLAN_KEEP_ALIVE_DEFAULT = 0,
+	QCA_WLAN_KEEP_ALIVE_DATA = 1,
+	QCA_WLAN_KEEP_ALIVE_MGMT = 2,
+};
+
+/**
  * enum qca_wlan_vendor_attr_he_omi_tx: Represents attributes for
  * HE operating mode control transmit request. These attributes are
  * sent as part of QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_HE_OMI_TX and
@@ -8094,6 +8109,14 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 * This attribute is used for testing purposes.
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_ER_SU_PPDU_TYPE = 52,
+
+	/* 8-bit unsigned value to configure the driver to use Data or
+	 * Management frame type for keep alive data.
+	 * Uses enum qca_wlan_keep_alive_data_type values.
+	 *
+	 * This attribute is used for testing purposes.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_KEEP_ALIVE_FRAME_TYPE = 53,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_AFTER_LAST,
