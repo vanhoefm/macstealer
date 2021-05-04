@@ -892,6 +892,8 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 	params.wpa_proto = ssid->proto;
 	if (ssid->key_mgmt & WPA_KEY_MGMT_PSK)
 		wpa_s->key_mgmt = WPA_KEY_MGMT_PSK;
+	else if (ssid->key_mgmt & WPA_KEY_MGMT_SAE)
+		wpa_s->key_mgmt = WPA_KEY_MGMT_SAE;
 	else
 		wpa_s->key_mgmt = WPA_KEY_MGMT_NONE;
 	params.key_mgmt_suite = wpa_s->key_mgmt;

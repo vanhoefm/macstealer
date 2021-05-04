@@ -2065,6 +2065,14 @@ static void wpas_start_wps_go(struct wpa_supplicant *wpa_s,
 	}
 	ssid->auth_alg = WPA_AUTH_ALG_OPEN;
 	ssid->key_mgmt = WPA_KEY_MGMT_PSK;
+	if (is_6ghz_freq(ssid->frequency) &&
+	    is_p2p_6ghz_capable(wpa_s->global->p2p)) {
+		ssid->auth_alg |= WPA_AUTH_ALG_SAE;
+		ssid->key_mgmt = WPA_KEY_MGMT_SAE;
+		wpa_dbg(wpa_s, MSG_DEBUG, "P2P: Use SAE auth_alg and key_mgmt");
+	} else {
+		p2p_set_6ghz_dev_capab(wpa_s->global->p2p, false);
+	}
 	ssid->proto = WPA_PROTO_RSN;
 	ssid->pairwise_cipher = WPA_CIPHER_CCMP;
 	ssid->group_cipher = WPA_CIPHER_CCMP;
