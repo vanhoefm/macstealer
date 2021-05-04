@@ -548,6 +548,7 @@ struct p2p_data {
 	/* Override option for preferred operating channel in GO Negotiation */
 	u8 override_pref_op_class;
 	u8 override_pref_channel;
+	bool p2p_6ghz_capable;
 };
 
 /**
