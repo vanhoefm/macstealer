@@ -84,7 +84,7 @@ void scan_est_throughput(struct wpa_supplicant *wpa_s,
 			 struct wpa_scan_res *res);
 unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 			      const u8 *ies, size_t ies_len, int rate,
-			      int snr);
+			      int snr, int freq);
 void wpa_supplicant_set_default_scan_ies(struct wpa_supplicant *wpa_s);
 int wpa_add_scan_freqs_list(struct wpa_supplicant *wpa_s,
 			    enum hostapd_hw_mode band,

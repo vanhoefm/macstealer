@@ -8111,6 +8111,22 @@ struct hostapd_hw_modes * get_mode(struct hostapd_hw_modes *modes,
 }
 
 
+struct hostapd_hw_modes * get_mode_with_freq(struct hostapd_hw_modes *modes,
+					     u16 num_modes, int freq)
+{
+	int i, j;
+
+	for (i = 0; i < num_modes; i++) {
+		for (j = 0; j < modes[i].num_channels; j++) {
+			if (freq == modes[i].channels[j].freq)
+				return &modes[i];
+		}
+	}
+
+	return NULL;
+}
+
+
 static struct
 wpa_bss_tmp_disallowed * wpas_get_disallowed_bss(struct wpa_supplicant *wpa_s,
 						 const u8 *bssid)

@@ -2322,9 +2322,9 @@ static unsigned int max_vht80_rate(int snr)
 
 unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 			      const u8 *ies, size_t ies_len, int rate,
-			      int snr)
+			      int snr, int freq)
 {
-	enum local_hw_capab capab = wpa_s->hw_capab;
+	struct hostapd_hw_modes *hw_mode;
 	unsigned int est, tmp;
 	const u8 *ie;
 
@@ -2369,7 +2369,10 @@ unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 		rate = 54 * 2;
 	est = rate * 500;
 
-	if (capab == CAPAB_HT || capab == CAPAB_HT40 || capab == CAPAB_VHT) {
+	hw_mode = get_mode_with_freq(wpa_s->hw.modes, wpa_s->hw.num_modes,
+				     freq);
+
+	if (hw_mode && hw_mode->ht_capab) {
 		ie = get_ie(ies, ies_len, WLAN_EID_HT_CAP);
 		if (ie) {
 			tmp = max_ht20_rate(snr, false);
@@ -2378,7 +2381,8 @@ unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 		}
 	}
 
-	if (capab == CAPAB_HT40 || capab == CAPAB_VHT) {
+	if (hw_mode &&
+	    (hw_mode->ht_capab & HT_CAP_INFO_SUPP_CHANNEL_WIDTH_SET)) {
 		ie = get_ie(ies, ies_len, WLAN_EID_HT_OPERATION);
 		if (ie && ie[1] >= 2 &&
 		    (ie[3] & HT_INFO_HT_PARAM_SECONDARY_CHNL_OFF_MASK)) {
@@ -2388,7 +2392,7 @@ unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 		}
 	}
 
-	if (capab == CAPAB_VHT) {
+	if (hw_mode && hw_mode->vht_capab) {
 		/* Use +1 to assume VHT is always faster than HT */
 		ie = get_ie(ies, ies_len, WLAN_EID_VHT_CAP);
 		if (ie) {
@@ -2436,7 +2440,7 @@ void scan_est_throughput(struct wpa_supplicant *wpa_s,
 	if (!ie_len)
 		ie_len = res->beacon_ie_len;
 	res->est_throughput =
-		wpas_get_est_tpt(wpa_s, ies, ie_len, rate, snr);
+		wpas_get_est_tpt(wpa_s, ies, ie_len, rate, snr, res->freq);
 
 	/* TODO: channel utilization and AP load (e.g., from AP Beacon) */
 }
