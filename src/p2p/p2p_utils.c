@@ -517,3 +517,21 @@ void p2p_copy_channels(struct p2p_channels *dst,
 	}
 	dst->reg_classes = j;
 }
+
+
+int p2p_remove_6ghz_channels(unsigned int *pref_freq_list, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		if (is_6ghz_freq(pref_freq_list[i])) {
+			wpa_printf(MSG_DEBUG, "P2P: Remove 6 GHz channel %d",
+				   pref_freq_list[i]);
+			size--;
+			os_memmove(&pref_freq_list[i], &pref_freq_list[i + 1],
+				   (size - i) * sizeof(pref_freq_list[0]));
+			i--;
+		}
+	}
+	return i;
+}

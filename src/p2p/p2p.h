@@ -2422,5 +2422,6 @@ bool p2p_peer_wfd_enabled(struct p2p_data *p2p, const u8 *peer_addr);
 bool p2p_wfd_enabled(struct p2p_data *p2p);
 bool is_p2p_allow_6ghz(struct p2p_data *p2p);
 void set_p2p_allow_6ghz(struct p2p_data *p2p, bool value);
+int p2p_remove_6ghz_channels(unsigned int *pref_freq_list, int size);
 
 #endif /* P2P_H */

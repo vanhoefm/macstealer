@@ -1412,6 +1412,7 @@ static void p2p_prepare_channel_best(struct p2p_data *p2p)
 	const int op_classes_ht40[] = { 126, 127, 116, 117, 0 };
 	const int op_classes_vht[] = { 128, 0 };
 	const int op_classes_edmg[] = { 181, 182, 183, 0 };
+	const int op_classes_6ghz[] = { 131, 0 };
 
 	p2p_dbg(p2p, "Prepare channel best");
 
@@ -1447,6 +1448,12 @@ static void p2p_prepare_channel_best(struct p2p_data *p2p)
 				      &p2p->op_reg_class, &p2p->op_channel) ==
 		   0) {
 		p2p_dbg(p2p, "Select possible EDMG channel (op_class %u channel %u) as operating channel preference",
+			p2p->op_reg_class, p2p->op_channel);
+	} else if (p2p->allow_6ghz &&
+		   (p2p_channel_select(&p2p->cfg->channels, op_classes_6ghz,
+				       &p2p->op_reg_class, &p2p->op_channel) ==
+		    0)) {
+		p2p_dbg(p2p, "Select possible 6 GHz channel (op_class %u channel %u) as operating channel preference",
 			p2p->op_reg_class, p2p->op_channel);
 	} else if (p2p_channel_select(&p2p->cfg->channels, op_classes_vht,
 				      &p2p->op_reg_class, &p2p->op_channel) ==
@@ -1568,9 +1575,10 @@ int p2p_connect(struct p2p_data *p2p, const u8 *peer_addr,
 	p2p_dbg(p2p, "Request to start group negotiation - peer=" MACSTR
 		"  GO Intent=%d  Intended Interface Address=" MACSTR
 		" wps_method=%d persistent_group=%d pd_before_go_neg=%d "
-		"oob_pw_id=%u",
+		"oob_pw_id=%u allow_6ghz=%d",
 		MAC2STR(peer_addr), go_intent, MAC2STR(own_interface_addr),
-		wps_method, persistent_group, pd_before_go_neg, oob_pw_id);
+		wps_method, persistent_group, pd_before_go_neg, oob_pw_id,
+		p2p->allow_6ghz);
 
 	dev = p2p_get_device(p2p, peer_addr);
 	if (dev == NULL || (dev->flags & P2P_DEV_PROBE_REQ_ONLY)) {
@@ -1668,9 +1676,9 @@ int p2p_authorize(struct p2p_data *p2p, const u8 *peer_addr,
 
 	p2p_dbg(p2p, "Request to authorize group negotiation - peer=" MACSTR
 		"  GO Intent=%d  Intended Interface Address=" MACSTR
-		" wps_method=%d  persistent_group=%d oob_pw_id=%u",
+		" wps_method=%d  persistent_group=%d oob_pw_id=%u allow_6ghz=%d",
 		MAC2STR(peer_addr), go_intent, MAC2STR(own_interface_addr),
-		wps_method, persistent_group, oob_pw_id);
+		wps_method, persistent_group, oob_pw_id, p2p->allow_6ghz);
 
 	dev = p2p_get_device(p2p, peer_addr);
 	if (dev == NULL) {
