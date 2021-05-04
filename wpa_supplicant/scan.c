@@ -2047,6 +2047,8 @@ static int wpa_scan_result_compar(const void *a, const void *b)
 	}
 	if ((snr_a && snr_b && abs(snr_b - snr_a) < 5) ||
 	    (wa->qual && wb->qual && abs(wb->qual - wa->qual) < 10)) {
+		if (is_6ghz_freq(wa->freq) ^ is_6ghz_freq(wb->freq))
+			return is_6ghz_freq(wa->freq) ? -1 : 1;
 		if (IS_5GHZ(wa->freq) ^ IS_5GHZ(wb->freq))
 			return IS_5GHZ(wa->freq) ? -1 : 1;
 	}
@@ -2207,9 +2209,10 @@ void filter_scan_res(struct wpa_supplicant *wpa_s,
 void scan_snr(struct wpa_scan_res *res)
 {
 	if (res->flags & WPA_SCAN_NOISE_INVALID) {
-		res->noise = IS_5GHZ(res->freq) ?
-			DEFAULT_NOISE_FLOOR_5GHZ :
-			DEFAULT_NOISE_FLOOR_2GHZ;
+		res->noise = is_6ghz_freq(res->freq) ?
+			DEFAULT_NOISE_FLOOR_6GHZ :
+			(IS_5GHZ(res->freq) ?
+			 DEFAULT_NOISE_FLOOR_5GHZ : DEFAULT_NOISE_FLOOR_2GHZ);
 	}
 
 	if (res->flags & WPA_SCAN_LEVEL_DBM) {
