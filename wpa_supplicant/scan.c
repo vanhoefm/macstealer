@@ -2292,6 +2292,76 @@ static const struct minsnr_bitrate_entry vht160_table[] = {
 };
 
 
+static const struct minsnr_bitrate_entry he20_table[] = {
+	{ 0, 0 },
+	{ 2, 8600 },    /* HE20 MCS0 */
+	{ 5, 17200 },   /* HE20 MCS1 */
+	{ 9, 25800 },   /* HE20 MCS2 */
+	{ 11, 34400 },  /* HE20 MCS3 */
+	{ 15, 51600 },  /* HE20 MCS4 */
+	{ 18, 68800 },  /* HE20 MCS5 */
+	{ 20, 77400 },  /* HE20 MCS6 */
+	{ 25, 86000 },  /* HE20 MCS7 */
+	{ 29, 103200 }, /* HE20 MCS8 */
+	{ 31, 114700 }, /* HE20 MCS9 */
+	{ 34, 129000 }, /* HE20 MCS10 */
+	{ 36, 143400 }, /* HE20 MCS11 */
+	{ -1, 143400 }  /* SNR > 29 */
+};
+
+static const struct minsnr_bitrate_entry he40_table[] = {
+	{ 0, 0 },
+	{ 5, 17200 },   /* HE40 MCS0 */
+	{ 8, 34400 },   /* HE40 MCS1 */
+	{ 12, 51600 },  /* HE40 MCS2 */
+	{ 14, 68800 },  /* HE40 MCS3 */
+	{ 18, 103200 }, /* HE40 MCS4 */
+	{ 21, 137600 }, /* HE40 MCS5 */
+	{ 23, 154900 }, /* HE40 MCS6 */
+	{ 28, 172100 }, /* HE40 MCS7 */
+	{ 32, 206500 }, /* HE40 MCS8 */
+	{ 34, 229400 }, /* HE40 MCS9 */
+	{ 37, 258100 }, /* HE40 MCS10 */
+	{ 39, 286800 }, /* HE40 MCS11 */
+	{ -1, 286800 }  /* SNR > 34 */
+};
+
+static const struct minsnr_bitrate_entry he80_table[] = {
+	{ 0, 0 },
+	{ 8, 36000 },   /* HE80 MCS0 */
+	{ 11, 72100 },  /* HE80 MCS1 */
+	{ 15, 108100 }, /* HE80 MCS2 */
+	{ 17, 144100 }, /* HE80 MCS3 */
+	{ 21, 216200 }, /* HE80 MCS4 */
+	{ 24, 288200 }, /* HE80 MCS5 */
+	{ 26, 324300 }, /* HE80 MCS6 */
+	{ 31, 360300 }, /* HE80 MCS7 */
+	{ 35, 432400 }, /* HE80 MCS8 */
+	{ 37, 480400 }, /* HE80 MCS9 */
+	{ 40, 540400 }, /* HE80 MCS10 */
+	{ 42, 600500 }, /* HE80 MCS11 */
+	{ -1, 600500 }  /* SNR > 37 */
+};
+
+
+static const struct minsnr_bitrate_entry he160_table[] = {
+	{ 0, 0 },
+	{ 11, 72100 },   /* HE160 MCS0 */
+	{ 14, 144100 },  /* HE160 MCS1 */
+	{ 18, 216200 },  /* HE160 MCS2 */
+	{ 20, 288200 },  /* HE160 MCS3 */
+	{ 24, 432400 },  /* HE160 MCS4 */
+	{ 27, 576500 },  /* HE160 MCS5 */
+	{ 29, 648500 },  /* HE160 MCS6 */
+	{ 34, 720600 },  /* HE160 MCS7 */
+	{ 38, 864700 },  /* HE160 MCS8 */
+	{ 40, 960800 },  /* HE160 MCS9 */
+	{ 43, 1080900 }, /* HE160 MCS10 */
+	{ 45, 1201000 }, /* HE160 MCS11 */
+	{ -1, 1201000 }  /* SNR > 37 */
+};
+
+
 static unsigned int interpolate_rate(int snr, int snr0, int snr1,
 				     int rate0, int rate1)
 {
@@ -2339,6 +2409,23 @@ static unsigned int max_vht80_rate(int snr)
 static unsigned int max_vht160_rate(int snr)
 {
 	return max_rate(vht160_table, snr, 1);
+}
+
+
+static unsigned int max_he_rate(const struct minsnr_bitrate_entry table[],
+				int snr)
+{
+	const struct minsnr_bitrate_entry *prev, *entry = table;
+
+	while (entry->minsnr != -1 && snr >= entry->minsnr)
+		entry++;
+	if (entry == table)
+		return 0;
+	prev = entry - 1;
+	if (entry->minsnr == -1)
+		return prev->bitrate;
+	return interpolate_rate(snr, prev->minsnr, entry->minsnr,
+				prev->bitrate, entry->bitrate);
 }
 
 
@@ -2467,6 +2554,48 @@ unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 				if (tmp > est)
 					est = tmp;
 			}
+		}
+	}
+
+	if (hw_mode && hw_mode->he_capab[IEEE80211_MODE_INFRA].he_supported) {
+		/* Use +2 to assume HE is always faster than HT/VHT */
+		struct ieee80211_he_capabilities *he;
+		struct he_capabilities *own_he;
+		u8 cw;
+
+		ie = get_ie_ext(ies, ies_len, WLAN_EID_EXT_HE_CAPABILITIES);
+		if (!ie || (ie[1] < 1 + IEEE80211_HE_CAPAB_MIN_LEN))
+			return est;
+		he = (struct ieee80211_he_capabilities *) &ie[3];
+		own_he = &hw_mode->he_capab[IEEE80211_MODE_INFRA];
+
+		tmp = max_he_rate(he20_table, snr) + 2;
+		if (tmp > est)
+			est = tmp;
+
+		cw = he->he_phy_capab_info[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
+			own_he->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX];
+		if (cw &
+		    (IS_2P4GHZ(freq) ? HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_IN_2G :
+		     HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G)) {
+			tmp = max_he_rate(he40_table, snr) + 2;
+			if (tmp > est)
+				est = tmp;
+		}
+
+		if (!IS_2P4GHZ(freq) &&
+		    (cw & HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G)) {
+			tmp = max_he_rate(he80_table, snr) + 2;
+			if (tmp > est)
+				est = tmp;
+		}
+
+		if (!IS_2P4GHZ(freq) &&
+		    (cw & (HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G |
+			   HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G))) {
+			tmp = max_he_rate(he160_table, snr) + 2;
+			if (tmp > est)
+				est = tmp;
 		}
 	}
 

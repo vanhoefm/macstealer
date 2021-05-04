@@ -29,6 +29,7 @@
  */
 #define GREAT_SNR 25
 
+#define IS_2P4GHZ(n) (n >= 2412 && n <= 2484)
 #define IS_5GHZ(n) (n > 4000)
 
 int wpa_supplicant_enabled_networks(struct wpa_supplicant *wpa_s);
