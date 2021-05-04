@@ -2276,6 +2276,22 @@ static const struct minsnr_bitrate_entry vht80_table[] = {
 };
 
 
+static const struct minsnr_bitrate_entry vht160_table[] = {
+	{ 0, 0 },
+	{ 11, 58500 },  /* VHT160 MCS0 */
+	{ 14, 117000 }, /* VHT160 MCS1 */
+	{ 18, 175500 }, /* VHT160 MCS2 */
+	{ 20, 234000 }, /* VHT160 MCS3 */
+	{ 24, 351000 }, /* VHT160 MCS4 */
+	{ 27, 468000 }, /* VHT160 MCS5 */
+	{ 29, 526500 }, /* VHT160 MCS6 */
+	{ 34, 585000 }, /* VHT160 MCS7 */
+	{ 38, 702000 }, /* VHT160 MCS8 */
+	{ 40, 780000 }, /* VHT160 MCS9 */
+	{ -1, 780000 }  /* SNR > 37 */
+};
+
+
 static unsigned int interpolate_rate(int snr, int snr0, int snr1,
 				     int rate0, int rate1)
 {
@@ -2317,6 +2333,12 @@ static unsigned int max_ht40_rate(int snr, bool vht)
 static unsigned int max_vht80_rate(int snr)
 {
 	return max_rate(vht80_table, snr, 1);
+}
+
+
+static unsigned int max_vht160_rate(int snr)
+{
+	return max_rate(vht160_table, snr, 1);
 }
 
 
@@ -2396,6 +2418,8 @@ unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 		/* Use +1 to assume VHT is always faster than HT */
 		ie = get_ie(ies, ies_len, WLAN_EID_VHT_CAP);
 		if (ie) {
+			bool vht80 = false, vht160 = false;
+
 			tmp = max_ht20_rate(snr, true) + 1;
 			if (tmp > est)
 				est = tmp;
@@ -2409,10 +2433,37 @@ unsigned int wpas_get_est_tpt(const struct wpa_supplicant *wpa_s,
 					est = tmp;
 			}
 
+			/* Determine VHT BSS bandwidth based on IEEE Std
+			 * 802.11-2020, Table 11-23 (VHT BSs bandwidth) */
 			ie = get_ie(ies, ies_len, WLAN_EID_VHT_OPERATION);
-			if (ie && ie[1] >= 1 &&
-			    (ie[2] & VHT_OPMODE_CHANNEL_WIDTH_MASK)) {
+			if (ie && ie[1] >= 3) {
+				u8 cw = ie[2] & VHT_OPMODE_CHANNEL_WIDTH_MASK;
+				u8 seg0 = ie[3];
+				u8 seg1 = ie[4];
+
+				if (cw)
+					vht80 = true;
+				if (cw == 2 ||
+				    (cw == 3 &&
+				     (seg1 > 0 && abs(seg1 - seg0) == 16)))
+					vht160 = true;
+				if (cw == 1 &&
+				    ((seg1 > 0 && abs(seg1 - seg0) == 8) ||
+				     (seg1 > 0 && abs(seg1 - seg0) == 16)))
+					vht160 = true;
+			}
+
+			if (vht80) {
 				tmp = max_vht80_rate(snr) + 1;
+				if (tmp > est)
+					est = tmp;
+			}
+
+			if (vht160 &&
+			    (hw_mode->vht_capab &
+			     (VHT_CAP_SUPP_CHAN_WIDTH_160MHZ |
+			      VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ))) {
+				tmp = max_vht160_rate(snr) + 1;
 				if (tmp > est)
 					est = tmp;
 			}
