@@ -5605,3 +5605,26 @@ bool is_p2p_6ghz_capable(struct p2p_data *p2p)
 {
 	return p2p->p2p_6ghz_capable;
 }
+
+
+bool p2p_wfd_enabled(struct p2p_data *p2p)
+{
+#ifdef CONFIG_WIFI_DISPLAY
+	return p2p->wfd_ie_probe_req != NULL;
+#else /* CONFIG_WIFI_DISPLAY */
+	return false;
+#endif /* CONFIG_WIFI_DISPLAY */
+}
+
+
+bool p2p_peer_wfd_enabled(struct p2p_data *p2p, const u8 *peer_addr)
+{
+#ifdef CONFIG_WIFI_DISPLAY
+	struct p2p_device *dev;
+
+	dev = p2p_get_device(p2p, peer_addr);
+	return dev && dev->info.wfd_subelems != NULL;
+#else /* CONFIG_WIFI_DISPLAY */
+	return false;
+#endif /* CONFIG_WIFI_DISPLAY */
+}

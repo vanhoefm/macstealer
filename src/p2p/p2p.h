@@ -2414,5 +2414,7 @@ struct wpabuf * p2p_build_probe_resp_template(struct p2p_data *p2p,
 void p2p_set_6ghz_dev_capab(struct p2p_data *p2p, bool allow_6ghz);
 bool is_p2p_6ghz_capable(struct p2p_data *p2p);
 bool p2p_is_peer_6ghz_capab(struct p2p_data *p2p, const u8 *addr);
+bool p2p_peer_wfd_enabled(struct p2p_data *p2p, const u8 *peer_addr);
+bool p2p_wfd_enabled(struct p2p_data *p2p);
 
 #endif /* P2P_H */
