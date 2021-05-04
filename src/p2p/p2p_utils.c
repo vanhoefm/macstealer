@@ -496,3 +496,24 @@ int p2p_channels_to_freqs(const struct p2p_channels *channels, int *freq_list,
 
 	return idx;
 }
+
+
+void p2p_copy_channels(struct p2p_channels *dst,
+		       const struct p2p_channels *src, bool allow_6ghz)
+{
+	size_t i, j;
+
+	if (allow_6ghz) {
+		os_memcpy(dst, src, sizeof(struct p2p_channels));
+		return;
+	}
+
+	for (i = 0, j = 0; i < P2P_MAX_REG_CLASSES; i++) {
+		if (is_6ghz_op_class(src->reg_class[i].reg_class))
+			continue;
+		os_memcpy(&dst->reg_class[j], &src->reg_class[i],
+			  sizeof(struct p2p_reg_class));
+		j++;
+	}
+	dst->reg_classes = j;
+}

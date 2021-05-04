@@ -2420,5 +2420,7 @@ bool is_p2p_6ghz_capable(struct p2p_data *p2p);
 bool p2p_is_peer_6ghz_capab(struct p2p_data *p2p, const u8 *addr);
 bool p2p_peer_wfd_enabled(struct p2p_data *p2p, const u8 *peer_addr);
 bool p2p_wfd_enabled(struct p2p_data *p2p);
+bool is_p2p_allow_6ghz(struct p2p_data *p2p);
+void set_p2p_allow_6ghz(struct p2p_data *p2p, bool value);
 
 #endif /* P2P_H */

@@ -1397,8 +1397,8 @@ static int p2p_prepare_channel_pref(struct p2p_data *p2p,
 		p2p->channels.reg_class[0].reg_class = p2p->op_reg_class;
 		p2p->channels.reg_class[0].channel[0] = p2p->op_channel;
 	} else {
-		os_memcpy(&p2p->channels, &p2p->cfg->channels,
-			  sizeof(struct p2p_channels));
+		p2p_copy_channels(&p2p->channels, &p2p->cfg->channels,
+				  p2p->allow_6ghz);
 	}
 
 	return 0;
@@ -1485,8 +1485,7 @@ static void p2p_prepare_channel_best(struct p2p_data *p2p)
 			p2p->op_channel, p2p->op_reg_class);
 	}
 
-	os_memcpy(&p2p->channels, &p2p->cfg->channels,
-		  sizeof(struct p2p_channels));
+	p2p_copy_channels(&p2p->channels, &p2p->cfg->channels, p2p->allow_6ghz);
 }
 
 
@@ -5593,6 +5592,7 @@ bool p2p_is_peer_6ghz_capab(struct p2p_data *p2p, const u8 *addr)
 void p2p_set_6ghz_dev_capab(struct p2p_data *p2p, bool allow_6ghz)
 {
 	p2p->p2p_6ghz_capable = allow_6ghz;
+	p2p->allow_6ghz = allow_6ghz;
 	p2p_dbg(p2p, "Set 6 GHz capability to %d", allow_6ghz);
 
 	if (allow_6ghz)
@@ -5628,4 +5628,16 @@ bool p2p_peer_wfd_enabled(struct p2p_data *p2p, const u8 *peer_addr)
 #else /* CONFIG_WIFI_DISPLAY */
 	return false;
 #endif /* CONFIG_WIFI_DISPLAY */
+}
+
+
+bool is_p2p_allow_6ghz(struct p2p_data *p2p)
+{
+	return p2p->allow_6ghz;
+}
+
+
+void set_p2p_allow_6ghz(struct p2p_data *p2p, bool value)
+{
+	p2p->allow_6ghz = value;
 }
