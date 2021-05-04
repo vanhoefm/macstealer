@@ -347,9 +347,9 @@ static void wpas_p2p_trigger_scan_cb(struct wpa_radio_work *work, int deinit)
 		params->only_new_results = 1;
 	}
 
-	if (wpa_s->conf->p2p_6ghz_disable && !params->freqs) {
+	if (!params->p2p_include_6ghz && !params->freqs) {
 		wpa_printf(MSG_DEBUG,
-			   "P2P: 6 GHz disabled - update the scan frequency list");
+			   "P2P: Exclude 6 GHz channels - update the scan frequency list");
 		wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211G, params,
 					0);
 		wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211A, params,
@@ -394,7 +394,8 @@ static int wpas_p2p_search_social_channel(struct wpa_supplicant *wpa_s,
 
 static int wpas_p2p_scan(void *ctx, enum p2p_scan_type type, int freq,
 			 unsigned int num_req_dev_types,
-			 const u8 *req_dev_types, const u8 *dev_id, u16 pw_id)
+			 const u8 *req_dev_types, const u8 *dev_id, u16 pw_id,
+			 bool include_6ghz)
 {
 	struct wpa_supplicant *wpa_s = ctx;
 	struct wpa_driver_scan_params *params = NULL;
@@ -432,7 +433,8 @@ static int wpas_p2p_scan(void *ctx, enum p2p_scan_type type, int freq,
 					num_req_dev_types, req_dev_types);
 	if (wps_ie == NULL)
 		goto fail;
-
+	if (!wpa_s->conf->p2p_6ghz_disable)
+		params->p2p_include_6ghz = include_6ghz;
 	switch (type) {
 	case P2P_SCAN_SOCIAL:
 		params->freqs = os_calloc(ARRAY_SIZE(social_channels_freq) + 1,
@@ -7191,7 +7193,8 @@ int wpas_p2p_find(struct wpa_supplicant *wpa_s, unsigned int timeout,
 		  enum p2p_discovery_type type,
 		  unsigned int num_req_dev_types, const u8 *req_dev_types,
 		  const u8 *dev_id, unsigned int search_delay,
-		  u8 seek_cnt, const char **seek_string, int freq)
+		  u8 seek_cnt, const char **seek_string, int freq,
+		  bool include_6ghz)
 {
 	wpas_p2p_clear_pending_action_tx(wpa_s);
 	wpa_s->global->p2p_long_listen = 0;
@@ -7210,7 +7213,8 @@ int wpas_p2p_find(struct wpa_supplicant *wpa_s, unsigned int timeout,
 
 	return p2p_find(wpa_s->global->p2p, timeout, type,
 			num_req_dev_types, req_dev_types, dev_id,
-			search_delay, seek_cnt, seek_string, freq);
+			search_delay, seek_cnt, seek_string, freq,
+			include_6ghz);
 }
 
 

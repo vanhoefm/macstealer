@@ -549,6 +549,7 @@ struct p2p_data {
 	u8 override_pref_op_class;
 	u8 override_pref_channel;
 	bool p2p_6ghz_capable;
+	bool include_6ghz;
 };
 
 /**
