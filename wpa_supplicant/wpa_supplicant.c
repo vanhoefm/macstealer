@@ -1157,14 +1157,14 @@ int wpa_supplicant_reload_configuration(struct wpa_supplicant *wpa_s)
 
 	if (wpa_s->confname == NULL)
 		return -1;
-	conf = wpa_config_read(wpa_s->confname, NULL);
+	conf = wpa_config_read(wpa_s->confname, NULL, false);
 	if (conf == NULL) {
 		wpa_msg(wpa_s, MSG_ERROR, "Failed to parse the configuration "
 			"file '%s' - exiting", wpa_s->confname);
 		return -1;
 	}
 	if (wpa_s->confanother &&
-	    !wpa_config_read(wpa_s->confanother, conf)) {
+	    !wpa_config_read(wpa_s->confanother, conf, true)) {
 		wpa_msg(wpa_s, MSG_ERROR,
 			"Failed to parse the configuration file '%s' - exiting",
 			wpa_s->confanother);
@@ -6783,7 +6783,7 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
 #else /* CONFIG_BACKEND_FILE */
 		wpa_s->confname = os_strdup(iface->confname);
 #endif /* CONFIG_BACKEND_FILE */
-		wpa_s->conf = wpa_config_read(wpa_s->confname, NULL);
+		wpa_s->conf = wpa_config_read(wpa_s->confname, NULL, false);
 		if (wpa_s->conf == NULL) {
 			wpa_printf(MSG_ERROR, "Failed to read or parse "
 				   "configuration '%s'.", wpa_s->confname);
@@ -6791,7 +6791,7 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
 		}
 		wpa_s->confanother = os_rel2abs_path(iface->confanother);
 		if (wpa_s->confanother &&
-		    !wpa_config_read(wpa_s->confanother, wpa_s->conf)) {
+		    !wpa_config_read(wpa_s->confanother, wpa_s->conf, true)) {
 			wpa_printf(MSG_ERROR,
 				   "Failed to read or parse configuration '%s'.",
 				   wpa_s->confanother);

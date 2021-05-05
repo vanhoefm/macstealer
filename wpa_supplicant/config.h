@@ -1840,6 +1840,7 @@ const char * wpa_config_get_global_field_name(unsigned int i, int *no_var);
  * @name: Name of the configuration (e.g., path and file name for the
  * configuration file)
  * @cfgp: Pointer to previously allocated configuration data or %NULL if none
+ * @ro: Whether to mark networks from this configuration as read-only
  * Returns: Pointer to allocated configuration data or %NULL on failure
  *
  * This function reads configuration data, parses its contents, and allocates
@@ -1848,7 +1849,8 @@ const char * wpa_config_get_global_field_name(unsigned int i, int *no_var);
  *
  * Each configuration backend needs to implement this function.
  */
-struct wpa_config * wpa_config_read(const char *name, struct wpa_config *cfgp);
+struct wpa_config * wpa_config_read(const char *name, struct wpa_config *cfgp,
+				    bool ro);
 
 /**
  * wpa_config_write - Write or update configuration data

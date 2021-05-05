@@ -108,6 +108,21 @@ struct wpa_ssid {
 	int id;
 
 	/**
+	 * ro - Whether a network is declared as read-only
+	 *
+	 * Every network which is defined in a config file that is passed to
+	 * wpa_supplicant using the -I option will be marked as read-only
+	 * using this flag. It has the effect that it won't be written to
+	 * /etc/wpa_supplicant.conf (from -c argument) if, e.g., wpa_gui tells
+	 * the daemon to save all changed configs.
+	 *
+	 * This is necessary because networks from /etc/wpa_supplicant.conf
+	 * have a higher priority and changes from an alternative file would be
+	 * silently overwritten without this.
+	 */
+	bool ro;
+
+	/**
 	 * priority - Priority group
 	 *
 	 * By default, all networks will get same priority group (0). If some

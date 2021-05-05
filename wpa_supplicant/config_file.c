@@ -296,7 +296,8 @@ static int wpa_config_process_blob(struct wpa_config *config, FILE *f,
 #endif /* CONFIG_NO_CONFIG_BLOBS */
 
 
-struct wpa_config * wpa_config_read(const char *name, struct wpa_config *cfgp)
+struct wpa_config * wpa_config_read(const char *name, struct wpa_config *cfgp,
+				    bool ro)
 {
 	FILE *f;
 	char buf[512], *pos;
@@ -338,6 +339,7 @@ struct wpa_config * wpa_config_read(const char *name, struct wpa_config *cfgp)
 	while (wpa_config_get_line(buf, sizeof(buf), f, &line, &pos)) {
 		if (os_strcmp(pos, "network={") == 0) {
 			ssid = wpa_config_read_network(f, &line, id++);
+			ssid->ro = ro;
 			if (ssid == NULL) {
 				wpa_printf(MSG_ERROR, "Line %d: failed to "
 					   "parse network block.", line);
@@ -1653,7 +1655,8 @@ int wpa_config_write(const char *name, struct wpa_config *config)
 	}
 
 	for (ssid = config->ssid; ssid; ssid = ssid->next) {
-		if (ssid->key_mgmt == WPA_KEY_MGMT_WPS || ssid->temporary)
+		if (ssid->key_mgmt == WPA_KEY_MGMT_WPS || ssid->temporary ||
+		    ssid->ro)
 			continue; /* do not save temporary networks */
 		if (wpa_key_mgmt_wpa_psk_no_sae(ssid->key_mgmt) &&
 		    !ssid->psk_set && !ssid->passphrase)
