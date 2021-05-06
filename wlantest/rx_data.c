@@ -847,6 +847,8 @@ void rx_data(struct wlantest *wt, const u8 *data, size_t len)
 		qos = data + hdrlen;
 		hdrlen += 2;
 	}
+	if ((fc & WLAN_FC_HTC) && (stype & 0x08))
+		hdrlen += 4; /* HT Control field */
 	if (len < hdrlen)
 		return;
 	wt->rx_data++;
