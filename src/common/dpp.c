@@ -5049,8 +5049,9 @@ void dpp_notify_auth_success(struct dpp_authentication *auth, int initiator)
 		hex[0] = '\0';
 	}
 	wpa_msg(auth->msg_ctx, MSG_INFO,
-		DPP_EVENT_AUTH_SUCCESS "init=%d pkhash=%s",
-		initiator, hex);
+		DPP_EVENT_AUTH_SUCCESS "init=%d pkhash=%s own=%d peer=%d",
+		initiator, hex, auth->own_bi ? (int) auth->own_bi->id : -1,
+		auth->peer_bi ? (int) auth->peer_bi->id : -1);
 }
 
 
