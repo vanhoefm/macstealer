@@ -218,6 +218,7 @@ static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
 {
 	int len, res, ret, i;
 	const char *keyid;
+	const u8 *dpp_pkhash;
 
 	if (!sta)
 		return 0;
@@ -382,6 +383,18 @@ static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
 	keyid = ap_sta_wpa_get_keyid(hapd, sta);
 	if (keyid) {
 		ret = os_snprintf(buf + len, buflen - len, "keyid=%s\n", keyid);
+		if (!os_snprintf_error(buflen - len, ret))
+			len += ret;
+	}
+
+	dpp_pkhash = ap_sta_wpa_get_dpp_pkhash(hapd, sta);
+	if (dpp_pkhash) {
+		ret = os_snprintf(buf + len, buflen - len, "dpp_pkhash=");
+		if (!os_snprintf_error(buflen - len, ret))
+			len += ret;
+		len += wpa_snprintf_hex(buf + len, buflen - len, dpp_pkhash,
+					SHA256_MAC_LEN);
+		ret = os_snprintf(buf + len, buflen - len, "\n");
 		if (!os_snprintf_error(buflen - len, ret))
 			len += ret;
 	}

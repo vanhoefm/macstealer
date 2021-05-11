@@ -2051,6 +2051,7 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 	os_time_t expire;
 	int expiration;
 	enum dpp_status_error res;
+	u8 pkhash[SHA256_MAC_LEN];
 
 	os_memset(&intro, 0, sizeof(intro));
 
@@ -2087,7 +2088,7 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 			     wpabuf_len(hapd->conf->dpp_netaccesskey),
 			     wpabuf_head(hapd->conf->dpp_csign),
 			     wpabuf_len(hapd->conf->dpp_csign),
-			     connector, connector_len, &expire);
+			     connector, connector_len, &expire, pkhash);
 	if (res == 255) {
 		wpa_printf(MSG_INFO,
 			   "DPP: Network Introduction protocol resulted in internal failure (peer "
@@ -2132,9 +2133,9 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 	else
 		expiration = 0;
 
-	if (wpa_auth_pmksa_add2(hapd->wpa_auth, src, intro.pmk, intro.pmk_len,
+	if (wpa_auth_pmksa_add3(hapd->wpa_auth, src, intro.pmk, intro.pmk_len,
 				intro.pmkid, expiration,
-				WPA_KEY_MGMT_DPP) < 0) {
+				WPA_KEY_MGMT_DPP, pkhash) < 0) {
 		wpa_printf(MSG_ERROR, "DPP: Failed to add PMKSA cache entry");
 		goto done;
 	}
@@ -2792,6 +2793,7 @@ hostapd_dpp_rx_priv_peer_intro_update(struct hostapd_data *hapd, const u8 *src,
 	os_time_t expire;
 	int expiration;
 	enum dpp_status_error res;
+	u8 pkhash[SHA256_MAC_LEN];
 
 	os_memset(&intro, 0, sizeof(intro));
 
@@ -2869,7 +2871,7 @@ hostapd_dpp_rx_priv_peer_intro_update(struct hostapd_data *hapd, const u8 *src,
 			     wpabuf_len(hapd->conf->dpp_netaccesskey),
 			     wpabuf_head(hapd->conf->dpp_csign),
 			     wpabuf_len(hapd->conf->dpp_csign),
-			     connector, connector_len, &expire);
+			     connector, connector_len, &expire, pkhash);
 	if (res == 255) {
 		wpa_printf(MSG_INFO,
 			   "DPP: Network Introduction protocol resulted in internal failure (peer "
@@ -2903,9 +2905,9 @@ hostapd_dpp_rx_priv_peer_intro_update(struct hostapd_data *hapd, const u8 *src,
 	else
 		expiration = 0;
 
-	if (wpa_auth_pmksa_add2(hapd->wpa_auth, src, intro.pmk, intro.pmk_len,
+	if (wpa_auth_pmksa_add3(hapd->wpa_auth, src, intro.pmk, intro.pmk_len,
 				intro.pmkid, expiration,
-				WPA_KEY_MGMT_DPP) < 0) {
+				WPA_KEY_MGMT_DPP, pkhash) < 0) {
 		wpa_printf(MSG_ERROR, "DPP: Failed to add PMKSA cache entry");
 		goto done;
 	}

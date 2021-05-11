@@ -4856,6 +4856,14 @@ const u8 * wpa_auth_get_pmk(struct wpa_state_machine *sm, int *len)
 }
 
 
+const u8 * wpa_auth_get_dpp_pkhash(struct wpa_state_machine *sm)
+{
+	if (!sm || !sm->pmksa)
+		return NULL;
+	return sm->pmksa->dpp_pkhash;
+}
+
+
 int wpa_auth_sta_key_mgmt(struct wpa_state_machine *sm)
 {
 	if (!sm)
@@ -5015,6 +5023,29 @@ int wpa_auth_pmksa_add2(struct wpa_authenticator *wpa_auth, const u8 *addr,
 		return 0;
 
 	return -1;
+}
+
+
+int wpa_auth_pmksa_add3(struct wpa_authenticator *wpa_auth, const u8 *addr,
+			const u8 *pmk, size_t pmk_len, const u8 *pmkid,
+			int session_timeout, int akmp, const u8 *dpp_pkhash)
+{
+	struct rsn_pmksa_cache_entry *entry;
+
+	if (wpa_auth->conf.disable_pmksa_caching)
+		return -1;
+
+	wpa_hexdump_key(MSG_DEBUG, "RSN: Cache PMK (3)", pmk, PMK_LEN);
+	entry = pmksa_cache_auth_add(wpa_auth->pmksa, pmk, pmk_len, pmkid,
+				 NULL, 0, wpa_auth->addr, addr, session_timeout,
+				 NULL, akmp);
+	if (!entry)
+		return -1;
+
+	if (dpp_pkhash)
+		entry->dpp_pkhash = os_memdup(dpp_pkhash, SHA256_MAC_LEN);
+
+	return 0;
 }
 
 

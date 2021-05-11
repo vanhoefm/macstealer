@@ -23,6 +23,8 @@ struct rsn_pmksa_cache_entry {
 	int akmp; /* WPA_KEY_MGMT_* */
 	u8 spa[ETH_ALEN];
 
+	u8 *dpp_pkhash; /* SHA256_MAC_LEN octet hash value of DPP Connector
+			 * public key */
 	u8 *identity;
 	size_t identity_len;
 	struct wpabuf *cui;

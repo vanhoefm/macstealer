@@ -40,6 +40,7 @@ static void _pmksa_cache_free_entry(struct rsn_pmksa_cache_entry *entry)
 {
 	os_free(entry->vlan_desc);
 	os_free(entry->identity);
+	os_free(entry->dpp_pkhash);
 	wpabuf_free(entry->cui);
 #ifndef CONFIG_NO_RADIUS
 	radius_free_class(&entry->radius_class);

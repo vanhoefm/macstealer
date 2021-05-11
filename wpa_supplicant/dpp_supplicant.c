@@ -2677,7 +2677,7 @@ static void wpas_dpp_rx_peer_disc_resp(struct wpa_supplicant *wpa_s,
 			     ssid->dpp_netaccesskey_len,
 			     ssid->dpp_csign,
 			     ssid->dpp_csign_len,
-			     connector, connector_len, &expiry);
+			     connector, connector_len, &expiry, NULL);
 	if (res != DPP_STATUS_OK) {
 		wpa_printf(MSG_INFO,
 			   "DPP: Network Introduction protocol resulted in failure");
@@ -3830,7 +3830,7 @@ wpas_dpp_rx_priv_peer_intro_notify(struct wpa_supplicant *wpa_s,
 			     ssid->dpp_netaccesskey_len,
 			     ssid->dpp_csign,
 			     ssid->dpp_csign_len,
-			     connector, connector_len, &expiry);
+			     connector, connector_len, &expiry, NULL);
 	if (res != DPP_STATUS_OK) {
 		wpa_printf(MSG_INFO,
 			   "DPP: Network Introduction protocol resulted in failure");

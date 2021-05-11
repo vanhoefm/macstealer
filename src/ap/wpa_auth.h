@@ -410,6 +410,7 @@ void wpa_auth_countermeasures_start(struct wpa_authenticator *wpa_auth);
 int wpa_auth_pairwise_set(struct wpa_state_machine *sm);
 int wpa_auth_get_pairwise(struct wpa_state_machine *sm);
 const u8 * wpa_auth_get_pmk(struct wpa_state_machine *sm, int *len);
+const u8 * wpa_auth_get_dpp_pkhash(struct wpa_state_machine *sm);
 int wpa_auth_sta_key_mgmt(struct wpa_state_machine *sm);
 int wpa_auth_sta_wpa_version(struct wpa_state_machine *sm);
 int wpa_auth_sta_ft_tk_already_set(struct wpa_state_machine *sm);
@@ -435,6 +436,9 @@ void wpa_auth_add_sae_pmkid(struct wpa_state_machine *sm, const u8 *pmkid);
 int wpa_auth_pmksa_add2(struct wpa_authenticator *wpa_auth, const u8 *addr,
 			const u8 *pmk, size_t pmk_len, const u8 *pmkid,
 			int session_timeout, int akmp);
+int wpa_auth_pmksa_add3(struct wpa_authenticator *wpa_auth, const u8 *addr,
+			const u8 *pmk, size_t pmk_len, const u8 *pmkid,
+			int session_timeout, int akmp, const u8 *dpp_pkhash);
 void wpa_auth_pmksa_remove(struct wpa_authenticator *wpa_auth,
 			   const u8 *sta_addr);
 int wpa_auth_pmksa_list(struct wpa_authenticator *wpa_auth, char *buf,

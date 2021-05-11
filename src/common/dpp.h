@@ -669,7 +669,7 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 	       const u8 *net_access_key, size_t net_access_key_len,
 	       const u8 *csign_key, size_t csign_key_len,
 	       const u8 *peer_connector, size_t peer_connector_len,
-	       os_time_t *expiry);
+	       os_time_t *expiry, u8 *peer_key_hash);
 void dpp_peer_intro_deinit(struct dpp_introduction *intro);
 int dpp_get_connector_version(const char *connector);
 struct dpp_pkex * dpp_pkex_init(void *msg_ctx, struct dpp_bootstrap_info *bi,
@@ -853,6 +853,7 @@ struct dpp_reconfig_id * dpp_gen_reconfig_id(const u8 *csign_key,
 					     size_t pp_key_len);
 int dpp_update_reconfig_id(struct dpp_reconfig_id *id);
 void dpp_free_reconfig_id(struct dpp_reconfig_id *id);
+int dpp_get_pubkey_hash(struct crypto_ec_key *key, u8 *hash);
 
 #endif /* CONFIG_DPP */
 #endif /* DPP_H */

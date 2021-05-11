@@ -1260,6 +1260,13 @@ const char * ap_sta_wpa_get_keyid(struct hostapd_data *hapd,
 }
 
 
+const u8 * ap_sta_wpa_get_dpp_pkhash(struct hostapd_data *hapd,
+				     struct sta_info *sta)
+{
+	return wpa_auth_get_dpp_pkhash(sta->wpa_sm);
+}
+
+
 void ap_sta_set_authorized(struct hostapd_data *hapd, struct sta_info *sta,
 			   int authorized)
 {
@@ -1298,10 +1305,13 @@ void ap_sta_set_authorized(struct hostapd_data *hapd, struct sta_info *sta,
 					sta->addr, authorized, dev_addr);
 
 	if (authorized) {
+		const u8 *dpp_pkhash;
 		const char *keyid;
+		char dpp_pkhash_buf[100];
 		char keyid_buf[100];
 		char ip_addr[100];
 
+		dpp_pkhash_buf[0] = '\0';
 		keyid_buf[0] = '\0';
 		ip_addr[0] = '\0';
 #ifdef CONFIG_P2P
@@ -1319,14 +1329,27 @@ void ap_sta_set_authorized(struct hostapd_data *hapd, struct sta_info *sta,
 				    " keyid=%s", keyid);
 		}
 
-		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_STA_CONNECTED "%s%s%s",
-			buf, ip_addr, keyid_buf);
+		dpp_pkhash = ap_sta_wpa_get_dpp_pkhash(hapd, sta);
+		if (dpp_pkhash) {
+			const char *prefix = " dpp_pkhash=";
+			size_t plen = os_strlen(prefix);
+
+			os_strlcpy(dpp_pkhash_buf, prefix,
+				   sizeof(dpp_pkhash_buf));
+			wpa_snprintf_hex(&dpp_pkhash_buf[plen],
+					 sizeof(dpp_pkhash_buf) - plen,
+					 dpp_pkhash, SHA256_MAC_LEN);
+		}
+
+		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_STA_CONNECTED "%s%s%s%s",
+			buf, ip_addr, keyid_buf, dpp_pkhash_buf);
 
 		if (hapd->msg_ctx_parent &&
 		    hapd->msg_ctx_parent != hapd->msg_ctx)
 			wpa_msg_no_global(hapd->msg_ctx_parent, MSG_INFO,
-					  AP_STA_CONNECTED "%s%s%s",
-					  buf, ip_addr, keyid_buf);
+					  AP_STA_CONNECTED "%s%s%s%s",
+					  buf, ip_addr, keyid_buf,
+					  dpp_pkhash_buf);
 	} else {
 		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_STA_DISCONNECTED "%s", buf);
 

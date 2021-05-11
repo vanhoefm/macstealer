@@ -246,6 +246,27 @@ struct crypto_ec_key * dpp_set_pubkey_point(struct crypto_ec_key *group_key,
 }
 
 
+int dpp_get_pubkey_hash(struct crypto_ec_key *key, u8 *hash)
+{
+	struct wpabuf *uncomp;
+	const u8 *addr[1];
+	size_t len[1];
+	int res;
+
+	if (!key)
+		return -1;
+
+	uncomp = crypto_ec_key_get_pubkey_point(key, 1);
+	if (!uncomp)
+		return -1;
+	addr[0] = wpabuf_head(uncomp);
+	len[0] = wpabuf_len(uncomp);
+	res = sha256_vector(1, addr, len, hash);
+	wpabuf_free(uncomp);
+	return res;
+}
+
+
 struct crypto_ec_key * dpp_gen_keypair(const struct dpp_curve_params *curve)
 {
 	struct crypto_ec_key *key;

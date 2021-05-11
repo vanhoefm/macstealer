@@ -354,6 +354,8 @@ void ap_sta_stop_sa_query(struct hostapd_data *hapd, struct sta_info *sta);
 int ap_check_sa_query_timeout(struct hostapd_data *hapd, struct sta_info *sta);
 const char * ap_sta_wpa_get_keyid(struct hostapd_data *hapd,
 				  struct sta_info *sta);
+const u8 * ap_sta_wpa_get_dpp_pkhash(struct hostapd_data *hapd,
+				     struct sta_info *sta);
 void ap_sta_disconnect(struct hostapd_data *hapd, struct sta_info *sta,
 		       const u8 *addr, u16 reason);
 
