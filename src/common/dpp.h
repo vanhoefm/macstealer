@@ -820,6 +820,7 @@ struct dpp_global_config {
 struct dpp_global * dpp_global_init(struct dpp_global_config *config);
 void dpp_global_clear(struct dpp_global *dpp);
 void dpp_global_deinit(struct dpp_global *dpp);
+void dpp_notify_auth_success(struct dpp_authentication *auth, int initiator);
 
 /* dpp_reconfig.c */
 

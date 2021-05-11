@@ -1906,7 +1906,7 @@ static void wpas_dpp_start_gas_client(struct wpa_supplicant *wpa_s)
 static void wpas_dpp_auth_success(struct wpa_supplicant *wpa_s, int initiator)
 {
 	wpa_printf(MSG_DEBUG, "DPP: Authentication succeeded");
-	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_AUTH_SUCCESS "init=%d", initiator);
+	dpp_notify_auth_success(wpa_s->dpp_auth, initiator);
 #ifdef CONFIG_TESTING_OPTIONS
 	if (dpp_test == DPP_TEST_STOP_AT_AUTH_CONF) {
 		wpa_printf(MSG_INFO,
@@ -4073,7 +4073,7 @@ wpas_dpp_gas_req_handler(void *ctx, void *resp_ctx, const u8 *sa,
 		 * TX status handler, but since there was no such handler call
 		 * yet, simply send out the event message and proceed with
 		 * exchange. */
-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_AUTH_SUCCESS "init=1");
+		dpp_notify_auth_success(auth, 1);
 		wpa_s->dpp_auth_ok_on_ack = 0;
 	}
 

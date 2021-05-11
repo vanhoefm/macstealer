@@ -371,8 +371,7 @@ static void dpp_controller_auth_success(struct dpp_connection *conn,
 		return;
 
 	wpa_printf(MSG_DEBUG, "DPP: Authentication succeeded");
-	wpa_msg(conn->msg_ctx, MSG_INFO,
-		DPP_EVENT_AUTH_SUCCESS "init=%d", initiator);
+	dpp_notify_auth_success(auth, initiator);
 #ifdef CONFIG_TESTING_OPTIONS
 	if (dpp_test == DPP_TEST_STOP_AT_AUTH_CONF) {
 		wpa_printf(MSG_INFO,

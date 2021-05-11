@@ -5034,6 +5034,13 @@ void dpp_global_deinit(struct dpp_global *dpp)
 }
 
 
+void dpp_notify_auth_success(struct dpp_authentication *auth, int initiator)
+{
+	wpa_msg(auth->msg_ctx, MSG_INFO, DPP_EVENT_AUTH_SUCCESS "init=%d",
+		initiator);
+}
+
+
 #ifdef CONFIG_DPP2
 
 struct wpabuf * dpp_build_presence_announcement(struct dpp_bootstrap_info *bi)

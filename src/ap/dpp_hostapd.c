@@ -1378,8 +1378,7 @@ static void hostapd_dpp_start_gas_client(struct hostapd_data *hapd)
 static void hostapd_dpp_auth_success(struct hostapd_data *hapd, int initiator)
 {
 	wpa_printf(MSG_DEBUG, "DPP: Authentication succeeded");
-	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_AUTH_SUCCESS "init=%d",
-		initiator);
+	dpp_notify_auth_success(hapd->dpp_auth, initiator);
 #ifdef CONFIG_TESTING_OPTIONS
 	if (dpp_test == DPP_TEST_STOP_AT_AUTH_CONF) {
 		wpa_printf(MSG_INFO,
@@ -3089,8 +3088,7 @@ hostapd_dpp_gas_req_handler(struct hostapd_data *hapd, const u8 *sa,
 		 * from TX status handler, but since there was no such handler
 		 * call yet, simply send out the event message and proceed with
 		 * exchange. */
-		wpa_msg(hapd->msg_ctx, MSG_INFO,
-			DPP_EVENT_AUTH_SUCCESS "init=1");
+		dpp_notify_auth_success(hapd->dpp_auth, 1);
 		hapd->dpp_auth_ok_on_ack = 0;
 	}
 
