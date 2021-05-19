@@ -2439,6 +2439,13 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_CONCURRENT_STA_PRIMARY = 79,
 
+	/*
+	 * 8-bit unsigned value. This attribute can be used to configure the
+	 * driver to enable/disable FT-over-DS feature. Possible values for
+	 * this attribute are 1-Enable and 0-Disable.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_FT_OVER_DS = 80,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
