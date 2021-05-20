@@ -2039,8 +2039,14 @@ static int wpa_scan_result_compar(const void *a, const void *b)
 		snr_b = snr_b_full = wb->level;
 	}
 
-	/* if SNR is close, decide by max rate or frequency band */
-	if (snr_a && snr_b && abs(snr_b - snr_a) < 7) {
+	/* If SNR is close, decide by max rate or frequency band. For cases
+	 * involving the 6 GHz band, use the throughput estimate irrespective
+	 * of the SNR difference since the LPI/VLP rules may result in
+	 * significant differences in SNR for cases where the estimated
+	 * throughput can be considerably higher with the lower SNR. */
+	if (snr_a && snr_b && (abs(snr_b - snr_a) < 7 ||
+			       is_6ghz_freq(wa->freq) ||
+			       is_6ghz_freq(wb->freq))) {
 		if (wa->est_throughput != wb->est_throughput)
 			return (int) wb->est_throughput -
 				(int) wa->est_throughput;
