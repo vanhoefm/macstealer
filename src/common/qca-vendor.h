@@ -4585,7 +4585,13 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD: Signed 32-bit value in dBm,
  *	signifying the RSSI threshold of the candidate AP, indicating
  *	the driver to trigger roam only to the candidate AP with RSSI
- *	better than this threshold.
+ *	better than this threshold. If RSSI thresholds for candidate APs found
+ *	in the 2.4 GHz, 5 GHz, and 6 GHz bands are configured separately using
+ *	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_2P4GHZ,
+ *	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_5GHZ, and/or
+ *	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_6GHZ, those values will
+ *	take precedence over the value configured using the
+ *	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD attribute.
  *
  * @QCA_ATTR_ROAM_CONTROL_USER_REASON: Unsigned 32-bit value. Represents the
  *	user defined reason code to be sent to the AP in response to AP's
@@ -4604,6 +4610,31 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	If both QCA_ATTR_ROAM_CONTROL_SCAN_SCHEME and
  *	QCA_ATTR_ROAM_CONTROL_SCAN_SCHEME_TRIGGERS are not specified, the
  *	driver shall proceed with the default behavior.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_2P4GHZ: Signed 32-bit value
+ *	in dBm, signifying the RSSI threshold of the candidate AP found in the
+ *	2.4 GHz band. The driver/firmware shall trigger roaming to the candidate
+ *	AP found in the 2.4 GHz band only if its RSSI value is better than this
+ *	threshold. Optional attribute. If this attribute is not included, the
+ *	threshold value specified by the
+ *	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD attribute shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_5GHZ: Signed 32-bit value in
+ *	dBm, signifying the RSSI threshold of the candidate AP found in the 5
+ *	GHz band. The driver/firmware shall trigger roaming to the candidate AP
+ *	found in the 5 GHz band only if its RSSI value is better than this
+ *	threshold. Optional attribute. If this attribute is not included, the
+ *	threshold value specified by tge
+ *	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD attribute shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_6GHZ: Signed 32-bit value in
+ *	dBm, signifying the RSSI threshold of the candidate AP found in the 6
+ *	GHz band. The driver/firmware shall trigger roaming to the candidate AP
+ *	found in the 6 GHz band only if its RSSI value is better than this
+ *	threshold. Optional attribute. If this attribute is not included, the
+ *	threshold value specified by the
+ *	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD attribute shall be used.
+ *
  */
 enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_ENABLE = 1,
@@ -4619,6 +4650,9 @@ enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD = 11,
 	QCA_ATTR_ROAM_CONTROL_USER_REASON = 12,
 	QCA_ATTR_ROAM_CONTROL_SCAN_SCHEME_TRIGGERS = 13,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_2P4GHZ = 14,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_5GHZ = 15,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_6GHZ = 16,
 
 	/* keep last */
 	QCA_ATTR_ROAM_CONTROL_AFTER_LAST,
