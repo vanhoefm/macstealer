@@ -8230,8 +8230,14 @@ int wpa_is_bss_tmp_disallowed(struct wpa_supplicant *wpa_s,
 		return 0;
 
 	if (disallowed->rssi_threshold != 0 &&
-	    bss->level > disallowed->rssi_threshold)
+	    bss->level > disallowed->rssi_threshold) {
+		eloop_cancel_timeout(wpa_bss_tmp_disallow_timeout,
+				     wpa_s, disallowed);
+		dl_list_del(&disallowed->list);
+		os_free(disallowed);
+		wpa_set_driver_tmp_disallow_list(wpa_s);
 		return 0;
+	}
 
 	return 1;
 }
