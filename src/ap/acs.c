@@ -392,7 +392,7 @@ static int acs_usable_bw40_chan(const struct hostapd_channel_data *chan)
 
 static int acs_usable_bw80_chan(const struct hostapd_channel_data *chan)
 {
-	const int allowed[] = { 5180, 5260, 5550, 5580, 5660, 5745, 5955, 6035,
+	const int allowed[] = { 5180, 5260, 5500, 5580, 5660, 5745, 5955, 6035,
 				6115, 6195, 6275, 6355, 6435, 6515, 6595, 6675,
 				6755, 6835, 6915, 6995 };
 	unsigned int i;
