@@ -461,16 +461,22 @@ void free_hw_features(struct wpa_supplicant *wpa_s)
 }
 
 
+static void remove_bss_tmp_disallowed_entry(struct wpa_supplicant *wpa_s,
+					    struct wpa_bss_tmp_disallowed *bss)
+{
+	eloop_cancel_timeout(wpa_bss_tmp_disallow_timeout, wpa_s, bss);
+	dl_list_del(&bss->list);
+	os_free(bss);
+}
+
+
 void free_bss_tmp_disallowed(struct wpa_supplicant *wpa_s)
 {
 	struct wpa_bss_tmp_disallowed *bss, *prev;
 
 	dl_list_for_each_safe(bss, prev, &wpa_s->bss_tmp_disallowed,
-			      struct wpa_bss_tmp_disallowed, list) {
-		eloop_cancel_timeout(wpa_bss_tmp_disallow_timeout, wpa_s, bss);
-		dl_list_del(&bss->list);
-		os_free(bss);
-	}
+			      struct wpa_bss_tmp_disallowed, list)
+		remove_bss_tmp_disallowed_entry(wpa_s, bss);
 }
 
 
@@ -8176,8 +8182,7 @@ static void wpa_bss_tmp_disallow_timeout(void *eloop_ctx, void *timeout_ctx)
 	dl_list_for_each(tmp, &wpa_s->bss_tmp_disallowed,
 			 struct wpa_bss_tmp_disallowed, list) {
 		if (bss == tmp) {
-			dl_list_del(&tmp->list);
-			os_free(tmp);
+			remove_bss_tmp_disallowed_entry(wpa_s, tmp);
 			wpa_set_driver_tmp_disallow_list(wpa_s);
 			break;
 		}
@@ -8231,10 +8236,7 @@ int wpa_is_bss_tmp_disallowed(struct wpa_supplicant *wpa_s,
 
 	if (disallowed->rssi_threshold != 0 &&
 	    bss->level > disallowed->rssi_threshold) {
-		eloop_cancel_timeout(wpa_bss_tmp_disallow_timeout,
-				     wpa_s, disallowed);
-		dl_list_del(&disallowed->list);
-		os_free(disallowed);
+		remove_bss_tmp_disallowed_entry(wpa_s, disallowed);
 		wpa_set_driver_tmp_disallow_list(wpa_s);
 		return 0;
 	}
