@@ -8124,6 +8124,20 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_KEEP_ALIVE_FRAME_TYPE = 53,
 
+	/* 8-bit unsigned value to configure the driver to use scan request
+	 * BSSID value in Probe Request frame RA(A1) during the scan. The
+	 * driver saves this configuration and applies this setting to all user
+	 * space scan requests until the setting is cleared. If this
+	 * configuration is set, the driver uses the BSSID value from the scan
+	 * request to set the RA(A1) in the Probe Request frames during the
+	 * scan.
+	 *
+	 * 0 - Default behavior uses the broadcast RA in Probe Request frames.
+	 * 1 - Uses the scan request BSSID in RA in Probe Request frames.
+	 * This attribute is used for testing purposes.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_USE_BSSID_IN_PROBE_REQ_RA = 54,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_MAX =
