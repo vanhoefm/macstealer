@@ -3867,6 +3867,10 @@ enum qca_wlan_vendor_attr_ll_stats_results {
 	 * QCA_WLAN_VENDOR_ATTR_LL_STATS_CH_INFO.
 	 */
 	QCA_WLAN_VENDOR_ATTR_LL_STATS_CHANNEL_RX_TIME = 85,
+	/* u8 value representing the channel load percentage. Possible values
+	 * are 0-100.
+	 */
+	QCA_WLAN_VENDOR_ATTR_LL_STATS_CHANNEL_LOAD_PERCENTAGE = 86,
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_LL_STATS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_LL_STATS_MAX =
