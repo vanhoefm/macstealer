@@ -1730,11 +1730,22 @@ enum qca_vendor_attr_tsf_cmd {
  * @QCA_TSF_CAPTURE: Initiate TSF Capture
  * @QCA_TSF_GET: Get TSF capture value
  * @QCA_TSF_SYNC_GET: Initiate TSF capture and return with captured value
+ * @QCA_TSF_AUTO_REPORT_ENABLE: Used in STA mode only. Once set, the target
+ * will automatically send TSF report to the host. To query
+ * QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_UPLINK_DELAY, this operation needs to be
+ * initiated first.
+ * @QCA_TSF_AUTO_REPORT_DISABLE: Used in STA mode only. Once set, the target
+ * will not automatically send TSF report to the host. If
+ * QCA_TSF_AUTO_REPORT_ENABLE is initiated and
+ * QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_UPLINK_DELAY is not queried anymore, this
+ * operation needs to be initiated.
  */
 enum qca_tsf_cmd {
 	QCA_TSF_CAPTURE,
 	QCA_TSF_GET,
 	QCA_TSF_SYNC_GET,
+	QCA_TSF_AUTO_REPORT_ENABLE,
+	QCA_TSF_AUTO_REPORT_DISABLE,
 };
 
 /**
