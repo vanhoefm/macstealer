@@ -10369,6 +10369,11 @@ enum qca_vendor_wlan_sta_guard_interval {
  * failed roam invoke. Different roam invoke failure reason codes
  * are specified in enum qca_vendor_roam_invoke_fail_reasons. This can be
  * queried either in connected state or disconnected state.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_UPLINK_DELAY: u32, used in STA mode only.
+ * This represents the average congestion duration of uplink frames in MAC
+ * queue in unit of ms. This can be queried either in connected state or
+ * disconnected state.
  */
 enum qca_wlan_vendor_attr_get_sta_info {
 	QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_INVALID = 0,
@@ -10421,6 +10426,7 @@ enum qca_wlan_vendor_attr_get_sta_info {
 	QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_ROAM_TRIGGER_REASON = 47,
 	QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_ROAM_FAIL_REASON = 48,
 	QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_ROAM_INVOKE_FAIL_REASON = 49,
+	QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_UPLINK_DELAY = 50,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_AFTER_LAST,
