@@ -101,21 +101,6 @@ const struct dpp_curve_params * dpp_get_curve_jwk_crv(const char *name)
 }
 
 
-static const struct dpp_curve_params *
-dpp_get_curve_oid(const ASN1_OBJECT *poid)
-{
-	ASN1_OBJECT *oid;
-	int i;
-
-	for (i = 0; dpp_curves[i].name; i++) {
-		oid = OBJ_txt2obj(dpp_curves[i].name, 0);
-		if (oid && OBJ_cmp(poid, oid) == 0)
-			return &dpp_curves[i];
-	}
-	return NULL;
-}
-
-
 const struct dpp_curve_params * dpp_get_curve_nid(int nid)
 {
 	int i, tmp;
@@ -833,118 +818,32 @@ int dpp_bi_pubkey_hash(struct dpp_bootstrap_info *bi,
 int dpp_get_subject_public_key(struct dpp_bootstrap_info *bi,
 			       const u8 *data, size_t data_len)
 {
-	EVP_PKEY *pkey;
-	const unsigned char *p;
-	int res;
-	X509_PUBKEY *pub = NULL;
-	ASN1_OBJECT *ppkalg;
-	const unsigned char *pk;
-	int ppklen;
-	X509_ALGOR *pa;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20800000L)
-	ASN1_OBJECT *pa_oid;
-#else
-	const ASN1_OBJECT *pa_oid;
-#endif
-	const void *pval;
-	int ptype;
-	const ASN1_OBJECT *poid;
-	char buf[100];
+	struct crypto_ec_key *key;
 
 	if (dpp_bi_pubkey_hash(bi, data, data_len) < 0) {
 		wpa_printf(MSG_DEBUG, "DPP: Failed to hash public key");
 		return -1;
 	}
 
-	/* DER encoded ASN.1 SubjectPublicKeyInfo
-	 *
-	 * SubjectPublicKeyInfo  ::=  SEQUENCE  {
-	 *      algorithm            AlgorithmIdentifier,
-	 *      subjectPublicKey     BIT STRING  }
-	 *
-	 * AlgorithmIdentifier  ::=  SEQUENCE  {
-	 *      algorithm               OBJECT IDENTIFIER,
-	 *      parameters              ANY DEFINED BY algorithm OPTIONAL  }
-	 *
-	 * subjectPublicKey = compressed format public key per ANSI X9.63
-	 * algorithm = ecPublicKey (1.2.840.10045.2.1)
-	 * parameters = shall be present and shall be OBJECT IDENTIFIER; e.g.,
-	 *       prime256v1 (1.2.840.10045.3.1.7)
-	 */
-
-	p = data;
-	pkey = d2i_PUBKEY(NULL, &p, data_len);
-
-	if (!pkey) {
+	key = crypto_ec_key_parse_pub(data, data_len);
+	if (!key) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Could not parse URI public-key SubjectPublicKeyInfo");
 		return -1;
 	}
 
-	if (EVP_PKEY_type(EVP_PKEY_id(pkey)) != EVP_PKEY_EC) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: SubjectPublicKeyInfo does not describe an EC key");
-		EVP_PKEY_free(pkey);
-		return -1;
-	}
-
-	res = X509_PUBKEY_set(&pub, pkey);
-	if (res != 1) {
-		wpa_printf(MSG_DEBUG, "DPP: Could not set pubkey");
-		goto fail;
-	}
-
-	res = X509_PUBKEY_get0_param(&ppkalg, &pk, &ppklen, &pa, pub);
-	if (res != 1) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not extract SubjectPublicKeyInfo parameters");
-		goto fail;
-	}
-	res = OBJ_obj2txt(buf, sizeof(buf), ppkalg, 0);
-	if (res < 0 || (size_t) res >= sizeof(buf)) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not extract SubjectPublicKeyInfo algorithm");
-		goto fail;
-	}
-	wpa_printf(MSG_DEBUG, "DPP: URI subjectPublicKey algorithm: %s", buf);
-	if (os_strcmp(buf, "id-ecPublicKey") != 0) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Unsupported SubjectPublicKeyInfo algorithm");
-		goto fail;
-	}
-
-	X509_ALGOR_get0(&pa_oid, &ptype, (void *) &pval, pa);
-	if (ptype != V_ASN1_OBJECT) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: SubjectPublicKeyInfo parameters did not contain an OID");
-		goto fail;
-	}
-	poid = pval;
-	res = OBJ_obj2txt(buf, sizeof(buf), poid, 0);
-	if (res < 0 || (size_t) res >= sizeof(buf)) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not extract SubjectPublicKeyInfo parameters OID");
-		goto fail;
-	}
-	wpa_printf(MSG_DEBUG, "DPP: URI subjectPublicKey parameters: %s", buf);
-	bi->curve = dpp_get_curve_oid(poid);
+	bi->curve = dpp_get_curve_ike_group(crypto_ec_key_group(key));
 	if (!bi->curve) {
 		wpa_printf(MSG_DEBUG,
-			   "DPP: Unsupported SubjectPublicKeyInfo curve: %s",
-			   buf);
+			   "DPP: Unsupported SubjectPublicKeyInfo curve: group %d",
+			   crypto_ec_key_group(key));
 		goto fail;
 	}
 
-	wpa_hexdump(MSG_DEBUG, "DPP: URI subjectPublicKey", pk, ppklen);
-
-	X509_PUBKEY_free(pub);
-	bi->pubkey = (struct crypto_ec_key *) pkey;
+	bi->pubkey = key;
 	return 0;
 fail:
-	X509_PUBKEY_free(pub);
-	EVP_PKEY_free(pkey);
+	crypto_ec_key_deinit(key);
 	return -1;
 }
 
@@ -1231,13 +1130,11 @@ dpp_check_signed_connector(struct dpp_signed_connector_info *info,
 			   const u8 *csign_key, size_t csign_key_len,
 			   const u8 *peer_connector, size_t peer_connector_len)
 {
-	const unsigned char *p;
 	struct crypto_ec_key *csign;
 	char *signed_connector = NULL;
 	enum dpp_status_error res = DPP_STATUS_INVALID_CONNECTOR;
 
-	p = csign_key;
-	csign = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, csign_key_len);
+	csign = crypto_ec_key_parse_pub(csign_key, csign_key_len);
 	if (!csign) {
 		wpa_printf(MSG_ERROR,
 			   "DPP: Failed to parse local C-sign-key information");

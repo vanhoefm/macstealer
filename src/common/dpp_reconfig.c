@@ -41,7 +41,6 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 {
 	struct wpabuf *msg = NULL;
 	struct crypto_ec_key *csign = NULL;
-	const unsigned char *p;
 	struct wpabuf *uncomp;
 	u8 hash[SHA256_MAC_LEN];
 	const u8 *addr[1];
@@ -61,8 +60,7 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 		goto fail;
 	}
 
-	p = csign_key;
-	csign = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, csign_key_len);
+	csign = crypto_ec_key_parse_pub(csign_key, csign_key_len);
 	if (!csign) {
 		wpa_printf(MSG_ERROR,
 			   "DPP: Failed to parse local C-sign-key information");
