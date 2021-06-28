@@ -2245,7 +2245,7 @@ fail:
 struct crypto_ec_key * crypto_ec_key_gen(int group)
 {
 	EVP_PKEY_CTX *kctx = NULL;
-	EC_KEY *ec_params = NULL;
+	EC_KEY *ec_params = NULL, *eckey;
 	EVP_PKEY *params = NULL, *key = NULL;
 	int nid;
 
@@ -2277,6 +2277,13 @@ struct crypto_ec_key * crypto_ec_key_gen(int group)
 		key = NULL;
 		goto fail;
 	}
+
+	eckey = EVP_PKEY_get0_EC_KEY(key);
+	if (!eckey) {
+		key = NULL;
+		goto fail;
+	}
+	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_COMPRESSED);
 
 fail:
 	EC_KEY_free(ec_params);
