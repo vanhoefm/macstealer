@@ -1150,4 +1150,12 @@ int crypto_ec_key_verify_signature_r_s(struct crypto_ec_key *key,
  */
 int crypto_ec_key_group(struct crypto_ec_key *key);
 
+/**
+ * crypto_ec_key_cmp - Compare two EC public keys
+ * @key1: Key 1
+ * @key2: Key 2
+ * Returns: 0 if public keys are identical, -1 otherwise
+ */
+int crypto_ec_key_cmp(struct crypto_ec_key *key1, struct crypto_ec_key *key2);
+
 #endif /* CRYPTO_H */

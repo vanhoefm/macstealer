@@ -2770,4 +2770,12 @@ int crypto_ec_key_group(struct crypto_ec_key *key)
 	return -1;
 }
 
+
+int crypto_ec_key_cmp(struct crypto_ec_key *key1, struct crypto_ec_key *key2)
+{
+	if (EVP_PKEY_cmp((EVP_PKEY *) key1, (EVP_PKEY *) key2) != 1)
+		return -1;
+	return 0;
+}
+
 #endif /* CONFIG_ECC */
