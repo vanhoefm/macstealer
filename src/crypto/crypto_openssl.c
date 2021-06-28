@@ -2778,4 +2778,31 @@ int crypto_ec_key_cmp(struct crypto_ec_key *key1, struct crypto_ec_key *key2)
 	return 0;
 }
 
+
+void crypto_ec_key_debug_print(const struct crypto_ec_key *key,
+			       const char *title)
+{
+	BIO *out;
+	size_t rlen;
+	char *txt;
+	int res;
+
+	out = BIO_new(BIO_s_mem());
+	if (!out)
+		return;
+
+	EVP_PKEY_print_private(out, (EVP_PKEY *) key, 0, NULL);
+	rlen = BIO_ctrl_pending(out);
+	txt = os_malloc(rlen + 1);
+	if (txt) {
+		res = BIO_read(out, txt, rlen);
+		if (res > 0) {
+			txt[res] = '\0';
+			wpa_printf(MSG_DEBUG, "%s: %s", title, txt);
+		}
+		os_free(txt);
+	}
+	BIO_free(out);
+}
+
 #endif /* CONFIG_ECC */

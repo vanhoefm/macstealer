@@ -1158,4 +1158,12 @@ int crypto_ec_key_group(struct crypto_ec_key *key);
  */
 int crypto_ec_key_cmp(struct crypto_ec_key *key1, struct crypto_ec_key *key2);
 
+/**
+ * crypto_ec_key_debug_print - Dump EC key to debug log
+ * @key:  EC key from crypto_ec_key_parse/set_pub/priv() or crypto_ec_key_gen()
+ * @title: Name of the EC point in the trace
+ */
+void crypto_ec_key_debug_print(const struct crypto_ec_key *key,
+			       const char *title);
+
 #endif /* CRYPTO_H */

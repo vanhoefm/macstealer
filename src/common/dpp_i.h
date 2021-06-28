@@ -86,8 +86,6 @@ int dpp_hmac_vector(size_t hash_len, const u8 *key, size_t key_len,
 		    u8 *mac);
 int dpp_ecdh(struct crypto_ec_key *own, struct crypto_ec_key *peer,
 	     u8 *secret, size_t *secret_len);
-void dpp_debug_print_point(const char *title, const EC_GROUP *group,
-			   const EC_POINT *point);
 void dpp_debug_print_key(const char *title, struct crypto_ec_key *key);
 int dpp_pbkdf2(size_t hash_len, const u8 *password, size_t password_len,
 	       const u8 *salt, size_t salt_len, unsigned int iterations,

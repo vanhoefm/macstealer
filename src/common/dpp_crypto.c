@@ -80,75 +80,11 @@ const struct dpp_curve_params * dpp_get_curve_ike_group(u16 group)
 }
 
 
-void dpp_debug_print_point(const char *title, const EC_GROUP *group,
-			   const EC_POINT *point)
-{
-	BIGNUM *x, *y;
-	BN_CTX *ctx;
-	char *x_str = NULL, *y_str = NULL;
-
-	if (!wpa_debug_show_keys)
-		return;
-
-	ctx = BN_CTX_new();
-	x = BN_new();
-	y = BN_new();
-	if (!ctx || !x || !y ||
-	    EC_POINT_get_affine_coordinates_GFp(group, point, x, y, ctx) != 1)
-		goto fail;
-
-	x_str = BN_bn2hex(x);
-	y_str = BN_bn2hex(y);
-	if (!x_str || !y_str)
-		goto fail;
-
-	wpa_printf(MSG_DEBUG, "%s (%s,%s)", title, x_str, y_str);
-
-fail:
-	OPENSSL_free(x_str);
-	OPENSSL_free(y_str);
-	BN_free(x);
-	BN_free(y);
-	BN_CTX_free(ctx);
-}
-
-
 void dpp_debug_print_key(const char *title, struct crypto_ec_key *key)
 {
-	EC_KEY *eckey;
-	BIO *out;
-	size_t rlen;
-	char *txt;
-	int res;
 	struct wpabuf *der = NULL;
-	const EC_GROUP *group;
-	const EC_POINT *point;
 
-	out = BIO_new(BIO_s_mem());
-	if (!out)
-		return;
-
-	EVP_PKEY_print_private(out, (EVP_PKEY *) key, 0, NULL);
-	rlen = BIO_ctrl_pending(out);
-	txt = os_malloc(rlen + 1);
-	if (txt) {
-		res = BIO_read(out, txt, rlen);
-		if (res > 0) {
-			txt[res] = '\0';
-			wpa_printf(MSG_DEBUG, "%s: %s", title, txt);
-		}
-		os_free(txt);
-	}
-	BIO_free(out);
-
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
-	if (!eckey)
-		return;
-
-	group = EC_KEY_get0_group(eckey);
-	point = EC_KEY_get0_public_key(eckey);
-	if (group && point)
-		dpp_debug_print_point(title, group, point);
+	crypto_ec_key_debug_print(key, title);
 
 	der = crypto_ec_key_get_ecprivate_key(key, true);
 	if (der) {
@@ -159,7 +95,6 @@ void dpp_debug_print_key(const char *title, struct crypto_ec_key *key)
 			wpa_hexdump_buf_key(MSG_DEBUG, "DPP: EC_PUBKEY", der);
 	}
 
-	EC_KEY_free(eckey);
 	wpabuf_clear_free(der);
 }
 
@@ -397,7 +332,6 @@ static struct wpabuf * dpp_bootstrap_key_der(struct crypto_ec_key *key)
 	point = EC_KEY_get0_public_key(eckey);
 	if (!group || !point)
 		goto fail;
-	dpp_debug_print_point("DPP: bootstrap public key", group, point);
 	nid = EC_GROUP_get_curve_name(group);
 
 	bootstrap = DPP_BOOTSTRAPPING_KEY_new();

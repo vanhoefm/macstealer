@@ -11,8 +11,6 @@
 #define DPP_H
 
 #ifdef CONFIG_DPP
-#include <openssl/x509.h>
-
 #include "utils/list.h"
 #include "common/wpa_common.h"
 #include "crypto/sha256.h"
