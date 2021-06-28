@@ -1795,6 +1795,13 @@ const struct crypto_bignum * crypto_ec_get_b(struct crypto_ec *e)
 }
 
 
+const struct crypto_ec_point * crypto_ec_get_generator(struct crypto_ec *e)
+{
+	return (const struct crypto_ec_point *)
+		EC_GROUP_get0_generator(e->group);
+}
+
+
 void crypto_ec_point_deinit(struct crypto_ec_point *p, int clear)
 {
 	if (clear)
@@ -2366,6 +2373,41 @@ out:
 fail:
 	EC_KEY_free(eckey);
 	EVP_PKEY_free(pkey);
+	pkey = NULL;
+	goto out;
+}
+
+
+struct crypto_ec_key *
+crypto_ec_key_set_pub_point(struct crypto_ec *ec,
+			    const struct crypto_ec_point *pub)
+{
+	EC_KEY *eckey;
+	EVP_PKEY *pkey = NULL;
+
+	eckey = EC_KEY_new();
+	if (!eckey ||
+	    EC_KEY_set_group(eckey, ec->group) != 1 ||
+	    EC_KEY_set_public_key(eckey, (const EC_POINT *) pub) != 1) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Failed to set EC_KEY: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		goto fail;
+	}
+	EC_KEY_set_asn1_flag(eckey, OPENSSL_EC_NAMED_CURVE);
+
+	pkey = EVP_PKEY_new();
+	if (!pkey || EVP_PKEY_assign_EC_KEY(pkey, eckey) != 1) {
+		wpa_printf(MSG_ERROR, "OpenSSL: Could not create EVP_PKEY");
+		goto fail;
+	}
+
+out:
+	return (struct crypto_ec_key *) pkey;
+
+fail:
+	EVP_PKEY_free(pkey);
+	EC_KEY_free(eckey);
 	pkey = NULL;
 	goto out;
 }

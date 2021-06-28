@@ -134,17 +134,17 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 				     const u8 *r_proto, u16 r_proto_len,
 				     struct json_token *net_access_key);
-EC_POINT * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
-			    struct crypto_ec_key *a_nonce,
-			    struct crypto_ec_key *e_prime_id);
+struct crypto_ec_point * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
+					  struct crypto_ec_key *a_nonce,
+					  struct crypto_ec_key *e_prime_id);
 char * dpp_sign_connector(struct dpp_configurator *conf,
 			  const struct wpabuf *dppcon);
 int dpp_test_gen_invalid_key(struct wpabuf *msg,
 			     const struct dpp_curve_params *curve);
 
 struct dpp_reconfig_id {
-	const EC_GROUP *group;
-	EC_POINT *e_id; /* E-id */
+	struct crypto_ec *ec;
+	struct crypto_ec_point *e_id; /* E-id */
 	struct crypto_ec_key *csign;
 	struct crypto_ec_key *a_nonce; /* A-NONCE */
 	struct crypto_ec_key *e_prime_id; /* E'-id */

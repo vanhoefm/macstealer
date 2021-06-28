@@ -7,8 +7,6 @@
  */
 
 #include "utils/includes.h"
-#include <openssl/opensslv.h>
-#include <openssl/err.h>
 
 #include "utils/common.h"
 #include "utils/json.h"
@@ -229,7 +227,7 @@ dpp_reconfig_init(struct dpp_global *dpp, void *msg_ctx,
 	struct dpp_authentication *auth;
 	const struct dpp_curve_params *curve;
 	struct crypto_ec_key *a_nonce, *e_prime_id;
-	EC_POINT *e_id;
+	struct crypto_ec_point *e_id;
 
 	curve = dpp_get_curve_ike_group(group);
 	if (!curve) {
@@ -273,7 +271,7 @@ dpp_reconfig_init(struct dpp_global *dpp, void *msg_ctx,
 	 * Enrollee has already been started and is waiting for updated
 	 * configuration instead of replying again before such configuration
 	 * becomes available */
-	EC_POINT_clear_free(e_id);
+	crypto_ec_point_deinit(e_id, 1);
 
 	auth = dpp_alloc_auth(dpp, msg_ctx);
 	if (!auth)

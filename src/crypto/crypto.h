@@ -714,6 +714,14 @@ int crypto_bignum_legendre(const struct crypto_bignum *a,
 struct crypto_ec;
 
 /**
+ * struct crypto_ec_point - Elliptic curve point
+ *
+ * Internal data structure for EC implementation to represent a point. The
+ * contents is specific to the used crypto library.
+ */
+struct crypto_ec_point;
+
+/**
  * crypto_ec_init - Initialize elliptic curve context
  * @group: Identifying number for the ECC group (IANA "Group Description"
  *	attribute registrty for RFC 2409)
@@ -777,12 +785,11 @@ const struct crypto_bignum * crypto_ec_get_a(struct crypto_ec *e);
 const struct crypto_bignum * crypto_ec_get_b(struct crypto_ec *e);
 
 /**
- * struct crypto_ec_point - Elliptic curve point
- *
- * Internal data structure for EC implementation to represent a point. The
- * contents is specific to the used crypto library.
+ * crypto_ec_get_generator - Get generator point of the EC group's curve
+ * @e: EC context from crypto_ec_init()
+ * Returns: Pointer to generator point
  */
-struct crypto_ec_point;
+const struct crypto_ec_point * crypto_ec_get_generator(struct crypto_ec *e);
 
 /**
  * crypto_ec_point_init - Initialize data for an EC point
@@ -1017,6 +1024,16 @@ struct crypto_ec_key * crypto_ec_key_parse_pub(const u8 *der, size_t der_len);
  */
 struct crypto_ec_key * crypto_ec_key_set_pub(int group, const u8 *x,
 					     const u8 *y, size_t len);
+
+/**
+ * crypto_ec_key_set_pub_point - Initialize an EC public key from EC point
+ * @e: EC context from crypto_ec_init()
+ * @pub: Public key point
+ * Returns: EC key or %NULL on failure
+ */
+struct crypto_ec_key *
+crypto_ec_key_set_pub_point(struct crypto_ec *e,
+			    const struct crypto_ec_point *pub);
 
 /**
  * crypto_ec_key_gen - Generate EC key pair

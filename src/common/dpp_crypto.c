@@ -8,7 +8,6 @@
  */
 
 #include "utils/includes.h"
-#include <openssl/opensslv.h>
 #include <openssl/err.h>
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
@@ -25,20 +24,6 @@
 #include "dpp.h"
 #include "dpp_i.h"
 
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
-/* Compatibility wrappers for older versions. */
-
-static EC_KEY * EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
-{
-	if (pkey->type != EVP_PKEY_EC)
-		return NULL;
-	return pkey->pkey.ec;
-}
-
-#endif
 
 static const struct dpp_curve_params dpp_curves[] = {
 	/* The mandatory to support and the default NIST P-256 curve needs to
@@ -1874,15 +1859,12 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 				     size_t net_access_key_len,
 				     struct json_token *peer_net_access_key)
 {
-	BN_CTX *bnctx = NULL;
 	struct crypto_ec_key *own_key = NULL, *peer_key = NULL;
-	BIGNUM *sum = NULL, *q = NULL, *mx = NULL;
-	EC_POINT *m = NULL;
-	const EC_KEY *cR, *pR;
-	const EC_GROUP *group;
-	const BIGNUM *cR_bn, *pR_bn;
-	const EC_POINT *CI_point;
-	const EC_KEY *CI;
+	struct crypto_bignum *sum = NULL;
+	const struct crypto_bignum *q, *cR, *pR;
+	struct crypto_ec *ec = NULL;
+	struct crypto_ec_point *M = NULL;
+	const struct crypto_ec_point *CI;
 	u8 Mx[DPP_MAX_SHARED_SECRET_LEN];
 	u8 prk[DPP_MAX_HASH_LEN];
 	const struct dpp_curve_params *curve;
@@ -1920,37 +1902,23 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 			auth->e_nonce, auth->curve->nonce_len);
 
 	/* M = { cR + pR } * CI */
-	cR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) own_key);
-	pR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_protocol_key);
-	if (!pR)
+	ec = crypto_ec_init(curve->ike_group);
+	if (!ec)
 		goto fail;
-	group = EC_KEY_get0_group(pR);
-	bnctx = BN_CTX_new();
-	sum = BN_new();
-	mx = BN_new();
-	q = BN_new();
-	m = EC_POINT_new(group);
-	if (!cR || !bnctx || !sum || !mx || !q || !m)
-		goto fail;
-	cR_bn = EC_KEY_get0_private_key(cR);
-	pR_bn = EC_KEY_get0_private_key(pR);
-	if (!cR_bn || !pR_bn)
-		goto fail;
-	CI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) peer_key);
-	CI_point = EC_KEY_get0_public_key(CI);
-	if (EC_GROUP_get_order(group, q, bnctx) != 1 ||
-	    BN_mod_add(sum, cR_bn, pR_bn, q, bnctx) != 1 ||
-	    EC_POINT_mul(group, m, NULL, CI_point, sum, bnctx) != 1 ||
-	    EC_POINT_get_affine_coordinates_GFp(group, m, mx, NULL,
-						bnctx) != 1) {
-		wpa_printf(MSG_ERROR,
-			   "OpenSSL: failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+
+	sum = crypto_bignum_init();
+	q = crypto_ec_get_order(ec);
+	M = crypto_ec_point_init(ec);
+	cR = crypto_ec_key_get_private_key(own_key);
+	pR = crypto_ec_key_get_private_key(auth->own_protocol_key);
+	CI = crypto_ec_key_get_public_key(peer_key);
+	if (!sum || !q || !M || !cR || !pR || !CI ||
+	    crypto_bignum_addmod(cR, pR, q, sum) ||
+	    crypto_ec_point_mul(ec, CI, sum, M) ||
+	    crypto_ec_point_to_bin(ec, M, Mx, NULL)) {
+		wpa_printf(MSG_ERROR, "DPP: Error during M computation");
 		goto fail;
 	}
-
-	if (dpp_bn2bin_pad(mx, Mx, curve->prime_len) < 0)
-		goto fail;
 	wpa_hexdump_key(MSG_DEBUG, "DPP: M.x", Mx, curve->prime_len);
 
 	/* ke = HKDF(C-nonce | E-nonce, "dpp reconfig key", M.x) */
@@ -1978,13 +1946,11 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 fail:
 	forced_memzero(prk, sizeof(prk));
 	forced_memzero(Mx, sizeof(Mx));
-	EC_POINT_clear_free(m);
-	BN_free(q);
-	BN_clear_free(mx);
-	BN_clear_free(sum);
+	crypto_ec_point_deinit(M, 1);
+	crypto_bignum_deinit(sum, 1);
 	crypto_ec_key_deinit(own_key);
 	crypto_ec_key_deinit(peer_key);
-	BN_CTX_free(bnctx);
+	crypto_ec_deinit(ec);
 	return res;
 }
 
@@ -1993,14 +1959,11 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 				     const u8 *r_proto, u16 r_proto_len,
 				     struct json_token *net_access_key)
 {
-	BN_CTX *bnctx = NULL;
 	struct crypto_ec_key *pr = NULL, *peer_key = NULL;
-	EC_POINT *sum = NULL, *m = NULL;
-	BIGNUM *mx = NULL;
-	const EC_KEY *cI, *CR, *PR;
-	const EC_GROUP *group;
-	const EC_POINT *CR_point, *PR_point;
-	const BIGNUM *cI_bn;
+	const struct crypto_ec_point *CR, *PR;
+	const struct crypto_bignum *cI;
+	struct crypto_ec *ec = NULL;
+	struct crypto_ec_point *sum = NULL, *M = NULL;
 	u8 Mx[DPP_MAX_SHARED_SECRET_LEN];
 	u8 prk[DPP_MAX_HASH_LEN];
 	int res = -1;
@@ -2030,24 +1993,22 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 	}
 
 	/* M = cI * { CR + PR } */
-	cI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->conf->connector_key);
-	cI_bn = EC_KEY_get0_private_key(cI);
-	group = EC_KEY_get0_group(cI);
-	bnctx = BN_CTX_new();
-	sum = EC_POINT_new(group);
-	m = EC_POINT_new(group);
-	mx = BN_new();
-	CR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) peer_key);
-	PR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_protocol_key);
-	CR_point = EC_KEY_get0_public_key(CR);
-	PR_point = EC_KEY_get0_public_key(PR);
-	if (!bnctx || !sum || !m || !mx ||
-	    EC_POINT_add(group, sum, CR_point, PR_point, bnctx) != 1 ||
-	    EC_POINT_mul(group, m, NULL, sum, cI_bn, bnctx) != 1 ||
-	    EC_POINT_get_affine_coordinates_GFp(group, m, mx, NULL,
-						bnctx) != 1 ||
-	    dpp_bn2bin_pad(mx, Mx, curve->prime_len) < 0)
+	ec = crypto_ec_init(curve->ike_group);
+	if (!ec)
 		goto fail;
+
+	cI = crypto_ec_key_get_private_key(auth->conf->connector_key);
+	sum = crypto_ec_point_init(ec);
+	M = crypto_ec_point_init(ec);
+	CR = crypto_ec_key_get_public_key(peer_key);
+	PR = crypto_ec_key_get_public_key(auth->peer_protocol_key);
+	if (!cI || !sum || !M || !CR || !PR ||
+	    crypto_ec_point_add(ec, CR, PR, sum) ||
+	    crypto_ec_point_mul(ec, sum, cI, M) ||
+	    crypto_ec_point_to_bin(ec, M, Mx, NULL)) {
+		wpa_printf(MSG_ERROR, "DPP: Error during M computation");
+		goto fail;
+	}
 
 	wpa_hexdump_key(MSG_DEBUG, "DPP: M.x", Mx, curve->prime_len);
 
@@ -2075,10 +2036,9 @@ fail:
 	forced_memzero(Mx, sizeof(Mx));
 	crypto_ec_key_deinit(pr);
 	crypto_ec_key_deinit(peer_key);
-	EC_POINT_clear_free(sum);
-	EC_POINT_clear_free(m);
-	BN_clear_free(mx);
-	BN_CTX_free(bnctx);
+	crypto_ec_point_deinit(sum, 1);
+	crypto_ec_point_deinit(M, 1);
+	crypto_ec_deinit(ec);
 	return res;
 }
 
@@ -2599,50 +2559,46 @@ struct dpp_reconfig_id * dpp_gen_reconfig_id(const u8 *csign_key,
 					     const u8 *pp_key,
 					     size_t pp_key_len)
 {
-	const unsigned char *p;
 	struct crypto_ec_key *csign = NULL, *ppkey = NULL;
 	struct dpp_reconfig_id *id = NULL;
-	BN_CTX *ctx = NULL;
-	BIGNUM *bn = NULL, *q = NULL;
-	const EC_KEY *eckey;
-	const EC_GROUP *group;
-	EC_POINT *e_id = NULL;
+	struct crypto_ec *ec = NULL;
+	const struct crypto_bignum *q;
+	struct crypto_bignum *bn = NULL;
+	struct crypto_ec_point *e_id = NULL;
+	const struct crypto_ec_point *generator;
 
-	p = csign_key;
-	csign = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, csign_key_len);
+	csign = crypto_ec_key_parse_pub(csign_key, csign_key_len);
 	if (!csign)
 		goto fail;
 
 	if (!pp_key)
 		goto fail;
-	p = pp_key;
-	ppkey = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, pp_key_len);
+	ppkey = crypto_ec_key_parse_pub(pp_key, pp_key_len);
 	if (!ppkey)
 		goto fail;
 
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) csign);
-	if (!eckey)
-		goto fail;
-	group = EC_KEY_get0_group(eckey);
-	if (!group)
+	ec = crypto_ec_init(crypto_ec_key_group(csign));
+	if (!ec)
 		goto fail;
 
-	e_id = EC_POINT_new(group);
-	ctx = BN_CTX_new();
-	bn = BN_new();
-	q = BN_new();
-	if (!e_id || !ctx || !bn || !q ||
-	    !EC_GROUP_get_order(group, q, ctx) ||
-	    !BN_rand_range(bn, q) ||
-	    !EC_POINT_mul(group, e_id, bn, NULL, NULL, ctx))
+	e_id = crypto_ec_point_init(ec);
+	bn = crypto_bignum_init();
+	q = crypto_ec_get_order(ec);
+	generator = crypto_ec_get_generator(ec);
+	if (!e_id || !bn || !q || !generator ||
+	    crypto_bignum_rand(bn, q) ||
+	    crypto_ec_point_mul(ec, generator, bn, e_id))
 		goto fail;
 
-	dpp_debug_print_point("DPP: Generated random point E-id", group, e_id);
+	crypto_ec_point_debug_print(ec, e_id,
+				    "DPP: Generated random point E-id");
 
 	id = os_zalloc(sizeof(*id));
 	if (!id)
 		goto fail;
-	id->group = group;
+
+	id->ec = ec;
+	ec = NULL;
 	id->e_id = e_id;
 	e_id = NULL;
 	id->csign = csign;
@@ -2650,93 +2606,58 @@ struct dpp_reconfig_id * dpp_gen_reconfig_id(const u8 *csign_key,
 	id->pp_key = ppkey;
 	ppkey = NULL;
 fail:
-	EC_POINT_free(e_id);
+	crypto_ec_point_deinit(e_id, 1);
 	crypto_ec_key_deinit(csign);
 	crypto_ec_key_deinit(ppkey);
-	BN_clear_free(bn);
-	BN_CTX_free(ctx);
+	crypto_bignum_deinit(bn, 1);
+	crypto_ec_deinit(ec);
 	return id;
-}
-
-
-static struct crypto_ec_key * dpp_pkey_from_point(const EC_GROUP *group,
-						  const EC_POINT *point)
-{
-	EC_KEY *eckey;
-	EVP_PKEY *pkey = NULL;
-
-	eckey = EC_KEY_new();
-	if (!eckey ||
-	    EC_KEY_set_group(eckey, group) != 1 ||
-	    EC_KEY_set_public_key(eckey, point) != 1) {
-		wpa_printf(MSG_ERROR,
-			   "DPP: Failed to set EC_KEY: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-	EC_KEY_set_asn1_flag(eckey, OPENSSL_EC_NAMED_CURVE);
-
-	pkey = EVP_PKEY_new();
-	if (!pkey || EVP_PKEY_set1_EC_KEY(pkey, eckey) != 1) {
-		wpa_printf(MSG_ERROR, "DPP: Could not create EVP_PKEY");
-		EVP_PKEY_free(pkey);
-		pkey = NULL;
-		goto fail;
-	}
-
-fail:
-	EC_KEY_free(eckey);
-	return (struct crypto_ec_key *) pkey;
 }
 
 
 int dpp_update_reconfig_id(struct dpp_reconfig_id *id)
 {
-	BN_CTX *ctx = NULL;
-	BIGNUM *bn = NULL, *q = NULL;
-	EC_POINT *e_prime_id = NULL, *a_nonce = NULL;
+	const struct crypto_bignum *q;
+	struct crypto_bignum *bn;
+	const struct crypto_ec_point *pp, *generator;
+	struct crypto_ec_point *e_prime_id, *a_nonce;
 	int ret = -1;
-	const EC_KEY *pp;
-	const EC_POINT *pp_point;
 
-	pp = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) id->pp_key);
-	if (!pp)
-		goto fail;
-	pp_point = EC_KEY_get0_public_key(pp);
-	e_prime_id = EC_POINT_new(id->group);
-	a_nonce = EC_POINT_new(id->group);
-	ctx = BN_CTX_new();
-	bn = BN_new();
-	q = BN_new();
+	pp = crypto_ec_key_get_public_key(id->pp_key);
+	e_prime_id = crypto_ec_point_init(id->ec);
+	a_nonce = crypto_ec_point_init(id->ec);
+	bn = crypto_bignum_init();
+	q = crypto_ec_get_order(id->ec);
+	generator = crypto_ec_get_generator(id->ec);
+
 	/* Generate random 0 <= a-nonce < q
 	 * A-NONCE = a-nonce * G
 	 * E'-id = E-id + a-nonce * P_pk */
-	if (!pp_point || !e_prime_id || !a_nonce || !ctx || !bn || !q ||
-	    !EC_GROUP_get_order(id->group, q, ctx) ||
-	    !BN_rand_range(bn, q) || /* bn = a-nonce */
-	    !EC_POINT_mul(id->group, a_nonce, bn, NULL, NULL, ctx) ||
-	    !EC_POINT_mul(id->group, e_prime_id, NULL, pp_point, bn, ctx) ||
-	    !EC_POINT_add(id->group, e_prime_id, id->e_id, e_prime_id, ctx))
+	if (!pp || !e_prime_id || !a_nonce || !bn || !q || !generator ||
+	    crypto_bignum_rand(bn, q) || /* bn = a-nonce */
+	    crypto_ec_point_mul(id->ec, generator, bn, a_nonce) ||
+	    crypto_ec_point_mul(id->ec, pp, bn, e_prime_id) ||
+	    crypto_ec_point_add(id->ec, id->e_id, e_prime_id, e_prime_id))
 		goto fail;
 
-	dpp_debug_print_point("DPP: Generated A-NONCE", id->group, a_nonce);
-	dpp_debug_print_point("DPP: Encrypted E-id to E'-id",
-			      id->group, e_prime_id);
+	crypto_ec_point_debug_print(id->ec, a_nonce,
+				    "DPP: Generated A-NONCE");
+	crypto_ec_point_debug_print(id->ec, e_prime_id,
+				    "DPP: Encrypted E-id to E'-id");
 
 	crypto_ec_key_deinit(id->a_nonce);
 	crypto_ec_key_deinit(id->e_prime_id);
-	id->a_nonce = dpp_pkey_from_point(id->group, a_nonce);
-	id->e_prime_id = dpp_pkey_from_point(id->group, e_prime_id);
+	id->a_nonce = crypto_ec_key_set_pub_point(id->ec, a_nonce);
+	id->e_prime_id = crypto_ec_key_set_pub_point(id->ec, e_prime_id);
 	if (!id->a_nonce || !id->e_prime_id)
 		goto fail;
 
 	ret = 0;
 
 fail:
-	EC_POINT_free(e_prime_id);
-	EC_POINT_free(a_nonce);
-	BN_clear_free(bn);
-	BN_CTX_free(ctx);
+	crypto_ec_point_deinit(e_prime_id, 1);
+	crypto_ec_point_deinit(a_nonce, 1);
+	crypto_bignum_deinit(bn, 1);
 	return ret;
 }
 
@@ -2744,56 +2665,50 @@ fail:
 void dpp_free_reconfig_id(struct dpp_reconfig_id *id)
 {
 	if (id) {
-		EC_POINT_clear_free(id->e_id);
+		crypto_ec_point_deinit(id->e_id, 1);
 		crypto_ec_key_deinit(id->csign);
 		crypto_ec_key_deinit(id->a_nonce);
 		crypto_ec_key_deinit(id->e_prime_id);
 		crypto_ec_key_deinit(id->pp_key);
+		crypto_ec_deinit(id->ec);
 		os_free(id);
 	}
 }
 
 
-EC_POINT * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
-			    struct crypto_ec_key *a_nonce,
-			    struct crypto_ec_key *e_prime_id)
+struct crypto_ec_point * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
+					  struct crypto_ec_key *a_nonce,
+					  struct crypto_ec_key *e_prime_id)
 {
-	const EC_KEY *pp_ec, *a_nonce_ec, *e_prime_id_ec;
-	const BIGNUM *pp_bn;
-	const EC_GROUP *group;
-	EC_POINT *e_id = NULL;
-	const EC_POINT *a_nonce_point, *e_prime_id_point;
-	BN_CTX *ctx = NULL;
+	struct crypto_ec *ec;
+	const struct crypto_bignum *pp;
+	struct crypto_ec_point *e_id = NULL;
+	const struct crypto_ec_point *a_nonce_point, *e_prime_id_point;
 
 	if (!ppkey)
 		return NULL;
 
 	/* E-id = E'-id - s_C * A-NONCE */
-	pp_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) ppkey);
-	a_nonce_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) a_nonce);
-	e_prime_id_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) e_prime_id);
-	if (!pp_ec || !a_nonce_ec || !e_prime_id_ec)
+	ec = crypto_ec_init(crypto_ec_key_group(ppkey));
+	if (!ec)
 		return NULL;
-	pp_bn = EC_KEY_get0_private_key(pp_ec);
-	group = EC_KEY_get0_group(pp_ec);
-	a_nonce_point = EC_KEY_get0_public_key(a_nonce_ec);
-	e_prime_id_point = EC_KEY_get0_public_key(e_prime_id_ec);
-	ctx = BN_CTX_new();
-	if (!pp_bn || !group || !a_nonce_point || !e_prime_id_point || !ctx)
-		goto fail;
-	e_id = EC_POINT_new(group);
-	if (!e_id ||
-	    !EC_POINT_mul(group, e_id, NULL, a_nonce_point, pp_bn, ctx) ||
-	    !EC_POINT_invert(group, e_id, ctx) ||
-	    !EC_POINT_add(group, e_id, e_prime_id_point, e_id, ctx)) {
-		EC_POINT_clear_free(e_id);
+
+	pp = crypto_ec_key_get_private_key(ppkey);
+	a_nonce_point = crypto_ec_key_get_public_key(a_nonce);
+	e_prime_id_point = crypto_ec_key_get_public_key(e_prime_id);
+	e_id = crypto_ec_point_init(ec);
+	if (!pp || !a_nonce_point || !e_prime_id_point || !e_id ||
+	    crypto_ec_point_mul(ec, a_nonce_point, pp, e_id) ||
+	    crypto_ec_point_invert(ec, e_id) ||
+	    crypto_ec_point_add(ec, e_id, e_prime_id_point, e_id)) {
+		crypto_ec_point_deinit(e_id, 1);
 		goto fail;
 	}
 
-	dpp_debug_print_point("DPP: Decrypted E-id", group, e_id);
+	crypto_ec_point_debug_print(ec, e_id, "DPP: Decrypted E-id");
 
 fail:
-	BN_CTX_free(ctx);
+	crypto_ec_deinit(ec);
 	return e_id;
 }
 
