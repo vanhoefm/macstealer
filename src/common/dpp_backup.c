@@ -19,21 +19,6 @@
 
 #ifdef CONFIG_DPP2
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
-/* Compatibility wrappers for older versions. */
-
-static EC_KEY * EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
-{
-	if (pkey->type != EVP_PKEY_EC)
-		return NULL;
-	return pkey->pkey.ec;
-}
-
-#endif
-
-
 void dpp_free_asymmetric_key(struct dpp_asymmetric_key *key)
 {
 	while (key) {
@@ -56,23 +41,13 @@ static struct wpabuf * dpp_build_conf_params(struct dpp_configurator *conf)
 	/* TODO: proper template values */
 	const char *conf_template = "{\"wi-fi_tech\":\"infra\",\"discovery\":{\"ssid\":\"test\"},\"cred\":{\"akm\":\"dpp\"}}";
 	const char *connector_template = NULL;
-	EC_KEY *eckey;
-	unsigned char *der = NULL;
-	int der_len;
 
 	if (!conf->pp_key)
 		return NULL;
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) conf->pp_key);
-	if (!eckey)
-		return NULL;
 
-	EC_KEY_set_enc_flags(eckey, EC_PKEY_NO_PUBKEY);
-	der_len = i2d_ECPrivateKey(eckey, &der);
-	if (der_len > 0)
-		priv_key = wpabuf_alloc_copy(der, der_len);
-	OPENSSL_free(der);
+	priv_key = crypto_ec_key_get_ecprivate_key(conf->pp_key, false);
 	if (!priv_key)
-		goto fail;
+		return NULL;
 
 	len = 100 + os_strlen(conf_template);
 	if (connector_template)
@@ -178,19 +153,10 @@ static struct wpabuf * dpp_build_key_alg(const struct dpp_curve_params *curve)
 static struct wpabuf * dpp_build_key_pkg(struct dpp_authentication *auth)
 {
 	struct wpabuf *key = NULL, *attr, *alg, *priv_key = NULL;
-	EC_KEY *eckey;
-	unsigned char *der = NULL;
-	int der_len;
 
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->conf->csign);
-	if (!eckey)
+	priv_key = crypto_ec_key_get_ecprivate_key(auth->conf->csign, false);
+	if (!priv_key)
 		return NULL;
-
-	EC_KEY_set_enc_flags(eckey, EC_PKEY_NO_PUBKEY);
-	der_len = i2d_ECPrivateKey(eckey, &der);
-	if (der_len > 0)
-		priv_key = wpabuf_alloc_copy(der, der_len);
-	OPENSSL_free(der);
 
 	alg = dpp_build_key_alg(auth->conf->curve);
 

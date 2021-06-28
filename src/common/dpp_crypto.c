@@ -183,8 +183,7 @@ void dpp_debug_print_key(const char *title, struct crypto_ec_key *key)
 	size_t rlen;
 	char *txt;
 	int res;
-	unsigned char *der = NULL;
-	int der_len;
+	struct wpabuf *der = NULL;
 	const EC_GROUP *group;
 	const EC_POINT *point;
 
@@ -214,19 +213,17 @@ void dpp_debug_print_key(const char *title, struct crypto_ec_key *key)
 	if (group && point)
 		dpp_debug_print_point(title, group, point);
 
-	der_len = i2d_ECPrivateKey(eckey, &der);
-	if (der_len > 0)
-		wpa_hexdump_key(MSG_DEBUG, "DPP: ECPrivateKey", der, der_len);
-	OPENSSL_free(der);
-	if (der_len <= 0) {
-		der = NULL;
-		der_len = i2d_EC_PUBKEY(eckey, &der);
-		if (der_len > 0)
-			wpa_hexdump(MSG_DEBUG, "DPP: EC_PUBKEY", der, der_len);
-		OPENSSL_free(der);
+	der = crypto_ec_key_get_ecprivate_key(key, true);
+	if (der) {
+		wpa_hexdump_buf_key(MSG_DEBUG, "DPP: ECPrivateKey", der);
+	} else {
+		der = crypto_ec_key_get_subject_public_key(key);
+		if (der)
+			wpa_hexdump_buf_key(MSG_DEBUG, "DPP: EC_PUBKEY", der);
 	}
 
 	EC_KEY_free(eckey);
+	wpabuf_clear_free(der);
 }
 
 
@@ -2676,7 +2673,7 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 	struct crypto_ec_key *key;
 	const EVP_MD *sign_md;
 	unsigned int hash_len = auth->curve->hash_len;
-	EC_KEY *eckey;
+	struct wpabuf *priv_key;
 	BIO *out = NULL;
 	u8 cp[DPP_CP_LEN];
 	char *password;
@@ -2689,18 +2686,11 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 	 * a specific group to be used */
 	key = auth->own_protocol_key;
 
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
-	if (!eckey)
-		goto fail;
-	der = NULL;
-	der_len = i2d_ECPrivateKey(eckey, &der);
-	if (der_len <= 0)
+	priv_key = crypto_ec_key_get_ecprivate_key(key, true);
+	if (!priv_key)
 		goto fail;
 	wpabuf_free(auth->priv_key);
-	auth->priv_key = wpabuf_alloc_copy(der, der_len);
-	OPENSSL_free(der);
-	if (!auth->priv_key)
-		goto fail;
+	auth->priv_key = priv_key;
 
 	req = X509_REQ_new();
 	if (!req || !X509_REQ_set_pubkey(req, (EVP_PKEY *) key))

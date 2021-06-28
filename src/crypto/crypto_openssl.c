@@ -2318,6 +2318,34 @@ struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key)
 }
 
 
+struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
+						bool include_pub)
+{
+	EC_KEY *eckey;
+	unsigned char *der = NULL;
+	int der_len;
+	struct wpabuf *buf;
+
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	if (!eckey)
+		return NULL;
+
+	if (include_pub)
+		EC_KEY_clear_flags(eckey, EC_PKEY_NO_PUBKEY);
+	else
+		EC_KEY_set_enc_flags(eckey, EC_PKEY_NO_PUBKEY);
+
+	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_UNCOMPRESSED);
+
+	der_len = i2d_ECPrivateKey(eckey, &der);
+	if (der_len <= 0)
+		return NULL;
+	buf = wpabuf_alloc_copy(der, der_len);
+	OPENSSL_free(der);
+	return buf;
+}
+
+
 struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
 				   size_t len)
 {

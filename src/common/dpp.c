@@ -2450,9 +2450,7 @@ static void dpp_copy_ppkey(struct dpp_config_obj *conf,
 static void dpp_copy_netaccesskey(struct dpp_authentication *auth,
 				  struct dpp_config_obj *conf)
 {
-	unsigned char *der = NULL;
-	int der_len;
-	EC_KEY *eckey;
+	struct wpabuf *net_access_key;
 	struct crypto_ec_key *own_key;
 
 	own_key = auth->own_protocol_key;
@@ -2461,19 +2459,13 @@ static void dpp_copy_netaccesskey(struct dpp_authentication *auth,
 	    auth->reconfig_old_protocol_key)
 		own_key = auth->reconfig_old_protocol_key;
 #endif /* CONFIG_DPP2 */
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) own_key);
-	if (!eckey)
+
+	net_access_key = crypto_ec_key_get_ecprivate_key(own_key, true);
+	if (!net_access_key)
 		return;
 
-	der_len = i2d_ECPrivateKey(eckey, &der);
-	if (der_len <= 0) {
-		EC_KEY_free(eckey);
-		return;
-	}
 	wpabuf_free(auth->net_access_key);
-	auth->net_access_key = wpabuf_alloc_copy(der, der_len);
-	OPENSSL_free(der);
-	EC_KEY_free(eckey);
+	auth->net_access_key = net_access_key;
 }
 
 
@@ -3410,23 +3402,19 @@ void dpp_configurator_free(struct dpp_configurator *conf)
 int dpp_configurator_get_key(const struct dpp_configurator *conf, char *buf,
 			     size_t buflen)
 {
-	EC_KEY *eckey;
-	int key_len, ret = -1;
-	unsigned char *key = NULL;
+	struct wpabuf *key;
+	int ret = -1;
 
 	if (!conf->csign)
 		return -1;
 
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) conf->csign);
-	if (!eckey)
+	key = crypto_ec_key_get_ecprivate_key(conf->csign, true);
+	if (!key)
 		return -1;
 
-	key_len = i2d_ECPrivateKey(eckey, &key);
-	if (key_len > 0)
-		ret = wpa_snprintf_hex(buf, buflen, key, key_len);
+	ret = wpa_snprintf_hex(buf, buflen, wpabuf_head(key), wpabuf_len(key));
 
-	EC_KEY_free(eckey);
-	OPENSSL_free(key);
+	wpabuf_clear_free(key);
 	return ret;
 }
 
