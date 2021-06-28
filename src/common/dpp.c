@@ -2167,8 +2167,7 @@ struct crypto_ec_key * dpp_parse_jwk(struct json_token *jwk,
 	struct json_token *token;
 	const struct dpp_curve_params *curve;
 	struct wpabuf *x = NULL, *y = NULL;
-	EC_GROUP *group;
-	struct crypto_ec_key *pkey = NULL;
+	struct crypto_ec_key *key = NULL;
 
 	token = json_get_member(jwk, "kty");
 	if (!token || token->type != JSON_STRING) {
@@ -2221,22 +2220,18 @@ struct crypto_ec_key * dpp_parse_jwk(struct json_token *jwk,
 		goto fail;
 	}
 
-	group = EC_GROUP_new_by_curve_name(OBJ_txt2nid(curve->name));
-	if (!group) {
-		wpa_printf(MSG_DEBUG, "DPP: Could not prepare group for JWK");
+	key = crypto_ec_key_set_pub(curve->ike_group, wpabuf_head(x),
+				    wpabuf_head(y), wpabuf_len(x));
+	if (!key)
 		goto fail;
-	}
 
-	pkey = dpp_set_pubkey_point_group(group, wpabuf_head(x), wpabuf_head(y),
-					  wpabuf_len(x));
-	EC_GROUP_free(group);
 	*key_curve = curve;
 
 fail:
 	wpabuf_free(x);
 	wpabuf_free(y);
 
-	return pkey;
+	return key;
 }
 
 

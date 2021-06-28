@@ -374,101 +374,20 @@ int dpp_bn2bin_pad(const BIGNUM *bn, u8 *pos, size_t len)
 }
 
 
-struct crypto_ec_key * dpp_set_pubkey_point_group(const EC_GROUP *group,
-						  const u8 *buf_x,
-						  const u8 *buf_y,
-						  size_t len)
-{
-	EC_KEY *eckey = NULL;
-	BN_CTX *ctx;
-	EC_POINT *point = NULL;
-	BIGNUM *x = NULL, *y = NULL;
-	EVP_PKEY *pkey = NULL;
-
-	ctx = BN_CTX_new();
-	if (!ctx) {
-		wpa_printf(MSG_ERROR, "DPP: Out of memory");
-		return NULL;
-	}
-
-	point = EC_POINT_new(group);
-	x = BN_bin2bn(buf_x, len, NULL);
-	y = BN_bin2bn(buf_y, len, NULL);
-	if (!point || !x || !y) {
-		wpa_printf(MSG_ERROR, "DPP: Out of memory");
-		goto fail;
-	}
-
-	if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx)) {
-		wpa_printf(MSG_ERROR,
-			   "DPP: OpenSSL: EC_POINT_set_affine_coordinates_GFp failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-
-	if (!EC_POINT_is_on_curve(group, point, ctx) ||
-	    EC_POINT_is_at_infinity(group, point)) {
-		wpa_printf(MSG_ERROR, "DPP: Invalid point");
-		goto fail;
-	}
-	dpp_debug_print_point("DPP: dpp_set_pubkey_point_group", group, point);
-
-	eckey = EC_KEY_new();
-	if (!eckey ||
-	    EC_KEY_set_group(eckey, group) != 1 ||
-	    EC_KEY_set_public_key(eckey, point) != 1) {
-		wpa_printf(MSG_ERROR,
-			   "DPP: Failed to set EC_KEY: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-	EC_KEY_set_asn1_flag(eckey, OPENSSL_EC_NAMED_CURVE);
-
-	pkey = EVP_PKEY_new();
-	if (!pkey || EVP_PKEY_set1_EC_KEY(pkey, eckey) != 1) {
-		wpa_printf(MSG_ERROR, "DPP: Could not create EVP_PKEY");
-		goto fail;
-	}
-
-out:
-	BN_free(x);
-	BN_free(y);
-	EC_KEY_free(eckey);
-	EC_POINT_free(point);
-	BN_CTX_free(ctx);
-	return (struct crypto_ec_key *) pkey;
-fail:
-	EVP_PKEY_free(pkey);
-	pkey = NULL;
-	goto out;
-}
-
-
 struct crypto_ec_key * dpp_set_pubkey_point(struct crypto_ec_key *group_key,
 					    const u8 *buf, size_t len)
 {
-	const EC_KEY *eckey;
-	const EC_GROUP *group;
-	struct crypto_ec_key *pkey = NULL;
+	int ike_group = crypto_ec_key_group(group_key);
 
 	if (len & 1)
 		return NULL;
 
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) group_key);
-	if (!eckey) {
-		wpa_printf(MSG_ERROR,
-			   "DPP: Could not get EC_KEY from group_key");
+	if (ike_group < 0) {
+		wpa_printf(MSG_ERROR, "DPP: Could not get EC group");
 		return NULL;
 	}
 
-	group = EC_KEY_get0_group(eckey);
-	if (group)
-		pkey = dpp_set_pubkey_point_group(group, buf, buf + len / 2,
-						  len / 2);
-	else
-		wpa_printf(MSG_ERROR, "DPP: Could not get EC group");
-
-	return pkey;
+	return crypto_ec_key_set_pub(ike_group, buf, buf + len / 2, len / 2);
 }
 
 
@@ -1914,10 +1833,7 @@ static const u8 pkex_resp_y_bp_p512r1[64] = {
 static struct crypto_ec_key *
 dpp_pkex_get_role_elem(const struct dpp_curve_params *curve, int init)
 {
-	EC_GROUP *group;
-	size_t len = curve->prime_len;
 	const u8 *x, *y;
-	struct crypto_ec_key *res;
 
 	switch (curve->ike_group) {
 	case 19:
@@ -1948,12 +1864,7 @@ dpp_pkex_get_role_elem(const struct dpp_curve_params *curve, int init)
 		return NULL;
 	}
 
-	group = EC_GROUP_new_by_curve_name(OBJ_txt2nid(curve->name));
-	if (!group)
-		return NULL;
-	res = dpp_set_pubkey_point_group(group, x, y, len);
-	EC_GROUP_free(group);
-	return res;
+	return crypto_ec_key_set_pub(curve->ike_group, x, y, curve->prime_len);
 }
 
 

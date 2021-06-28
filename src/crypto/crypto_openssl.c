@@ -2242,6 +2242,86 @@ fail:
 }
 
 
+struct crypto_ec_key * crypto_ec_key_set_pub(int group, const u8 *buf_x,
+					     const u8 *buf_y, size_t len)
+{
+	EC_KEY *eckey = NULL;
+	EVP_PKEY *pkey = NULL;
+	EC_GROUP *ec_group = NULL;
+	BN_CTX *ctx;
+	EC_POINT *point = NULL;
+	BIGNUM *x = NULL, *y = NULL;
+	int nid;
+
+	if (!buf_x || !buf_y)
+		return NULL;
+
+	nid = crypto_ec_group_2_nid(group);
+	if (nid < 0) {
+		wpa_printf(MSG_ERROR, "OpenSSL: Unsupported group %d", group);
+		return NULL;
+	}
+
+	ctx = BN_CTX_new();
+	if (!ctx)
+		goto fail;
+
+	ec_group = EC_GROUP_new_by_curve_name(nid);
+	if (!ec_group)
+		goto fail;
+
+	x = BN_bin2bn(buf_x, len, NULL);
+	y = BN_bin2bn(buf_y, len, NULL);
+	point = EC_POINT_new(ec_group);
+	if (!x || !y || !point)
+		goto fail;
+
+	if (!EC_POINT_set_affine_coordinates_GFp(ec_group, point, x, y, ctx)) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: EC_POINT_set_affine_coordinates_GFp failed: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		goto fail;
+	}
+
+	if (!EC_POINT_is_on_curve(ec_group, point, ctx) ||
+	    EC_POINT_is_at_infinity(ec_group, point)) {
+		wpa_printf(MSG_ERROR, "OpenSSL: Invalid point");
+		goto fail;
+	}
+
+	eckey = EC_KEY_new();
+	if (!eckey ||
+	    EC_KEY_set_group(eckey, ec_group) != 1 ||
+	    EC_KEY_set_public_key(eckey, point) != 1) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Failed to set EC_KEY: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		goto fail;
+	}
+	EC_KEY_set_asn1_flag(eckey, OPENSSL_EC_NAMED_CURVE);
+
+	pkey = EVP_PKEY_new();
+	if (!pkey || EVP_PKEY_assign_EC_KEY(pkey, eckey) != 1) {
+		wpa_printf(MSG_ERROR, "OpenSSL: Could not create EVP_PKEY");
+		goto fail;
+	}
+
+out:
+	EC_GROUP_free(ec_group);
+	BN_free(x);
+	BN_free(y);
+	EC_POINT_free(point);
+	BN_CTX_free(ctx);
+	return (struct crypto_ec_key *) pkey;
+
+fail:
+	EC_KEY_free(eckey);
+	EVP_PKEY_free(pkey);
+	pkey = NULL;
+	goto out;
+}
+
+
 struct crypto_ec_key * crypto_ec_key_gen(int group)
 {
 	EVP_PKEY_CTX *kctx = NULL;
