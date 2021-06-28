@@ -297,20 +297,6 @@ int dpp_pbkdf2(size_t hash_len, const u8 *password, size_t password_len,
 #endif /* CONFIG_DPP2 */
 
 
-int dpp_bn2bin_pad(const BIGNUM *bn, u8 *pos, size_t len)
-{
-	int num_bytes, offset;
-
-	num_bytes = BN_num_bytes(bn);
-	if ((size_t) num_bytes > len)
-		return -1;
-	offset = len - num_bytes;
-	os_memset(pos, 0, offset);
-	BN_bn2bin(bn, pos + offset);
-	return 0;
-}
-
-
 struct crypto_ec_key * dpp_set_pubkey_point(struct crypto_ec_key *group_key,
 					    const u8 *buf, size_t len)
 {
@@ -2705,64 +2691,46 @@ fail:
 int dpp_test_gen_invalid_key(struct wpabuf *msg,
 			     const struct dpp_curve_params *curve)
 {
-	BN_CTX *ctx;
-	BIGNUM *x, *y;
+	struct crypto_ec *ec;
+	struct crypto_ec_key *key = NULL;
+	const struct crypto_ec_point *pub_key;
+	struct crypto_ec_point *p = NULL;
+	u8 *x, *y;
 	int ret = -1;
-	EC_GROUP *group;
-	EC_POINT *point;
 
-	group = EC_GROUP_new_by_curve_name(OBJ_txt2nid(curve->name));
-	if (!group)
-		return -1;
-
-	ctx = BN_CTX_new();
-	point = EC_POINT_new(group);
-	x = BN_new();
-	y = BN_new();
-	if (!ctx || !point || !x || !y)
+	ec = crypto_ec_init(curve->ike_group);
+	x = wpabuf_put(msg, curve->prime_len);
+	y = wpabuf_put(msg, curve->prime_len);
+	if (!ec)
 		goto fail;
 
-	if (BN_rand(x, curve->prime_len * 8, 0, 0) != 1)
+retry:
+	/* Generate valid key pair */
+	key = crypto_ec_key_gen(curve->ike_group);
+	if (!key)
 		goto fail;
 
-	/* Generate a random y coordinate that results in a point that is not
-	 * on the curve. */
-	for (;;) {
-		if (BN_rand(y, curve->prime_len * 8, 0, 0) != 1)
-			goto fail;
+	/* Retrieve public key coordinates */
+	pub_key = crypto_ec_key_get_public_key(key);
+	if (!pub_key)
+		goto fail;
 
-		if (EC_POINT_set_affine_coordinates_GFp(group, point, x, y,
-							ctx) != 1) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L || defined(OPENSSL_IS_BORINGSSL)
-		/* Unlike older OpenSSL versions, OpenSSL 1.1.1 and BoringSSL
-		 * return an error from EC_POINT_set_affine_coordinates_GFp()
-		 * when the point is not on the curve. */
-			break;
-#else /* >=1.1.0 or OPENSSL_IS_BORINGSSL */
-			goto fail;
-#endif /* >= 1.1.0 or OPENSSL_IS_BORINGSSL */
-		}
+	crypto_ec_point_to_bin(ec, pub_key, x, y);
 
-		if (!EC_POINT_is_on_curve(group, point, ctx))
-			break;
+	/* And corrupt them */
+	y[curve->prime_len - 1] ^= 0x01;
+	p = crypto_ec_point_from_bin(ec, x);
+	if (p && crypto_ec_point_is_on_curve(ec, p)) {
+		crypto_ec_point_deinit(p, 0);
+		p = NULL;
+		goto retry;
 	}
-
-	if (dpp_bn2bin_pad(x, wpabuf_put(msg, curve->prime_len),
-			   curve->prime_len) < 0 ||
-	    dpp_bn2bin_pad(y, wpabuf_put(msg, curve->prime_len),
-			   curve->prime_len) < 0)
-		goto fail;
 
 	ret = 0;
 fail:
-	if (ret < 0)
-		wpa_printf(MSG_INFO, "DPP: Failed to generate invalid key");
-	BN_free(x);
-	BN_free(y);
-	EC_POINT_free(point);
-	BN_CTX_free(ctx);
-	EC_GROUP_free(group);
-
+	crypto_ec_point_deinit(p, 0);
+	crypto_ec_key_deinit(key);
+	crypto_ec_deinit(ec);
 	return ret;
 }
 

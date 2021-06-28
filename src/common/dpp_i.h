@@ -79,7 +79,6 @@ int dpp_bi_pubkey_hash(struct dpp_bootstrap_info *bi,
 		       const u8 *data, size_t data_len);
 struct crypto_ec_key * dpp_set_pubkey_point(struct crypto_ec_key *group_key,
 					    const u8 *buf, size_t len);
-int dpp_bn2bin_pad(const BIGNUM *bn, u8 *pos, size_t len);
 int dpp_hkdf_expand(size_t hash_len, const u8 *secret, size_t secret_len,
 		    const char *label, u8 *out, size_t outlen);
 int dpp_hmac_vector(size_t hash_len, const u8 *key, size_t key_len,
