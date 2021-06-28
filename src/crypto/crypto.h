@@ -921,6 +921,16 @@ int crypto_ec_point_cmp(const struct crypto_ec *e,
 			const struct crypto_ec_point *b);
 
 /**
+ * crypto_ec_point_debug_print - Dump EC point to debug log
+ * @e: EC context from crypto_ec_init()
+ * @p: EC point
+ * @title: Name of the EC point in the trace
+ */
+void crypto_ec_point_debug_print(const struct crypto_ec *e,
+				 const struct crypto_ec_point *p,
+				 const char *title);
+
+/**
  * struct crypto_ecdh - Elliptic curve Diffie–Hellman context
  *
  * Internal data structure for ECDH. The contents is specific to the used
@@ -1047,6 +1057,22 @@ struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
  */
 struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
 					       int prefix);
+
+/**
+ * crypto_ec_key_get_public_key - Get EC public key as an EC point
+ * @key: EC key from crypto_ec_key_parse/set_pub() or crypto_ec_key_parse_priv()
+ * Returns: Public key as an EC point or %NULL on failure
+ */
+const struct crypto_ec_point *
+crypto_ec_key_get_public_key(struct crypto_ec_key *key);
+
+/**
+ * crypto_ec_key_get_private_key - Get EC private key as a bignum
+ * @key: EC key from crypto_ec_key_parse/set_pub() or crypto_ec_key_parse_priv()
+ * Returns: Private key as a bignum or %NULL on failure
+ */
+const struct crypto_bignum *
+crypto_ec_key_get_private_key(struct crypto_ec_key *key);
 
 /**
  * crypto_ec_key_sign - Sign a buffer with an EC key

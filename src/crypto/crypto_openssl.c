@@ -1960,6 +1960,35 @@ int crypto_ec_point_cmp(const struct crypto_ec *e,
 }
 
 
+void crypto_ec_point_debug_print(const struct crypto_ec *e,
+				 const struct crypto_ec_point *p,
+				 const char *title)
+{
+	BIGNUM *x, *y;
+	char *x_str = NULL, *y_str = NULL;
+
+	x = BN_new();
+	y = BN_new();
+	if (!x || !y ||
+	    EC_POINT_get_affine_coordinates_GFp(e->group, (const EC_POINT *) p,
+						x, y, e->bnctx) != 1)
+		goto fail;
+
+	x_str = BN_bn2hex(x);
+	y_str = BN_bn2hex(y);
+	if (!x_str || !y_str)
+		goto fail;
+
+	wpa_printf(MSG_DEBUG, "%s (%s,%s)", title, x_str, y_str);
+
+fail:
+	OPENSSL_free(x_str);
+	OPENSSL_free(y_str);
+	BN_free(x);
+	BN_free(y);
+}
+
+
 struct crypto_ecdh {
 	struct crypto_ec *ec;
 	EVP_PKEY *pkey;
@@ -2472,6 +2501,30 @@ struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
 	}
 
 	return buf;
+}
+
+
+const struct crypto_ec_point *
+crypto_ec_key_get_public_key(struct crypto_ec_key *key)
+{
+	EC_KEY *eckey;
+
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	if (!eckey)
+		return NULL;
+	return (const struct crypto_ec_point *) EC_KEY_get0_public_key(eckey);
+}
+
+
+const struct crypto_bignum *
+crypto_ec_key_get_private_key(struct crypto_ec_key *key)
+{
+	EC_KEY *eckey;
+
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	if (!eckey)
+		return NULL;
+	return (const struct crypto_bignum *) EC_KEY_get0_private_key(eckey);
 }
 
 

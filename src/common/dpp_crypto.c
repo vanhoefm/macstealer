@@ -1751,22 +1751,20 @@ dpp_pkex_get_role_elem(const struct dpp_curve_params *curve, int init)
 }
 
 
-EC_POINT * dpp_pkex_derive_Qi(const struct dpp_curve_params *curve,
-			      const u8 *mac_init, const char *code,
-			      const char *identifier, BN_CTX *bnctx,
-			      EC_GROUP **ret_group)
+struct crypto_ec_point *
+dpp_pkex_derive_Qi(const struct dpp_curve_params *curve, const u8 *mac_init,
+		   const char *code, const char *identifier,
+		   struct crypto_ec **ret_ec)
 {
 	u8 hash[DPP_MAX_HASH_LEN];
 	const u8 *addr[3];
 	size_t len[3];
 	unsigned int num_elem = 0;
-	EC_POINT *Qi = NULL;
-	struct crypto_ec_key *Pi = NULL;
-	const EC_KEY *Pi_ec;
-	const EC_POINT *Pi_point;
-	BIGNUM *hash_bn = NULL;
-	const EC_GROUP *group = NULL;
-	EC_GROUP *group2 = NULL;
+	struct crypto_ec_point *Qi = NULL;
+	struct crypto_ec_key *Pi_key = NULL;
+	const struct crypto_ec_point *Pi = NULL;
+	struct crypto_bignum *hash_bn = NULL;
+	struct crypto_ec *ec = NULL;
 
 	/* Qi = H(MAC-Initiator | [identifier |] code) * Pi */
 
@@ -1790,66 +1788,55 @@ EC_POINT * dpp_pkex_derive_Qi(const struct dpp_curve_params *curve,
 	wpa_hexdump_key(MSG_DEBUG,
 			"DPP: H(MAC-Initiator | [identifier |] code)",
 			hash, curve->hash_len);
-	Pi = dpp_pkex_get_role_elem(curve, 1);
-	if (!Pi)
+	Pi_key = dpp_pkex_get_role_elem(curve, 1);
+	if (!Pi_key)
 		goto fail;
-	dpp_debug_print_key("DPP: Pi", Pi);
-	Pi_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) Pi);
-	if (!Pi_ec)
-		goto fail;
-	Pi_point = EC_KEY_get0_public_key(Pi_ec);
+	dpp_debug_print_key("DPP: Pi", Pi_key);
 
-	group = EC_KEY_get0_group(Pi_ec);
-	if (!group)
+	ec = crypto_ec_init(curve->ike_group);
+	if (!ec)
 		goto fail;
-	group2 = EC_GROUP_dup(group);
-	if (!group2)
+
+	Pi = crypto_ec_key_get_public_key(Pi_key);
+	Qi = crypto_ec_point_init(ec);
+	hash_bn = crypto_bignum_init_set(hash, curve->hash_len);
+	if (!Pi || !Qi || !hash_bn || crypto_ec_point_mul(ec, Pi, hash_bn, Qi))
 		goto fail;
-	Qi = EC_POINT_new(group2);
-	if (!Qi) {
-		EC_GROUP_free(group2);
-		goto fail;
-	}
-	hash_bn = BN_bin2bn(hash, curve->hash_len, NULL);
-	if (!hash_bn ||
-	    EC_POINT_mul(group2, Qi, NULL, Pi_point, hash_bn, bnctx) != 1)
-		goto fail;
-	if (EC_POINT_is_at_infinity(group, Qi)) {
+
+	if (crypto_ec_point_is_at_infinity(ec, Qi)) {
 		wpa_printf(MSG_INFO, "DPP: Qi is the point-at-infinity");
 		goto fail;
 	}
-	dpp_debug_print_point("DPP: Qi", group, Qi);
+	crypto_ec_point_debug_print(ec, Qi, "DPP: Qi");
 out:
-	crypto_ec_key_deinit(Pi);
-	BN_clear_free(hash_bn);
-	if (ret_group && Qi)
-		*ret_group = group2;
+	crypto_ec_key_deinit(Pi_key);
+	crypto_bignum_deinit(hash_bn, 1);
+	if (ret_ec && Qi)
+		*ret_ec = ec;
 	else
-		EC_GROUP_free(group2);
+		crypto_ec_deinit(ec);
 	return Qi;
 fail:
-	EC_POINT_free(Qi);
+	crypto_ec_point_deinit(Qi, 1);
 	Qi = NULL;
 	goto out;
 }
 
 
-EC_POINT * dpp_pkex_derive_Qr(const struct dpp_curve_params *curve,
-			      const u8 *mac_resp, const char *code,
-			      const char *identifier, BN_CTX *bnctx,
-			      EC_GROUP **ret_group)
+struct crypto_ec_point *
+dpp_pkex_derive_Qr(const struct dpp_curve_params *curve, const u8 *mac_resp,
+		   const char *code, const char *identifier,
+		   struct crypto_ec **ret_ec)
 {
 	u8 hash[DPP_MAX_HASH_LEN];
 	const u8 *addr[3];
 	size_t len[3];
 	unsigned int num_elem = 0;
-	EC_POINT *Qr = NULL;
-	struct crypto_ec_key *Pr = NULL;
-	const EC_KEY *Pr_ec;
-	const EC_POINT *Pr_point;
-	BIGNUM *hash_bn = NULL;
-	const EC_GROUP *group = NULL;
-	EC_GROUP *group2 = NULL;
+	struct crypto_ec_point *Qr = NULL;
+	struct crypto_ec_key *Pr_key = NULL;
+	const struct crypto_ec_point *Pr = NULL;
+	struct crypto_bignum *hash_bn = NULL;
+	struct crypto_ec *ec = NULL;
 
 	/* Qr = H(MAC-Responder | | [identifier | ] code) * Pr */
 
@@ -1873,45 +1860,37 @@ EC_POINT * dpp_pkex_derive_Qr(const struct dpp_curve_params *curve,
 	wpa_hexdump_key(MSG_DEBUG,
 			"DPP: H(MAC-Responder | [identifier |] code)",
 			hash, curve->hash_len);
-	Pr = dpp_pkex_get_role_elem(curve, 0);
-	if (!Pr)
+	Pr_key = dpp_pkex_get_role_elem(curve, 0);
+	if (!Pr_key)
 		goto fail;
-	dpp_debug_print_key("DPP: Pr", Pr);
-	Pr_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) Pr);
-	if (!Pr_ec)
-		goto fail;
-	Pr_point = EC_KEY_get0_public_key(Pr_ec);
+	dpp_debug_print_key("DPP: Pr", Pr_key);
 
-	group = EC_KEY_get0_group(Pr_ec);
-	if (!group)
+	ec = crypto_ec_init(curve->ike_group);
+	if (!ec)
 		goto fail;
-	group2 = EC_GROUP_dup(group);
-	if (!group2)
+
+	Pr = crypto_ec_key_get_public_key(Pr_key);
+	Qr = crypto_ec_point_init(ec);
+	hash_bn = crypto_bignum_init_set(hash, curve->hash_len);
+	if (!Pr || !Qr || !hash_bn || crypto_ec_point_mul(ec, Pr, hash_bn, Qr))
 		goto fail;
-	Qr = EC_POINT_new(group2);
-	if (!Qr) {
-		EC_GROUP_free(group2);
-		goto fail;
-	}
-	hash_bn = BN_bin2bn(hash, curve->hash_len, NULL);
-	if (!hash_bn ||
-	    EC_POINT_mul(group2, Qr, NULL, Pr_point, hash_bn, bnctx) != 1)
-		goto fail;
-	if (EC_POINT_is_at_infinity(group, Qr)) {
+
+	if (crypto_ec_point_is_at_infinity(ec, Qr)) {
 		wpa_printf(MSG_INFO, "DPP: Qr is the point-at-infinity");
 		goto fail;
 	}
-	dpp_debug_print_point("DPP: Qr", group, Qr);
+	crypto_ec_point_debug_print(ec, Qr, "DPP: Qr");
+
 out:
-	crypto_ec_key_deinit(Pr);
-	BN_clear_free(hash_bn);
-	if (ret_group && Qr)
-		*ret_group = group2;
+	crypto_ec_key_deinit(Pr_key);
+	crypto_bignum_deinit(hash_bn, 1);
+	if (ret_ec && Qr)
+		*ret_ec = ec;
 	else
-		EC_GROUP_free(group2);
+		crypto_ec_deinit(ec);
 	return Qr;
 fail:
-	EC_POINT_free(Qr);
+	crypto_ec_point_deinit(Qr, 1);
 	Qr = NULL;
 	goto out;
 }
