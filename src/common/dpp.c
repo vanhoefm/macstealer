@@ -2398,30 +2398,28 @@ fail:
 static void dpp_copy_csign(struct dpp_config_obj *conf,
 			   struct crypto_ec_key *csign)
 {
-	unsigned char *der = NULL;
-	int der_len;
+	struct wpabuf *c_sign_key;
 
-	der_len = i2d_PUBKEY((EVP_PKEY *) csign, &der);
-	if (der_len <= 0)
+	c_sign_key = crypto_ec_key_get_subject_public_key(csign);
+	if (!c_sign_key)
 		return;
+
 	wpabuf_free(conf->c_sign_key);
-	conf->c_sign_key = wpabuf_alloc_copy(der, der_len);
-	OPENSSL_free(der);
+	conf->c_sign_key = c_sign_key;
 }
 
 
 static void dpp_copy_ppkey(struct dpp_config_obj *conf,
 			   struct crypto_ec_key *ppkey)
 {
-	unsigned char *der = NULL;
-	int der_len;
+	struct wpabuf *pp_key;
 
-	der_len = i2d_PUBKEY((EVP_PKEY *) ppkey, &der);
-	if (der_len <= 0)
+	pp_key = crypto_ec_key_get_subject_public_key(ppkey);
+	if (!pp_key)
 		return;
+
 	wpabuf_free(conf->pp_key);
-	conf->pp_key = wpabuf_alloc_copy(der, der_len);
-	OPENSSL_free(der);
+	conf->pp_key = pp_key;
 }
 
 
