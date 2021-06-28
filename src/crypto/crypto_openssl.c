@@ -111,6 +111,10 @@ static void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr,
 
 #endif /* CONFIG_ECC */
 
+static const unsigned char * ASN1_STRING_get0_data(const ASN1_STRING *x)
+{
+	return ASN1_STRING_data((ASN1_STRING *) x);
+}
 #endif /* OpenSSL version < 1.1.0 */
 
 static BIGNUM * get_group5_prime(void)
@@ -2894,6 +2898,186 @@ fail:
 		BIO_free_all(out);
 
 	return pem;
+}
+
+
+struct crypto_csr * crypto_csr_init()
+{
+	return (struct crypto_csr *)X509_REQ_new();
+}
+
+
+struct crypto_csr * crypto_csr_verify(const struct wpabuf *req)
+{
+	X509_REQ *csr;
+	EVP_PKEY *pkey = NULL;
+	const u8 *der = wpabuf_head(req);
+
+	csr = d2i_X509_REQ(NULL, &der, wpabuf_len(req));
+	if (!csr)
+		return NULL;
+
+	pkey = X509_REQ_get_pubkey((X509_REQ *)csr);
+	if (!pkey)
+		goto fail;
+
+	if (X509_REQ_verify((X509_REQ *)csr, pkey) != 1)
+		goto fail;
+
+	return (struct crypto_csr *)csr;
+fail:
+	X509_REQ_free(csr);
+	return NULL;
+}
+
+
+void crypto_csr_deinit(struct crypto_csr *csr)
+{
+	X509_REQ_free((X509_REQ *)csr);
+}
+
+
+int crypto_csr_set_ec_public_key(struct crypto_csr *csr, struct crypto_ec_key *key)
+{
+	if (!X509_REQ_set_pubkey((X509_REQ *)csr, (EVP_PKEY *)key))
+		return -1;
+
+	return 0;
+}
+
+
+int crypto_csr_set_name(struct crypto_csr *csr, enum crypto_csr_name type,
+			const char *name)
+{
+	X509_NAME *n;
+	int nid;
+
+	switch (type) {
+	case CSR_NAME_CN:
+		nid = NID_commonName;
+		break;
+	case CSR_NAME_SN:
+		nid = NID_surname;
+		break;
+	case CSR_NAME_C:
+		nid = NID_countryName;
+		break;
+	case CSR_NAME_O:
+		nid = NID_organizationName;
+		break;
+	case CSR_NAME_OU:
+		nid = NID_organizationalUnitName;
+		break;
+	default:
+		return -1;
+	}
+
+	n = X509_REQ_get_subject_name((X509_REQ *) csr);
+	if (!n)
+		return -1;
+
+	if (!X509_NAME_add_entry_by_NID(n, nid, MBSTRING_UTF8,
+					(const unsigned char *) name,
+					os_strlen(name), -1, 0))
+		return -1;
+
+	return 0;
+}
+
+
+int crypto_csr_set_attribute(struct crypto_csr *csr, enum crypto_csr_attr attr,
+			     int attr_type, const u8 *value, size_t len)
+{
+	int nid;
+
+	switch (attr) {
+	case CSR_ATTR_CHALLENGE_PASSWORD:
+		nid = NID_pkcs9_challengePassword;
+		break;
+	default:
+		return -1;
+	}
+
+	if (!X509_REQ_add1_attr_by_NID((X509_REQ *) csr, nid, attr_type, value,
+				       len))
+		return -1;
+
+	return 0;
+}
+
+
+const u8 * crypto_csr_get_attribute(struct crypto_csr *csr,
+				    enum crypto_csr_attr attr,
+				    size_t *len, int *type)
+{
+	X509_ATTRIBUTE *attrib;
+	ASN1_TYPE *attrib_type;
+	ASN1_STRING *data;
+	int loc;
+	int nid;
+
+	switch (attr) {
+	case CSR_ATTR_CHALLENGE_PASSWORD:
+		nid = NID_pkcs9_challengePassword;
+		break;
+	default:
+		return NULL;
+	}
+
+	loc = X509_REQ_get_attr_by_NID((X509_REQ *) csr, nid, -1);
+	if (loc < 0)
+		return NULL;
+
+	attrib = X509_REQ_get_attr((X509_REQ *) csr, loc);
+	if (!attrib)
+		return NULL;
+
+	attrib_type = X509_ATTRIBUTE_get0_type(attrib, 0);
+	if (!attrib_type)
+		return NULL;
+	*type = ASN1_TYPE_get(attrib_type);
+	data = X509_ATTRIBUTE_get0_data(attrib, 0, *type, NULL);
+	if (!data)
+		return NULL;
+	*len = ASN1_STRING_length(data);
+	return ASN1_STRING_get0_data(data);
+}
+
+
+struct wpabuf * crypto_csr_sign(struct crypto_csr *csr,
+				struct crypto_ec_key *key,
+				enum crypto_hash_alg algo)
+{
+	const EVP_MD *sign_md;
+	struct wpabuf *buf;
+	unsigned char *der = NULL;
+	int der_len;
+
+	switch (algo) {
+	case CRYPTO_HASH_ALG_SHA256:
+		sign_md = EVP_sha256();
+		break;
+	case CRYPTO_HASH_ALG_SHA384:
+		sign_md = EVP_sha384();
+		break;
+	case CRYPTO_HASH_ALG_SHA512:
+		sign_md = EVP_sha512();
+		break;
+	default:
+		return NULL;
+	}
+
+	if (!X509_REQ_sign((X509_REQ *) csr, (EVP_PKEY *) key, sign_md))
+		return NULL;
+
+	der_len = i2d_X509_REQ((X509_REQ *) csr, &der);
+	if (der_len < 0)
+		return NULL;
+
+	buf = wpabuf_alloc_copy(der, der_len);
+	OPENSSL_free(der);
+
+	return buf;
 }
 
 #endif /* CONFIG_ECC */

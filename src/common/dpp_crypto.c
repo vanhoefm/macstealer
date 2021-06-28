@@ -21,6 +21,7 @@
 #include "crypto/random.h"
 #include "crypto/sha384.h"
 #include "crypto/sha512.h"
+#include "tls/asn1.h"
 #include "dpp.h"
 #include "dpp_i.h"
 
@@ -2156,19 +2157,15 @@ void dpp_pfs_free(struct dpp_pfs *pfs)
 
 struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 {
-	X509_REQ *req = NULL;
+	struct crypto_csr *csr = NULL;
 	struct wpabuf *buf = NULL;
-	unsigned char *der;
-	int der_len;
 	struct crypto_ec_key *key;
-	const EVP_MD *sign_md;
 	unsigned int hash_len = auth->curve->hash_len;
 	struct wpabuf *priv_key;
-	BIO *out = NULL;
 	u8 cp[DPP_CP_LEN];
-	char *password;
+	char *password = NULL;
 	size_t password_len;
-	int res;
+	int hash_sign_algo;
 
 	/* TODO: use auth->csrattrs */
 
@@ -2182,22 +2179,12 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 	wpabuf_free(auth->priv_key);
 	auth->priv_key = priv_key;
 
-	req = X509_REQ_new();
-	if (!req || !X509_REQ_set_pubkey(req, (EVP_PKEY *) key))
+	csr = crypto_csr_init();
+	if (!csr || crypto_csr_set_ec_public_key(csr, key))
 		goto fail;
 
-	if (name) {
-		X509_NAME *n;
-
-		n = X509_REQ_get_subject_name(req);
-		if (!n)
-			goto fail;
-
-		if (X509_NAME_add_entry_by_txt(
-			    n, "CN", MBSTRING_UTF8,
-			    (const unsigned char *) name, -1, -1, 0) != 1)
-			goto fail;
-	}
+	if (name && crypto_csr_set_name(csr, CSR_NAME_CN, name))
+		goto fail;
 
 	/* cp = HKDF-Expand(bk, "CSR challengePassword", 64) */
 	if (dpp_hkdf_expand(hash_len, auth->bk, hash_len,
@@ -2208,134 +2195,75 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 			cp, DPP_CP_LEN);
 	password = base64_encode_no_lf(cp, DPP_CP_LEN, &password_len);
 	forced_memzero(cp, DPP_CP_LEN);
-	if (!password)
+	if (!password ||
+	    crypto_csr_set_attribute(csr, CSR_ATTR_CHALLENGE_PASSWORD,
+				     ASN1_TAG_UTF8STRING, (const u8 *) password,
+				     password_len))
 		goto fail;
-
-	res = X509_REQ_add1_attr_by_NID(req, NID_pkcs9_challengePassword,
-					V_ASN1_UTF8STRING,
-					(const unsigned char *) password,
-					password_len);
-	bin_clear_free(password, password_len);
-	if (!res)
-		goto fail;
-
-	/* TODO */
 
 	/* TODO: hash func selection based on csrAttrs */
 	if (hash_len == SHA256_MAC_LEN) {
-		sign_md = EVP_sha256();
+		hash_sign_algo = CRYPTO_HASH_ALG_SHA256;
 	} else if (hash_len == SHA384_MAC_LEN) {
-		sign_md = EVP_sha384();
+		hash_sign_algo = CRYPTO_HASH_ALG_SHA384;
 	} else if (hash_len == SHA512_MAC_LEN) {
-		sign_md = EVP_sha512();
+		hash_sign_algo = CRYPTO_HASH_ALG_SHA512;
 	} else {
 		wpa_printf(MSG_DEBUG, "DPP: Unknown signature algorithm");
 		goto fail;
 	}
 
-	if (!X509_REQ_sign(req, (EVP_PKEY *) key, sign_md))
+	buf = crypto_csr_sign(csr, key, hash_sign_algo);
+	if (!buf)
 		goto fail;
-
-	der = NULL;
-	der_len = i2d_X509_REQ(req, &der);
-	if (der_len < 0)
-		goto fail;
-	buf = wpabuf_alloc_copy(der, der_len);
-	OPENSSL_free(der);
-
 	wpa_hexdump_buf(MSG_DEBUG, "DPP: CSR", buf);
 
 fail:
-	BIO_free_all(out);
-	X509_REQ_free(req);
+	bin_clear_free(password, password_len);
+	crypto_csr_deinit(csr);
 	return buf;
 }
 
 
-int dpp_validate_csr(struct dpp_authentication *auth, const struct wpabuf *csr)
+int dpp_validate_csr(struct dpp_authentication *auth,
+		     const struct wpabuf *csrbuf)
 {
-	X509_REQ *req;
-	const unsigned char *pos;
-	EVP_PKEY *pkey;
-	int res, loc, ret = -1;
-	X509_ATTRIBUTE *attr;
-	ASN1_TYPE *type;
-	ASN1_STRING *str;
-	unsigned char *utf8 = NULL;
+	struct crypto_csr *csr;
+	const u8 *attr;
+	size_t attr_len;
+	int attr_type;
 	unsigned char *cp = NULL;
 	size_t cp_len;
 	u8 exp_cp[DPP_CP_LEN];
 	unsigned int hash_len = auth->curve->hash_len;
+	int ret = -1;
 
-	pos = wpabuf_head(csr);
-	req = d2i_X509_REQ(NULL, &pos, wpabuf_len(csr));
-	if (!req) {
-		wpa_printf(MSG_DEBUG, "DPP: Failed to parse CSR");
-		return -1;
-	}
-
-	pkey = X509_REQ_get_pubkey(req);
-	if (!pkey) {
-		wpa_printf(MSG_DEBUG, "DPP: Failed to get public key from CSR");
-		goto fail;
-	}
-
-	res = X509_REQ_verify(req, pkey);
-	EVP_PKEY_free(pkey);
-	if (res != 1) {
+	csr = crypto_csr_verify(csrbuf);
+	if (!csr) {
 		wpa_printf(MSG_DEBUG,
-			   "DPP: CSR does not have a valid signature");
+			   "DPP: CSR invalid or invalid signature");
 		goto fail;
 	}
 
-	loc = X509_REQ_get_attr_by_NID(req, NID_pkcs9_challengePassword, -1);
-	if (loc < 0) {
+	attr = crypto_csr_get_attribute(csr, CSR_ATTR_CHALLENGE_PASSWORD,
+					&attr_len, &attr_type);
+	if (!attr) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: CSR does not include challengePassword");
 		goto fail;
 	}
-
-	attr = X509_REQ_get_attr(req, loc);
-	if (!attr) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not get challengePassword attribute");
-		goto fail;
-	}
-
-	type = X509_ATTRIBUTE_get0_type(attr, 0);
-	if (!type) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not get challengePassword attribute type");
-		goto fail;
-	}
-
-	res = ASN1_TYPE_get(type);
 	/* This is supposed to be UTF8String, but allow other strings as well
 	 * since challengePassword is using ASCII (base64 encoded). */
-	if (res != V_ASN1_UTF8STRING && res != V_ASN1_PRINTABLESTRING &&
-	    res != V_ASN1_IA5STRING) {
+	if (attr_type != ASN1_TAG_UTF8STRING &&
+	    attr_type != ASN1_TAG_PRINTABLESTRING &&
+	    attr_type != ASN1_TAG_IA5STRING) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Unexpected challengePassword attribute type %d",
-			   res);
+			   attr_type);
 		goto fail;
 	}
 
-	str = X509_ATTRIBUTE_get0_data(attr, 0, res, NULL);
-	if (!str) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not get ASN.1 string for challengePassword");
-		goto fail;
-	}
-
-	res = ASN1_STRING_to_UTF8(&utf8, str);
-	if (res < 0) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not get UTF8 version of challengePassword");
-		goto fail;
-	}
-
-	cp = base64_decode((const char *) utf8, res, &cp_len);
-	OPENSSL_free(utf8);
+	cp = base64_decode((const char *) attr, attr_len, &cp_len);
 	if (!cp) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Could not base64 decode challengePassword");
@@ -2366,7 +2294,7 @@ int dpp_validate_csr(struct dpp_authentication *auth, const struct wpabuf *csr)
 	ret = 0;
 fail:
 	os_free(cp);
-	X509_REQ_free(req);
+	crypto_csr_deinit(csr);
 	return ret;
 }
 

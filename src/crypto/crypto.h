@@ -1173,4 +1173,106 @@ int crypto_ec_key_cmp(struct crypto_ec_key *key1, struct crypto_ec_key *key2);
 void crypto_ec_key_debug_print(const struct crypto_ec_key *key,
 			       const char *title);
 
+/**
+ * struct crypto_csr - Certification Signing Request
+ *
+ * Internal data structure for CSR. The contents is specific to the used
+ * crypto library.
+ * For now it is assumed that only an EC public key can be used
+ */
+struct crypto_csr;
+
+/**
+ * enum crypto_csr_name - CSR name type
+ */
+enum crypto_csr_name {
+	CSR_NAME_CN,
+	CSR_NAME_SN,
+	CSR_NAME_C,
+	CSR_NAME_O,
+	CSR_NAME_OU,
+};
+
+/**
+ * enum crypto_csr_attr - CSR attribute
+ */
+enum crypto_csr_attr {
+	CSR_ATTR_CHALLENGE_PASSWORD,
+};
+
+/**
+ * crypto_csr_init - Initialize empty CSR
+ * Returns: Pointer to CSR data or %NULL on failure
+ */
+struct crypto_csr * crypto_csr_init(void);
+
+/**
+ * crypto_csr_verify - Initialize CSR from CertificationRequest
+ * @req: DER encoding of ASN.1 CertificationRequest
+ *
+ * Returns: Pointer to CSR data or %NULL on failure or if signature is invalid
+ */
+struct crypto_csr * crypto_csr_verify(const struct wpabuf *req);
+
+/**
+ * crypto_csr_deinit - Free CSR structure
+ * @csr: CSR structure from @crypto_csr_init() or crypto_csr_verify()
+ */
+void crypto_csr_deinit(struct crypto_csr *csr);
+
+/**
+ * crypto_csr_set_ec_public_key - Set public key in CSR
+ * @csr: CSR structure from @crypto_csr_init()
+ * @key: EC public key to set as public key in the CSR
+ * Returns: 0 on success, -1 on failure
+ */
+int crypto_csr_set_ec_public_key(struct crypto_csr *csr,
+				 struct crypto_ec_key *key);
+
+/**
+ * crypto_csr_set_name - Set name entry in CSR SubjectName
+ * @csr: CSR structure from @crypto_csr_init()
+ * @type: Name type  to add into the CSR SubjectName
+ * @name: UTF-8 string to write in the CSR SubjectName
+ * Returns: 0 on success, -1 on failure
+ */
+int crypto_csr_set_name(struct crypto_csr *csr, enum crypto_csr_name type,
+			const char *name);
+
+/**
+ * crypto_csr_set_attribute - Set attribute in CSR
+ * @csr: CSR structure from @crypto_csr_init()
+ * @attr: Attribute identifier
+ * @attr_type: ASN.1 type of @value buffer
+ * @value: Attribute value
+ * @len: length of @value buffer
+ * Returns: 0 on success, -1 on failure
+ */
+int crypto_csr_set_attribute(struct crypto_csr *csr, enum crypto_csr_attr attr,
+			     int attr_type, const u8 *value, size_t len);
+
+/**
+ * crypto_csr_get_attribute - Get attribute from CSR
+ * @csr: CSR structure from @crypto_csr_verify()
+ * @attr: Updated with atribute identifier
+ * @len: Updated with length of returned buffer
+ * @type: ASN.1 type of the attribute buffer
+ * Returns: Type, length, and pointer on attribute value or %NULL on failure
+ */
+const u8 * crypto_csr_get_attribute(struct crypto_csr *csr,
+				    enum crypto_csr_attr attr,
+				    size_t *len, int *type);
+
+/**
+ * crypto_csr_sign - Sign CSR and return ASN.1 CertificationRequest
+ * @csr: CSR structure from @crypto_csr_init()
+ * @key: Private key to sign the CSR (for now ony EC key are supported)
+ * @algo: Hash algorithm to use for the signature
+ * Returns: DER encoding of ASN.1 CertificationRequest for the CSR or %NULL on
+ * failure
+ */
+struct wpabuf * crypto_csr_sign(struct crypto_csr *csr,
+				struct crypto_ec_key *key,
+				enum crypto_hash_alg algo);
+
 #endif /* CRYPTO_H */
