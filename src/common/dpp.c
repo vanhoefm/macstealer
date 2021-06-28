@@ -2560,7 +2560,7 @@ static int dpp_parse_cred_dot1x(struct dpp_authentication *auth,
 		return -1;
 	}
 	wpa_hexdump_buf(MSG_MSGDUMP, "DPP: Received certBag", conf->certbag);
-	conf->certs = dpp_pkcs7_certs(conf->certbag);
+	conf->certs = crypto_pkcs7_get_certificates(conf->certbag);
 	if (!conf->certs) {
 		dpp_auth_fail(auth, "No certificates in certBag");
 		return -1;

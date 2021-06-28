@@ -631,7 +631,6 @@ void dpp_pfs_free(struct dpp_pfs *pfs);
 
 struct wpabuf * dpp_build_csr(struct dpp_authentication *auth,
 			      const char *name);
-struct wpabuf * dpp_pkcs7_certs(const struct wpabuf *pkcs7);
 int dpp_validate_csr(struct dpp_authentication *auth, const struct wpabuf *csr);
 
 struct dpp_bootstrap_info * dpp_add_qr_code(struct dpp_global *dpp,

@@ -22,6 +22,7 @@
 #ifdef CONFIG_ECC
 #include <openssl/ec.h>
 #include <openssl/x509.h>
+#include <openssl/pem.h>
 #endif /* CONFIG_ECC */
 
 #include "common.h"
@@ -2803,6 +2804,96 @@ void crypto_ec_key_debug_print(const struct crypto_ec_key *key,
 		os_free(txt);
 	}
 	BIO_free(out);
+}
+
+
+struct wpabuf * crypto_pkcs7_get_certificates(const struct wpabuf *pkcs7)
+{
+#ifdef OPENSSL_IS_BORINGSSL
+	CBS pkcs7_cbs;
+#else /* OPENSSL_IS_BORINGSSL */
+	PKCS7 *p7 = NULL;
+	const unsigned char *p = wpabuf_head(pkcs7);
+#endif /* OPENSSL_IS_BORINGSSL */
+	STACK_OF(X509) *certs;
+	int i, num;
+	BIO *out = NULL;
+	size_t rlen;
+	struct wpabuf *pem = NULL;
+	int res;
+
+#ifdef OPENSSL_IS_BORINGSSL
+	certs = sk_X509_new_null();
+	if (!certs)
+		goto fail;
+	CBS_init(&pkcs7_cbs, wpabuf_head(pkcs7), wpabuf_len(pkcs7));
+	if (!PKCS7_get_certificates(certs, &pkcs7_cbs)) {
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: Could not parse PKCS#7 object: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		goto fail;
+	}
+#else /* OPENSSL_IS_BORINGSSL */
+	p7 = d2i_PKCS7(NULL, &p, wpabuf_len(pkcs7));
+	if (!p7) {
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: Could not parse PKCS#7 object: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		goto fail;
+	}
+
+	switch (OBJ_obj2nid(p7->type)) {
+	case NID_pkcs7_signed:
+		certs = p7->d.sign->cert;
+		break;
+	case NID_pkcs7_signedAndEnveloped:
+		certs = p7->d.signed_and_enveloped->cert;
+		break;
+	default:
+		certs = NULL;
+		break;
+	}
+#endif /* OPENSSL_IS_BORINGSSL */
+
+	if (!certs || ((num = sk_X509_num(certs)) == 0)) {
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: No certificates found in PKCS#7 object");
+		goto fail;
+	}
+
+	out = BIO_new(BIO_s_mem());
+	if (!out)
+		goto fail;
+
+	for (i = 0; i < num; i++) {
+		X509 *cert = sk_X509_value(certs, i);
+
+		PEM_write_bio_X509(out, cert);
+	}
+
+	rlen = BIO_ctrl_pending(out);
+	pem = wpabuf_alloc(rlen);
+	if (!pem)
+		goto fail;
+	res = BIO_read(out, wpabuf_put(pem, 0), rlen);
+	if (res <= 0) {
+		wpabuf_free(pem);
+		pem = NULL;
+		goto fail;
+	}
+	wpabuf_put(pem, res);
+
+fail:
+#ifdef OPENSSL_IS_BORINGSSL
+	if (certs)
+		sk_X509_pop_free(certs, X509_free);
+#else /* OPENSSL_IS_BORINGSSL */
+	PKCS7_free(p7);
+#endif /* OPENSSL_IS_BORINGSSL */
+	if (out)
+		BIO_free_all(out);
+
+	return pem;
 }
 
 #endif /* CONFIG_ECC */

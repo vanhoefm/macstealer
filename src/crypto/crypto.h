@@ -495,6 +495,13 @@ int rc4_skip(const u8 *key, size_t keylen, size_t skip,
  */
 int crypto_get_random(void *buf, size_t len);
 
+/**
+ * crypto_pkcs7_get_certificates - Extract X.509 certificates from PKCS#7 data
+ * @pkcs7: DER encoded PKCS#7 data
+ * Returns: Buffer of the extracted PEM X.509 certificates or %NULL on failure
+ */
+struct wpabuf * crypto_pkcs7_get_certificates(const struct wpabuf *pkcs7);
+
 
 /**
  * struct crypto_bignum - bignum
