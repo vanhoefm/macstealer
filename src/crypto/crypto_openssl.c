@@ -2195,73 +2195,56 @@ size_t crypto_ecdh_prime_len(struct crypto_ecdh *ecdh)
 }
 
 
-struct crypto_ec_key {
-	EVP_PKEY *pkey;
-	EC_KEY *eckey;
-};
-
-
 struct crypto_ec_key * crypto_ec_key_parse_priv(const u8 *der, size_t der_len)
 {
-	struct crypto_ec_key *key;
+	EVP_PKEY *pkey = NULL;
+	EC_KEY *eckey;
 
-	key = os_zalloc(sizeof(*key));
-	if (!key)
-		return NULL;
-
-	key->eckey = d2i_ECPrivateKey(NULL, &der, der_len);
-	if (!key->eckey) {
+	eckey = d2i_ECPrivateKey(NULL, &der, der_len);
+	if (!eckey) {
 		wpa_printf(MSG_INFO, "OpenSSL: d2i_ECPrivateKey() failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
 	}
-	EC_KEY_set_conv_form(key->eckey, POINT_CONVERSION_COMPRESSED);
+	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_COMPRESSED);
 
-	key->pkey = EVP_PKEY_new();
-	if (!key->pkey || EVP_PKEY_assign_EC_KEY(key->pkey, key->eckey) != 1) {
-		EC_KEY_free(key->eckey);
-		key->eckey = NULL;
+	pkey = EVP_PKEY_new();
+	if (!pkey || EVP_PKEY_assign_EC_KEY(pkey, eckey) != 1) {
+		EC_KEY_free(eckey);
 		goto fail;
 	}
 
-	return key;
+	return (struct crypto_ec_key *) pkey;
 fail:
-	crypto_ec_key_deinit(key);
+	crypto_ec_key_deinit((struct crypto_ec_key *) pkey);
 	return NULL;
 }
 
 
 struct crypto_ec_key * crypto_ec_key_parse_pub(const u8 *der, size_t der_len)
 {
-	struct crypto_ec_key *key;
+	EVP_PKEY *pkey;
 
-	key = os_zalloc(sizeof(*key));
-	if (!key)
-		return NULL;
-
-	key->pkey = d2i_PUBKEY(NULL, &der, der_len);
-	if (!key->pkey) {
+	pkey = d2i_PUBKEY(NULL, &der, der_len);
+	if (!pkey) {
 		wpa_printf(MSG_INFO, "OpenSSL: d2i_PUBKEY() failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
 	}
 
-	key->eckey = EVP_PKEY_get0_EC_KEY(key->pkey);
-	if (!key->eckey)
+	/* Ensure this is an EC key */
+	if (!EVP_PKEY_get0_EC_KEY(pkey))
 		goto fail;
-	return key;
+	return (struct crypto_ec_key *) pkey;
 fail:
-	crypto_ec_key_deinit(key);
+	crypto_ec_key_deinit((struct crypto_ec_key *) pkey);
 	return NULL;
 }
 
 
 void crypto_ec_key_deinit(struct crypto_ec_key *key)
 {
-	if (key) {
-		EVP_PKEY_free(key->pkey);
-		os_free(key);
-	}
+	EVP_PKEY_free((EVP_PKEY *) key);
 }
 
 
@@ -2271,7 +2254,7 @@ struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key)
 	int der_len;
 	struct wpabuf *buf;
 
-	der_len = i2d_PUBKEY(key->pkey, &der);
+	der_len = i2d_PUBKEY((EVP_PKEY *) key, &der);
 	if (der_len <= 0) {
 		wpa_printf(MSG_INFO, "OpenSSL: i2d_PUBKEY() failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
@@ -2291,12 +2274,12 @@ struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
 	struct wpabuf *sig_der;
 	size_t sig_len;
 
-	sig_len = EVP_PKEY_size(key->pkey);
+	sig_len = EVP_PKEY_size((EVP_PKEY *) key);
 	sig_der = wpabuf_alloc(sig_len);
 	if (!sig_der)
 		return NULL;
 
-	pkctx = EVP_PKEY_CTX_new(key->pkey, NULL);
+	pkctx = EVP_PKEY_CTX_new((EVP_PKEY *) key, NULL);
 	if (!pkctx ||
 	    EVP_PKEY_sign_init(pkctx) <= 0 ||
 	    EVP_PKEY_sign(pkctx, wpabuf_put(sig_der, 0), &sig_len,
@@ -2318,7 +2301,7 @@ int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
 	EVP_PKEY_CTX *pkctx;
 	int ret;
 
-	pkctx = EVP_PKEY_CTX_new(key->pkey, NULL);
+	pkctx = EVP_PKEY_CTX_new((EVP_PKEY *) key, NULL);
 	if (!pkctx || EVP_PKEY_verify_init(pkctx) <= 0) {
 		EVP_PKEY_CTX_free(pkctx);
 		return -1;
@@ -2336,10 +2319,14 @@ int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
 
 int crypto_ec_key_group(struct crypto_ec_key *key)
 {
+	const EC_KEY *eckey;
 	const EC_GROUP *group;
 	int nid;
 
-	group = EC_KEY_get0_group(key->eckey);
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	if (!eckey)
+		return -1;
+	group = EC_KEY_get0_group(eckey);
 	if (!group)
 		return -1;
 	nid = EC_GROUP_get_curve_name(group);
