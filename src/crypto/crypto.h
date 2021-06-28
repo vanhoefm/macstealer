@@ -1024,6 +1024,17 @@ struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
 						bool include_pub);
 
 /**
+ * crypto_ec_key_get_pubkey_point - Get public key point coordinates
+ * @key: EC key from crypto_ec_key_parse/set_pub() or crypto_ec_key_parse_priv()
+ * @prefix: Whether output buffer should include the octet to indicate
+ * coordinate form (as defined for SubjectPublicKeyInfo)
+ * Returns: Buffer with coordinates of public key in uncompressed form or %NULL
+ * on failure
+ */
+struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
+					       int prefix);
+
+/**
  * crypto_ec_key_sign - Sign a buffer with an EC key
  * @key: EC key from crypto_ec_key_parse_priv() or crypto_ec_key_gen()
  * @data: Data to sign

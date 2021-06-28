@@ -2342,6 +2342,55 @@ struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
 		return NULL;
 	buf = wpabuf_alloc_copy(der, der_len);
 	OPENSSL_free(der);
+
+	return buf;
+}
+
+
+struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
+					       int prefix)
+{
+	int len, res;
+	EC_KEY *eckey;
+	struct wpabuf *buf;
+	unsigned char *pos;
+
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
+	if (!eckey)
+		return NULL;
+	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_UNCOMPRESSED);
+	len = i2o_ECPublicKey(eckey, NULL);
+	if (len <= 0) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Failed to determine public key encoding length");
+		EC_KEY_free(eckey);
+		return NULL;
+	}
+
+	buf = wpabuf_alloc(len);
+	if (!buf) {
+		EC_KEY_free(eckey);
+		return NULL;
+	}
+
+	pos = wpabuf_put(buf, len);
+	res = i2o_ECPublicKey(eckey, &pos);
+	EC_KEY_free(eckey);
+	if (res != len) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Failed to encode public key (res=%d/%d)",
+			   res, len);
+		wpabuf_free(buf);
+		return NULL;
+	}
+
+	if (!prefix) {
+		/* Remove 0x04 prefix if requested */
+		pos = wpabuf_mhead(buf);
+		os_memmove(pos, pos + 1, len - 1);
+		buf->used--;
+	}
+
 	return buf;
 }
 

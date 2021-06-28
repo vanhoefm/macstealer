@@ -78,7 +78,6 @@ const struct dpp_curve_params * dpp_get_curve_nid(int nid);
 const struct dpp_curve_params * dpp_get_curve_ike_group(u16 group);
 int dpp_bi_pubkey_hash(struct dpp_bootstrap_info *bi,
 		       const u8 *data, size_t data_len);
-struct wpabuf * dpp_get_pubkey_point(struct crypto_ec_key *key, int prefix);
 struct crypto_ec_key * dpp_set_pubkey_point_group(const EC_GROUP *group,
 						  const u8 *buf_x,
 						  const u8 *buf_y,

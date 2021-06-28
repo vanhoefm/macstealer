@@ -69,7 +69,7 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 		goto fail;
 	}
 
-	uncomp = dpp_get_pubkey_point(csign, 1);
+	uncomp = crypto_ec_key_get_pubkey_point(csign, 1);
 	crypto_ec_key_deinit(csign);
 	if (!uncomp)
 		goto fail;
@@ -88,8 +88,8 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 		goto fail;
 	}
 
-	a_nonce = dpp_get_pubkey_point(id->a_nonce, 0);
-	e_id = dpp_get_pubkey_point(id->e_prime_id, 0);
+	a_nonce = crypto_ec_key_get_pubkey_point(id->a_nonce, 0);
+	e_id = crypto_ec_key_get_pubkey_point(id->e_prime_id, 0);
 	if (!a_nonce || !e_id)
 		goto fail;
 
@@ -341,7 +341,7 @@ static int dpp_reconfig_build_resp(struct dpp_authentication *auth,
 	wpabuf_put_le16(clear, wpabuf_len(conn_status));
 	wpabuf_put_buf(clear, conn_status);
 
-	pr = dpp_get_pubkey_point(auth->own_protocol_key, 0);
+	pr = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
 	if (!pr)
 		goto fail;
 

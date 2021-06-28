@@ -475,7 +475,7 @@ static int dpp_auth_build_resp_ok(struct dpp_authentication *auth)
 	if (!auth->own_protocol_key)
 		goto fail;
 
-	pr = dpp_get_pubkey_point(auth->own_protocol_key, 0);
+	pr = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
 	if (!pr)
 		goto fail;
 
@@ -1235,7 +1235,7 @@ struct dpp_authentication * dpp_auth_init(struct dpp_global *dpp, void *msg_ctx,
 	if (!auth->own_protocol_key)
 		goto fail;
 
-	pi = dpp_get_pubkey_point(auth->own_protocol_key, 0);
+	pi = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
 	if (!pi)
 		goto fail;
 

@@ -1368,7 +1368,7 @@ int dpp_build_jwk(struct wpabuf *buf, const char *name,
 	const u8 *pos;
 	int ret = -1;
 
-	pub = dpp_get_pubkey_point(key, 0);
+	pub = crypto_ec_key_get_pubkey_point(key, 0);
 	if (!pub)
 		goto fail;
 
@@ -3426,7 +3426,7 @@ static int dpp_configurator_gen_kid(struct dpp_configurator *conf)
 	size_t len[1];
 	int res;
 
-	csign_pub = dpp_get_pubkey_point(conf->csign, 1);
+	csign_pub = crypto_ec_key_get_pubkey_point(conf->csign, 1);
 	if (!csign_pub) {
 		wpa_printf(MSG_INFO, "DPP: Failed to extract C-sign-key");
 		return -1;

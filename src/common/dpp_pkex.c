@@ -812,9 +812,9 @@ struct wpabuf * dpp_pkex_rx_exchange_resp(struct dpp_pkex *pkex,
 			Jx, Jx_len);
 
 	/* u = HMAC(J.x, MAC-Initiator | A.x | Y'.x | X.x) */
-	A_pub = dpp_get_pubkey_point(pkex->own_bi->pubkey, 0);
-	Y_pub = dpp_get_pubkey_point(pkex->y, 0);
-	X_pub = dpp_get_pubkey_point(pkex->x, 0);
+	A_pub = crypto_ec_key_get_pubkey_point(pkex->own_bi->pubkey, 0);
+	Y_pub = crypto_ec_key_get_pubkey_point(pkex->y, 0);
+	X_pub = crypto_ec_key_get_pubkey_point(pkex->x, 0);
 	if (!A_pub || !Y_pub || !X_pub)
 		goto fail;
 	addr[0] = pkex->own_mac;
@@ -1078,9 +1078,9 @@ struct wpabuf * dpp_pkex_rx_commit_reveal_req(struct dpp_pkex *pkex,
 			Jx, Jx_len);
 
 	/* u' = HMAC(J'.x, MAC-Initiator | A'.x | Y.x | X'.x) */
-	A_pub = dpp_get_pubkey_point(pkex->peer_bootstrap_key, 0);
-	Y_pub = dpp_get_pubkey_point(pkex->y, 0);
-	X_pub = dpp_get_pubkey_point(pkex->x, 0);
+	A_pub = crypto_ec_key_get_pubkey_point(pkex->peer_bootstrap_key, 0);
+	Y_pub = crypto_ec_key_get_pubkey_point(pkex->y, 0);
+	X_pub = crypto_ec_key_get_pubkey_point(pkex->x, 0);
 	if (!A_pub || !Y_pub || !X_pub)
 		goto fail;
 	addr[0] = pkex->peer_mac;
@@ -1115,7 +1115,7 @@ struct wpabuf * dpp_pkex_rx_commit_reveal_req(struct dpp_pkex *pkex,
 			Lx, Lx_len);
 
 	/* v = HMAC(L.x, MAC-Responder | B.x | X'.x | Y.x) */
-	B_pub = dpp_get_pubkey_point(pkex->own_bi->pubkey, 0);
+	B_pub = crypto_ec_key_get_pubkey_point(pkex->own_bi->pubkey, 0);
 	if (!B_pub)
 		goto fail;
 	addr[0] = pkex->own_mac;
@@ -1240,9 +1240,9 @@ int dpp_pkex_rx_commit_reveal_resp(struct dpp_pkex *pkex, const u8 *hdr,
 			Lx, Lx_len);
 
 	/* v' = HMAC(L.x, MAC-Responder | B'.x | X.x | Y'.x) */
-	B_pub = dpp_get_pubkey_point(pkex->peer_bootstrap_key, 0);
-	X_pub = dpp_get_pubkey_point(pkex->x, 0);
-	Y_pub = dpp_get_pubkey_point(pkex->y, 0);
+	B_pub = crypto_ec_key_get_pubkey_point(pkex->peer_bootstrap_key, 0);
+	X_pub = crypto_ec_key_get_pubkey_point(pkex->x, 0);
+	Y_pub = crypto_ec_key_get_pubkey_point(pkex->y, 0);
 	if (!B_pub || !X_pub || !Y_pub)
 		goto fail;
 	addr[0] = pkex->peer_mac;

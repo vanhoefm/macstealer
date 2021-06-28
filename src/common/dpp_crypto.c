@@ -374,53 +374,6 @@ int dpp_bn2bin_pad(const BIGNUM *bn, u8 *pos, size_t len)
 }
 
 
-struct wpabuf * dpp_get_pubkey_point(struct crypto_ec_key *key, int prefix)
-{
-	int len, res;
-	EC_KEY *eckey;
-	struct wpabuf *buf;
-	unsigned char *pos;
-
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
-	if (!eckey)
-		return NULL;
-	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_UNCOMPRESSED);
-	len = i2o_ECPublicKey(eckey, NULL);
-	if (len <= 0) {
-		wpa_printf(MSG_ERROR,
-			   "DDP: Failed to determine public key encoding length");
-		EC_KEY_free(eckey);
-		return NULL;
-	}
-
-	buf = wpabuf_alloc(len);
-	if (!buf) {
-		EC_KEY_free(eckey);
-		return NULL;
-	}
-
-	pos = wpabuf_put(buf, len);
-	res = i2o_ECPublicKey(eckey, &pos);
-	EC_KEY_free(eckey);
-	if (res != len) {
-		wpa_printf(MSG_ERROR,
-			   "DDP: Failed to encode public key (res=%d/%d)",
-			   res, len);
-		wpabuf_free(buf);
-		return NULL;
-	}
-
-	if (!prefix) {
-		/* Remove 0x04 prefix to match DPP definition */
-		pos = wpabuf_mhead(buf);
-		os_memmove(pos, pos + 1, len - 1);
-		buf->used--;
-	}
-
-	return buf;
-}
-
-
 struct crypto_ec_key * dpp_set_pubkey_point_group(const EC_GROUP *group,
 						  const u8 *buf_x,
 						  const u8 *buf_y,
@@ -1168,7 +1121,7 @@ static int dpp_check_pubkey_match(struct crypto_ec_key *pub,
 
 	if (wpabuf_len(r_hash) != SHA256_MAC_LEN)
 		return -1;
-	uncomp = dpp_get_pubkey_point(pub, 1);
+	uncomp = crypto_ec_key_get_pubkey_point(pub, 1);
 	if (!uncomp)
 		return -1;
 	addr[0] = wpabuf_head(uncomp);
@@ -1401,21 +1354,25 @@ int dpp_gen_r_auth(struct dpp_authentication *auth, u8 *r_auth)
 	nonce_len = auth->curve->nonce_len;
 
 	if (auth->initiator) {
-		pix = dpp_get_pubkey_point(auth->own_protocol_key, 0);
-		prx = dpp_get_pubkey_point(auth->peer_protocol_key, 0);
+		pix = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
+		prx = crypto_ec_key_get_pubkey_point(auth->peer_protocol_key,
+						     0);
 		if (auth->own_bi)
-			bix = dpp_get_pubkey_point(auth->own_bi->pubkey, 0);
+			bix = crypto_ec_key_get_pubkey_point(
+				auth->own_bi->pubkey, 0);
 		else
 			bix = NULL;
-		brx = dpp_get_pubkey_point(auth->peer_bi->pubkey, 0);
+		brx = crypto_ec_key_get_pubkey_point(auth->peer_bi->pubkey, 0);
 	} else {
-		pix = dpp_get_pubkey_point(auth->peer_protocol_key, 0);
-		prx = dpp_get_pubkey_point(auth->own_protocol_key, 0);
+		pix = crypto_ec_key_get_pubkey_point(auth->peer_protocol_key,
+						     0);
+		prx = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
 		if (auth->peer_bi)
-			bix = dpp_get_pubkey_point(auth->peer_bi->pubkey, 0);
+			bix = crypto_ec_key_get_pubkey_point(
+				auth->peer_bi->pubkey, 0);
 		else
 			bix = NULL;
-		brx = dpp_get_pubkey_point(auth->own_bi->pubkey, 0);
+		brx = crypto_ec_key_get_pubkey_point(auth->own_bi->pubkey, 0);
 	}
 	if (!pix || !prx || !brx)
 		goto fail;
@@ -1480,25 +1437,29 @@ int dpp_gen_i_auth(struct dpp_authentication *auth, u8 *i_auth)
 	nonce_len = auth->curve->nonce_len;
 
 	if (auth->initiator) {
-		pix = dpp_get_pubkey_point(auth->own_protocol_key, 0);
-		prx = dpp_get_pubkey_point(auth->peer_protocol_key, 0);
+		pix = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
+		prx = crypto_ec_key_get_pubkey_point(auth->peer_protocol_key,
+						     0);
 		if (auth->own_bi)
-			bix = dpp_get_pubkey_point(auth->own_bi->pubkey, 0);
+			bix = crypto_ec_key_get_pubkey_point(
+				auth->own_bi->pubkey, 0);
 		else
 			bix = NULL;
 		if (!auth->peer_bi)
 			goto fail;
-		brx = dpp_get_pubkey_point(auth->peer_bi->pubkey, 0);
+		brx = crypto_ec_key_get_pubkey_point(auth->peer_bi->pubkey, 0);
 	} else {
-		pix = dpp_get_pubkey_point(auth->peer_protocol_key, 0);
-		prx = dpp_get_pubkey_point(auth->own_protocol_key, 0);
+		pix = crypto_ec_key_get_pubkey_point(auth->peer_protocol_key,
+						     0);
+		prx = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
 		if (auth->peer_bi)
-			bix = dpp_get_pubkey_point(auth->peer_bi->pubkey, 0);
+			bix = crypto_ec_key_get_pubkey_point(
+				auth->peer_bi->pubkey, 0);
 		else
 			bix = NULL;
 		if (!auth->own_bi)
 			goto fail;
-		brx = dpp_get_pubkey_point(auth->own_bi->pubkey, 0);
+		brx = crypto_ec_key_get_pubkey_point(auth->own_bi->pubkey, 0);
 	}
 	if (!pix || !prx || !brx)
 		goto fail;
@@ -1709,8 +1670,8 @@ int dpp_derive_pmkid(const struct dpp_curve_params *curve,
 	u8 hash[SHA256_MAC_LEN];
 
 	/* PMKID = Truncate-128(H(min(NK.x, PK.x) | max(NK.x, PK.x))) */
-	nkx = dpp_get_pubkey_point(own_key, 0);
-	pkx = dpp_get_pubkey_point(peer_key, 0);
+	nkx = crypto_ec_key_get_pubkey_point(own_key, 0);
+	pkx = crypto_ec_key_get_pubkey_point(peer_key, 0);
 	if (!nkx || !pkx)
 		goto fail;
 	addr[0] = wpabuf_head(nkx);
