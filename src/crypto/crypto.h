@@ -1085,6 +1085,18 @@ struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
 				   size_t len);
 
 /**
+ * crypto_ec_key_sign_r_s - Sign a buffer with an EC key
+ * @key: EC key from crypto_ec_key_parse_priv() or crypto_ec_key_gen()
+ * @data: Data to sign
+ * @len: Length of @data buffer
+ * Returns: Buffer with the concatenated r and s values. Each value is in big
+ * endian byte order padded to the length of the prime defining the group of
+ * the key.
+ */
+struct wpabuf * crypto_ec_key_sign_r_s(struct crypto_ec_key *key,
+				       const u8 *data, size_t len);
+
+/**
  * crypto_ec_key_verify_signature - Verify ECDSA signature
  * @key: EC key from crypto_ec_key_parse/set_pub() or crypto_ec_key_gen()
  * @data: Data to be signed
@@ -1095,6 +1107,24 @@ struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
  */
 int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
 				   size_t len, const u8 *sig, size_t sig_len);
+
+/**
+ * crypto_ec_key_verify_signature_r_s - Verify signature
+ * @key: EC key from crypto_ec_key_parse/set_pub() or crypto_ec_key_gen()
+ * @data: Data to signed
+ * @len: Length of @data buffer
+ * @r: Binary data, in big endian byte order, of the 'r' field of the ECDSA
+ * signature.
+ * @s: Binary data, in big endian byte order, of the 's' field of the ECDSA
+ * signature.
+ * @r_len: Length of @r buffer
+ * @s_len: Length of @s buffer
+ * Returns: 1 if signature is valid, 0 if signature is invalid, or -1 on failure
+ */
+int crypto_ec_key_verify_signature_r_s(struct crypto_ec_key *key,
+				       const u8 *data, size_t len,
+				       const u8 *r, size_t r_len,
+				       const u8 *s, size_t s_len);
 
 /**
  * crypto_ec_key_group - Get IANA group identifier for an EC key

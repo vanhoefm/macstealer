@@ -31,24 +31,6 @@
 	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
 /* Compatibility wrappers for older versions. */
 
-static int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
-{
-	sig->r = r;
-	sig->s = s;
-	return 1;
-}
-
-
-static void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr,
-			   const BIGNUM **ps)
-{
-	if (pr)
-		*pr = sig->r;
-	if (ps)
-		*ps = sig->s;
-}
-
-
 static EC_KEY * EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
 {
 	if (pkey->type != EVP_PKEY_EC)
@@ -837,7 +819,7 @@ fail:
 static struct wpabuf *
 dpp_parse_jws_prot_hdr(const struct dpp_curve_params *curve,
 		       const u8 *prot_hdr, u16 prot_hdr_len,
-		       const EVP_MD **ret_md)
+		       int *hash_func)
 {
 	struct json_token *root, *token;
 	struct wpabuf *kid = NULL;
@@ -883,17 +865,16 @@ dpp_parse_jws_prot_hdr(const struct dpp_curve_params *curve,
 		goto fail;
 	}
 	if (os_strcmp(token->string, "ES256") == 0 ||
-	    os_strcmp(token->string, "BS256") == 0)
-		*ret_md = EVP_sha256();
-	else if (os_strcmp(token->string, "ES384") == 0 ||
-		 os_strcmp(token->string, "BS384") == 0)
-		*ret_md = EVP_sha384();
-	else if (os_strcmp(token->string, "ES512") == 0 ||
-		 os_strcmp(token->string, "BS512") == 0)
-		*ret_md = EVP_sha512();
-	else
-		*ret_md = NULL;
-	if (!*ret_md) {
+	    os_strcmp(token->string, "BS256") == 0) {
+		*hash_func = CRYPTO_HASH_ALG_SHA256;
+	} else if (os_strcmp(token->string, "ES384") == 0 ||
+		   os_strcmp(token->string, "BS384") == 0) {
+		*hash_func = CRYPTO_HASH_ALG_SHA384;
+	} else if (os_strcmp(token->string, "ES512") == 0 ||
+		   os_strcmp(token->string, "BS512") == 0) {
+		*hash_func = CRYPTO_HASH_ALG_SHA512;
+	} else {
+		*hash_func = -1;
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Unsupported JWS Protected Header alg=%s",
 			   token->string);
@@ -956,27 +937,12 @@ dpp_process_signed_connector(struct dpp_signed_connector_info *info,
 	const char *pos, *end, *signed_start, *signed_end;
 	struct wpabuf *kid = NULL;
 	unsigned char *prot_hdr = NULL, *signature = NULL;
-	size_t prot_hdr_len = 0, signature_len = 0;
-	const EVP_MD *sign_md = NULL;
-	unsigned char *der = NULL;
-	int der_len;
-	int res;
-	EVP_MD_CTX *md_ctx = NULL;
-	ECDSA_SIG *sig = NULL;
-	BIGNUM *r = NULL, *s = NULL;
+	size_t prot_hdr_len = 0, signature_len = 0, signed_len;
+	int res, hash_func = -1;
 	const struct dpp_curve_params *curve;
-	const EC_KEY *eckey;
-	const EC_GROUP *group;
-	int nid;
+	u8 *hash = NULL;
 
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) csign_pub);
-	if (!eckey)
-		goto fail;
-	group = EC_KEY_get0_group(eckey);
-	if (!group)
-		goto fail;
-	nid = EC_GROUP_get_curve_name(group);
-	curve = dpp_get_curve_nid(nid);
+	curve = dpp_get_curve_ike_group(crypto_ec_key_group(csign_pub));
 	if (!curve)
 		goto fail;
 	wpa_printf(MSG_DEBUG, "DPP: C-sign-key group: %s", curve->jwk_crv);
@@ -999,7 +965,7 @@ dpp_process_signed_connector(struct dpp_signed_connector_info *info,
 	wpa_hexdump_ascii(MSG_DEBUG,
 			  "DPP: signedConnector - JWS Protected Header",
 			  prot_hdr, prot_hdr_len);
-	kid = dpp_parse_jws_prot_hdr(curve, prot_hdr, prot_hdr_len, &sign_md);
+	kid = dpp_parse_jws_prot_hdr(curve, prot_hdr, prot_hdr_len, &hash_func);
 	if (!kid) {
 		ret = DPP_STATUS_INVALID_CONNECTOR;
 		goto fail;
@@ -1055,58 +1021,45 @@ dpp_process_signed_connector(struct dpp_signed_connector_info *info,
 		goto fail;
 	}
 
-	/* JWS Signature encodes the signature (r,s) as two octet strings. Need
-	 * to convert that to DER encoded ECDSA_SIG for OpenSSL EVP routines. */
-	r = BN_bin2bn(signature, signature_len / 2, NULL);
-	s = BN_bin2bn(signature + signature_len / 2, signature_len / 2, NULL);
-	sig = ECDSA_SIG_new();
-	if (!r || !s || !sig || ECDSA_SIG_set0(sig, r, s) != 1)
-		goto fail;
-	r = NULL;
-	s = NULL;
-
-	der_len = i2d_ECDSA_SIG(sig, &der);
-	if (der_len <= 0) {
-		wpa_printf(MSG_DEBUG, "DPP: Could not DER encode signature");
-		goto fail;
-	}
-	wpa_hexdump(MSG_DEBUG, "DPP: DER encoded signature", der, der_len);
-	md_ctx = EVP_MD_CTX_create();
-	if (!md_ctx)
+	hash = os_malloc(curve->hash_len);
+	if (!hash)
 		goto fail;
 
-	ERR_clear_error();
-	if (EVP_DigestVerifyInit(md_ctx, NULL, sign_md, NULL,
-				 (EVP_PKEY *) csign_pub) != 1) {
-		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestVerifyInit failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+	signed_len = signed_end - signed_start + 1;
+	if (hash_func == CRYPTO_HASH_ALG_SHA256)
+		res = sha256_vector(1, (const u8 **) &signed_start, &signed_len,
+				    hash);
+	else if (hash_func == CRYPTO_HASH_ALG_SHA384)
+		res = sha384_vector(1, (const u8 **) &signed_start, &signed_len,
+				    hash);
+	else if (hash_func == CRYPTO_HASH_ALG_SHA512)
+		res = sha512_vector(1, (const u8 **) &signed_start, &signed_len,
+				    hash);
+	else
 		goto fail;
-	}
-	if (EVP_DigestVerifyUpdate(md_ctx, signed_start,
-				   signed_end - signed_start + 1) != 1) {
-		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestVerifyUpdate failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+
+	if (res)
 		goto fail;
-	}
-	res = EVP_DigestVerifyFinal(md_ctx, der, der_len);
+
+	res = crypto_ec_key_verify_signature_r_s(csign_pub,
+						 hash, curve->hash_len,
+						 signature, signature_len / 2,
+						 signature + signature_len / 2,
+						 signature_len / 2);
 	if (res != 1) {
 		wpa_printf(MSG_DEBUG,
-			   "DPP: EVP_DigestVerifyFinal failed (res=%d): %s",
-			   res, ERR_error_string(ERR_get_error(), NULL));
+			   "DPP: signedConnector signature check failed (res=%d)",
+			   res);
 		ret = DPP_STATUS_INVALID_CONNECTOR;
 		goto fail;
 	}
 
 	ret = DPP_STATUS_OK;
 fail:
-	EVP_MD_CTX_destroy(md_ctx);
+	os_free(hash);
 	os_free(prot_hdr);
 	wpabuf_free(kid);
 	os_free(signature);
-	ECDSA_SIG_free(sig);
-	BN_free(r);
-	BN_free(s);
-	OPENSSL_free(der);
 	return ret;
 }
 
@@ -2161,79 +2114,56 @@ dpp_build_conn_signature(struct dpp_configurator *conf,
 			 size_t *signed3_len)
 {
 	const struct dpp_curve_params *curve;
+	struct wpabuf *sig = NULL;
 	char *signed3 = NULL;
-	unsigned char *signature = NULL;
-	const unsigned char *p;
-	size_t signature_len;
-	EVP_MD_CTX *md_ctx = NULL;
-	ECDSA_SIG *sig = NULL;
 	char *dot = ".";
-	const EVP_MD *sign_md;
-	const BIGNUM *r, *s;
+	const u8 *vector[3];
+	size_t vector_len[3];
+	u8 *hash;
+	int ret;
+
+	vector[0] = (const u8 *) signed1;
+	vector[1] = (const u8 *) dot;
+	vector[2] = (const u8 *) signed2;
+	vector_len[0] = signed1_len;
+	vector_len[1] = 1;
+	vector_len[2] = signed2_len;
 
 	curve = conf->curve;
+	hash = os_malloc(curve->hash_len);
+	if (!hash)
+		goto fail;
 	if (curve->hash_len == SHA256_MAC_LEN) {
-		sign_md = EVP_sha256();
+		ret = sha256_vector(3, vector, vector_len, hash);
 	} else if (curve->hash_len == SHA384_MAC_LEN) {
-		sign_md = EVP_sha384();
+		ret = sha384_vector(3, vector, vector_len, hash);
 	} else if (curve->hash_len == SHA512_MAC_LEN) {
-		sign_md = EVP_sha512();
+		ret = sha512_vector(3, vector, vector_len, hash);
 	} else {
 		wpa_printf(MSG_DEBUG, "DPP: Unknown signature algorithm");
 		goto fail;
 	}
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "DPP: Hash computation failed");
+		goto fail;
+	}
+	wpa_hexdump(MSG_DEBUG, "DPP: Hash value for Connector signature",
+		    hash, curve->hash_len);
 
-	md_ctx = EVP_MD_CTX_create();
-	if (!md_ctx)
+	sig = crypto_ec_key_sign_r_s(conf->csign, hash, curve->hash_len);
+	if (!sig) {
+		wpa_printf(MSG_ERROR, "DPP: Signature computation failed");
 		goto fail;
+	}
 
-	ERR_clear_error();
-	if (EVP_DigestSignInit(md_ctx, NULL, sign_md, NULL,
-			       (EVP_PKEY *) conf->csign) != 1) {
-		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestSignInit failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-	if (EVP_DigestSignUpdate(md_ctx, signed1, signed1_len) != 1 ||
-	    EVP_DigestSignUpdate(md_ctx, dot, 1) != 1 ||
-	    EVP_DigestSignUpdate(md_ctx, signed2, signed2_len) != 1) {
-		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestSignUpdate failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-	if (EVP_DigestSignFinal(md_ctx, NULL, &signature_len) != 1) {
-		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestSignFinal failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-	signature = os_malloc(signature_len);
-	if (!signature)
-		goto fail;
-	if (EVP_DigestSignFinal(md_ctx, signature, &signature_len) != 1) {
-		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestSignFinal failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-	wpa_hexdump(MSG_DEBUG, "DPP: signedConnector ECDSA signature (DER)",
-		    signature, signature_len);
-	/* Convert to raw coordinates r,s */
-	p = signature;
-	sig = d2i_ECDSA_SIG(NULL, &p, signature_len);
-	if (!sig)
-		goto fail;
-	ECDSA_SIG_get0(sig, &r, &s);
-	if (dpp_bn2bin_pad(r, signature, curve->prime_len) < 0 ||
-	    dpp_bn2bin_pad(s, signature + curve->prime_len,
-			   curve->prime_len) < 0)
-		goto fail;
-	signature_len = 2 * curve->prime_len;
 	wpa_hexdump(MSG_DEBUG, "DPP: signedConnector ECDSA signature (raw r,s)",
-		    signature, signature_len);
-	signed3 = base64_url_encode(signature, signature_len, signed3_len);
+		    wpabuf_head(sig), wpabuf_len(sig));
+	signed3 = base64_url_encode(wpabuf_head(sig), wpabuf_len(sig),
+				    signed3_len);
+
 fail:
-	EVP_MD_CTX_destroy(md_ctx);
-	ECDSA_SIG_free(sig);
-	os_free(signature);
+	os_free(hash);
+	wpabuf_free(sig);
 	return signed3;
 }
 

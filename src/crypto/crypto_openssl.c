@@ -82,12 +82,32 @@ static void EVP_MD_CTX_free(EVP_MD_CTX *ctx)
 
 
 #ifdef CONFIG_ECC
+
 static EC_KEY * EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
 {
 	if (pkey->type != EVP_PKEY_EC)
 		return NULL;
 	return pkey->pkey.ec;
 }
+
+
+static int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
+{
+	sig->r = r;
+	sig->s = s;
+	return 1;
+}
+
+
+static void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr,
+			   const BIGNUM **ps)
+{
+	if (pr)
+		*pr = sig->r;
+	if (ps)
+		*ps = sig->s;
+}
+
 #endif /* CONFIG_ECC */
 
 #endif /* OpenSSL version < 1.1.0 */
@@ -2556,6 +2576,61 @@ struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
 }
 
 
+struct wpabuf * crypto_ec_key_sign_r_s(struct crypto_ec_key *key,
+				       const u8 *data, size_t len)
+{
+	const EC_GROUP *group;
+	const EC_KEY *eckey;
+	BIGNUM *prime = NULL;
+	ECDSA_SIG *sig = NULL;
+	const BIGNUM *r, *s;
+	u8 *r_buf, *s_buf;
+	struct wpabuf *buf;
+	const unsigned char *p;
+	int prime_len;
+
+	buf = crypto_ec_key_sign(key, data, len);
+	if (!buf)
+		return NULL;
+
+	/* Extract (r,s) from Ecdsa-Sig-Value */
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	if (!eckey)
+		goto fail;
+	group = EC_KEY_get0_group(eckey);
+	prime = BN_new();
+	if (!prime || !group ||
+	    !EC_GROUP_get_curve_GFp(group, prime, NULL, NULL, NULL))
+		goto fail;
+	prime_len = BN_num_bytes(prime);
+
+	p = wpabuf_head(buf);
+	sig = d2i_ECDSA_SIG(NULL, &p, wpabuf_len(buf));
+	if (!sig)
+		goto fail;
+	ECDSA_SIG_get0(sig, &r, &s);
+
+	/* Re-use wpabuf returned by crypto_ec_key_sign() */
+	buf->used = 0;
+	r_buf = wpabuf_put(buf, prime_len);
+	s_buf = wpabuf_put(buf, prime_len);
+	if (crypto_bignum_to_bin((const struct crypto_bignum *) r, r_buf,
+				 prime_len, prime_len) < 0 ||
+	    crypto_bignum_to_bin((const struct crypto_bignum *) s, s_buf,
+				 prime_len, prime_len) < 0)
+		goto fail;
+
+out:
+	BN_free(prime);
+	ECDSA_SIG_free(sig);
+	return buf;
+fail:
+	wpabuf_clear_free(buf);
+	buf = NULL;
+	goto out;
+}
+
+
 int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
 				   size_t len, const u8 *sig, size_t sig_len)
 {
@@ -2575,6 +2650,43 @@ int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
 	if (ret == 0)
 		return 0; /* incorrect signature */
 	return -1;
+}
+
+
+int crypto_ec_key_verify_signature_r_s(struct crypto_ec_key *key,
+				       const u8 *data, size_t len,
+				       const u8 *r, size_t r_len,
+				       const u8 *s, size_t s_len)
+{
+	ECDSA_SIG *sig;
+	BIGNUM *r_bn, *s_bn;
+	unsigned char *der = NULL;
+	int der_len;
+	int ret = -1;
+
+	r_bn = BN_bin2bn(r, r_len, NULL);
+	s_bn = BN_bin2bn(s, s_len, NULL);
+	sig = ECDSA_SIG_new();
+	if (!r_bn || !s_bn || !sig || ECDSA_SIG_set0(sig, r_bn, s_bn) != 1)
+		goto fail;
+	r_bn = NULL;
+	s_bn = NULL;
+
+	der_len = i2d_ECDSA_SIG(sig, &der);
+	if (der_len <= 0) {
+		wpa_printf(MSG_DEBUG,
+			   "OpenSSL: Could not DER encode signature");
+		goto fail;
+	}
+
+	ret = crypto_ec_key_verify_signature(key, data, len, der, der_len);
+
+fail:
+	OPENSSL_free(der);
+	BN_free(r_bn);
+	BN_free(s_bn);
+	ECDSA_SIG_free(sig);
+	return ret;
 }
 
 
