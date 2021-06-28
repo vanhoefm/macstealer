@@ -176,7 +176,7 @@ fail:
 }
 
 
-void dpp_debug_print_key(const char *title, EVP_PKEY *key)
+void dpp_debug_print_key(const char *title, struct crypto_ec_key *key)
 {
 	EC_KEY *eckey;
 	BIO *out;
@@ -192,7 +192,7 @@ void dpp_debug_print_key(const char *title, EVP_PKEY *key)
 	if (!out)
 		return;
 
-	EVP_PKEY_print_private(out, key, 0, NULL);
+	EVP_PKEY_print_private(out, (EVP_PKEY *) key, 0, NULL);
 	rlen = BIO_ctrl_pending(out);
 	txt = os_malloc(rlen + 1);
 	if (txt) {
@@ -205,7 +205,7 @@ void dpp_debug_print_key(const char *title, EVP_PKEY *key)
 	}
 	BIO_free(out);
 
-	eckey = EVP_PKEY_get1_EC_KEY(key);
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
 		return;
 
@@ -377,14 +377,14 @@ int dpp_bn2bin_pad(const BIGNUM *bn, u8 *pos, size_t len)
 }
 
 
-struct wpabuf * dpp_get_pubkey_point(EVP_PKEY *pkey, int prefix)
+struct wpabuf * dpp_get_pubkey_point(struct crypto_ec_key *key, int prefix)
 {
 	int len, res;
 	EC_KEY *eckey;
 	struct wpabuf *buf;
 	unsigned char *pos;
 
-	eckey = EVP_PKEY_get1_EC_KEY(pkey);
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
 		return NULL;
 	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_UNCOMPRESSED);
@@ -424,9 +424,10 @@ struct wpabuf * dpp_get_pubkey_point(EVP_PKEY *pkey, int prefix)
 }
 
 
-EVP_PKEY * dpp_set_pubkey_point_group(const EC_GROUP *group,
-				      const u8 *buf_x, const u8 *buf_y,
-				      size_t len)
+struct crypto_ec_key * dpp_set_pubkey_point_group(const EC_GROUP *group,
+						  const u8 *buf_x,
+						  const u8 *buf_y,
+						  size_t len)
 {
 	EC_KEY *eckey = NULL;
 	BN_CTX *ctx;
@@ -485,7 +486,7 @@ out:
 	EC_KEY_free(eckey);
 	EC_POINT_free(point);
 	BN_CTX_free(ctx);
-	return pkey;
+	return (struct crypto_ec_key *) pkey;
 fail:
 	EVP_PKEY_free(pkey);
 	pkey = NULL;
@@ -493,16 +494,17 @@ fail:
 }
 
 
-EVP_PKEY * dpp_set_pubkey_point(EVP_PKEY *group_key, const u8 *buf, size_t len)
+struct crypto_ec_key * dpp_set_pubkey_point(struct crypto_ec_key *group_key,
+					    const u8 *buf, size_t len)
 {
 	const EC_KEY *eckey;
 	const EC_GROUP *group;
-	EVP_PKEY *pkey = NULL;
+	struct crypto_ec_key *pkey = NULL;
 
 	if (len & 1)
 		return NULL;
 
-	eckey = EVP_PKEY_get0_EC_KEY(group_key);
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) group_key);
 	if (!eckey) {
 		wpa_printf(MSG_ERROR,
 			   "DPP: Could not get EC_KEY from group_key");
@@ -520,7 +522,7 @@ EVP_PKEY * dpp_set_pubkey_point(EVP_PKEY *group_key, const u8 *buf, size_t len)
 }
 
 
-EVP_PKEY * dpp_gen_keypair(const struct dpp_curve_params *curve)
+struct crypto_ec_key * dpp_gen_keypair(const struct dpp_curve_params *curve)
 {
 	EVP_PKEY_CTX *kctx = NULL;
 	EC_KEY *ec_params = NULL;
@@ -559,18 +561,19 @@ EVP_PKEY * dpp_gen_keypair(const struct dpp_curve_params *curve)
 	}
 
 	if (wpa_debug_show_keys)
-		dpp_debug_print_key("Own generated key", key);
+		dpp_debug_print_key("Own generated key",
+				    (struct crypto_ec_key *) key);
 
 fail:
 	EC_KEY_free(ec_params);
 	EVP_PKEY_free(params);
 	EVP_PKEY_CTX_free(kctx);
-	return key;
+	return (struct crypto_ec_key *) key;
 }
 
 
-EVP_PKEY * dpp_set_keypair(const struct dpp_curve_params **curve,
-			   const u8 *privkey, size_t privkey_len)
+struct crypto_ec_key * dpp_set_keypair(const struct dpp_curve_params **curve,
+				       const u8 *privkey, size_t privkey_len)
 {
 	EVP_PKEY *pkey;
 	EC_KEY *eckey;
@@ -610,7 +613,7 @@ EVP_PKEY * dpp_set_keypair(const struct dpp_curve_params **curve,
 		EVP_PKEY_free(pkey);
 		return NULL;
 	}
-	return pkey;
+	return (struct crypto_ec_key *) pkey;
 }
 
 
@@ -630,7 +633,7 @@ ASN1_SEQUENCE(DPP_BOOTSTRAPPING_KEY) = {
 IMPLEMENT_ASN1_FUNCTIONS(DPP_BOOTSTRAPPING_KEY);
 
 
-static struct wpabuf * dpp_bootstrap_key_der(EVP_PKEY *key)
+static struct wpabuf * dpp_bootstrap_key_der(struct crypto_ec_key *key)
 {
 	unsigned char *der = NULL;
 	int der_len;
@@ -644,7 +647,7 @@ static struct wpabuf * dpp_bootstrap_key_der(EVP_PKEY *key)
 	int nid;
 
 	ctx = BN_CTX_new();
-	eckey = EVP_PKEY_get0_EC_KEY(key);
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
 	if (!ctx || !eckey)
 		goto fail;
 
@@ -883,7 +886,8 @@ int dpp_derive_bk_ke(struct dpp_authentication *auth)
 }
 
 
-int dpp_ecdh(EVP_PKEY *own, EVP_PKEY *peer, u8 *secret, size_t *secret_len)
+int dpp_ecdh(struct crypto_ec_key *own, struct crypto_ec_key *peer,
+	     u8 *secret, size_t *secret_len)
 {
 	EVP_PKEY_CTX *ctx;
 	int ret = -1;
@@ -891,7 +895,7 @@ int dpp_ecdh(EVP_PKEY *own, EVP_PKEY *peer, u8 *secret, size_t *secret_len)
 	ERR_clear_error();
 	*secret_len = 0;
 
-	ctx = EVP_PKEY_CTX_new(own, NULL);
+	ctx = EVP_PKEY_CTX_new((EVP_PKEY *) own, NULL);
 	if (!ctx) {
 		wpa_printf(MSG_ERROR, "DPP: EVP_PKEY_CTX_new failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
@@ -904,7 +908,7 @@ int dpp_ecdh(EVP_PKEY *own, EVP_PKEY *peer, u8 *secret, size_t *secret_len)
 		goto fail;
 	}
 
-	if (EVP_PKEY_derive_set_peer(ctx, peer) != 1) {
+	if (EVP_PKEY_derive_set_peer(ctx, (EVP_PKEY *) peer) != 1) {
 		wpa_printf(MSG_ERROR,
 			   "DPP: EVP_PKEY_derive_set_peet failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
@@ -1103,7 +1107,7 @@ int dpp_get_subject_public_key(struct dpp_bootstrap_info *bi,
 	wpa_hexdump(MSG_DEBUG, "DPP: URI subjectPublicKey", pk, ppklen);
 
 	X509_PUBKEY_free(pub);
-	bi->pubkey = pkey;
+	bi->pubkey = (struct crypto_ec_key *) pkey;
 	return 0;
 fail:
 	X509_PUBKEY_free(pub);
@@ -1192,7 +1196,8 @@ fail:
 }
 
 
-static int dpp_check_pubkey_match(EVP_PKEY *pub, struct wpabuf *r_hash)
+static int dpp_check_pubkey_match(struct crypto_ec_key *pub,
+				  struct wpabuf *r_hash)
 {
 	struct wpabuf *uncomp;
 	int res;
@@ -1226,7 +1231,8 @@ static int dpp_check_pubkey_match(EVP_PKEY *pub, struct wpabuf *r_hash)
 
 enum dpp_status_error
 dpp_process_signed_connector(struct dpp_signed_connector_info *info,
-			     EVP_PKEY *csign_pub, const char *connector)
+			     struct crypto_ec_key *csign_pub,
+			     const char *connector)
 {
 	enum dpp_status_error ret = 255;
 	const char *pos, *end, *signed_start, *signed_end;
@@ -1245,7 +1251,7 @@ dpp_process_signed_connector(struct dpp_signed_connector_info *info,
 	const EC_GROUP *group;
 	int nid;
 
-	eckey = EVP_PKEY_get0_EC_KEY(csign_pub);
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) csign_pub);
 	if (!eckey)
 		goto fail;
 	group = EC_KEY_get0_group(eckey);
@@ -1352,7 +1358,8 @@ dpp_process_signed_connector(struct dpp_signed_connector_info *info,
 		goto fail;
 
 	ERR_clear_error();
-	if (EVP_DigestVerifyInit(md_ctx, NULL, sign_md, NULL, csign_pub) != 1) {
+	if (EVP_DigestVerifyInit(md_ctx, NULL, sign_md, NULL,
+				 (EVP_PKEY *) csign_pub) != 1) {
 		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestVerifyInit failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
@@ -1392,12 +1399,12 @@ dpp_check_signed_connector(struct dpp_signed_connector_info *info,
 			   const u8 *peer_connector, size_t peer_connector_len)
 {
 	const unsigned char *p;
-	EVP_PKEY *csign = NULL;
+	struct crypto_ec_key *csign;
 	char *signed_connector = NULL;
 	enum dpp_status_error res = DPP_STATUS_INVALID_CONNECTOR;
 
 	p = csign_key;
-	csign = d2i_PUBKEY(NULL, &p, csign_key_len);
+	csign = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, csign_key_len);
 	if (!csign) {
 		wpa_printf(MSG_ERROR,
 			   "DPP: Failed to parse local C-sign-key information");
@@ -1414,7 +1421,7 @@ dpp_check_signed_connector(struct dpp_signed_connector_info *info,
 	res = dpp_process_signed_connector(info, csign, signed_connector);
 fail:
 	os_free(signed_connector);
-	EVP_PKEY_free(csign);
+	crypto_ec_key_deinit(csign);
 	return res;
 }
 
@@ -1600,7 +1607,7 @@ int dpp_auth_derive_l_responder(struct dpp_authentication *auth)
 	lx = BN_new();
 	if (!bnctx || !sum || !q || !lx)
 		goto fail;
-	BI = EVP_PKEY_get0_EC_KEY(auth->peer_bi->pubkey);
+	BI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_bi->pubkey);
 	if (!BI)
 		goto fail;
 	BI_point = EC_KEY_get0_public_key(BI);
@@ -1608,8 +1615,8 @@ int dpp_auth_derive_l_responder(struct dpp_authentication *auth)
 	if (!group)
 		goto fail;
 
-	bR = EVP_PKEY_get0_EC_KEY(auth->own_bi->pubkey);
-	pR = EVP_PKEY_get0_EC_KEY(auth->own_protocol_key);
+	bR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_bi->pubkey);
+	pR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_protocol_key);
 	if (!bR || !pR)
 		goto fail;
 	bR_bn = EC_KEY_get0_private_key(bR);
@@ -1662,14 +1669,14 @@ int dpp_auth_derive_l_initiator(struct dpp_authentication *auth)
 	lx = BN_new();
 	if (!bnctx || !lx)
 		goto fail;
-	BR = EVP_PKEY_get0_EC_KEY(auth->peer_bi->pubkey);
-	PR = EVP_PKEY_get0_EC_KEY(auth->peer_protocol_key);
+	BR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_bi->pubkey);
+	PR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_protocol_key);
 	if (!BR || !PR)
 		goto fail;
 	BR_point = EC_KEY_get0_public_key(BR);
 	PR_point = EC_KEY_get0_public_key(PR);
 
-	bI = EVP_PKEY_get0_EC_KEY(auth->own_bi->pubkey);
+	bI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_bi->pubkey);
 	if (!bI)
 		goto fail;
 	group = EC_KEY_get0_group(bI);
@@ -1731,7 +1738,8 @@ int dpp_derive_pmk(const u8 *Nx, size_t Nx_len, u8 *pmk, unsigned int hash_len)
 
 
 int dpp_derive_pmkid(const struct dpp_curve_params *curve,
-		     EVP_PKEY *own_key, EVP_PKEY *peer_key, u8 *pmkid)
+		     struct crypto_ec_key *own_key,
+		     struct crypto_ec_key *peer_key, u8 *pmkid)
 {
 	struct wpabuf *nkx, *pkx;
 	int ret = -1, res;
@@ -1981,13 +1989,13 @@ static const u8 pkex_resp_y_bp_p512r1[64] = {
 };
 
 
-static EVP_PKEY * dpp_pkex_get_role_elem(const struct dpp_curve_params *curve,
-					 int init)
+static struct crypto_ec_key *
+dpp_pkex_get_role_elem(const struct dpp_curve_params *curve, int init)
 {
 	EC_GROUP *group;
 	size_t len = curve->prime_len;
 	const u8 *x, *y;
-	EVP_PKEY *res;
+	struct crypto_ec_key *res;
 
 	switch (curve->ike_group) {
 	case 19:
@@ -2037,7 +2045,7 @@ EC_POINT * dpp_pkex_derive_Qi(const struct dpp_curve_params *curve,
 	size_t len[3];
 	unsigned int num_elem = 0;
 	EC_POINT *Qi = NULL;
-	EVP_PKEY *Pi = NULL;
+	struct crypto_ec_key *Pi = NULL;
 	const EC_KEY *Pi_ec;
 	const EC_POINT *Pi_point;
 	BIGNUM *hash_bn = NULL;
@@ -2070,7 +2078,7 @@ EC_POINT * dpp_pkex_derive_Qi(const struct dpp_curve_params *curve,
 	if (!Pi)
 		goto fail;
 	dpp_debug_print_key("DPP: Pi", Pi);
-	Pi_ec = EVP_PKEY_get0_EC_KEY(Pi);
+	Pi_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) Pi);
 	if (!Pi_ec)
 		goto fail;
 	Pi_point = EC_KEY_get0_public_key(Pi_ec);
@@ -2096,7 +2104,7 @@ EC_POINT * dpp_pkex_derive_Qi(const struct dpp_curve_params *curve,
 	}
 	dpp_debug_print_point("DPP: Qi", group, Qi);
 out:
-	EVP_PKEY_free(Pi);
+	crypto_ec_key_deinit(Pi);
 	BN_clear_free(hash_bn);
 	if (ret_group && Qi)
 		*ret_group = group2;
@@ -2120,7 +2128,7 @@ EC_POINT * dpp_pkex_derive_Qr(const struct dpp_curve_params *curve,
 	size_t len[3];
 	unsigned int num_elem = 0;
 	EC_POINT *Qr = NULL;
-	EVP_PKEY *Pr = NULL;
+	struct crypto_ec_key *Pr = NULL;
 	const EC_KEY *Pr_ec;
 	const EC_POINT *Pr_point;
 	BIGNUM *hash_bn = NULL;
@@ -2153,7 +2161,7 @@ EC_POINT * dpp_pkex_derive_Qr(const struct dpp_curve_params *curve,
 	if (!Pr)
 		goto fail;
 	dpp_debug_print_key("DPP: Pr", Pr);
-	Pr_ec = EVP_PKEY_get0_EC_KEY(Pr);
+	Pr_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) Pr);
 	if (!Pr_ec)
 		goto fail;
 	Pr_point = EC_KEY_get0_public_key(Pr_ec);
@@ -2179,7 +2187,7 @@ EC_POINT * dpp_pkex_derive_Qr(const struct dpp_curve_params *curve,
 	}
 	dpp_debug_print_point("DPP: Qr", group, Qr);
 out:
-	EVP_PKEY_free(Pr);
+	crypto_ec_key_deinit(Pr);
 	BN_clear_free(hash_bn);
 	if (ret_group && Qr)
 		*ret_group = group2;
@@ -2258,7 +2266,7 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 				     struct json_token *peer_net_access_key)
 {
 	BN_CTX *bnctx = NULL;
-	EVP_PKEY *own_key = NULL, *peer_key = NULL;
+	struct crypto_ec_key *own_key = NULL, *peer_key = NULL;
 	BIGNUM *sum = NULL, *q = NULL, *mx = NULL;
 	EC_POINT *m = NULL;
 	const EC_KEY *cR, *pR;
@@ -2303,8 +2311,8 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 			auth->e_nonce, auth->curve->nonce_len);
 
 	/* M = { cR + pR } * CI */
-	cR = EVP_PKEY_get0_EC_KEY(own_key);
-	pR = EVP_PKEY_get0_EC_KEY(auth->own_protocol_key);
+	cR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) own_key);
+	pR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_protocol_key);
 	if (!pR)
 		goto fail;
 	group = EC_KEY_get0_group(pR);
@@ -2319,7 +2327,7 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 	pR_bn = EC_KEY_get0_private_key(pR);
 	if (!cR_bn || !pR_bn)
 		goto fail;
-	CI = EVP_PKEY_get0_EC_KEY(peer_key);
+	CI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) peer_key);
 	CI_point = EC_KEY_get0_public_key(CI);
 	if (EC_GROUP_get_order(group, q, bnctx) != 1 ||
 	    BN_mod_add(sum, cR_bn, pR_bn, q, bnctx) != 1 ||
@@ -2355,7 +2363,7 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 			auth->ke, curve->hash_len);
 
 	res = 0;
-	EVP_PKEY_free(auth->reconfig_old_protocol_key);
+	crypto_ec_key_deinit(auth->reconfig_old_protocol_key);
 	auth->reconfig_old_protocol_key = own_key;
 	own_key = NULL;
 fail:
@@ -2365,8 +2373,8 @@ fail:
 	BN_free(q);
 	BN_clear_free(mx);
 	BN_clear_free(sum);
-	EVP_PKEY_free(own_key);
-	EVP_PKEY_free(peer_key);
+	crypto_ec_key_deinit(own_key);
+	crypto_ec_key_deinit(peer_key);
 	BN_CTX_free(bnctx);
 	return res;
 }
@@ -2377,7 +2385,7 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 				     struct json_token *net_access_key)
 {
 	BN_CTX *bnctx = NULL;
-	EVP_PKEY *pr = NULL, *peer_key = NULL;
+	struct crypto_ec_key *pr = NULL, *peer_key = NULL;
 	EC_POINT *sum = NULL, *m = NULL;
 	BIGNUM *mx = NULL;
 	const EC_KEY *cI, *CR, *PR;
@@ -2397,7 +2405,7 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 		goto fail;
 	}
 	dpp_debug_print_key("Peer (Responder) Protocol Key", pr);
-	EVP_PKEY_free(auth->peer_protocol_key);
+	crypto_ec_key_deinit(auth->peer_protocol_key);
 	auth->peer_protocol_key = pr;
 	pr = NULL;
 
@@ -2413,15 +2421,15 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 	}
 
 	/* M = cI * { CR + PR } */
-	cI = EVP_PKEY_get0_EC_KEY(auth->conf->connector_key);
+	cI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->conf->connector_key);
 	cI_bn = EC_KEY_get0_private_key(cI);
 	group = EC_KEY_get0_group(cI);
 	bnctx = BN_CTX_new();
 	sum = EC_POINT_new(group);
 	m = EC_POINT_new(group);
 	mx = BN_new();
-	CR = EVP_PKEY_get0_EC_KEY(peer_key);
-	PR = EVP_PKEY_get0_EC_KEY(auth->peer_protocol_key);
+	CR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) peer_key);
+	PR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_protocol_key);
 	CR_point = EC_KEY_get0_public_key(CR);
 	PR_point = EC_KEY_get0_public_key(PR);
 	if (!bnctx || !sum || !m || !mx ||
@@ -2456,8 +2464,8 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 fail:
 	forced_memzero(prk, sizeof(prk));
 	forced_memzero(Mx, sizeof(Mx));
-	EVP_PKEY_free(pr);
-	EVP_PKEY_free(peer_key);
+	crypto_ec_key_deinit(pr);
+	crypto_ec_key_deinit(peer_key);
 	EC_POINT_clear_free(sum);
 	EC_POINT_clear_free(m);
 	BN_clear_free(mx);
@@ -2524,7 +2532,8 @@ dpp_build_conn_signature(struct dpp_configurator *conf,
 		goto fail;
 
 	ERR_clear_error();
-	if (EVP_DigestSignInit(md_ctx, NULL, sign_md, NULL, conf->csign) != 1) {
+	if (EVP_DigestSignInit(md_ctx, NULL, sign_md, NULL,
+			       (EVP_PKEY *) conf->csign) != 1) {
 		wpa_printf(MSG_DEBUG, "DPP: EVP_DigestSignInit failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
@@ -2618,7 +2627,7 @@ struct dpp_pfs * dpp_pfs_init(const u8 *net_access_key,
 			      size_t net_access_key_len)
 {
 	struct wpabuf *pub = NULL;
-	EVP_PKEY *own_key;
+	struct crypto_ec_key *own_key;
 	struct dpp_pfs *pfs;
 
 	pfs = os_zalloc(sizeof(*pfs));
@@ -2631,7 +2640,7 @@ struct dpp_pfs * dpp_pfs_init(const u8 *net_access_key,
 		wpa_printf(MSG_ERROR, "DPP: Failed to parse own netAccessKey");
 		goto fail;
 	}
-	EVP_PKEY_free(own_key);
+	crypto_ec_key_deinit(own_key);
 
 	pfs->ecdh = crypto_ecdh_init(pfs->curve->ike_group);
 	if (!pfs->ecdh)
@@ -2700,7 +2709,7 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 	struct wpabuf *buf = NULL;
 	unsigned char *der;
 	int der_len;
-	EVP_PKEY *key;
+	struct crypto_ec_key *key;
 	const EVP_MD *sign_md;
 	unsigned int hash_len = auth->curve->hash_len;
 	EC_KEY *eckey;
@@ -2716,7 +2725,7 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 	 * a specific group to be used */
 	key = auth->own_protocol_key;
 
-	eckey = EVP_PKEY_get1_EC_KEY(key);
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
 		goto fail;
 	der = NULL;
@@ -2730,7 +2739,7 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 		goto fail;
 
 	req = X509_REQ_new();
-	if (!req || !X509_REQ_set_pubkey(req, key))
+	if (!req || !X509_REQ_set_pubkey(req, (EVP_PKEY *) key))
 		goto fail;
 
 	if (name) {
@@ -2780,7 +2789,7 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 		goto fail;
 	}
 
-	if (!X509_REQ_sign(req, key, sign_md))
+	if (!X509_REQ_sign(req, (EVP_PKEY *) key, sign_md))
 		goto fail;
 
 	der = NULL;
@@ -3012,7 +3021,7 @@ struct dpp_reconfig_id * dpp_gen_reconfig_id(const u8 *csign_key,
 					     size_t pp_key_len)
 {
 	const unsigned char *p;
-	EVP_PKEY *csign = NULL, *ppkey = NULL;
+	struct crypto_ec_key *csign = NULL, *ppkey = NULL;
 	struct dpp_reconfig_id *id = NULL;
 	BN_CTX *ctx = NULL;
 	BIGNUM *bn = NULL, *q = NULL;
@@ -3021,18 +3030,18 @@ struct dpp_reconfig_id * dpp_gen_reconfig_id(const u8 *csign_key,
 	EC_POINT *e_id = NULL;
 
 	p = csign_key;
-	csign = d2i_PUBKEY(NULL, &p, csign_key_len);
+	csign = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, csign_key_len);
 	if (!csign)
 		goto fail;
 
 	if (!pp_key)
 		goto fail;
 	p = pp_key;
-	ppkey = d2i_PUBKEY(NULL, &p, pp_key_len);
+	ppkey = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, pp_key_len);
 	if (!ppkey)
 		goto fail;
 
-	eckey = EVP_PKEY_get0_EC_KEY(csign);
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) csign);
 	if (!eckey)
 		goto fail;
 	group = EC_KEY_get0_group(eckey);
@@ -3063,16 +3072,16 @@ struct dpp_reconfig_id * dpp_gen_reconfig_id(const u8 *csign_key,
 	ppkey = NULL;
 fail:
 	EC_POINT_free(e_id);
-	EVP_PKEY_free(csign);
-	EVP_PKEY_free(ppkey);
+	crypto_ec_key_deinit(csign);
+	crypto_ec_key_deinit(ppkey);
 	BN_clear_free(bn);
 	BN_CTX_free(ctx);
 	return id;
 }
 
 
-static EVP_PKEY * dpp_pkey_from_point(const EC_GROUP *group,
-				      const EC_POINT *point)
+static struct crypto_ec_key * dpp_pkey_from_point(const EC_GROUP *group,
+						  const EC_POINT *point)
 {
 	EC_KEY *eckey;
 	EVP_PKEY *pkey = NULL;
@@ -3098,7 +3107,7 @@ static EVP_PKEY * dpp_pkey_from_point(const EC_GROUP *group,
 
 fail:
 	EC_KEY_free(eckey);
-	return pkey;
+	return (struct crypto_ec_key *) pkey;
 }
 
 
@@ -3111,7 +3120,7 @@ int dpp_update_reconfig_id(struct dpp_reconfig_id *id)
 	const EC_KEY *pp;
 	const EC_POINT *pp_point;
 
-	pp = EVP_PKEY_get0_EC_KEY(id->pp_key);
+	pp = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) id->pp_key);
 	if (!pp)
 		goto fail;
 	pp_point = EC_KEY_get0_public_key(pp);
@@ -3135,8 +3144,8 @@ int dpp_update_reconfig_id(struct dpp_reconfig_id *id)
 	dpp_debug_print_point("DPP: Encrypted E-id to E'-id",
 			      id->group, e_prime_id);
 
-	EVP_PKEY_free(id->a_nonce);
-	EVP_PKEY_free(id->e_prime_id);
+	crypto_ec_key_deinit(id->a_nonce);
+	crypto_ec_key_deinit(id->e_prime_id);
 	id->a_nonce = dpp_pkey_from_point(id->group, a_nonce);
 	id->e_prime_id = dpp_pkey_from_point(id->group, e_prime_id);
 	if (!id->a_nonce || !id->e_prime_id)
@@ -3157,17 +3166,18 @@ void dpp_free_reconfig_id(struct dpp_reconfig_id *id)
 {
 	if (id) {
 		EC_POINT_clear_free(id->e_id);
-		EVP_PKEY_free(id->csign);
-		EVP_PKEY_free(id->a_nonce);
-		EVP_PKEY_free(id->e_prime_id);
-		EVP_PKEY_free(id->pp_key);
+		crypto_ec_key_deinit(id->csign);
+		crypto_ec_key_deinit(id->a_nonce);
+		crypto_ec_key_deinit(id->e_prime_id);
+		crypto_ec_key_deinit(id->pp_key);
 		os_free(id);
 	}
 }
 
 
-EC_POINT * dpp_decrypt_e_id(EVP_PKEY *ppkey, EVP_PKEY *a_nonce,
-			    EVP_PKEY *e_prime_id)
+EC_POINT * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
+			    struct crypto_ec_key *a_nonce,
+			    struct crypto_ec_key *e_prime_id)
 {
 	const EC_KEY *pp_ec, *a_nonce_ec, *e_prime_id_ec;
 	const BIGNUM *pp_bn;
@@ -3180,9 +3190,9 @@ EC_POINT * dpp_decrypt_e_id(EVP_PKEY *ppkey, EVP_PKEY *a_nonce,
 		return NULL;
 
 	/* E-id = E'-id - s_C * A-NONCE */
-	pp_ec = EVP_PKEY_get0_EC_KEY(ppkey);
-	a_nonce_ec = EVP_PKEY_get0_EC_KEY(a_nonce);
-	e_prime_id_ec = EVP_PKEY_get0_EC_KEY(e_prime_id);
+	pp_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) ppkey);
+	a_nonce_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) a_nonce);
+	e_prime_id_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) e_prime_id);
 	if (!pp_ec || !a_nonce_ec || !e_prime_id_ec)
 		return NULL;
 	pp_bn = EC_KEY_get0_private_key(pp_ec);

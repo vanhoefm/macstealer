@@ -86,7 +86,7 @@ static struct wpabuf * dpp_pkex_build_exchange_req(struct dpp_pkex *pkex)
 		goto fail;
 
 	/* M = X + Qi */
-	X_ec = EVP_PKEY_get0_EC_KEY(pkex->x);
+	X_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) pkex->x);
 	if (!X_ec)
 		goto fail;
 	X_point = EC_KEY_get0_public_key(X_ec);
@@ -477,9 +477,9 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 	    EC_KEY_set_group(X_ec, group) != 1 ||
 	    EC_KEY_set_public_key(X_ec, X) != 1)
 		goto fail;
-	pkex->x = EVP_PKEY_new();
+	pkex->x = (struct crypto_ec_key *) EVP_PKEY_new();
 	if (!pkex->x ||
-	    EVP_PKEY_set1_EC_KEY(pkex->x, X_ec) != 1)
+	    EVP_PKEY_set1_EC_KEY((EVP_PKEY *) pkex->x, X_ec) != 1)
 		goto fail;
 
 	/* Qr = H(MAC-Responder | | [identifier | ] code) * Pr */
@@ -507,7 +507,7 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 		goto fail;
 
 	/* N = Y + Qr */
-	Y_ec = EVP_PKEY_get0_EC_KEY(pkex->y);
+	Y_ec = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) pkex->y);
 	if (!Y_ec)
 		goto fail;
 	Y_point = EC_KEY_get0_public_key(Y_ec);
@@ -801,9 +801,9 @@ struct wpabuf * dpp_pkex_rx_exchange_resp(struct dpp_pkex *pkex,
 	    EC_KEY_set_group(Y_ec, group) != 1 ||
 	    EC_KEY_set_public_key(Y_ec, Y) != 1)
 		goto fail;
-	pkex->y = EVP_PKEY_new();
+	pkex->y = (struct crypto_ec_key *) EVP_PKEY_new();
 	if (!pkex->y ||
-	    EVP_PKEY_set1_EC_KEY(pkex->y, Y_ec) != 1)
+	    EVP_PKEY_set1_EC_KEY((EVP_PKEY *) pkex->y, Y_ec) != 1)
 		goto fail;
 	if (dpp_ecdh(pkex->own_bi->pubkey, pkex->y, Jx, &Jx_len) < 0)
 		goto fail;
@@ -1315,9 +1315,9 @@ void dpp_pkex_free(struct dpp_pkex *pkex)
 
 	os_free(pkex->identifier);
 	os_free(pkex->code);
-	EVP_PKEY_free(pkex->x);
-	EVP_PKEY_free(pkex->y);
-	EVP_PKEY_free(pkex->peer_bootstrap_key);
+	crypto_ec_key_deinit(pkex->x);
+	crypto_ec_key_deinit(pkex->y);
+	crypto_ec_key_deinit(pkex->peer_bootstrap_key);
 	wpabuf_free(pkex->exchange_req);
 	wpabuf_free(pkex->exchange_resp);
 	os_free(pkex);

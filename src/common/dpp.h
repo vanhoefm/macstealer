@@ -16,8 +16,8 @@
 #include "utils/list.h"
 #include "common/wpa_common.h"
 #include "crypto/sha256.h"
+#include "crypto/crypto.h"
 
-struct crypto_ecdh;
 struct hostapd_ip_addr;
 struct dpp_global;
 struct json_token;
@@ -157,7 +157,7 @@ struct dpp_bootstrap_info {
 	bool channels_listed;
 	u8 version;
 	int own;
-	EVP_PKEY *pubkey;
+	struct crypto_ec_key *pubkey;
 	u8 pubkey_hash[SHA256_MAC_LEN];
 	u8 pubkey_hash_chirp[SHA256_MAC_LEN];
 	const struct dpp_curve_params *curve;
@@ -180,12 +180,12 @@ struct dpp_pkex {
 	u8 peer_mac[ETH_ALEN];
 	char *identifier;
 	char *code;
-	EVP_PKEY *x;
-	EVP_PKEY *y;
+	struct crypto_ec_key *x;
+	struct crypto_ec_key *y;
 	u8 Mx[DPP_MAX_SHARED_SECRET_LEN];
 	u8 Nx[DPP_MAX_SHARED_SECRET_LEN];
 	u8 z[DPP_MAX_HASH_LEN];
-	EVP_PKEY *peer_bootstrap_key;
+	struct crypto_ec_key *peer_bootstrap_key;
 	struct wpabuf *exchange_req;
 	struct wpabuf *exchange_resp;
 	unsigned int t; /* number of failures on code use */
@@ -234,8 +234,8 @@ struct dpp_configuration {
 
 struct dpp_asymmetric_key {
 	struct dpp_asymmetric_key *next;
-	EVP_PKEY *csign;
-	EVP_PKEY *pp_key;
+	struct crypto_ec_key *csign;
+	struct crypto_ec_key *pp_key;
 	char *config_template;
 	char *connector_template;
 };
@@ -266,9 +266,9 @@ struct dpp_authentication {
 	u8 i_capab;
 	u8 r_capab;
 	enum dpp_netrole e_netrole;
-	EVP_PKEY *own_protocol_key;
-	EVP_PKEY *peer_protocol_key;
-	EVP_PKEY *reconfig_old_protocol_key;
+	struct crypto_ec_key *own_protocol_key;
+	struct crypto_ec_key *peer_protocol_key;
+	struct crypto_ec_key *reconfig_old_protocol_key;
 	struct wpabuf *req_msg;
 	struct wpabuf *resp_msg;
 	struct wpabuf *reconfig_req_msg;
@@ -361,13 +361,13 @@ struct dpp_configurator {
 	struct dl_list list;
 	unsigned int id;
 	int own;
-	EVP_PKEY *csign;
+	struct crypto_ec_key *csign;
 	u8 kid_hash[SHA256_MAC_LEN];
 	char *kid;
 	const struct dpp_curve_params *curve;
 	char *connector; /* own Connector for reconfiguration */
-	EVP_PKEY *connector_key;
-	EVP_PKEY *pp_key;
+	struct crypto_ec_key *connector_key;
+	struct crypto_ec_key *pp_key;
 };
 
 struct dpp_introduction {

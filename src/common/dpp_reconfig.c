@@ -40,7 +40,7 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 						struct dpp_reconfig_id *id)
 {
 	struct wpabuf *msg = NULL;
-	EVP_PKEY *csign = NULL;
+	struct crypto_ec_key *csign = NULL;
 	const unsigned char *p;
 	struct wpabuf *uncomp;
 	u8 hash[SHA256_MAC_LEN];
@@ -49,7 +49,7 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 	int res;
 	size_t attr_len;
 	const struct dpp_curve_params *own_curve;
-	EVP_PKEY *own_key;
+	struct crypto_ec_key *own_key;
 	struct wpabuf *a_nonce = NULL, *e_id = NULL;
 
 	wpa_printf(MSG_DEBUG, "DPP: Build Reconfig Announcement frame");
@@ -62,7 +62,7 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 	}
 
 	p = csign_key;
-	csign = d2i_PUBKEY(NULL, &p, csign_key_len);
+	csign = (struct crypto_ec_key *) d2i_PUBKEY(NULL, &p, csign_key_len);
 	if (!csign) {
 		wpa_printf(MSG_ERROR,
 			   "DPP: Failed to parse local C-sign-key information");
@@ -70,7 +70,7 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 	}
 
 	uncomp = dpp_get_pubkey_point(csign, 1);
-	EVP_PKEY_free(csign);
+	crypto_ec_key_deinit(csign);
 	if (!uncomp)
 		goto fail;
 	addr[0] = wpabuf_head(uncomp);
@@ -126,7 +126,7 @@ struct wpabuf * dpp_build_reconfig_announcement(const u8 *csign_key,
 fail:
 	wpabuf_free(a_nonce);
 	wpabuf_free(e_id);
-	EVP_PKEY_free(own_key);
+	crypto_ec_key_deinit(own_key);
 	return msg;
 }
 
@@ -230,7 +230,7 @@ dpp_reconfig_init(struct dpp_global *dpp, void *msg_ctx,
 {
 	struct dpp_authentication *auth;
 	const struct dpp_curve_params *curve;
-	EVP_PKEY *a_nonce, *e_prime_id;
+	struct crypto_ec_key *a_nonce, *e_prime_id;
 	EC_POINT *e_id;
 
 	curve = dpp_get_curve_ike_group(group);
@@ -260,13 +260,13 @@ dpp_reconfig_init(struct dpp_global *dpp, void *msg_ctx,
 	e_prime_id = dpp_set_pubkey_point(conf->csign, e_id_attr, e_id_len);
 	if (!e_prime_id) {
 		wpa_printf(MSG_INFO, "DPP: Invalid E'-id");
-		EVP_PKEY_free(a_nonce);
+		crypto_ec_key_deinit(a_nonce);
 		return NULL;
 	}
 	dpp_debug_print_key("E'-id", e_prime_id);
 	e_id = dpp_decrypt_e_id(conf->pp_key, a_nonce, e_prime_id);
-	EVP_PKEY_free(a_nonce);
-	EVP_PKEY_free(e_prime_id);
+	crypto_ec_key_deinit(a_nonce);
+	crypto_ec_key_deinit(e_prime_id);
 	if (!e_id) {
 		wpa_printf(MSG_INFO, "DPP: Could not decrypt E'-id");
 		return NULL;

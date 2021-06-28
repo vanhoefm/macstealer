@@ -180,7 +180,7 @@ void dpp_bootstrap_info_free(struct dpp_bootstrap_info *info)
 	os_free(info->info);
 	os_free(info->chan);
 	os_free(info->pk);
-	EVP_PKEY_free(info->pubkey);
+	crypto_ec_key_deinit(info->pubkey);
 	str_clear_free(info->configurator_params);
 	os_free(info);
 }
@@ -1268,9 +1268,9 @@ void dpp_auth_deinit(struct dpp_authentication *auth)
 	dpp_configuration_free(auth->conf2_ap);
 	dpp_configuration_free(auth->conf_sta);
 	dpp_configuration_free(auth->conf2_sta);
-	EVP_PKEY_free(auth->own_protocol_key);
-	EVP_PKEY_free(auth->peer_protocol_key);
-	EVP_PKEY_free(auth->reconfig_old_protocol_key);
+	crypto_ec_key_deinit(auth->own_protocol_key);
+	crypto_ec_key_deinit(auth->peer_protocol_key);
+	crypto_ec_key_deinit(auth->reconfig_old_protocol_key);
 	wpabuf_free(auth->req_msg);
 	wpabuf_free(auth->resp_msg);
 	wpabuf_free(auth->conf_req);
@@ -1360,8 +1360,9 @@ dpp_build_conf_start(struct dpp_authentication *auth,
 }
 
 
-int dpp_build_jwk(struct wpabuf *buf, const char *name, EVP_PKEY *key,
-		  const char *kid, const struct dpp_curve_params *curve)
+int dpp_build_jwk(struct wpabuf *buf, const char *name,
+		  struct crypto_ec_key *key, const char *kid,
+		  const struct dpp_curve_params *curve)
 {
 	struct wpabuf *pub;
 	const u8 *pos;
@@ -2160,14 +2161,14 @@ static int dpp_parse_cred_legacy(struct dpp_config_obj *conf,
 }
 
 
-EVP_PKEY * dpp_parse_jwk(struct json_token *jwk,
-			 const struct dpp_curve_params **key_curve)
+struct crypto_ec_key * dpp_parse_jwk(struct json_token *jwk,
+				     const struct dpp_curve_params **key_curve)
 {
 	struct json_token *token;
 	const struct dpp_curve_params *curve;
 	struct wpabuf *x = NULL, *y = NULL;
 	EC_GROUP *group;
-	EVP_PKEY *pkey = NULL;
+	struct crypto_ec_key *pkey = NULL;
 
 	token = json_get_member(jwk, "kty");
 	if (!token || token->type != JSON_STRING) {
@@ -2325,7 +2326,7 @@ static int dpp_parse_connector(struct dpp_authentication *auth,
 {
 	struct json_token *root, *groups, *netkey, *token;
 	int ret = -1;
-	EVP_PKEY *key = NULL;
+	struct crypto_ec_key *key = NULL;
 	const struct dpp_curve_params *curve;
 	unsigned int rules = 0;
 
@@ -2392,7 +2393,8 @@ skip_groups:
 		goto fail;
 	dpp_debug_print_key("DPP: Received netAccessKey", key);
 
-	if (EVP_PKEY_cmp(key, auth->own_protocol_key) != 1) {
+	if (EVP_PKEY_cmp((EVP_PKEY *) key,
+			 (EVP_PKEY *) auth->own_protocol_key) != 1) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: netAccessKey in connector does not match own protocol key");
 #ifdef CONFIG_TESTING_OPTIONS
@@ -2409,18 +2411,19 @@ skip_groups:
 
 	ret = 0;
 fail:
-	EVP_PKEY_free(key);
+	crypto_ec_key_deinit(key);
 	json_free(root);
 	return ret;
 }
 
 
-static void dpp_copy_csign(struct dpp_config_obj *conf, EVP_PKEY *csign)
+static void dpp_copy_csign(struct dpp_config_obj *conf,
+			   struct crypto_ec_key *csign)
 {
 	unsigned char *der = NULL;
 	int der_len;
 
-	der_len = i2d_PUBKEY(csign, &der);
+	der_len = i2d_PUBKEY((EVP_PKEY *) csign, &der);
 	if (der_len <= 0)
 		return;
 	wpabuf_free(conf->c_sign_key);
@@ -2429,12 +2432,13 @@ static void dpp_copy_csign(struct dpp_config_obj *conf, EVP_PKEY *csign)
 }
 
 
-static void dpp_copy_ppkey(struct dpp_config_obj *conf, EVP_PKEY *ppkey)
+static void dpp_copy_ppkey(struct dpp_config_obj *conf,
+			   struct crypto_ec_key *ppkey)
 {
 	unsigned char *der = NULL;
 	int der_len;
 
-	der_len = i2d_PUBKEY(ppkey, &der);
+	der_len = i2d_PUBKEY((EVP_PKEY *) ppkey, &der);
 	if (der_len <= 0)
 		return;
 	wpabuf_free(conf->pp_key);
@@ -2449,7 +2453,7 @@ static void dpp_copy_netaccesskey(struct dpp_authentication *auth,
 	unsigned char *der = NULL;
 	int der_len;
 	EC_KEY *eckey;
-	EVP_PKEY *own_key;
+	struct crypto_ec_key *own_key;
 
 	own_key = auth->own_protocol_key;
 #ifdef CONFIG_DPP2
@@ -2457,7 +2461,7 @@ static void dpp_copy_netaccesskey(struct dpp_authentication *auth,
 	    auth->reconfig_old_protocol_key)
 		own_key = auth->reconfig_old_protocol_key;
 #endif /* CONFIG_DPP2 */
-	eckey = EVP_PKEY_get1_EC_KEY(own_key);
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) own_key);
 	if (!eckey)
 		return;
 
@@ -2480,7 +2484,7 @@ static int dpp_parse_cred_dpp(struct dpp_authentication *auth,
 	struct dpp_signed_connector_info info;
 	struct json_token *token, *csign, *ppkey;
 	int ret = -1;
-	EVP_PKEY *csign_pub = NULL, *pp_pub = NULL;
+	struct crypto_ec_key *csign_pub = NULL, *pp_pub = NULL;
 	const struct dpp_curve_params *key_curve = NULL, *pp_curve = NULL;
 	const char *signed_connector;
 
@@ -2560,8 +2564,8 @@ static int dpp_parse_cred_dpp(struct dpp_authentication *auth,
 
 	ret = 0;
 fail:
-	EVP_PKEY_free(csign_pub);
-	EVP_PKEY_free(pp_pub);
+	crypto_ec_key_deinit(csign_pub);
+	crypto_ec_key_deinit(pp_pub);
 	os_free(info.payload);
 	return ret;
 }
@@ -3394,11 +3398,11 @@ void dpp_configurator_free(struct dpp_configurator *conf)
 {
 	if (!conf)
 		return;
-	EVP_PKEY_free(conf->csign);
+	crypto_ec_key_deinit(conf->csign);
 	os_free(conf->kid);
 	os_free(conf->connector);
-	EVP_PKEY_free(conf->connector_key);
-	EVP_PKEY_free(conf->pp_key);
+	crypto_ec_key_deinit(conf->connector_key);
+	crypto_ec_key_deinit(conf->pp_key);
 	os_free(conf);
 }
 
@@ -3413,7 +3417,7 @@ int dpp_configurator_get_key(const struct dpp_configurator *conf, char *buf,
 	if (!conf->csign)
 		return -1;
 
-	eckey = EVP_PKEY_get1_EC_KEY(conf->csign);
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) conf->csign);
 	if (!eckey)
 		return -1;
 
@@ -3670,7 +3674,7 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 	struct json_token *root = NULL, *netkey, *token;
 	struct json_token *own_root = NULL;
 	enum dpp_status_error ret = 255, res;
-	EVP_PKEY *own_key = NULL, *peer_key = NULL;
+	struct crypto_ec_key *own_key = NULL, *peer_key = NULL;
 	struct wpabuf *own_key_pub = NULL;
 	const struct dpp_curve_params *curve, *own_curve;
 	struct dpp_signed_connector_info info;
@@ -3776,9 +3780,9 @@ fail:
 		os_memset(intro, 0, sizeof(*intro));
 	os_memset(Nx, 0, sizeof(Nx));
 	os_free(info.payload);
-	EVP_PKEY_free(own_key);
+	crypto_ec_key_deinit(own_key);
 	wpabuf_free(own_key_pub);
-	EVP_PKEY_free(peer_key);
+	crypto_ec_key_deinit(peer_key);
 	json_free(root);
 	json_free(own_root);
 	return ret;
@@ -4129,7 +4133,7 @@ static int dpp_nfc_update_bi_key(struct dpp_bootstrap_info *own_bi,
 	wpa_printf(MSG_DEBUG,
 		   "DPP: Update own bootstrapping key to match peer curve from NFC handover");
 
-	EVP_PKEY_free(own_bi->pubkey);
+	crypto_ec_key_deinit(own_bi->pubkey);
 	own_bi->pubkey = NULL;
 
 	if (dpp_keygen(own_bi, peer_bi->curve->name, NULL, 0) < 0 ||
@@ -4282,7 +4286,7 @@ int dpp_configurator_from_backup(struct dpp_global *dpp,
 
 	if (!key->csign || !key->pp_key)
 		return -1;
-	eckey = EVP_PKEY_get0_EC_KEY(key->csign);
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key->csign);
 	if (!eckey)
 		return -1;
 	group = EC_KEY_get0_group(eckey);
@@ -4294,7 +4298,7 @@ int dpp_configurator_from_backup(struct dpp_global *dpp,
 		wpa_printf(MSG_INFO, "DPP: Unsupported group in c-sign-key");
 		return -1;
 	}
-	eckey_pp = EVP_PKEY_get0_EC_KEY(key->pp_key);
+	eckey_pp = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key->pp_key);
 	if (!eckey_pp)
 		return -1;
 	group_pp = EC_KEY_get0_group(eckey_pp);

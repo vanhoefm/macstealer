@@ -456,7 +456,7 @@ static int dpp_auth_build_resp_ok(struct dpp_authentication *auth)
 #endif /* CONFIG_TESTING_OPTIONS */
 	wpa_hexdump(MSG_DEBUG, "DPP: R-nonce", auth->r_nonce, nonce_len);
 
-	EVP_PKEY_free(auth->own_protocol_key);
+	crypto_ec_key_deinit(auth->own_protocol_key);
 #ifdef CONFIG_TESTING_OPTIONS
 	if (dpp_protocol_key_override_len) {
 		const struct dpp_curve_params *tmp_curve;
@@ -671,7 +671,7 @@ dpp_auth_req_rx(struct dpp_global *dpp, void *msg_ctx, u8 dpp_allowed_roles,
 		unsigned int freq, const u8 *hdr, const u8 *attr_start,
 		size_t attr_len)
 {
-	EVP_PKEY *pi = NULL;
+	struct crypto_ec_key *pi = NULL;
 	EVP_PKEY_CTX *ctx = NULL;
 	size_t secret_len;
 	const u8 *addr[2];
@@ -928,7 +928,7 @@ not_compatible:
 	return auth;
 fail:
 	bin_clear_free(unwrapped, unwrapped_len);
-	EVP_PKEY_free(pi);
+	crypto_ec_key_deinit(pi);
 	EVP_PKEY_CTX_free(ctx);
 	dpp_auth_deinit(auth);
 	return NULL;
@@ -1405,7 +1405,7 @@ struct wpabuf *
 dpp_auth_resp_rx(struct dpp_authentication *auth, const u8 *hdr,
 		 const u8 *attr_start, size_t attr_len)
 {
-	EVP_PKEY *pr;
+	struct crypto_ec_key *pr;
 	size_t secret_len;
 	const u8 *addr[2];
 	size_t len[2];
@@ -1567,7 +1567,7 @@ dpp_auth_resp_rx(struct dpp_authentication *auth, const u8 *hdr,
 		dpp_auth_fail(auth, "Failed to derive ECDH shared secret");
 		goto fail;
 	}
-	EVP_PKEY_free(auth->peer_protocol_key);
+	crypto_ec_key_deinit(auth->peer_protocol_key);
 	auth->peer_protocol_key = pr;
 	pr = NULL;
 
@@ -1737,7 +1737,7 @@ dpp_auth_resp_rx(struct dpp_authentication *auth, const u8 *hdr,
 fail:
 	bin_clear_free(unwrapped, unwrapped_len);
 	bin_clear_free(unwrapped2, unwrapped2_len);
-	EVP_PKEY_free(pr);
+	crypto_ec_key_deinit(pr);
 	return NULL;
 }
 
