@@ -1314,122 +1314,83 @@ fail:
 
 int dpp_auth_derive_l_responder(struct dpp_authentication *auth)
 {
-	const EC_GROUP *group;
-	EC_POINT *l = NULL;
-	const EC_KEY *BI, *bR, *pR;
-	const EC_POINT *BI_point;
-	BN_CTX *bnctx;
-	BIGNUM *lx, *sum, *q;
-	const BIGNUM *bR_bn, *pR_bn;
+	struct crypto_ec *ec;
+	struct crypto_ec_point *L = NULL;
+	const struct crypto_ec_point *BI;
+	const struct crypto_bignum *bR, *pR, *q;
+	struct crypto_bignum *sum = NULL, *lx = NULL;
 	int ret = -1;
 
 	/* L = ((bR + pR) modulo q) * BI */
 
-	bnctx = BN_CTX_new();
-	sum = BN_new();
-	q = BN_new();
-	lx = BN_new();
-	if (!bnctx || !sum || !q || !lx)
-		goto fail;
-	BI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_bi->pubkey);
-	if (!BI)
-		goto fail;
-	BI_point = EC_KEY_get0_public_key(BI);
-	group = EC_KEY_get0_group(BI);
-	if (!group)
+	ec = crypto_ec_init(crypto_ec_key_group(auth->peer_bi->pubkey));
+	if (!ec)
 		goto fail;
 
-	bR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_bi->pubkey);
-	pR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_protocol_key);
-	if (!bR || !pR)
+	q = crypto_ec_get_order(ec);
+	BI = crypto_ec_key_get_public_key(auth->peer_bi->pubkey);
+	bR = crypto_ec_key_get_private_key(auth->own_bi->pubkey);
+	pR = crypto_ec_key_get_private_key(auth->own_protocol_key);
+	sum = crypto_bignum_init();
+	L = crypto_ec_point_init(ec);
+	lx = crypto_bignum_init();
+	if (!q || !BI || !bR || !pR || !sum || !L || !lx ||
+	    crypto_bignum_addmod(bR, pR, q, sum) ||
+	    crypto_ec_point_mul(ec, BI, sum, L) ||
+	    crypto_ec_point_x(ec, L, lx) ||
+	    crypto_bignum_to_bin(lx, auth->Lx, sizeof(auth->Lx),
+				 auth->secret_len) < 0)
 		goto fail;
-	bR_bn = EC_KEY_get0_private_key(bR);
-	pR_bn = EC_KEY_get0_private_key(pR);
-	if (!bR_bn || !pR_bn)
-		goto fail;
-	if (EC_GROUP_get_order(group, q, bnctx) != 1 ||
-	    BN_mod_add(sum, bR_bn, pR_bn, q, bnctx) != 1)
-		goto fail;
-	l = EC_POINT_new(group);
-	if (!l ||
-	    EC_POINT_mul(group, l, NULL, BI_point, sum, bnctx) != 1 ||
-	    EC_POINT_get_affine_coordinates_GFp(group, l, lx, NULL,
-						bnctx) != 1) {
-		wpa_printf(MSG_ERROR,
-			   "OpenSSL: failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
 
-	if (dpp_bn2bin_pad(lx, auth->Lx, auth->secret_len) < 0)
-		goto fail;
 	wpa_hexdump_key(MSG_DEBUG, "DPP: L.x", auth->Lx, auth->secret_len);
 	auth->Lx_len = auth->secret_len;
 	ret = 0;
 fail:
-	EC_POINT_clear_free(l);
-	BN_clear_free(lx);
-	BN_clear_free(sum);
-	BN_free(q);
-	BN_CTX_free(bnctx);
+	crypto_bignum_deinit(lx, 1);
+	crypto_bignum_deinit(sum, 1);
+	crypto_ec_point_deinit(L, 1);
+	crypto_ec_deinit(ec);
 	return ret;
 }
 
 
 int dpp_auth_derive_l_initiator(struct dpp_authentication *auth)
 {
-	const EC_GROUP *group;
-	EC_POINT *l = NULL, *sum = NULL;
-	const EC_KEY *bI, *BR, *PR;
-	const EC_POINT *BR_point, *PR_point;
-	BN_CTX *bnctx;
-	BIGNUM *lx;
-	const BIGNUM *bI_bn;
+	struct crypto_ec *ec;
+	struct crypto_ec_point *L = NULL, *sum = NULL;
+	const struct crypto_ec_point *BR, *PR;
+	const struct crypto_bignum *bI;
+	struct crypto_bignum *lx = NULL;
 	int ret = -1;
 
 	/* L = bI * (BR + PR) */
 
-	bnctx = BN_CTX_new();
-	lx = BN_new();
-	if (!bnctx || !lx)
+	ec = crypto_ec_init(crypto_ec_key_group(auth->peer_bi->pubkey));
+	if (!ec)
 		goto fail;
-	BR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_bi->pubkey);
-	PR = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->peer_protocol_key);
-	if (!BR || !PR)
-		goto fail;
-	BR_point = EC_KEY_get0_public_key(BR);
-	PR_point = EC_KEY_get0_public_key(PR);
 
-	bI = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) auth->own_bi->pubkey);
-	if (!bI)
+	BR = crypto_ec_key_get_public_key(auth->peer_bi->pubkey);
+	PR = crypto_ec_key_get_public_key(auth->peer_protocol_key);
+	bI = crypto_ec_key_get_private_key(auth->own_bi->pubkey);
+	sum = crypto_ec_point_init(ec);
+	L = crypto_ec_point_init(ec);
+	lx = crypto_bignum_init();
+	if (!BR || !PR || !bI || !sum || !L || !lx ||
+	    crypto_ec_point_add(ec, BR, PR, sum) ||
+	    crypto_ec_point_mul(ec, sum, bI, L) ||
+	    crypto_ec_point_x(ec, L, lx) ||
+	    crypto_bignum_to_bin(lx, auth->Lx, sizeof(auth->Lx),
+				 auth->secret_len) < 0)
 		goto fail;
-	group = EC_KEY_get0_group(bI);
-	bI_bn = EC_KEY_get0_private_key(bI);
-	if (!group || !bI_bn)
-		goto fail;
-	sum = EC_POINT_new(group);
-	l = EC_POINT_new(group);
-	if (!sum || !l ||
-	    EC_POINT_add(group, sum, BR_point, PR_point, bnctx) != 1 ||
-	    EC_POINT_mul(group, l, NULL, sum, bI_bn, bnctx) != 1 ||
-	    EC_POINT_get_affine_coordinates_GFp(group, l, lx, NULL,
-						bnctx) != 1) {
-		wpa_printf(MSG_ERROR,
-			   "OpenSSL: failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
 
-	if (dpp_bn2bin_pad(lx, auth->Lx, auth->secret_len) < 0)
-		goto fail;
 	wpa_hexdump_key(MSG_DEBUG, "DPP: L.x", auth->Lx, auth->secret_len);
 	auth->Lx_len = auth->secret_len;
 	ret = 0;
 fail:
-	EC_POINT_clear_free(l);
-	EC_POINT_clear_free(sum);
-	BN_clear_free(lx);
-	BN_CTX_free(bnctx);
+	crypto_bignum_deinit(lx, 1);
+	crypto_ec_point_deinit(sum, 1);
+	crypto_ec_point_deinit(L, 1);
+	crypto_ec_deinit(ec);
 	return ret;
 }
 
