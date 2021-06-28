@@ -8,8 +8,6 @@
  */
 
 #include "utils/includes.h"
-#include <openssl/opensslv.h>
-#include <openssl/err.h>
 
 #include "utils/common.h"
 #include "utils/base64.h"
@@ -37,22 +35,6 @@ int dpp_version_override = 1;
 #endif
 enum dpp_test_behavior dpp_test = DPP_TEST_DISABLED;
 #endif /* CONFIG_TESTING_OPTIONS */
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
-/* Compatibility wrappers for older versions. */
-
-#ifdef CONFIG_DPP2
-static EC_KEY * EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
-{
-	if (pkey->type != EVP_PKEY_EC)
-		return NULL;
-	return pkey->pkey.ec;
-}
-#endif /* CONFIG_DPP2 */
-
-#endif
 
 
 void dpp_auth_fail(struct dpp_authentication *auth, const char *txt)
@@ -4262,33 +4244,24 @@ int dpp_configurator_from_backup(struct dpp_global *dpp,
 				 struct dpp_asymmetric_key *key)
 {
 	struct dpp_configurator *conf;
-	const EC_KEY *eckey, *eckey_pp;
-	const EC_GROUP *group, *group_pp;
-	int nid;
-	const struct dpp_curve_params *curve;
+	const struct dpp_curve_params *curve, *curve_pp;
 
 	if (!key->csign || !key->pp_key)
 		return -1;
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key->csign);
-	if (!eckey)
-		return -1;
-	group = EC_KEY_get0_group(eckey);
-	if (!group)
-		return -1;
-	nid = EC_GROUP_get_curve_name(group);
-	curve = dpp_get_curve_nid(nid);
+
+	curve = dpp_get_curve_ike_group(crypto_ec_key_group(key->csign));
 	if (!curve) {
 		wpa_printf(MSG_INFO, "DPP: Unsupported group in c-sign-key");
 		return -1;
 	}
-	eckey_pp = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key->pp_key);
-	if (!eckey_pp)
+
+	curve_pp = dpp_get_curve_ike_group(crypto_ec_key_group(key->pp_key));
+	if (!curve_pp) {
+		wpa_printf(MSG_INFO, "DPP: Unsupported group in ppKey");
 		return -1;
-	group_pp = EC_KEY_get0_group(eckey_pp);
-	if (!group_pp)
-		return -1;
-	if (EC_GROUP_get_curve_name(group) !=
-	    EC_GROUP_get_curve_name(group_pp)) {
+	}
+
+	if (curve != curve_pp) {
 		wpa_printf(MSG_INFO,
 			   "DPP: Mismatch in c-sign-key and ppKey groups");
 		return -1;

@@ -68,21 +68,6 @@ const struct dpp_curve_params * dpp_get_curve_jwk_crv(const char *name)
 }
 
 
-const struct dpp_curve_params * dpp_get_curve_nid(int nid)
-{
-	int i, tmp;
-
-	if (!nid)
-		return NULL;
-	for (i = 0; dpp_curves[i].name; i++) {
-		tmp = OBJ_txt2nid(dpp_curves[i].name);
-		if (tmp == nid)
-			return &dpp_curves[i];
-	}
-	return NULL;
-}
-
-
 const struct dpp_curve_params * dpp_get_curve_ike_group(u16 group)
 {
 	int i;
