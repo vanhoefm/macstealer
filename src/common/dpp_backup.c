@@ -7,8 +7,6 @@
  */
 
 #include "utils/includes.h"
-#include <openssl/opensslv.h>
-#include <openssl/err.h>
 
 #include "utils/common.h"
 #include "crypto/aes.h"
@@ -866,7 +864,6 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 	struct asn1_oid oid;
 	char txt[80];
 	struct dpp_asymmetric_key *key;
-	EC_KEY *eckey;
 
 	wpa_hexdump_key(MSG_MSGDUMP, "DPP: OneAsymmetricKey", buf, len);
 
@@ -941,19 +938,9 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 	wpa_hexdump_key(MSG_MSGDUMP, "DPP: PrivateKey",
 			hdr.payload, hdr.length);
 	pos = hdr.payload + hdr.length;
-	eckey = d2i_ECPrivateKey(NULL, &hdr.payload, hdr.length);
-	if (!eckey) {
-		wpa_printf(MSG_INFO,
-			   "DPP: OpenSSL: d2i_ECPrivateKey() failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+	key->csign = crypto_ec_key_parse_priv(hdr.payload, hdr.length);
+	if (!key->csign)
 		goto fail;
-	}
-	key->csign = (struct crypto_ec_key *) EVP_PKEY_new();
-	if (!key->csign ||
-	    EVP_PKEY_assign_EC_KEY((EVP_PKEY *) key->csign, eckey) != 1) {
-		EC_KEY_free(eckey);
-		goto fail;
-	}
 	if (wpa_debug_show_keys)
 		dpp_debug_print_key("DPP: Received c-sign-key", key->csign);
 
@@ -1063,19 +1050,9 @@ dpp_parse_one_asymmetric_key(const u8 *buf, size_t len)
 	wpa_hexdump_key(MSG_MSGDUMP, "DPP: privacyProtectionKey",
 			hdr.payload, hdr.length);
 	pos = hdr.payload + hdr.length;
-	eckey = d2i_ECPrivateKey(NULL, &hdr.payload, hdr.length);
-	if (!eckey) {
-		wpa_printf(MSG_INFO,
-			   "DPP: OpenSSL: d2i_ECPrivateKey() failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+	key->pp_key = crypto_ec_key_parse_priv(hdr.payload, hdr.length);
+	if (!key->pp_key)
 		goto fail;
-	}
-	key->pp_key = (struct crypto_ec_key *) EVP_PKEY_new();
-	if (!key->pp_key ||
-	    EVP_PKEY_assign_EC_KEY((EVP_PKEY *) key->pp_key, eckey) != 1) {
-		EC_KEY_free(eckey);
-		goto fail;
-	}
 	if (wpa_debug_show_keys)
 		dpp_debug_print_key("DPP: Received privacyProtectionKey",
 				    key->pp_key);

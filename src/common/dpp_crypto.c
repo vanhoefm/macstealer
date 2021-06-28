@@ -393,45 +393,31 @@ struct crypto_ec_key * dpp_gen_keypair(const struct dpp_curve_params *curve)
 struct crypto_ec_key * dpp_set_keypair(const struct dpp_curve_params **curve,
 				       const u8 *privkey, size_t privkey_len)
 {
-	EVP_PKEY *pkey;
-	EC_KEY *eckey;
-	const EC_GROUP *group;
-	int nid;
+	struct crypto_ec_key *key;
+	int group;
 
-	pkey = EVP_PKEY_new();
-	if (!pkey)
-		return NULL;
-	eckey = d2i_ECPrivateKey(NULL, &privkey, privkey_len);
-	if (!eckey) {
-		wpa_printf(MSG_INFO,
-			   "DPP: OpenSSL: d2i_ECPrivateKey() failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		EVP_PKEY_free(pkey);
+	key = crypto_ec_key_parse_priv(privkey, privkey_len);
+	if (!key) {
+		wpa_printf(MSG_INFO, "DPP: Failed to parse private key");
 		return NULL;
 	}
-	group = EC_KEY_get0_group(eckey);
-	if (!group) {
-		EC_KEY_free(eckey);
-		EVP_PKEY_free(pkey);
+
+	group = crypto_ec_key_group(key);
+	if (group < 0) {
+		crypto_ec_key_deinit(key);
 		return NULL;
 	}
-	nid = EC_GROUP_get_curve_name(group);
-	*curve = dpp_get_curve_nid(nid);
+
+	*curve = dpp_get_curve_ike_group(group);
 	if (!*curve) {
 		wpa_printf(MSG_INFO,
-			   "DPP: Unsupported curve (nid=%d) in pre-assigned key",
-			   nid);
-		EC_KEY_free(eckey);
-		EVP_PKEY_free(pkey);
+			   "DPP: Unsupported curve (group=%d) in pre-assigned key",
+			   group);
+		crypto_ec_key_deinit(key);
 		return NULL;
 	}
 
-	if (EVP_PKEY_assign_EC_KEY(pkey, eckey) != 1) {
-		EC_KEY_free(eckey);
-		EVP_PKEY_free(pkey);
-		return NULL;
-	}
-	return (struct crypto_ec_key *) pkey;
+	return key;
 }
 
 
