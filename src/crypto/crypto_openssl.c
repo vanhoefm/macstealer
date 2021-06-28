@@ -2465,7 +2465,21 @@ int crypto_ec_key_group(struct crypto_ec_key *key)
 		return 20;
 	case NID_secp521r1:
 		return 21;
+#ifdef NID_brainpoolP256r1
+	case NID_brainpoolP256r1:
+		return 28;
+#endif /* NID_brainpoolP256r1 */
+#ifdef NID_brainpoolP384r1
+	case NID_brainpoolP384r1:
+		return 29;
+#endif /* NID_brainpoolP384r1 */
+#ifdef NID_brainpoolP512r1
+	case NID_brainpoolP512r1:
+		return 30;
+#endif /* NID_brainpoolP512r1 */
 	}
+	wpa_printf(MSG_ERROR, "OpenSSL: Unsupported curve (nid=%d) in EC key",
+		   nid);
 	return -1;
 }
 
