@@ -672,7 +672,6 @@ dpp_auth_req_rx(struct dpp_global *dpp, void *msg_ctx, u8 dpp_allowed_roles,
 		size_t attr_len)
 {
 	struct crypto_ec_key *pi = NULL;
-	EVP_PKEY_CTX *ctx = NULL;
 	size_t secret_len;
 	const u8 *addr[2];
 	size_t len[2];
@@ -929,7 +928,6 @@ not_compatible:
 fail:
 	bin_clear_free(unwrapped, unwrapped_len);
 	crypto_ec_key_deinit(pi);
-	EVP_PKEY_CTX_free(ctx);
 	dpp_auth_deinit(auth);
 	return NULL;
 }
