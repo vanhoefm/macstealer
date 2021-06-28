@@ -762,7 +762,18 @@ const struct crypto_bignum * crypto_ec_get_prime(struct crypto_ec *e);
  */
 const struct crypto_bignum * crypto_ec_get_order(struct crypto_ec *e);
 
+/**
+ * crypto_ec_get_a - Get 'a' coefficient of an EC group's curve
+ * @e: EC context from crypto_ec_init()
+ * Returns: 'a' coefficient (bignum) of the group
+ */
 const struct crypto_bignum * crypto_ec_get_a(struct crypto_ec *e);
+
+/**
+ * crypto_ec_get_b - Get 'b' coeffiecient of an EC group's curve
+ * @e: EC context from crypto_ec_init()
+ * Returns: 'b' coefficient (bignum) of the group
+ */
 const struct crypto_bignum * crypto_ec_get_b(struct crypto_ec *e);
 
 /**
@@ -909,25 +920,120 @@ int crypto_ec_point_cmp(const struct crypto_ec *e,
 			const struct crypto_ec_point *a,
 			const struct crypto_ec_point *b);
 
+/**
+ * struct crypto_ecdh - Elliptic curve Diffie–Hellman context
+ *
+ * Internal data structure for ECDH. The contents is specific to the used
+ * crypto library.
+ */
 struct crypto_ecdh;
 
+/**
+ * crypto_ecdh_init - Initialize elliptic curve Diffie–Hellman context
+ * @group: Identifying number for the ECC group (IANA "Group Description"
+ *	attribute registry for RFC 2409)
+ * Returns: Pointer to ECDH context or %NULL on failure
+ */
 struct crypto_ecdh * crypto_ecdh_init(int group);
+
+/**
+ * crypto_ecdh_get_pubkey - Retrieve public key from ECDH context
+ * @ecdh: ECDH context from crypto_ecdh_init()
+ * @inc_y: Whether public key should include y coordinate (explicit form)
+ * or not (compressed form)
+ * Returns: Binary data f the public key or %NULL on failure
+ */
 struct wpabuf * crypto_ecdh_get_pubkey(struct crypto_ecdh *ecdh, int inc_y);
+
+/**
+ * crypto_ecdh_set_peerkey - Compute ECDH secret
+ * @ecdh: ECDH context from crypto_ecdh_init()
+ * @inc_y: Whether peer's public key includes y coordinate (explicit form)
+ * or not (compressed form)
+ * @key: Binary data of the peer's public key
+ * @len: Length of the @key buffer
+ * Returns: Binary data with the EDCH secret or %NULL on failure
+ */
 struct wpabuf * crypto_ecdh_set_peerkey(struct crypto_ecdh *ecdh, int inc_y,
 					const u8 *key, size_t len);
+
+/**
+ * crypto_ecdh_deinit - Free ECDH context
+ * @ecdh: ECDH context from crypto_ecdh_init()
+ */
 void crypto_ecdh_deinit(struct crypto_ecdh *ecdh);
+
+/**
+ * crypto_ecdh_prime_len - Get length of the prime in octets
+ * @e: ECDH context from crypto_ecdh_init()
+ * Returns: Length of the prime defining the group
+ */
 size_t crypto_ecdh_prime_len(struct crypto_ecdh *ecdh);
 
+/**
+ * struct crypto_ec_key - Elliptic curve key pair
+ *
+ * Internal data structure for EC key pair. The contents is specific to the used
+ * crypto library.
+ */
 struct crypto_ec_key;
 
+/**
+ * crypto_ec_key_parse_priv - Initialize EC key pair from ECPrivateKey ASN.1
+ * @der: DER encoding of ASN.1 ECPrivateKey
+ * @der_len: Length of @der buffer
+ * Returns: EC key or %NULL on failure
+ */
 struct crypto_ec_key * crypto_ec_key_parse_priv(const u8 *der, size_t der_len);
+
+/**
+ * crypto_ec_key_parse_pub - Initialize EC key pair from SubjectPublicKeyInfo ASN.1
+ * @der: DER encoding of ASN.1 SubjectPublicKeyInfo
+ * @der_len: Length of @der buffer
+ * Returns: EC key or %NULL on failure
+ */
 struct crypto_ec_key * crypto_ec_key_parse_pub(const u8 *der, size_t der_len);
+
+/**
+ * crypto_ec_key_deinit - Free EC key
+ * @key: EC key from crypto_ec_key_parse_pub() or crypto_ec_key_parse_priv()
+ */
 void crypto_ec_key_deinit(struct crypto_ec_key *key);
+
+/**
+ * crypto_ec_key_get_subject_public_key - Get SubjectPublicKeyInfo ASN.1 for an EC key
+ * @key: EC key from crypto_ec_key_parse_pub() or crypto_ec_key_parse_priv()
+ * Returns: Buffer with DER encoding of ASN.1 SubjectPublicKeyInfo or %NULL on failure
+ */
 struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key);
+
+/**
+ * crypto_ec_key_sign - Sign a buffer with an EC key
+ * @key: EC key from crypto_ec_key_parse_priv()
+ * @data: Data to sign
+ * @len: Length of @data buffer
+ * Returns: Buffer with DER encoding of ASN.1 Ecdsa-Sig-Value or %NULL on failure
+ */
 struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
 				   size_t len);
+
+/**
+ * crypto_ec_key_verify_signature - Verify ECDSA signature
+ * @key: EC key from crypto_ec_key_parse_pub()
+ * @data: Data to be signed
+ * @len: Length of @data buffer
+ * @sig: DER encoding of ASN.1 Ecdsa-Sig-Value
+ * @sig_len: Length of @sig buffer
+ * Returns: 1 if signature is valid, 0 if signature is invalid and -1 on failure
+ */
 int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
 				   size_t len, const u8 *sig, size_t sig_len);
+
+/**
+ * crypto_ec_key_group - Get IANA group identifier for an EC key
+ * @key: EC key from crypto_ec_key_parse_pub() or crypto_ec_key_parse_priv()
+ * Returns: IANA group identifier and -1 on failure
+ */
 int crypto_ec_key_group(struct crypto_ec_key *key);
 
 #endif /* CRYPTO_H */
