@@ -524,51 +524,15 @@ struct crypto_ec_key * dpp_set_pubkey_point(struct crypto_ec_key *group_key,
 
 struct crypto_ec_key * dpp_gen_keypair(const struct dpp_curve_params *curve)
 {
-	EVP_PKEY_CTX *kctx = NULL;
-	EC_KEY *ec_params = NULL;
-	EVP_PKEY *params = NULL, *key = NULL;
-	int nid;
+	struct crypto_ec_key *key;
 
 	wpa_printf(MSG_DEBUG, "DPP: Generating a keypair");
 
-	nid = OBJ_txt2nid(curve->name);
-	if (nid == NID_undef) {
-		wpa_printf(MSG_INFO, "DPP: Unsupported curve %s", curve->name);
-		return NULL;
-	}
+	key = crypto_ec_key_gen(curve->ike_group);
+	if (key && wpa_debug_show_keys)
+	    dpp_debug_print_key("Own generated key", key);
 
-	ec_params = EC_KEY_new_by_curve_name(nid);
-	if (!ec_params) {
-		wpa_printf(MSG_ERROR,
-			   "DPP: Failed to generate EC_KEY parameters");
-		goto fail;
-	}
-	EC_KEY_set_asn1_flag(ec_params, OPENSSL_EC_NAMED_CURVE);
-	params = EVP_PKEY_new();
-	if (!params || EVP_PKEY_set1_EC_KEY(params, ec_params) != 1) {
-		wpa_printf(MSG_ERROR,
-			   "DPP: Failed to generate EVP_PKEY parameters");
-		goto fail;
-	}
-
-	kctx = EVP_PKEY_CTX_new(params, NULL);
-	if (!kctx ||
-	    EVP_PKEY_keygen_init(kctx) != 1 ||
-	    EVP_PKEY_keygen(kctx, &key) != 1) {
-		wpa_printf(MSG_ERROR, "DPP: Failed to generate EC key");
-		key = NULL;
-		goto fail;
-	}
-
-	if (wpa_debug_show_keys)
-		dpp_debug_print_key("Own generated key",
-				    (struct crypto_ec_key *) key);
-
-fail:
-	EC_KEY_free(ec_params);
-	EVP_PKEY_free(params);
-	EVP_PKEY_CTX_free(kctx);
-	return (struct crypto_ec_key *) key;
+	return key;
 }
 
 

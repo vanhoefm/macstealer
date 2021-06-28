@@ -995,21 +995,28 @@ struct crypto_ec_key * crypto_ec_key_parse_priv(const u8 *der, size_t der_len);
 struct crypto_ec_key * crypto_ec_key_parse_pub(const u8 *der, size_t der_len);
 
 /**
+ * crypto_ec_key_gen - Generate EC key pair
+ * @group: Identifying number for the ECC group
+ * Returns: EC key or %NULL on failure
+ */
+struct crypto_ec_key * crypto_ec_key_gen(int group);
+
+/**
  * crypto_ec_key_deinit - Free EC key
- * @key: EC key from crypto_ec_key_parse_pub() or crypto_ec_key_parse_priv()
+ * @key: EC key from crypto_ec_key_parse_pub/priv() or crypto_ec_key_gen()
  */
 void crypto_ec_key_deinit(struct crypto_ec_key *key);
 
 /**
  * crypto_ec_key_get_subject_public_key - Get SubjectPublicKeyInfo ASN.1 for an EC key
- * @key: EC key from crypto_ec_key_parse_pub() or crypto_ec_key_parse_priv()
+ * @key: EC key from crypto_ec_key_parse_pub/priv() or crypto_ec_key_gen()
  * Returns: Buffer with DER encoding of ASN.1 SubjectPublicKeyInfo or %NULL on failure
  */
 struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key);
 
 /**
  * crypto_ec_key_sign - Sign a buffer with an EC key
- * @key: EC key from crypto_ec_key_parse_priv()
+ * @key: EC key from crypto_ec_key_parse_priv() or crypto_ec_key_gen()
  * @data: Data to sign
  * @len: Length of @data buffer
  * Returns: Buffer with DER encoding of ASN.1 Ecdsa-Sig-Value or %NULL on failure
@@ -1019,7 +1026,7 @@ struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
 
 /**
  * crypto_ec_key_verify_signature - Verify ECDSA signature
- * @key: EC key from crypto_ec_key_parse_pub()
+ * @key: EC key from crypto_ec_key_parse_pub() or crypto_ec_key_gen()
  * @data: Data to be signed
  * @len: Length of @data buffer
  * @sig: DER encoding of ASN.1 Ecdsa-Sig-Value
@@ -1031,7 +1038,7 @@ int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
 
 /**
  * crypto_ec_key_group - Get IANA group identifier for an EC key
- * @key: EC key from crypto_ec_key_parse_pub() or crypto_ec_key_parse_priv()
+ * @key: EC key from crypto_ec_key_parse_pub/priv() or crypto_ec_key_gen()
  * Returns: IANA group identifier and -1 on failure
  */
 int crypto_ec_key_group(struct crypto_ec_key *key);

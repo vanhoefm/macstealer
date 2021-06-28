@@ -1640,51 +1640,51 @@ struct crypto_ec {
 	BIGNUM *b;
 };
 
+
+static int crypto_ec_group_2_nid(int group)
+{
+	/* Map from IANA registry for IKE D-H groups to OpenSSL NID */
+	switch (group) {
+	case 19:
+		return NID_X9_62_prime256v1;
+	case 20:
+		return NID_secp384r1;
+	case 21:
+		return NID_secp521r1;
+	case 25:
+		return NID_X9_62_prime192v1;
+	case 26:
+		return NID_secp224r1;
+#ifdef NID_brainpoolP224r1
+	case 27:
+		return NID_brainpoolP224r1;
+#endif /* NID_brainpoolP224r1 */
+#ifdef NID_brainpoolP256r1
+	case 28:
+		return NID_brainpoolP256r1;
+#endif /* NID_brainpoolP256r1 */
+#ifdef NID_brainpoolP384r1
+	case 29:
+		return NID_brainpoolP384r1;
+#endif /* NID_brainpoolP384r1 */
+#ifdef NID_brainpoolP512r1
+	case 30:
+		return NID_brainpoolP512r1;
+#endif /* NID_brainpoolP512r1 */
+	default:
+		return -1;
+	}
+}
+
+
 struct crypto_ec * crypto_ec_init(int group)
 {
 	struct crypto_ec *e;
 	int nid;
 
-	/* Map from IANA registry for IKE D-H groups to OpenSSL NID */
-	switch (group) {
-	case 19:
-		nid = NID_X9_62_prime256v1;
-		break;
-	case 20:
-		nid = NID_secp384r1;
-		break;
-	case 21:
-		nid = NID_secp521r1;
-		break;
-	case 25:
-		nid = NID_X9_62_prime192v1;
-		break;
-	case 26:
-		nid = NID_secp224r1;
-		break;
-#ifdef NID_brainpoolP224r1
-	case 27:
-		nid = NID_brainpoolP224r1;
-		break;
-#endif /* NID_brainpoolP224r1 */
-#ifdef NID_brainpoolP256r1
-	case 28:
-		nid = NID_brainpoolP256r1;
-		break;
-#endif /* NID_brainpoolP256r1 */
-#ifdef NID_brainpoolP384r1
-	case 29:
-		nid = NID_brainpoolP384r1;
-		break;
-#endif /* NID_brainpoolP384r1 */
-#ifdef NID_brainpoolP512r1
-	case 30:
-		nid = NID_brainpoolP512r1;
-		break;
-#endif /* NID_brainpoolP512r1 */
-	default:
+	nid = crypto_ec_group_2_nid(group);
+	if (nid < 0)
 		return NULL;
-	}
 
 	e = os_zalloc(sizeof(*e));
 	if (e == NULL)
@@ -2239,6 +2239,50 @@ struct crypto_ec_key * crypto_ec_key_parse_pub(const u8 *der, size_t der_len)
 fail:
 	crypto_ec_key_deinit((struct crypto_ec_key *) pkey);
 	return NULL;
+}
+
+
+struct crypto_ec_key * crypto_ec_key_gen(int group)
+{
+	EVP_PKEY_CTX *kctx = NULL;
+	EC_KEY *ec_params = NULL;
+	EVP_PKEY *params = NULL, *key = NULL;
+	int nid;
+
+	nid = crypto_ec_group_2_nid(group);
+	if (nid < 0) {
+		wpa_printf(MSG_ERROR, "OpenSSL: Unsupported group %d", group);
+		return NULL;
+	}
+
+	ec_params = EC_KEY_new_by_curve_name(nid);
+	if (!ec_params) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Failed to generate EC_KEY parameters");
+		goto fail;
+	}
+	EC_KEY_set_asn1_flag(ec_params, OPENSSL_EC_NAMED_CURVE);
+	params = EVP_PKEY_new();
+	if (!params || EVP_PKEY_set1_EC_KEY(params, ec_params) != 1) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Failed to generate EVP_PKEY parameters");
+		goto fail;
+	}
+
+	kctx = EVP_PKEY_CTX_new(params, NULL);
+	if (!kctx ||
+	    EVP_PKEY_keygen_init(kctx) != 1 ||
+	    EVP_PKEY_keygen(kctx, &key) != 1) {
+		wpa_printf(MSG_ERROR, "OpenSSL: Failed to generate EC key");
+		key = NULL;
+		goto fail;
+	}
+
+fail:
+	EC_KEY_free(ec_params);
+	EVP_PKEY_free(params);
+	EVP_PKEY_CTX_free(kctx);
+	return (struct crypto_ec_key *) key;
 }
 
 
