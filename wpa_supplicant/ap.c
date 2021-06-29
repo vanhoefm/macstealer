@@ -903,12 +903,18 @@ static void wpas_ap_configured_cb(void *ctx)
 		return;
 	}
 
+	if (wpa_s->current_ssid) {
+		int acs = 0;
+
 #ifdef CONFIG_ACS
-	if (wpa_s->current_ssid && wpa_s->current_ssid->acs) {
-		wpa_s->assoc_freq = wpa_s->ap_iface->freq;
-		wpa_s->current_ssid->frequency = wpa_s->ap_iface->freq;
-	}
+		acs = wpa_s->current_ssid->acs;
 #endif /* CONFIG_ACS */
+		if (acs || (wpa_s->assoc_freq && wpa_s->ap_iface->freq &&
+			    (int) wpa_s->assoc_freq != wpa_s->ap_iface->freq)) {
+			wpa_s->assoc_freq = wpa_s->ap_iface->freq;
+			wpa_s->current_ssid->frequency = wpa_s->ap_iface->freq;
+		}
+	}
 
 	wpa_supplicant_set_state(wpa_s, WPA_COMPLETED);
 
