@@ -7537,6 +7537,35 @@ void wpas_connection_failed(struct wpa_supplicant *wpa_s, const u8 *bssid)
 
 
 #ifdef CONFIG_FILS
+
+void fils_pmksa_cache_flush(struct wpa_supplicant *wpa_s)
+{
+	struct wpa_ssid *ssid = wpa_s->current_ssid;
+	const u8 *realm, *username, *rrk;
+	size_t realm_len, username_len, rrk_len;
+	u16 next_seq_num;
+
+	/* Clear the PMKSA cache entry if FILS authentication was rejected.
+	 * Check for ERP keys existing to limit when this can be done since
+	 * the rejection response is not protected and such triggers should
+	 * really not allow internal state to be modified unless required to
+	 * avoid significant issues in functionality. In this case, this is
+	 * needed to allow recovery from cases where the AP or authentication
+	 * server has dropped PMKSAs and ERP keys. */
+	if (!ssid || !ssid->eap.erp || !wpa_key_mgmt_fils(ssid->key_mgmt) ||
+	    eapol_sm_get_erp_info(wpa_s->eapol, &ssid->eap,
+				  &username, &username_len,
+				  &realm, &realm_len, &next_seq_num,
+				  &rrk, &rrk_len) != 0 ||
+	    !realm)
+		return;
+
+	wpa_dbg(wpa_s, MSG_DEBUG, "FILS: Drop PMKSA cache entry");
+	wpa_sm_aborted_cached(wpa_s->wpa);
+	wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
+}
+
+
 void fils_connection_failure(struct wpa_supplicant *wpa_s)
 {
 	struct wpa_ssid *ssid = wpa_s->current_ssid;
