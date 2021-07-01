@@ -8547,9 +8547,13 @@ enum qca_wlan_twt_setup_state {
  * response.
  *
  * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_WAKE_TIME_TSF: Required (u64)
- * This field is applicable for TWT response only.
- * This field contains absolute TSF value of the wake time received
- * from the TWT responder and is passed to the userspace.
+ * In TWT setup command this field contains absolute TSF that will
+ * be used by TWT requester during setup.
+ * In TWT response this field contains absolute TSF value of the
+ * wake time received from the TWT responder and is passed to
+ * the userspace.
+ * This is an optional parameter for
+ * 1. TWT SET Request
  * This is a required parameter for
  * 1. TWT SET Response
  * 2. TWT GET Response
