@@ -10623,6 +10623,8 @@ static int wpas_ctrl_iface_pmksa_add(struct wpa_supplicant *wpa_s,
 
 	entry->network_ctx = ssid;
 
+	entry->external = true;
+
 	wpa_sm_pmksa_cache_add_entry(wpa_s->wpa, entry);
 	entry = NULL;
 	ret = 0;
