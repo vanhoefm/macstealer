@@ -1038,6 +1038,7 @@ static int wpas_p2p_group_delete(struct wpa_supplicant *wpa_s,
 	wpa_s->p2p_group_common_freqs = NULL;
 	wpa_s->p2p_group_common_freqs_num = 0;
 	wpa_s->p2p_go_do_acs = 0;
+	wpa_s->p2p_go_allow_dfs = 0;
 
 	wpa_s->waiting_presence_resp = 0;
 
@@ -3585,12 +3586,12 @@ static enum chan_allowed has_channel(struct wpa_global *global,
 		if ((unsigned int) mode->channels[i].freq == freq) {
 			if (flags)
 				*flags = mode->channels[i].flag;
-			if (mode->channels[i].flag &
-			    (HOSTAPD_CHAN_DISABLED |
-			     HOSTAPD_CHAN_RADAR))
+			if (mode->channels[i].flag & HOSTAPD_CHAN_DISABLED)
 				return NOT_ALLOWED;
 			if (mode->channels[i].flag & HOSTAPD_CHAN_NO_IR)
 				return NO_IR;
+			if (mode->channels[i].flag & HOSTAPD_CHAN_RADAR)
+				return RADAR;
 			return ALLOWED;
 		}
 	}
@@ -3650,7 +3651,8 @@ static enum chan_allowed wpas_p2p_verify_80mhz(struct wpa_supplicant *wpa_s,
 						chans, num_chans);
 	if (!center_chan)
 		return NOT_ALLOWED;
-	if (!is_6ghz && center_chan >= 58 && center_chan <= 138)
+	if (!wpa_s->p2p_go_allow_dfs &&
+	    !is_6ghz && center_chan >= 58 && center_chan <= 138)
 		return NOT_ALLOWED; /* Do not allow DFS channels for P2P */
 
 	/* check all the channels are available */
@@ -3661,6 +3663,8 @@ static enum chan_allowed wpas_p2p_verify_80mhz(struct wpa_supplicant *wpa_s,
 				  &flags);
 		if (res == NOT_ALLOWED)
 			return NOT_ALLOWED;
+		if (res == RADAR)
+			ret = RADAR;
 		if (res == NO_IR)
 			ret = NO_IR;
 		if (!is_6ghz) {
@@ -3742,6 +3746,8 @@ static enum chan_allowed wpas_p2p_verify_160mhz(struct wpa_supplicant *wpa_s,
 		if (res == NOT_ALLOWED)
 			return NOT_ALLOWED;
 
+		if (res == RADAR)
+			ret = RADAR;
 		if (res == NO_IR)
 			ret = NO_IR;
 
@@ -3828,6 +3834,8 @@ static enum chan_allowed wpas_p2p_verify_channel(struct wpa_supplicant *wpa_s,
 		return NOT_ALLOWED;
 	if (res == NO_IR || res2 == NO_IR)
 		return NO_IR;
+	if (res == RADAR || res2 == RADAR)
+		return RADAR;
 	return res;
 }
 
@@ -3936,7 +3944,11 @@ int wpas_p2p_get_sec_channel_offset_40mhz(struct wpa_supplicant *wpa_s,
 		u16 ch;
 		int chan = channel;
 
-		if (o->p2p == NO_P2P_SUPP ||
+		/* Allow DFS channels marked as NO_P2P_SUPP to be used with
+		 * driver offloaded DFS. */
+		if ((o->p2p == NO_P2P_SUPP &&
+		     (!is_dfs_global_op_class(o->op_class) ||
+		      !wpa_s->p2p_go_allow_dfs)) ||
 		    (is_6ghz_op_class(o->op_class) &&
 		     wpa_s->conf->p2p_6ghz_disable))
 			continue;
@@ -3959,6 +3971,11 @@ int wpas_p2p_get_sec_channel_offset_40mhz(struct wpa_supplicant *wpa_s,
 					return get_6ghz_sec_channel(channel);
 				return (o->bw == BW40MINUS) ? -1 : 1;
 			}
+			if (ret == RADAR && wpa_s->p2p_go_allow_dfs) {
+				/* Allow RADAR channels used for driver
+				 * offloaded DFS */
+				return (o->bw == BW40MINUS) ? -1 : 1;
+			}
 		}
 	}
 	return 0;
@@ -3971,8 +3988,10 @@ int wpas_p2p_get_vht80_center(struct wpa_supplicant *wpa_s,
 {
 	const u8 *chans;
 	size_t num_chans;
+	enum chan_allowed ret;
 
-	if (!wpas_p2p_verify_channel(wpa_s, mode, op_class, channel, BW80))
+	ret = wpas_p2p_verify_channel(wpa_s, mode, op_class, channel, BW80);
+	if (!(ret == ALLOWED || (ret == RADAR && wpa_s->p2p_go_allow_dfs)))
 		return 0;
 
 	if (is_6ghz_op_class(op_class)) {
@@ -3993,8 +4012,10 @@ int wpas_p2p_get_vht160_center(struct wpa_supplicant *wpa_s,
 {
 	const u8 *chans;
 	size_t num_chans;
+	enum chan_allowed ret;
 
-	if (!wpas_p2p_verify_channel(wpa_s, mode, op_class, channel, BW160))
+	ret = wpas_p2p_verify_channel(wpa_s, mode, op_class, channel, BW160);
+	if (!(ret == ALLOWED || (ret == RADAR && wpa_s->p2p_go_allow_dfs)))
 		return 0;
 	if (is_6ghz_op_class(op_class)) {
 		chans = center_channels_6ghz_160mhz;
@@ -6764,6 +6785,11 @@ wpas_p2p_get_group_iface(struct wpa_supplicant *wpa_s, int addr_allocated,
 		group_wpa_s->p2p_go_do_acs = wpa_s->p2p_go_do_acs;
 		group_wpa_s->p2p_go_acs_band = wpa_s->p2p_go_acs_band;
 		wpa_s->p2p_go_do_acs = 0;
+	}
+
+	if (go && wpa_s->p2p_go_allow_dfs) {
+		group_wpa_s->p2p_go_allow_dfs = wpa_s->p2p_go_allow_dfs;
+		wpa_s->p2p_go_allow_dfs = 0;
 	}
 
 	wpa_dbg(wpa_s, MSG_DEBUG, "P2P: Use separate group interface %s",

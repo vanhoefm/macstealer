@@ -1531,6 +1531,16 @@ int ieee80211_is_dfs(int freq, const struct hostapd_hw_modes *modes,
 }
 
 
+/*
+ * 802.11-2020: Table E-4 - Global operating classes
+ * DFS_50_100_Behavior: 118, 119, 120, 121, 122, 123
+ */
+int is_dfs_global_op_class(u8 op_class)
+{
+    return (op_class >= 118) && (op_class <= 123);
+}
+
+
 static int is_11b(u8 rate)
 {
 	return rate == 0x02 || rate == 0x04 || rate == 0x0b || rate == 0x16;

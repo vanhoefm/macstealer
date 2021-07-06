@@ -1125,6 +1125,7 @@ struct wpa_supplicant {
 	unsigned int p2p_disable_ip_addr_req:1;
 	unsigned int p2ps_method_config_any:1;
 	unsigned int p2p_cli_probe:1;
+	unsigned int p2p_go_allow_dfs:1;
 	enum hostapd_hw_mode p2p_go_acs_band;
 	int p2p_persistent_go_freq;
 	int p2p_persistent_id;
@@ -1675,7 +1676,7 @@ void wpas_update_mbo_connect_params(struct wpa_supplicant *wpa_s);
 
 /* op_classes.c */
 enum chan_allowed {
-	NOT_ALLOWED, NO_IR, ALLOWED
+	NOT_ALLOWED, NO_IR, RADAR, ALLOWED
 };
 
 enum chan_allowed verify_channel(struct hostapd_hw_modes *mode, u8 op_class,

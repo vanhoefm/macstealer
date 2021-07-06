@@ -6931,6 +6931,10 @@ static int p2p_ctrl_group_add(struct wpa_supplicant *wpa_s, char *cmd)
 	if (allow_6ghz && chwidth == 40)
 		max_oper_chwidth = CHANWIDTH_40MHZ_6GHZ;
 
+	/* Allow DFS to be used for Autonomous GO */
+	wpa_s->p2p_go_allow_dfs = !!(wpa_s->drv_flags &
+				     WPA_DRIVER_FLAGS_DFS_OFFLOAD);
+
 	if (group_id >= 0)
 		return p2p_ctrl_group_add_persistent(wpa_s, group_id,
 						     freq, freq2, ht40, vht,
