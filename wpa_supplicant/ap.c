@@ -224,7 +224,8 @@ int wpa_supplicant_conf_ap_ht(struct wpa_supplicant *wpa_s,
 			   "Determining HT/VHT options based on driver capabilities (freq=%u chan=%u)",
 			   ssid->frequency, conf->channel);
 
-		mode = wpa_supplicant_find_hw_mode(wpa_s, conf->hw_mode);
+		mode = get_mode(wpa_s->hw.modes, wpa_s->hw.num_modes,
+				conf->hw_mode, is_6ghz_freq(ssid->frequency));
 
 		/* May drop to IEEE 802.11b if the driver does not support IEEE
 		 * 802.11g */
