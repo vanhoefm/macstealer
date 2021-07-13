@@ -4083,7 +4083,7 @@ static int wpa_driver_nl80211_send_mlme(struct i802_bss *bss, const u8 *data,
 		freq = bss->freq;
 	}
 
-	if (drv->use_monitor) {
+	if (drv->use_monitor && is_ap_interface(drv->nlmode)) {
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: send_frame(freq=%u bss->freq=%u) -> send_monitor",
 			   freq, bss->freq);
