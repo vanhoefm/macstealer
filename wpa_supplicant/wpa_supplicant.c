@@ -3888,7 +3888,7 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 	if (ret < 0) {
 		wpa_msg(wpa_s, MSG_INFO, "Association request to the driver "
 			"failed");
-		if (wpa_s->drv_flags & WPA_DRIVER_FLAGS_SANE_ERROR_CODES) {
+		if (wpa_s->drv_flags & WPA_DRIVER_FLAGS_VALID_ERROR_CODES) {
 			/*
 			 * The driver is known to mean what is saying, so we
 			 * can stop right here; the association will not

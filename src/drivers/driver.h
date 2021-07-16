@@ -1894,11 +1894,11 @@ struct wpa_driver_capa {
  */
 #define WPA_DRIVER_FLAGS_P2P_MGMT_AND_NON_P2P		0x00002000
 /**
- * Driver is known to use sane error codes, i.e., when it indicates that
+ * Driver is known to use valid error codes, i.e., when it indicates that
  * something (e.g., association) fails, there was indeed a failure and the
  * operation does not end up getting completed successfully later.
  */
-#define WPA_DRIVER_FLAGS_SANE_ERROR_CODES		0x00004000
+#define WPA_DRIVER_FLAGS_VALID_ERROR_CODES		0x00004000
 /** Driver supports off-channel TX */
 #define WPA_DRIVER_FLAGS_OFFCHANNEL_TX			0x00008000
 /** Driver indicates TX status events for EAPOL Data frames */
