@@ -916,6 +916,7 @@ struct he_operation {
 	u8 he_twt_required;
 	u8 he_twt_responder;
 	u16 he_rts_threshold;
+	u8 he_er_su_disable;
 	u16 he_basic_mcs_nss_set;
 };
 
