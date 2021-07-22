@@ -164,6 +164,17 @@ wpas_p2p_consider_moving_gos(struct wpa_supplicant *wpa_s,
 static void wpas_p2p_reconsider_moving_go(void *eloop_ctx, void *timeout_ctx);
 
 
+static int wpas_get_6ghz_he_chwidth_capab(struct hostapd_hw_modes *mode)
+{
+	int he_capab = 0;
+
+	if (mode)
+		he_capab = mode->he_capab[WPAS_MODE_INFRA].phy_cap[
+			HE_PHYCAP_CHANNEL_WIDTH_SET_IDX];
+	return he_capab;
+}
+
+
 /*
  * Get the number of concurrent channels that the HW can operate, but that are
  * currently not in use by any of the wpa_supplicant interfaces.
@@ -3652,15 +3663,20 @@ static enum chan_allowed wpas_p2p_verify_80mhz(struct wpa_supplicant *wpa_s,
 			return NOT_ALLOWED;
 		if (res == NO_IR)
 			ret = NO_IR;
-
-		if (i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_70))
+		if (!is_6ghz) {
+			if (i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_70))
+				return NOT_ALLOWED;
+			if (i == 1 && !(flags & HOSTAPD_CHAN_VHT_30_50))
+				return NOT_ALLOWED;
+			if (i == 2 && !(flags & HOSTAPD_CHAN_VHT_50_30))
+				return NOT_ALLOWED;
+			if (i == 3 && !(flags & HOSTAPD_CHAN_VHT_70_10))
+				return NOT_ALLOWED;
+		} else if (is_6ghz &&
+			   (!(wpas_get_6ghz_he_chwidth_capab(mode) &
+			      HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G))) {
 			return NOT_ALLOWED;
-		if (i == 1 && !(flags & HOSTAPD_CHAN_VHT_30_50))
-			return NOT_ALLOWED;
-		if (i == 2 && !(flags & HOSTAPD_CHAN_VHT_50_30))
-			return NOT_ALLOWED;
-		if (i == 3 && !(flags & HOSTAPD_CHAN_VHT_70_10))
-			return NOT_ALLOWED;
+		}
 	}
 
 	return ret;
@@ -3729,22 +3745,28 @@ static enum chan_allowed wpas_p2p_verify_160mhz(struct wpa_supplicant *wpa_s,
 		if (res == NO_IR)
 			ret = NO_IR;
 
-		if (i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_150))
+		if (!is_6ghz_op_class(op_class)) {
+			if (i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_150))
+				return NOT_ALLOWED;
+			if (i == 1 && !(flags & HOSTAPD_CHAN_VHT_30_130))
+				return NOT_ALLOWED;
+			if (i == 2 && !(flags & HOSTAPD_CHAN_VHT_50_110))
+				return NOT_ALLOWED;
+			if (i == 3 && !(flags & HOSTAPD_CHAN_VHT_70_90))
+				return NOT_ALLOWED;
+			if (i == 4 && !(flags & HOSTAPD_CHAN_VHT_90_70))
+				return NOT_ALLOWED;
+			if (i == 5 && !(flags & HOSTAPD_CHAN_VHT_110_50))
+				return NOT_ALLOWED;
+			if (i == 6 && !(flags & HOSTAPD_CHAN_VHT_130_30))
+				return NOT_ALLOWED;
+			if (i == 7 && !(flags & HOSTAPD_CHAN_VHT_150_10))
+				return NOT_ALLOWED;
+		} else if (is_6ghz_op_class(op_class) &&
+			   (!(wpas_get_6ghz_he_chwidth_capab(mode) &
+			      HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G))) {
 			return NOT_ALLOWED;
-		if (i == 1 && !(flags & HOSTAPD_CHAN_VHT_30_130))
-			return NOT_ALLOWED;
-		if (i == 2 && !(flags & HOSTAPD_CHAN_VHT_50_110))
-			return NOT_ALLOWED;
-		if (i == 3 && !(flags & HOSTAPD_CHAN_VHT_70_90))
-			return NOT_ALLOWED;
-		if (i == 4 && !(flags & HOSTAPD_CHAN_VHT_90_70))
-			return NOT_ALLOWED;
-		if (i == 5 && !(flags & HOSTAPD_CHAN_VHT_110_50))
-			return NOT_ALLOWED;
-		if (i == 6 && !(flags & HOSTAPD_CHAN_VHT_130_30))
-			return NOT_ALLOWED;
-		if (i == 7 && !(flags & HOSTAPD_CHAN_VHT_150_10))
-			return NOT_ALLOWED;
+		}
 	}
 
 	return ret;
@@ -3783,6 +3805,15 @@ static enum chan_allowed wpas_p2p_verify_channel(struct wpa_supplicant *wpa_s,
 			return NOT_ALLOWED;
 		res2 = has_channel(wpa_s->global, mode, op_class, channel + 4,
 				   NULL);
+	} else if (is_6ghz_op_class(op_class) && bw == BW40) {
+		if (mode->mode != HOSTAPD_MODE_IEEE80211A)
+			return NOT_ALLOWED;
+		if (get_6ghz_sec_channel(channel) < 0)
+			res2 = has_channel(wpa_s->global, mode, op_class,
+					   channel - 4, NULL);
+		else
+			res2 = has_channel(wpa_s->global, mode, op_class,
+					   channel + 4, NULL);
 	} else if (bw == BW80) {
 		res2 = wpas_p2p_verify_80mhz(wpa_s, mode, op_class, channel,
 					     bw);

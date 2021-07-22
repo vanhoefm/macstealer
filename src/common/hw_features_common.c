@@ -417,7 +417,16 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 	data->sec_channel_offset = sec_channel_offset;
 	data->center_freq1 = freq + sec_channel_offset * 10;
 	data->center_freq2 = 0;
-	data->bandwidth = sec_channel_offset ? 40 : 20;
+	if (oper_chwidth == CHANWIDTH_80MHZ)
+		data->bandwidth = 80;
+	else if (oper_chwidth == CHANWIDTH_160MHZ ||
+		 oper_chwidth == CHANWIDTH_80P80MHZ)
+		data->bandwidth = 160;
+	else if (sec_channel_offset)
+		data->bandwidth = 40;
+	else
+		data->bandwidth = 20;
+
 
 	hostapd_encode_edmg_chan(enable_edmg, edmg_channel, channel,
 				 &data->edmg);
@@ -441,9 +450,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 					   "Segment 0 center frequency isn't set");
 				return -1;
 			}
-
-			data->center_freq1 = data->freq;
-			data->bandwidth = 20;
+			if (!sec_channel_offset)
+				data->center_freq1 = data->freq;
 		} else {
 			int freq1, freq2 = 0;
 			int bw = center_idx_to_bw_6ghz(center_segment0);

@@ -1337,6 +1337,7 @@ struct ieee80211_ampe_ie {
 #define CHANWIDTH_4320MHZ	5
 #define CHANWIDTH_6480MHZ	6
 #define CHANWIDTH_8640MHZ	7
+#define CHANWIDTH_40MHZ_6GHZ	8
 
 #define HE_NSS_MAX_STREAMS			    8
 

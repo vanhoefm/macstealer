@@ -6126,6 +6126,9 @@ static int p2p_ctrl_connect(struct wpa_supplicant *wpa_s, char *cmd,
 	if (max_oper_chwidth < 0)
 		return -1;
 
+	if (allow_6ghz && chwidth == 40)
+		max_oper_chwidth = CHANWIDTH_40MHZ_6GHZ;
+
 	pos2 = os_strstr(pos, " ssid=");
 	if (pos2) {
 		char *end;
@@ -6779,6 +6782,9 @@ static int p2p_ctrl_invite_persistent(struct wpa_supplicant *wpa_s, char *cmd)
 
 	allow_6ghz = os_strstr(cmd, " allow_6ghz") != NULL;
 
+	if (allow_6ghz && chwidth == 40)
+		max_oper_chwidth = CHANWIDTH_40MHZ_6GHZ;
+
 	return wpas_p2p_invite(wpa_s, _peer, ssid, NULL, freq, freq2, ht40, vht,
 			       max_oper_chwidth, pref_freq, he, edmg,
 			       allow_6ghz);
@@ -6921,6 +6927,9 @@ static int p2p_ctrl_group_add(struct wpa_supplicant *wpa_s, char *cmd)
 	max_oper_chwidth = parse_freq(chwidth, freq2);
 	if (max_oper_chwidth < 0)
 		return -1;
+
+	if (allow_6ghz && chwidth == 40)
+		max_oper_chwidth = CHANWIDTH_40MHZ_6GHZ;
 
 	if (group_id >= 0)
 		return p2p_ctrl_group_add_persistent(wpa_s, group_id,
