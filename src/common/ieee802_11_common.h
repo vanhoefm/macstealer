@@ -264,6 +264,7 @@ int center_idx_to_bw_6ghz(u8 idx);
 bool is_6ghz_freq(int freq);
 bool is_6ghz_op_class(u8 op_class);
 bool is_6ghz_psc_frequency(int freq);
+int get_6ghz_sec_channel(int channel);
 
 int ieee802_11_parse_candidate_list(const char *pos, u8 *nei_rep,
 				    size_t nei_rep_len);

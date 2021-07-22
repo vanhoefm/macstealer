@@ -280,8 +280,8 @@ int wpa_supplicant_conf_ap_ht(struct wpa_supplicant *wpa_s,
 			     HT_CAP_INFO_SUPP_CHANNEL_WIDTH_SET) &&
 			    ssid->ht40) {
 				conf->secondary_channel =
-					wpas_p2p_get_ht40_mode(wpa_s, mode,
-							       conf->channel);
+					wpas_p2p_get_sec_channel_offset_40mhz(
+						wpa_s, mode, conf->channel);
 				wpa_printf(MSG_DEBUG,
 					   "HT secondary channel offset %d for P2P group",
 					   conf->secondary_channel);

@@ -2293,6 +2293,30 @@ bool is_6ghz_psc_frequency(int freq)
 }
 
 
+/**
+ * get_6ghz_sec_channel - Get the relative position of the secondary channel
+ * to the primary channel in 6 GHz
+ * @channel: Primary channel to be checked for (in global op class 131)
+ * Returns: 1 = secondary channel above, -1 = secondary channel below
+ */
+
+int get_6ghz_sec_channel(int channel)
+{
+	/*
+	 * In the 6 GHz band, primary channels are numbered as 1, 5, 9, 13.., so
+	 * the 40 MHz channels are formed with the channel pairs as (1,5),
+	 * (9,13), (17,21)..
+	 * The secondary channel for a given primary channel is below the
+	 * primary channel for the channels 5, 13, 21.. and it is above the
+	 * primary channel for the channels 1, 9, 17..
+	 */
+
+	if (((channel - 1) / 4) % 2)
+		return -1;
+	return 1;
+}
+
+
 int ieee802_11_parse_candidate_list(const char *pos, u8 *nei_rep,
 				    size_t nei_rep_len)
 {
