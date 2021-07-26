@@ -8158,6 +8158,24 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BSS_MAX_IDLE_PERIOD_ENABLE = 55,
 
+	/* 8-bit unsigned value to configure the driver/firmware to enable or
+	 * disable Rx control frame to MultiBSS subfield in the HE MAC
+	 * capabilities information field.
+	 * 0 - Disable Rx control frame to MultiBSS subfield
+	 * 1 - Enable Rx control frame to MultiBSS subfield
+	 * This attribute is used to configure the testbed device.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_RX_CTRL_FRAME_TO_MBSS = 56,
+
+	/* 8-bit unsigned value to configure the driver/firmware to enable or
+	 * disable Broadcast TWT support subfield in the HE MAC capabilities
+	 * information field.
+	 * 0 - Disable Broadcast TWT support subfield
+	 * 1 - Enable Broadcast TWT support subfield
+	 * This attribute is used to configure the testbed device.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BCAST_TWT_SUPPORT = 57,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_MAX =
