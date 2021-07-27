@@ -1423,6 +1423,15 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 	}
 #endif /* CONFIG_SAE_PK */
 
+#ifdef CONFIG_FILS
+	if (full_config && bss->fils_discovery_min_int &&
+	    bss->unsol_bcast_probe_resp_interval) {
+		wpa_printf(MSG_ERROR,
+			   "Cannot enable both FILS discovery and unsolicited broadcast Probe Response at the same time");
+		return -1;
+	}
+#endif /* CONFIG_FILS */
+
 	return 0;
 }
 
