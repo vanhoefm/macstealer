@@ -469,6 +469,7 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_IEEE80211AX */
 
+	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
 	buflen += hostapd_mbo_ie_len(hapd);
 	buflen += hostapd_eid_owe_trans_len(hapd);
 	buflen += hostapd_eid_dpp_cc_len(hapd);
@@ -573,6 +574,7 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	    (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax))
 		pos = hostapd_eid_wb_chsw_wrapper(hapd, pos);
 
+	pos = hostapd_eid_rnr(hapd, pos, WLAN_FC_STYPE_PROBE_RESP);
 	pos = hostapd_eid_fils_indic(hapd, pos, 0);
 	pos = hostapd_get_rsnxe(hapd, pos, epos - pos);
 
@@ -1284,6 +1286,8 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
 		total_len += 3;
 	}
 
+	total_len += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_ACTION);
+
 	pos = hostapd_eid_fils_indic(hapd, buf, 0);
 	buf_len = pos - buf;
 	total_len += buf_len;
@@ -1351,6 +1355,8 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
 
 	/* Fill in the Length field value */
 	*length_pos = pos - (length_pos + 1);
+
+	pos = hostapd_eid_rnr(hapd, pos, WLAN_FC_STYPE_ACTION);
 
 	/* FILS Indication element */
 	if (buf_len) {
@@ -1438,6 +1444,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_IEEE80211AX */
 
+	tail_len += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_BEACON);
 	tail_len += hostapd_mbo_ie_len(hapd);
 	tail_len += hostapd_eid_owe_trans_len(hapd);
 	tail_len += hostapd_eid_dpp_cc_len(hapd);
@@ -1562,6 +1569,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 	    (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax))
 		tailpos = hostapd_eid_wb_chsw_wrapper(hapd, tailpos);
 
+	tailpos = hostapd_eid_rnr(hapd, tailpos, WLAN_FC_STYPE_BEACON);
 	tailpos = hostapd_eid_fils_indic(hapd, tailpos, 0);
 	tailpos = hostapd_get_rsnxe(hapd, tailpos, tailend - tailpos);
 
