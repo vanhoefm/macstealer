@@ -1751,7 +1751,7 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
 }
 
 
-int ieee802_11_set_beacon(struct hostapd_data *hapd)
+static int __ieee802_11_set_beacon(struct hostapd_data *hapd)
 {
 	struct wpa_driver_ap_params params;
 	struct hostapd_freq_params freq;
@@ -1837,6 +1837,42 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
 fail:
 	ieee802_11_free_ap_params(&params);
 	return ret;
+}
+
+
+int ieee802_11_set_beacon(struct hostapd_data *hapd)
+{
+	struct hostapd_iface *iface = hapd->iface;
+	int ret;
+	size_t i, j;
+	bool is_6g;
+
+	ret = __ieee802_11_set_beacon(hapd);
+	if (ret != 0)
+		return ret;
+
+	if (!iface->interfaces || iface->interfaces->count <= 1)
+		return 0;
+
+	/* Update Beacon frames in case of 6 GHz colocation */
+	is_6g = is_6ghz_op_class(iface->conf->op_class);
+	for (j = 0; j < iface->interfaces->count; j++) {
+		struct hostapd_iface *colocated;
+
+		colocated = iface->interfaces->iface[j];
+		if (colocated == iface || !colocated || !colocated->conf)
+			continue;
+
+		if (is_6g == is_6ghz_op_class(colocated->conf->op_class))
+			continue;
+
+		for (i = 0; i < colocated->num_bss; i++) {
+			if (colocated->bss[i] && colocated->bss[i]->started)
+				__ieee802_11_set_beacon(colocated->bss[i]);
+		}
+	}
+
+	return 0;
 }
 
 
