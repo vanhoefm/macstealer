@@ -7150,9 +7150,75 @@ static size_t hostapd_eid_rnr_iface_len(struct hostapd_data *hapd,
 }
 
 
+enum colocation_mode {
+	NO_COLOCATED_6GHZ,
+	STANDALONE_6GHZ,
+	COLOCATED_6GHZ,
+	COLOCATED_LOWER_BAND,
+};
+
+static enum colocation_mode get_colocation_mode(struct hostapd_data *hapd)
+{
+	u8 i;
+	bool is_6ghz = is_6ghz_op_class(hapd->iconf->op_class);
+
+	if (!hapd->iface || !hapd->iface->interfaces)
+		return NO_COLOCATED_6GHZ;
+
+	if (is_6ghz && hapd->iface->interfaces->count == 1)
+		return STANDALONE_6GHZ;
+
+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
+		struct hostapd_iface *iface;
+		bool is_colocated_6ghz;
+
+		iface = hapd->iface->interfaces->iface[i];
+		if (iface == hapd->iface || !iface || !iface->conf)
+			continue;
+
+		is_colocated_6ghz = is_6ghz_op_class(iface->conf->op_class);
+		if (!is_6ghz && is_colocated_6ghz)
+			return COLOCATED_LOWER_BAND;
+		if (is_6ghz && !is_colocated_6ghz)
+			return COLOCATED_6GHZ;
+	}
+
+	if (is_6ghz)
+		return STANDALONE_6GHZ;
+
+	return NO_COLOCATED_6GHZ;
+}
+
+
+static size_t hostapd_eid_rnr_colocation_len(struct hostapd_data *hapd,
+					     size_t *current_len)
+{
+	struct hostapd_iface *iface;
+	size_t len = 0;
+	size_t i;
+
+	if (!hapd->iface || !hapd->iface->interfaces)
+		return 0;
+
+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
+		iface = hapd->iface->interfaces->iface[i];
+
+		if (iface == hapd->iface ||
+		    !is_6ghz_op_class(iface->conf->op_class))
+			continue;
+
+		len += hostapd_eid_rnr_iface_len(iface->bss[0], hapd,
+						 current_len);
+	}
+
+	return len;
+}
+
+
 size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type)
 {
 	size_t total_len = 0, current_len = 0;
+	enum colocation_mode mode = get_colocation_mode(hapd);
 
 	switch (type) {
 	case WLAN_FC_STYPE_BEACON:
@@ -7161,7 +7227,17 @@ size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type)
 		/* fallthrough */
 
 	case WLAN_FC_STYPE_PROBE_RESP:
+		if (mode == COLOCATED_LOWER_BAND)
+			total_len += hostapd_eid_rnr_colocation_len(
+				hapd, &current_len);
+
 		if (hapd->conf->rnr && hapd->iface->num_bss > 1)
+			total_len += hostapd_eid_rnr_iface_len(hapd, hapd,
+							       &current_len);
+		break;
+
+	case WLAN_FC_STYPE_ACTION:
+		if (hapd->iface->num_bss > 1 && mode == STANDALONE_6GHZ)
 			total_len += hostapd_eid_rnr_iface_len(hapd, hapd,
 							       &current_len);
 		break;
@@ -7315,10 +7391,35 @@ static u8 * hostapd_eid_rnr_iface(struct hostapd_data *hapd,
 }
 
 
+static u8 * hostapd_eid_rnr_colocation(struct hostapd_data *hapd, u8 *eid,
+				       size_t *current_len)
+{
+	struct hostapd_iface *iface;
+	size_t i;
+
+	if (!hapd->iface || !hapd->iface->interfaces)
+		return eid;
+
+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
+		iface = hapd->iface->interfaces->iface[i];
+
+		if (iface == hapd->iface ||
+		    !is_6ghz_op_class(iface->conf->op_class))
+			continue;
+
+		eid = hostapd_eid_rnr_iface(iface->bss[0], hapd, eid,
+					    current_len);
+	}
+
+	return eid;
+}
+
+
 u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
 {
 	u8 *eid_start = eid;
 	size_t current_len = 0;
+	enum colocation_mode mode = get_colocation_mode(hapd);
 
 	switch (type) {
 	case WLAN_FC_STYPE_BEACON:
@@ -7327,8 +7428,18 @@ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
 		/* fallthrough */
 
 	case WLAN_FC_STYPE_PROBE_RESP:
+		if (mode == COLOCATED_LOWER_BAND)
+			eid = hostapd_eid_rnr_colocation(hapd, eid,
+							 &current_len);
+
 		if (hapd->conf->rnr && hapd->iface->num_bss > 1)
 			eid = hostapd_eid_rnr_iface(hapd, hapd, eid,
+						    &current_len);
+		break;
+
+	case WLAN_FC_STYPE_ACTION:
+		if (hapd->iface->num_bss > 1 && mode == STANDALONE_6GHZ)
+			eid = hostapd_eid_rnr_iface(hapd, hapd,	eid,
 						    &current_len);
 		break;
 
