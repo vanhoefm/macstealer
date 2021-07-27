@@ -644,7 +644,8 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 enum ssid_match_result {
 	NO_SSID_MATCH,
 	EXACT_SSID_MATCH,
-	WILDCARD_SSID_MATCH
+	WILDCARD_SSID_MATCH,
+	CO_LOCATED_SSID_MATCH,
 };
 
 static enum ssid_match_result ssid_match(struct hostapd_data *hapd,
@@ -655,7 +656,9 @@ static enum ssid_match_result ssid_match(struct hostapd_data *hapd,
 					 size_t short_ssid_list_len)
 {
 	const u8 *pos, *end;
+	struct hostapd_iface *iface = hapd->iface;
 	int wildcard = 0;
+	size_t i, j;
 
 	if (ssid_len == 0)
 		wildcard = 1;
@@ -689,7 +692,33 @@ static enum ssid_match_result ssid_match(struct hostapd_data *hapd,
 		}
 	}
 
-	return wildcard ? WILDCARD_SSID_MATCH : NO_SSID_MATCH;
+	if (wildcard)
+		return WILDCARD_SSID_MATCH;
+
+	if (!iface->interfaces || iface->interfaces->count <= 1 ||
+	    is_6ghz_op_class(hapd->iconf->op_class))
+		return NO_SSID_MATCH;
+
+	for (i = 0; i < iface->interfaces->count; i++) {
+		struct hostapd_iface *colocated;
+
+		colocated = iface->interfaces->iface[i];
+
+		if (colocated == iface ||
+		    !is_6ghz_op_class(colocated->conf->op_class))
+			continue;
+
+		for (j = 0; j < colocated->num_bss; j++) {
+			struct hostapd_bss_config *conf;
+
+			conf = colocated->bss[j]->conf;
+			if (ssid_len == conf->ssid.ssid_len &&
+			    os_memcmp(ssid, conf->ssid.ssid, ssid_len) == 0)
+				return CO_LOCATED_SSID_MATCH;
+		}
+	}
+
+	return NO_SSID_MATCH;
 }
 
 
