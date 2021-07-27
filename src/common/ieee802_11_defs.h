@@ -2346,6 +2346,26 @@ struct ieee80211_he_mu_edca_parameter_set {
 /* B7: Reserved if sent by an AP; More Data Ack if sent by a non-AP STA */
 #define HE_QOS_INFO_MORE_DATA_ACK ((u8) (BIT(7)))
 
+/*
+ * IEEE Std 802.11-2020 and IEEE Std 802.11ax-2021
+ * 9.4.2.170 Reduced Neighbor Report element
+ */
+#define RNR_HEADER_LEN                              2
+#define RNR_TBTT_HEADER_LEN                         4
+#define RNR_TBTT_INFO_COUNT(x)                      (((x) & 0xf) << 4)
+#define RNR_TBTT_INFO_COUNT_MAX                     16
+#define RNR_TBTT_INFO_LEN                           13
+#define RNR_NEIGHBOR_AP_OFFSET_UNKNOWN              255
+/* Figure 9-632a - BSS Parameters subfield format */
+#define RNR_BSS_PARAM_OCT_RECOMMENDED               BIT(0)
+#define RNR_BSS_PARAM_SAME_SSID                     BIT(1)
+#define RNR_BSS_PARAM_MULTIPLE_BSSID                BIT(2)
+#define RNR_BSS_PARAM_TRANSMITTED_BSSID             BIT(3)
+#define RNR_BSS_PARAM_MEMBER_CO_LOCATED_ESS         BIT(4)
+#define RNR_BSS_PARAM_UNSOLIC_PROBE_RESP_ACTIVE     BIT(5)
+#define RNR_BSS_PARAM_CO_LOCATED                    BIT(6)
+#define RNR_20_MHZ_PSD_MAX_TXPOWER                  255 /* dBm */
+
 /* IEEE P802.11ay/D4.0, 9.4.2.251 - EDMG Operation element */
 #define EDMG_BSS_OPERATING_CHANNELS_OFFSET	6
 #define EDMG_OPERATING_CHANNEL_WIDTH_OFFSET	7
