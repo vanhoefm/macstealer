@@ -894,6 +894,8 @@ struct hostapd_bss_config {
 
 	u8 ext_capa_mask[EXT_CAPA_MAX_LEN];
 	u8 ext_capa[EXT_CAPA_MAX_LEN];
+
+	u8 rnr;
 };
 
 /**

@@ -4712,6 +4712,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		if (get_hex_config(bss->ext_capa, EXT_CAPA_MAX_LEN,
 				   line, "ext_capa", pos))
 			return 1;
+	} else if (os_strcmp(buf, "rnr") == 0) {
+		bss->rnr = atoi(pos);
 	} else {
 		wpa_printf(MSG_ERROR,
 			   "Line %d: unknown configuration item '%s'",
