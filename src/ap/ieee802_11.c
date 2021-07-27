@@ -7071,4 +7071,129 @@ u8 * hostapd_eid_wb_chsw_wrapper(struct hostapd_data *hapd, u8 *eid)
 	return eid;
 }
 
+
+static size_t hostapd_eid_nr_db_len(struct hostapd_data *hapd,
+				    size_t *current_len)
+{
+	struct hostapd_neighbor_entry *nr;
+	size_t total_len = 0, len = *current_len;
+
+	dl_list_for_each(nr, &hapd->nr_db, struct hostapd_neighbor_entry,
+			 list) {
+		if (!nr->nr || wpabuf_len(nr->nr) < 12)
+			continue;
+
+		if (nr->short_ssid == hapd->conf->ssid.short_ssid)
+			continue;
+
+		/* Start a new element */
+		if (!len ||
+		    len + RNR_TBTT_HEADER_LEN + RNR_TBTT_INFO_LEN > 255) {
+			len = RNR_HEADER_LEN;
+			total_len += RNR_HEADER_LEN;
+		}
+
+		len += RNR_TBTT_HEADER_LEN + RNR_TBTT_INFO_LEN;
+		total_len += RNR_TBTT_HEADER_LEN + RNR_TBTT_INFO_LEN;
+	}
+
+	*current_len = len;
+	return total_len;
+}
+
+
+size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type)
+{
+	size_t total_len = 0, current_len = 0;
+
+	switch (type) {
+	case WLAN_FC_STYPE_BEACON:
+		if (hapd->conf->rnr)
+			total_len += hostapd_eid_nr_db_len(hapd, &current_len);
+		break;
+
+	default:
+		break;
+	}
+
+	return total_len;
+}
+
+
+static u8 * hostapd_eid_nr_db(struct hostapd_data *hapd, u8 *eid,
+			      size_t *current_len)
+{
+	struct hostapd_neighbor_entry *nr;
+	size_t len = *current_len;
+	u8 *size_offset = (eid - len) + 1;
+
+	dl_list_for_each(nr, &hapd->nr_db, struct hostapd_neighbor_entry,
+			 list) {
+		if (!nr->nr || wpabuf_len(nr->nr) < 12)
+			continue;
+
+		if (nr->short_ssid == hapd->conf->ssid.short_ssid)
+			continue;
+
+		/* Start a new element */
+		if (!len ||
+		    len + RNR_TBTT_HEADER_LEN + RNR_TBTT_INFO_LEN > 255) {
+			*eid++ = WLAN_EID_REDUCED_NEIGHBOR_REPORT;
+			size_offset = eid++;
+			len = RNR_HEADER_LEN;
+		}
+
+		/* TBTT Information Header subfield (2 octets) */
+		*eid++ = 0;
+		/* TBTT Information Length */
+		*eid++ = RNR_TBTT_INFO_LEN;
+		/* Operating Class */
+		*eid++ = wpabuf_head_u8(nr->nr)[10];
+		/* Channel Number */
+		*eid++ = wpabuf_head_u8(nr->nr)[11];
+		len += RNR_TBTT_HEADER_LEN;
+		/* TBTT Information Set */
+		/* TBTT Information field */
+		/* Neighbor AP TBTT Offset */
+		*eid++ = RNR_NEIGHBOR_AP_OFFSET_UNKNOWN;
+		/* BSSID */
+		os_memcpy(eid, nr->bssid, ETH_ALEN);
+		eid += ETH_ALEN;
+		/* Short SSID */
+		os_memcpy(eid, &nr->short_ssid, 4);
+		eid += 4;
+		/* BSS parameters */
+		*eid++ = nr->bss_parameters;
+		/* 20 MHz PSD */
+		*eid++ = RNR_20_MHZ_PSD_MAX_TXPOWER - 1;
+		len += RNR_TBTT_INFO_LEN;
+		*size_offset = (eid - size_offset) - 1;
+	}
+
+	*current_len = len;
+	return eid;
+}
+
+
+u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
+{
+	u8 *eid_start = eid;
+	size_t current_len = 0;
+
+	switch (type) {
+	case WLAN_FC_STYPE_BEACON:
+		if (hapd->conf->rnr)
+			eid = hostapd_eid_nr_db(hapd, eid, &current_len);
+		break;
+
+	default:
+		return eid_start;
+	}
+
+	if (eid == eid_start + 2)
+		return eid_start;
+
+	return eid;
+}
+
 #endif /* CONFIG_NATIVE_WINDOWS */
