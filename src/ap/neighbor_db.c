@@ -121,7 +121,8 @@ hostapd_neighbor_add(struct hostapd_data *hapd)
 int hostapd_neighbor_set(struct hostapd_data *hapd, const u8 *bssid,
 			 const struct wpa_ssid_value *ssid,
 			 const struct wpabuf *nr, const struct wpabuf *lci,
-			 const struct wpabuf *civic, int stationary)
+			 const struct wpabuf *civic, int stationary,
+			 u8 bss_parameters)
 {
 	struct hostapd_neighbor_entry *entry;
 
@@ -154,6 +155,7 @@ int hostapd_neighbor_set(struct hostapd_data *hapd, const u8 *bssid,
 	}
 
 	entry->stationary = stationary;
+	entry->bss_parameters = bss_parameters;
 
 	return 0;
 
@@ -313,7 +315,7 @@ void hostapd_neighbor_set_own_report(struct hostapd_data *hapd)
 	wpabuf_put_u8(nr, center_freq2_idx);
 
 	hostapd_neighbor_set(hapd, hapd->own_addr, &ssid, nr, hapd->iconf->lci,
-			     hapd->iconf->civic, hapd->iconf->stationary_ap);
+			     hapd->iconf->civic, hapd->iconf->stationary_ap, 0);
 
 	wpabuf_free(nr);
 #endif /* NEED_AP_MLME */

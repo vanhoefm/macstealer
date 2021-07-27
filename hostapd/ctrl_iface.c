@@ -3191,6 +3191,7 @@ static int hostapd_ctrl_iface_set_neighbor(struct hostapd_data *hapd, char *buf)
 	u8 bssid[ETH_ALEN];
 	struct wpabuf *nr, *lci = NULL, *civic = NULL;
 	int stationary = 0;
+	int bss_parameters = 0;
 	char *tmp;
 	int ret;
 
@@ -3275,9 +3276,22 @@ static int hostapd_ctrl_iface_set_neighbor(struct hostapd_data *hapd, char *buf)
 	if (os_strstr(buf, "stat"))
 		stationary = 1;
 
+	tmp = os_strstr(buf, "bss_parameter=");
+	if (tmp) {
+		bss_parameters = atoi(tmp + 14);
+		if (bss_parameters < 0 || bss_parameters > 0xff) {
+			wpa_printf(MSG_ERROR,
+				   "CTRL: SET_NEIGHBOR: Bad bss_parameters subelement");
+			wpabuf_free(nr);
+			wpabuf_free(lci);
+			wpabuf_free(civic);
+			return -1;
+		}
+	}
+
 set:
 	ret = hostapd_neighbor_set(hapd, bssid, &ssid, nr, lci, civic,
-				   stationary);
+				   stationary, bss_parameters);
 
 	wpabuf_free(nr);
 	wpabuf_free(lci);
