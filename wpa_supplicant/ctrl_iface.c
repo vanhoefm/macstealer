@@ -12055,6 +12055,9 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	} else if (os_strcmp(buf, "STOP_AP") == 0) {
 		if (wpas_ap_stop_ap(wpa_s))
 			reply_len = -1;
+	} else if (os_strcmp(buf, "UPDATE_BEACON") == 0) {
+		if (wpas_ap_update_beacon(wpa_s))
+			reply_len = -1;
 #endif /* CONFIG_AP */
 	} else if (os_strcmp(buf, "SUSPEND") == 0) {
 		wpas_notify_suspend(wpa_s->global);

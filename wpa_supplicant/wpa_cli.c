@@ -499,6 +499,7 @@ static char ** wpa_cli_complete_set(const char *str, int pos)
 		"p2p_search_delay", "mac_addr", "rand_addr_lifetime",
 		"preassoc_mac_addr", "key_mgmt_offload", "passive_scan",
 		"reassoc_same_bss_optim", "wps_priority",
+		"ap_assocresp_elements",
 #ifdef CONFIG_TESTING_OPTIONS
 		"ignore_auth_resp",
 #endif /* CONFIG_TESTING_OPTIONS */
@@ -2037,6 +2038,13 @@ static int wpa_cli_cmd_chanswitch(struct wpa_ctrl *ctrl, int argc,
 	return wpa_cli_cmd(ctrl, "CHAN_SWITCH", 2, argc, argv);
 }
 
+
+static int wpa_cli_cmd_update_beacon(struct wpa_ctrl *ctrl, int argc,
+				     char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "UPDATE_BEACON");
+}
+
 #endif /* CONFIG_AP */
 
 
@@ -3563,6 +3571,9 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]"
 	  " [center_freq2=] [bandwidth=] [blocktx] [ht|vht]"
 	  " = CSA parameters" },
+	{ "update_beacon", wpa_cli_cmd_update_beacon, NULL,
+	  cli_cmd_flag_none,
+	  "= update Beacon frame contents"},
 #endif /* CONFIG_AP */
 	{ "suspend", wpa_cli_cmd_suspend, NULL, cli_cmd_flag_none,
 	  "= notification of suspend/hibernate" },

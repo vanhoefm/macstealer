@@ -2951,6 +2951,7 @@ void wpa_config_free(struct wpa_config *config)
 	os_free(config->ext_password_backend);
 	os_free(config->sae_groups);
 	wpabuf_free(config->ap_vendor_elements);
+	wpabuf_free(config->ap_assocresp_elements);
 	os_free(config->osu_dir);
 	os_free(config->bgscan);
 	os_free(config->wowlan_triggers);
@@ -4913,9 +4914,9 @@ static int wpa_config_process_ap_vendor_elements(
 	u8 *p;
 
 	if (!len) {
-		wpa_printf(MSG_ERROR, "Line %d: invalid ap_vendor_elements",
-			   line);
-		return -1;
+		wpabuf_free(config->ap_vendor_elements);
+		config->ap_vendor_elements = NULL;
+		return 0;
 	}
 
 	tmp = wpabuf_alloc(len);
@@ -4936,6 +4937,31 @@ static int wpa_config_process_ap_vendor_elements(
 			   "ap_vendor_elements");
 		return -1;
 	}
+
+	return 0;
+}
+
+
+static int wpa_config_process_ap_assocresp_elements(
+	const struct global_parse_data *data,
+	struct wpa_config *config, int line, const char *pos)
+{
+	struct wpabuf *tmp;
+
+	if (!*pos) {
+		wpabuf_free(config->ap_assocresp_elements);
+		config->ap_assocresp_elements = NULL;
+		return 0;
+	}
+
+	tmp = wpabuf_parse_bin(pos);
+	if (!tmp) {
+		wpa_printf(MSG_ERROR, "Line %d: invalid ap_assocresp_elements",
+			   line);
+		return -1;
+	}
+	wpabuf_free(config->ap_assocresp_elements);
+	config->ap_assocresp_elements = tmp;
 
 	return 0;
 }
@@ -5155,6 +5181,7 @@ static const struct global_parse_data global_fields[] = {
 	{ INT_RANGE(sae_pmkid_in_assoc, 0, 1), 0 },
 	{ INT(dtim_period), 0 },
 	{ INT(beacon_int), 0 },
+	{ FUNC(ap_assocresp_elements), 0 },
 	{ FUNC(ap_vendor_elements), 0 },
 	{ INT_RANGE(ignore_old_scan_res, 0, 1), 0 },
 	{ FUNC(freq_list), 0 },

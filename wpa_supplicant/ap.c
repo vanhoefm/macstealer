@@ -763,6 +763,10 @@ no_wps:
 		bss->vendor_elements =
 			wpabuf_dup(wpa_s->conf->ap_vendor_elements);
 	}
+	if (wpa_s->conf->ap_assocresp_elements) {
+		bss->assocresp_elements =
+			wpabuf_dup(wpa_s->conf->ap_assocresp_elements);
+	}
 
 	bss->ftm_responder = wpa_s->conf->ftm_responder;
 	bss->ftm_initiator = wpa_s->conf->ftm_initiator;
@@ -1812,6 +1816,32 @@ int wpas_ap_pmksa_cache_add_external(struct wpa_supplicant *wpa_s, char *cmd)
 
 #endif /* CONFIG_MESH */
 #endif /* CONFIG_PMKSA_CACHE_EXTERNAL */
+
+
+int wpas_ap_update_beacon(struct wpa_supplicant *wpa_s)
+{
+	struct hostapd_data *hapd;
+
+	if (!wpa_s->ap_iface)
+		return -1;
+	hapd = wpa_s->ap_iface->bss[0];
+
+	wpabuf_free(hapd->conf->assocresp_elements);
+	hapd->conf->assocresp_elements = NULL;
+	if (wpa_s->conf->ap_assocresp_elements) {
+		hapd->conf->assocresp_elements =
+			wpabuf_dup(wpa_s->conf->ap_assocresp_elements);
+	}
+
+	wpabuf_free(hapd->conf->vendor_elements);
+	hapd->conf->vendor_elements = NULL;
+	if (wpa_s->conf->ap_vendor_elements) {
+		hapd->conf->vendor_elements =
+			wpabuf_dup(wpa_s->conf->ap_vendor_elements);
+	}
+
+	return ieee802_11_set_beacon(hapd);
+}
 
 #endif /* CONFIG_CTRL_IFACE */
 
