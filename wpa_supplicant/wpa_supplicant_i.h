@@ -1515,6 +1515,8 @@ struct wpa_supplicant {
 	bool ongoing_scs_req;
 	u8 dscp_req_dialog_token;
 	unsigned int enable_dscp_policy_capa:1;
+	unsigned int connection_dscp:1;
+	unsigned int wait_for_dscp_req:1;
 };
 
 
@@ -1861,6 +1863,8 @@ void wpas_handle_qos_mgmt_recv_action(struct wpa_supplicant *wpa_s,
 void wpas_dscp_deinit(struct wpa_supplicant *wpa_s);
 int wpas_send_dscp_response(struct wpa_supplicant *wpa_s,
 			    struct dscp_resp_data *resp_data);
+void wpas_handle_assoc_resp_qos_mgmt(struct wpa_supplicant *wpa_s,
+				     const u8 *ies, size_t ies_len);
 
 int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
 			 const u8 *bssid, int akmp, int cipher,

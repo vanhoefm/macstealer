@@ -1136,6 +1136,17 @@ is as shown below:
 - External applications shall clear active DSCP policies upon receiving
   "CTRL-EVENT-DISCONNECTED" or "CTRL-EVENT-DSCP-POLICY clear_all" events.
 
+- Control interface event message format to indicate wpa_supplicant started
+  a timer to wait until the unsolicited DSCP request from the AP.
+
+  <3>CTRL-EVENT-DSCP-POLICY request_wait start
+
+- Control interface event message format to indicate timeout to receive the
+  unsolicited DSCP request. This event is expected only when an unsolicited
+  DSCP request is not received from the AP before timeout.
+
+  <3>CTRL-EVENT-DSCP-POLICY request_wait end
+
 DSCP Response:
 A QoS Management STA that enables DSCP Policy capability shall respond
 with DSCP response on receipt of a successful DSCP request from its

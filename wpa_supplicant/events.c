@@ -2977,6 +2977,9 @@ no_pfs:
 
 	wpa_s->assoc_freq = data->assoc_info.freq;
 
+	wpas_handle_assoc_resp_qos_mgmt(wpa_s, data->assoc_info.resp_ies,
+					data->assoc_info.resp_ies_len);
+
 	return 0;
 }
 

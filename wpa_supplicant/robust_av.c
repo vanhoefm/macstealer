@@ -17,6 +17,7 @@
 
 
 #define SCS_RESP_TIMEOUT 1
+#define DSCP_REQ_TIMEOUT 5
 
 
 void wpas_populate_mscs_descriptor_ie(struct robust_av_data *robust_av,
@@ -547,6 +548,48 @@ void wpas_handle_assoc_resp_mscs(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_MSCS_RESULT "bssid=" MACSTR
 		" status_code=%u", MAC2STR(bssid), status);
 	wpa_s->mscs_setup_done = status == WLAN_STATUS_SUCCESS;
+}
+
+
+static void wpas_wait_for_dscp_req_timer(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+
+	/* Once timeout is over, reset wait flag and allow sending DSCP query */
+	wpa_printf(MSG_DEBUG,
+		   "QM: Wait time over for sending DSCP request - allow DSCP query");
+	wpa_s->wait_for_dscp_req = 0;
+	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_DSCP_POLICY "request_wait end");
+}
+
+
+void wpas_handle_assoc_resp_qos_mgmt(struct wpa_supplicant *wpa_s,
+				     const u8 *ies, size_t ies_len)
+{
+	const u8 *wfa_capa;
+
+	wpa_s->connection_dscp = 0;
+	if (wpa_s->wait_for_dscp_req)
+		eloop_cancel_timeout(wpas_wait_for_dscp_req_timer, wpa_s, NULL);
+
+	if (!ies || ies_len == 0 || !wpa_s->enable_dscp_policy_capa)
+		return;
+
+	wfa_capa = get_vendor_ie(ies, ies_len, WFA_CAPA_IE_VENDOR_TYPE);
+	if (!wfa_capa || wfa_capa[1] < 6 || wfa_capa[6] < 1 ||
+	    !(wfa_capa[7] & WFA_CAPA_QM_DSCP_POLICY))
+		return; /* AP does not enable QM DSCP Policy */
+
+	wpa_s->connection_dscp = 1;
+	wpa_s->wait_for_dscp_req = !!(wfa_capa[7] &
+				      WFA_CAPA_QM_UNSOLIC_DSCP);
+	if (!wpa_s->wait_for_dscp_req)
+		return;
+
+	/* Register a timeout after which dscp query can be sent to AP. */
+	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_DSCP_POLICY "request_wait start");
+	eloop_register_timeout(DSCP_REQ_TIMEOUT, 0,
+			       wpas_wait_for_dscp_req_timer, wpa_s, NULL);
 }
 
 
@@ -1116,6 +1159,11 @@ void wpas_dscp_deinit(struct wpa_supplicant *wpa_s)
 	wpa_printf(MSG_DEBUG, "QM: Clear all active DSCP policies");
 	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_DSCP_POLICY "clear_all");
 	wpa_s->dscp_req_dialog_token = 0;
+	wpa_s->connection_dscp = 0;
+	if (wpa_s->wait_for_dscp_req) {
+		wpa_s->wait_for_dscp_req = 0;
+		eloop_cancel_timeout(wpas_wait_for_dscp_req_timer, wpa_s, NULL);
+	}
 }
 
 
@@ -1194,6 +1242,12 @@ void wpas_handle_qos_mgmt_recv_action(struct wpa_supplicant *wpa_s,
 		return;
 	}
 
+	if (!wpa_s->connection_dscp) {
+		 wpa_printf(MSG_DEBUG,
+			    "QM: DSCP Policy capability not enabled for the current association - ignore QoS Management Action frames");
+		return;
+	}
+
 	if (len < 1)
 		return;
 
@@ -1209,6 +1263,12 @@ void wpas_handle_qos_mgmt_recv_action(struct wpa_supplicant *wpa_s,
 			   "Received QoS Management DSCP Policy Request frame with invalid length %zu",
 			   len);
 		return;
+	}
+
+	/* Clear wait_for_dscp_req on receiving first DSCP request from AP */
+	if (wpa_s->wait_for_dscp_req) {
+		wpa_s->wait_for_dscp_req = 0;
+		eloop_cancel_timeout(wpas_wait_for_dscp_req_timer, wpa_s, NULL);
 	}
 
 	wpa_s->dscp_req_dialog_token = buf[1];
@@ -1287,6 +1347,13 @@ int wpas_send_dscp_response(struct wpa_supplicant *wpa_s,
 	if (resp_data->solicited && !wpa_s->dscp_req_dialog_token) {
 		wpa_printf(MSG_ERROR, "QM: No ongoing DSCP request");
 		return -1;
+	}
+
+	if (!wpa_s->connection_dscp) {
+		wpa_printf(MSG_ERROR,
+			   "QM: Failed to send DSCP response - DSCP capability not enabled for the current association");
+		return -1;
+
 	}
 
 	buf_len = 1 +	/* Category */
