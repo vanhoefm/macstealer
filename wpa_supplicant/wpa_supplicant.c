@@ -2220,9 +2220,11 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 	} else {
 #ifdef CONFIG_SAE
 		wpa_s_clear_sae_rejected(wpa_s);
-		wpa_s_setup_sae_pt(wpa_s->conf, ssid);
 #endif /* CONFIG_SAE */
 	}
+#ifdef CONFIG_SAE
+	wpa_s_setup_sae_pt(wpa_s->conf, ssid);
+#endif /* CONFIG_SAE */
 
 	if (rand_style > 0 && !wpa_s->reassoc_same_ess) {
 		if (wpas_update_random_addr(wpa_s, rand_style) < 0)
