@@ -6268,34 +6268,26 @@ static void wpas_p2p_select_go_freq_no_pref(struct wpa_supplicant *wpa_s,
 	/* try all channels in operating class 115 */
 	for (i = 0; i < 4; i++) {
 		params->freq = 5180 + i * 20;
-		if (!wpas_p2p_disallowed_freq(wpa_s->global, params->freq) &&
-		    freq_included(wpa_s, channels, params->freq) &&
-		    p2p_supported_freq(wpa_s->global->p2p, params->freq))
+		if (wpas_p2p_supported_freq_go(wpa_s, channels, params->freq))
 			goto out;
 	}
 
 	/* try all channels in operating class 124 */
 	for (i = 0; i < 4; i++) {
 		params->freq = 5745 + i * 20;
-		if (!wpas_p2p_disallowed_freq(wpa_s->global, params->freq) &&
-		    freq_included(wpa_s, channels, params->freq) &&
-		    p2p_supported_freq(wpa_s->global->p2p, params->freq))
+		if (wpas_p2p_supported_freq_go(wpa_s, channels, params->freq))
 			goto out;
 	}
 
 	/* try social channel class 180 channel 2 */
 	params->freq = 58320 + 1 * 2160;
-	if (!wpas_p2p_disallowed_freq(wpa_s->global, params->freq) &&
-	    freq_included(wpa_s, channels, params->freq) &&
-	    p2p_supported_freq(wpa_s->global->p2p, params->freq))
+	if (wpas_p2p_supported_freq_go(wpa_s, channels, params->freq))
 		goto out;
 
 	/* try all channels in reg. class 180 */
 	for (i = 0; i < 4; i++) {
 		params->freq = 58320 + i * 2160;
-		if (!wpas_p2p_disallowed_freq(wpa_s->global, params->freq) &&
-		    freq_included(wpa_s, channels, params->freq) &&
-		    p2p_supported_freq(wpa_s->global->p2p, params->freq))
+		if (wpas_p2p_supported_freq_go(wpa_s, channels, params->freq))
 			goto out;
 	}
 
