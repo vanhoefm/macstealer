@@ -2151,6 +2151,7 @@ struct hostapd_data;
 #define STA_DRV_DATA_TX_SHORT_GI BIT(6)
 #define STA_DRV_DATA_RX_SHORT_GI BIT(7)
 #define STA_DRV_DATA_LAST_ACK_RSSI BIT(8)
+#define STA_DRV_DATA_CONN_TIME BIT(9)
 
 struct hostap_sta_driver_data {
 	unsigned long rx_packets, tx_packets;
@@ -2160,6 +2161,7 @@ struct hostap_sta_driver_data {
 	unsigned long current_tx_rate;
 	unsigned long current_rx_rate;
 	unsigned long inactive_msec;
+	unsigned long connected_sec;
 	unsigned long flags; /* bitfield of STA_DRV_DATA_* */
 	unsigned long num_ps_buf_frames;
 	unsigned long tx_retry_failed;

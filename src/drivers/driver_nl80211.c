@@ -7035,6 +7035,7 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 		[NL80211_STA_INFO_ACK_SIGNAL] = { .type = NLA_U8 },
 		[NL80211_STA_INFO_RX_DURATION] = { .type = NLA_U64 },
 		[NL80211_STA_INFO_TX_DURATION] = { .type = NLA_U64 },
+		[NL80211_STA_INFO_CONNECTED_TIME] = { .type = NLA_U32 },
 	};
 	struct nlattr *rate[NL80211_RATE_INFO_MAX + 1];
 	static struct nla_policy rate_policy[NL80211_RATE_INFO_MAX + 1] = {
@@ -7107,6 +7108,12 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 		data->last_ack_rssi =
 			nla_get_u8(stats[NL80211_STA_INFO_ACK_SIGNAL]);
 		data->flags |= STA_DRV_DATA_LAST_ACK_RSSI;
+	}
+
+	if (stats[NL80211_STA_INFO_CONNECTED_TIME]) {
+		data->connected_sec =
+			nla_get_u32(stats[NL80211_STA_INFO_CONNECTED_TIME]);
+		data->flags |= STA_DRV_DATA_CONN_TIME;
 	}
 
 	if (stats[NL80211_STA_INFO_TX_BITRATE] &&
