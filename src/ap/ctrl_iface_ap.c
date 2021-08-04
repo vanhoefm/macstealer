@@ -76,9 +76,9 @@ static int hostapd_get_sta_conn_time(struct sta_info *sta,
 }
 
 
-static int hostapd_get_sta_tx_rx(struct hostapd_data *hapd,
-				 struct sta_info *sta,
-				 char *buf, size_t buflen)
+static int hostapd_get_sta_info(struct hostapd_data *hapd,
+				struct sta_info *sta,
+				char *buf, size_t buflen)
 {
 	struct hostap_sta_driver_data data;
 	int ret;
@@ -272,7 +272,7 @@ static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
 	if (res >= 0)
 		len += res;
 
-	len += hostapd_get_sta_tx_rx(hapd, sta, buf + len, buflen - len);
+	len += hostapd_get_sta_info(hapd, sta, buf + len, buflen - len);
 
 #ifdef CONFIG_SAE
 	if (sta->sae && sta->sae->state == SAE_ACCEPTED) {
