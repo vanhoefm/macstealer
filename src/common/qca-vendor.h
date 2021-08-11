@@ -6289,6 +6289,14 @@ enum qca_wlan_vendor_attr_spectral_scan {
 	 * u32 attribute.
 	 */
 	QCA_WLAN_VENDOR_ATTR_SPECTRAL_SCAN_CONFIG_FREQUENCY_2 = 29,
+	/* This attribute specifies the bandwidth to be used for spectral scan
+	 * operation. This is an u8 attribute and uses the values in enum
+	 * nl80211_chan_width. This is an optional attribute.
+	 * If this attribute is not populated, the driver should configure the
+	 * spectral scan bandwidth to the maximum value supported by the target
+	 * for the current operating bandwidth.
+	 */
+	QCA_WLAN_VENDOR_ATTR_SPECTRAL_SCAN_CONFIG_BANDWIDTH = 30,
 
 	QCA_WLAN_VENDOR_ATTR_SPECTRAL_SCAN_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_SPECTRAL_SCAN_CONFIG_MAX =
