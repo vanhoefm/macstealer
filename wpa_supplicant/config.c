@@ -3140,6 +3140,7 @@ void wpa_config_set_network_defaults(struct wpa_ssid *ssid)
 #endif /* CONFIG_VHT_OVERRIDES */
 	ssid->proactive_key_caching = -1;
 	ssid->ieee80211w = MGMT_FRAME_PROTECTION_DEFAULT;
+	ssid->sae_pwe = DEFAULT_SAE_PWE;
 #ifdef CONFIG_MACSEC
 	ssid->mka_priority = DEFAULT_PRIO_NOT_KEY_SERVER;
 #endif /* CONFIG_MACSEC */
