@@ -248,8 +248,8 @@ int rc4_skip(const u8 *key, size_t keylen, size_t skip,
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (!ctx ||
-	    !EVP_CIPHER_CTX_set_padding(ctx, 0) ||
 	    !EVP_CipherInit_ex(ctx, EVP_rc4(), NULL, NULL, NULL, 1) ||
+	    !EVP_CIPHER_CTX_set_padding(ctx, 0) ||
 	    !EVP_CIPHER_CTX_set_key_length(ctx, keylen) ||
 	    !EVP_CipherInit_ex(ctx, NULL, NULL, key, NULL, 1))
 		goto out;
@@ -709,8 +709,8 @@ struct crypto_cipher * crypto_cipher_init(enum crypto_cipher_alg alg,
 	}
 
 	if (!(ctx->enc = EVP_CIPHER_CTX_new()) ||
-	    !EVP_CIPHER_CTX_set_padding(ctx->enc, 0) ||
 	    !EVP_EncryptInit_ex(ctx->enc, cipher, NULL, NULL, NULL) ||
+	    !EVP_CIPHER_CTX_set_padding(ctx->enc, 0) ||
 	    !EVP_CIPHER_CTX_set_key_length(ctx->enc, key_len) ||
 	    !EVP_EncryptInit_ex(ctx->enc, NULL, NULL, key, iv)) {
 		if (ctx->enc)
@@ -720,8 +720,8 @@ struct crypto_cipher * crypto_cipher_init(enum crypto_cipher_alg alg,
 	}
 
 	if (!(ctx->dec = EVP_CIPHER_CTX_new()) ||
-	    !EVP_CIPHER_CTX_set_padding(ctx->dec, 0) ||
 	    !EVP_DecryptInit_ex(ctx->dec, cipher, NULL, NULL, NULL) ||
+	    !EVP_CIPHER_CTX_set_padding(ctx->dec, 0) ||
 	    !EVP_CIPHER_CTX_set_key_length(ctx->dec, key_len) ||
 	    !EVP_DecryptInit_ex(ctx->dec, NULL, NULL, key, iv)) {
 		EVP_CIPHER_CTX_free(ctx->enc);
