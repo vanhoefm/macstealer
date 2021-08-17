@@ -206,8 +206,8 @@ int md4_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 int des_encrypt(const u8 *clear, const u8 *key, u8 *cypher)
 {
 	u8 pkey[8], next, tmp;
-	int i;
-	DES_key_schedule ks;
+	int i, plen, ret = -1;
+	EVP_CIPHER_CTX *ctx;
 
 	/* Add parity bits to the key */
 	next = 0;
@@ -218,10 +218,19 @@ int des_encrypt(const u8 *clear, const u8 *key, u8 *cypher)
 	}
 	pkey[i] = next | 1;
 
-	DES_set_key((DES_cblock *) &pkey, &ks);
-	DES_ecb_encrypt((DES_cblock *) clear, (DES_cblock *) cypher, &ks,
-			DES_ENCRYPT);
-	return 0;
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx &&
+	    EVP_EncryptInit_ex(ctx, EVP_des_ecb(), NULL, pkey, NULL) == 1 &&
+	    EVP_CIPHER_CTX_set_padding(ctx, 0) == 1 &&
+	    EVP_EncryptUpdate(ctx, cypher, &plen, clear, 8) == 1 &&
+	    EVP_EncryptFinal_ex(ctx, &cypher[plen], &plen) == 1)
+		ret = 0;
+	else
+		wpa_printf(MSG_ERROR, "OpenSSL: DES encrypt failed");
+
+	if (ctx)
+		EVP_CIPHER_CTX_free(ctx);
+	return ret;
 }
 
 
