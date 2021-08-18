@@ -8724,6 +8724,13 @@ enum qca_wlan_twt_setup_state {
  * indicates that the Broadcast TWT SPs are present until explicitly terminated.
  * This parameter is used for
  * 1. TWT SET Request
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RESPONDER_PM_MODE: Optional (u8)
+ * This attribute contains the value of the Responder PM Mode subfield (0 or 1)
+ * from TWT response frame.
+ * This parameter is used for
+ * 1. TWT SET Response
+ * 2. TWT GET Response
  */
 enum qca_wlan_vendor_attr_twt_setup {
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_INVALID = 0,
@@ -8756,6 +8763,8 @@ enum qca_wlan_vendor_attr_twt_setup {
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_BCAST_ID = 22,
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_BCAST_RECOMMENDATION = 23,
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_BCAST_PERSISTENCE = 24,
+
+	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RESPONDER_PM_MODE = 25,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_AFTER_LAST,
