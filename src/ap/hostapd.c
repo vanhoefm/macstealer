@@ -3482,6 +3482,7 @@ static int hostapd_change_config_freq(struct hostapd_data *hapd,
 
 	conf->channel = channel;
 	conf->ieee80211n = params->ht_enabled;
+	conf->ieee80211ac = params->vht_enabled;
 	conf->secondary_channel = params->sec_channel_offset;
 	ieee80211_freq_to_chan(params->center_freq1,
 			       &seg0);
