@@ -11243,11 +11243,11 @@ enum qca_wlan_vendor_attr_radar_history {
  *	%QCA_WLAN_VENDOR_ATTR_MDNS_OFFLOAD_ANSWER_RESOURCE_RECORDS_COUNT
  *	%QCA_WLAN_VENDOR_ATTR_MDNS_OFFLOAD_ANSWER_PAYLOAD
  *
- * @QCA_WLAN_VENDOR_ATTR_MDNS_OFFLOAD_FQDN: Required Null terminated string
- * attribute. It consists of a hostname and ".local" as the domain name.
- * The character set is limited to UTF-8 encoding. The maximum allowed size
- * is 64 bytes. It is used to compare the domain in the "QU" query.
- * Only 1 FQDN is supported per vdev.
+ * @QCA_WLAN_VENDOR_ATTR_MDNS_OFFLOAD_FQDN: Required string attribute.
+ * It consists of a hostname and ".local" as the domain name. The character
+ * set is limited to UTF-8 encoding. The maximum allowed size is 63 bytes.
+ * It is used to compare the domain in the "QU" query. Only 1 FQDN is
+ * supported per vdev.
  * For example: myphone.local
  *
  * @QCA_WLAN_VENDOR_ATTR_MDNS_OFFLOAD_ANSWER_RESOURCE_RECORDS_COUNT: Required
@@ -11261,7 +11261,7 @@ enum qca_wlan_vendor_attr_radar_history {
  * records of various types (e.g., A, AAAA, PTR, TXT) and service list. This
  * payload is passed down to the firmware and is transmitted in response to
  * mDNS queries.
- * The maximum supported size of the answer payload is 1500 bytes.
+ * The maximum supported size of the answer payload is 512 bytes.
  */
 enum qca_wlan_vendor_attr_mdns_offload {
 	QCA_WLAN_VENDOR_ATTR_MDNS_OFFLOAD_INVALID = 0,
