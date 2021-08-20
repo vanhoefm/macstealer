@@ -2398,7 +2398,7 @@ static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
 	buf_len = wpabuf_len(wd);
 
 	if (buf_len < 6) {
-		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short. len=%lu",
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short. len=%zu",
 			   buf_len);
 		return -1;
 	}
@@ -2474,7 +2474,7 @@ static int pasn_wd_handle_sae_confirm(struct hostapd_data *hapd,
 	buf_len = wpabuf_len(wd);
 
 	if (buf_len < 6) {
-		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short. len=%lu",
+		wpa_printf(MSG_DEBUG, "PASN: SAE buffer too short. len=%zu",
 			   buf_len);
 		return -1;
 	}
@@ -2704,7 +2704,7 @@ static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 	buf_len = wpabuf_len(wd);
 
 	if (buf_len < 6) {
-		wpa_printf(MSG_DEBUG, "PASN: FILS: Buffer too short. len=%lu",
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Buffer too short. len=%zu",
 			   buf_len);
 		return -1;
 	}
