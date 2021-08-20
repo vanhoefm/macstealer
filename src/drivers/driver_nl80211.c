@@ -604,7 +604,7 @@ static int nl_get_multicast_id(struct nl80211_global *global,
 	msg = nlmsg_alloc();
 	if (!msg)
 		return -ENOMEM;
-	if (!genlmsg_put(msg, 0, 0, genl_ctrl_resolve(global->nl, "nlctrl"),
+	if (!genlmsg_put(msg, 0, 0, global->nlctrl_id,
 			 0, 0, CTRL_CMD_GETFAMILY, 0) ||
 	    nla_put_string(msg, CTRL_ATTR_FAMILY_NAME, family)) {
 		nlmsg_free(msg);
@@ -1880,6 +1880,13 @@ static int wpa_driver_nl80211_init_nl_global(struct nl80211_global *global)
 	if (global->nl80211_id < 0) {
 		wpa_printf(MSG_ERROR, "nl80211: 'nl80211' generic netlink not "
 			   "found");
+		goto err;
+	}
+
+	global->nlctrl_id = genl_ctrl_resolve(global->nl, "nlctrl");
+	if (global->nlctrl_id < 0) {
+		wpa_printf(MSG_ERROR,
+			   "nl80211: 'nlctrl' generic netlink not found");
 		goto err;
 	}
 
