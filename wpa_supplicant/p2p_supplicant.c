@@ -2158,6 +2158,8 @@ do {                                    \
 	d->disassoc_low_ack = s->disassoc_low_ack;
 	d->disable_scan_offload = s->disable_scan_offload;
 	d->passive_scan = s->passive_scan;
+	d->pmf = s->pmf;
+	d->p2p_6ghz_disable = s->p2p_6ghz_disable;
 
 	if (s->wps_nfc_dh_privkey && s->wps_nfc_dh_pubkey &&
 	    !d->wps_nfc_pw_from_config) {
