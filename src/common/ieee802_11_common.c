@@ -1011,8 +1011,8 @@ enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
 		return HOSTAPD_MODE_IEEE80211A;
 	}
 
-	/* 5 GHz, channels 100..140 */
-	if (freq >= 5000 && freq <= 5700) {
+	/* 5 GHz, channels 100..144 */
+	if (freq >= 5500 && freq <= 5720) {
 		if ((freq - 5000) % 5)
 			return NUM_HOSTAPD_MODES;
 
