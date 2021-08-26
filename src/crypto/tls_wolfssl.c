@@ -2146,3 +2146,11 @@ tls_connection_get_success_data(struct tls_connection *conn)
 		return NULL;
 	return wolfSSL_SESSION_get_ex_data(sess, tls_ex_idx_session);
 }
+
+
+bool tls_connection_get_own_cert_used(struct tls_connection *conn)
+{
+	if (conn)
+		return wolfSSL_get_certificate(conn->ssl) != NULL;
+	return false;
+}
