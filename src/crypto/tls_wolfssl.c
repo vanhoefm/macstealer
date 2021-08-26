@@ -191,6 +191,16 @@ static void remove_session_cb(WOLFSSL_CTX *ctx, WOLFSSL_SESSION *sess)
 }
 
 
+#ifdef DEBUG_WOLFSSL
+static void wolfSSL_logging_cb(const int log_level,
+			       const char * const log_message)
+{
+	(void) log_level;
+	wpa_printf(MSG_DEBUG, "wolfSSL log:%s", log_message);
+}
+#endif /* DEBUG_WOLFSSL */
+
+
 void * tls_init(const struct tls_config *conf)
 {
 	WOLFSSL_CTX *ssl_ctx;
@@ -198,6 +208,7 @@ void * tls_init(const struct tls_config *conf)
 	const char *ciphers;
 
 #ifdef DEBUG_WOLFSSL
+	wolfSSL_SetLoggingCb(wolfSSL_logging_cb);
 	wolfSSL_Debugging_ON();
 #endif /* DEBUG_WOLFSSL */
 
