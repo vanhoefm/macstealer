@@ -409,8 +409,11 @@ int aes_128_cbc_decrypt(const u8 *key, const u8 *iv, u8 *data, size_t data_len)
 }
 
 
+#ifndef CONFIG_FIPS
+#ifndef CONFIG_OPENSSL_INTERNAL_AES_WRAP
 int aes_wrap(const u8 *kek, size_t kek_len, int n, const u8 *plain, u8 *cipher)
 {
+#ifdef HAVE_AES_KEYWRAP
 	int ret;
 
 	if (TEST_FAIL())
@@ -419,12 +422,16 @@ int aes_wrap(const u8 *kek, size_t kek_len, int n, const u8 *plain, u8 *cipher)
 	ret = wc_AesKeyWrap(kek, kek_len, plain, n * 8, cipher, (n + 1) * 8,
 			    NULL);
 	return ret != (n + 1) * 8 ? -1 : 0;
+#else /* HAVE_AES_KEYWRAP */
+	return -1;
+#endif /* HAVE_AES_KEYWRAP */
 }
 
 
 int aes_unwrap(const u8 *kek, size_t kek_len, int n, const u8 *cipher,
 	       u8 *plain)
 {
+#ifdef HAVE_AES_KEYWRAP
 	int ret;
 
 	if (TEST_FAIL())
@@ -433,7 +440,12 @@ int aes_unwrap(const u8 *kek, size_t kek_len, int n, const u8 *cipher,
 	ret = wc_AesKeyUnWrap(kek, kek_len, cipher, (n + 1) * 8, plain, n * 8,
 			      NULL);
 	return ret != n * 8 ? -1 : 0;
+#else /* HAVE_AES_KEYWRAP */
+	return -1;
+#endif /* HAVE_AES_KEYWRAP */
 }
+#endif /* CONFIG_OPENSSL_INTERNAL_AES_WRAP */
+#endif /* CONFIG_FIPS */
 
 
 #ifndef CONFIG_NO_RC4
