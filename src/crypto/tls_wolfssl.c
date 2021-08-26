@@ -2107,6 +2107,25 @@ void tls_connection_remove_session(struct tls_connection *conn)
 }
 
 
+int tls_get_tls_unique(struct tls_connection *conn, u8 *buf, size_t max_len)
+{
+	size_t len;
+	int reused;
+
+	reused = wolfSSL_session_reused(conn->ssl);
+	if ((wolfSSL_is_server(conn->ssl) && !reused) ||
+	    (!wolfSSL_is_server(conn->ssl) && reused))
+		len = wolfSSL_get_peer_finished(conn->ssl, buf, max_len);
+	else
+		len = wolfSSL_get_finished(conn->ssl, buf, max_len);
+
+	if (len == 0 || len > max_len)
+		return -1;
+
+	return len;
+}
+
+
 u16 tls_connection_get_cipher_suite(struct tls_connection *conn)
 {
 	return (u16) wolfSSL_get_current_cipher_suite(conn->ssl);
