@@ -94,6 +94,7 @@ struct tls_connection {
 	WOLFSSL_X509 *peer_cert;
 	WOLFSSL_X509 *peer_issuer;
 	WOLFSSL_X509 *peer_issuer_issuer;
+	char *peer_subject; /* peer subject info for authenticated peer */
 };
 
 
@@ -336,6 +337,7 @@ void tls_connection_deinit(void *tls_ctx, struct tls_connection *conn)
 	os_free(conn->alt_subject_match);
 	os_free(conn->suffix_match);
 	os_free(conn->domain_match);
+	os_free(conn->peer_subject);
 
 	/* self */
 	os_free(conn);
@@ -1095,6 +1097,11 @@ static int tls_verify_cb(int preverify_ok, WOLFSSL_X509_STORE_CTX *x509_ctx)
 	if (depth == 0 && preverify_ok && context->event_cb != NULL)
 		context->event_cb(context->cb_ctx,
 				  TLS_CERT_CHAIN_SUCCESS, NULL);
+
+	if (depth == 0 && preverify_ok) {
+		os_free(conn->peer_subject);
+		conn->peer_subject = os_strdup(buf);
+	}
 
 	return preverify_ok;
 }
@@ -2097,6 +2104,14 @@ void tls_connection_remove_session(struct tls_connection *conn)
 	wolfSSL_SSL_SESSION_set_timeout(sess, 0);
 	wpa_printf(MSG_DEBUG,
 		   "wolfSSL: Removed cached session to disable session resumption");
+}
+
+
+const char * tls_connection_get_peer_subject(struct tls_connection *conn)
+{
+	if (conn)
+		return conn->peer_subject;
+	return NULL;
 }
 
 
