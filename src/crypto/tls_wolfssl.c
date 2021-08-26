@@ -2107,6 +2107,12 @@ void tls_connection_remove_session(struct tls_connection *conn)
 }
 
 
+u16 tls_connection_get_cipher_suite(struct tls_connection *conn)
+{
+	return (u16) wolfSSL_get_current_cipher_suite(conn->ssl);
+}
+
+
 const char * tls_connection_get_peer_subject(struct tls_connection *conn)
 {
 	if (conn)
