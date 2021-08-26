@@ -58,6 +58,7 @@ struct tls_context {
 	void *cb_ctx;
 	int cert_in_cb;
 	char *ocsp_stapling_response;
+	unsigned int tls_session_lifetime;
 };
 
 static struct tls_context *tls_global = NULL;
@@ -239,17 +240,21 @@ void * tls_init(const struct tls_config *conf)
 	}
 	wolfSSL_SetIORecv(ssl_ctx, wolfssl_receive_cb);
 	wolfSSL_SetIOSend(ssl_ctx, wolfssl_send_cb);
+	context->tls_session_lifetime = conf->tls_session_lifetime;
 	wolfSSL_CTX_set_ex_data(ssl_ctx, 0, context);
 
 	if (conf->tls_session_lifetime > 0) {
+		wolfSSL_CTX_set_session_id_context(ssl_ctx,
+						   (const unsigned char *)
+						   "hostapd", 7);
 		wolfSSL_CTX_set_quiet_shutdown(ssl_ctx, 1);
 		wolfSSL_CTX_set_session_cache_mode(ssl_ctx,
-						   SSL_SESS_CACHE_SERVER);
+						   WOLFSSL_SESS_CACHE_SERVER);
 		wolfSSL_CTX_set_timeout(ssl_ctx, conf->tls_session_lifetime);
 		wolfSSL_CTX_sess_set_remove_cb(ssl_ctx, remove_session_cb);
 	} else {
 		wolfSSL_CTX_set_session_cache_mode(ssl_ctx,
-						   SSL_SESS_CACHE_CLIENT);
+						   WOLFSSL_SESS_CACHE_OFF);
 	}
 
 	if (conf && conf->openssl_ciphers)
@@ -1218,10 +1223,8 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 static void tls_set_conn_flags(WOLFSSL *ssl, unsigned int flags)
 {
 #ifdef HAVE_SESSION_TICKET
-#if 0
 	if (!(flags & TLS_CONN_DISABLE_SESSION_TICKET))
 		wolfSSL_UseSessionTicket(ssl);
-#endif
 #endif /* HAVE_SESSION_TICKET */
 
 	if (flags & TLS_CONN_DISABLE_TLSv1_0)
@@ -1548,6 +1551,9 @@ int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 			      int verify_peer, unsigned int flags,
 			      const u8 *session_ctx, size_t session_ctx_len)
 {
+	static int counter = 0;
+	struct tls_context *context;
+
 	if (!conn)
 		return -1;
 
@@ -1564,6 +1570,22 @@ int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 	}
 
 	wolfSSL_set_accept_state(conn->ssl);
+
+	context = wolfSSL_CTX_get_ex_data((WOLFSSL_CTX *) ssl_ctx, 0);
+	if (context && context->tls_session_lifetime == 0) {
+		/*
+		 * Set session id context to a unique value to make sure
+		 * session resumption cannot be used either through session
+		 * caching or TLS ticket extension.
+		 */
+		counter++;
+		wolfSSL_set_session_id_context(conn->ssl,
+					       (const unsigned char *) &counter,
+					       sizeof(counter));
+	} else {
+		wolfSSL_set_session_id_context(conn->ssl, session_ctx,
+					       session_ctx_len);
+	}
 
 	/* TODO: do we need to fake a session like OpenSSL does here? */
 
