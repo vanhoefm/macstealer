@@ -440,7 +440,7 @@ def test_eap_teap_tls_cs_sha384(dev, apdev):
 def run_eap_teap_tls_cs(dev, apdev, cipher):
     check_eap_capa(dev[0], "TEAP")
     tls = dev[0].request("GET tls_library")
-    if not tls.startswith("OpenSSL"):
+    if not tls.startswith("OpenSSL") and not tls.startswith("wolfSSL"):
         raise HwsimSkip("TLS library not supported for TLS CS configuration: " + tls)
     params = int_teap_server_params(eap_teap_auth="1")
     params['openssl_ciphers'] = cipher

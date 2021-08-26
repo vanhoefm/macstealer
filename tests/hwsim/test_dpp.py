@@ -39,7 +39,7 @@ def check_dpp_capab(dev, brainpool=False, min_ver=1):
         raise HwsimSkip("DPP not supported")
     if brainpool:
         tls = dev.request("GET tls_library")
-        if not tls.startswith("OpenSSL") or "run=BoringSSL" in tls:
+        if (not tls.startswith("OpenSSL") or "run=BoringSSL" in tls) and not tls.startswith("wolfSSL"):
             raise HwsimSkip("Crypto library does not support Brainpool curves: " + tls)
     capa = dev.request("GET_CAPABILITY dpp")
     ver = 1

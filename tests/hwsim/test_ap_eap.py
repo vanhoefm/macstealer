@@ -50,7 +50,7 @@ def check_subject_match_support(dev):
 
 def check_check_cert_subject_support(dev):
     tls = dev.request("GET tls_library")
-    if not tls.startswith("OpenSSL"):
+    if not tls.startswith("OpenSSL") and not tls.startswith("wolfSSL"):
         raise HwsimSkip("check_cert_subject not supported with this TLS library: " + tls)
 
 def check_altsubject_match_support(dev):
@@ -3886,7 +3886,7 @@ def test_ap_wpa2_eap_fast_prf_oom(dev, apdev):
     """WPA2-Enterprise connection using EAP-FAST and OOM in PRF"""
     check_eap_capa(dev[0], "FAST")
     tls = dev[0].request("GET tls_library")
-    if tls.startswith("OpenSSL"):
+    if tls.startswith("OpenSSL") or tls.startswith("wolfSSL"):
         func = "tls_connection_get_eap_fast_key"
         count = 2
     elif tls.startswith("internal"):
@@ -6134,11 +6134,11 @@ def test_rsn_ie_proto_eap_sta(dev, apdev):
 
 def check_tls_session_resumption_capa(dev, hapd):
     tls = hapd.request("GET tls_library")
-    if not tls.startswith("OpenSSL"):
+    if not tls.startswith("OpenSSL") and not tls.startswith("wolfSSL"):
         raise HwsimSkip("hostapd TLS library is not OpenSSL or wolfSSL: " + tls)
 
     tls = dev.request("GET tls_library")
-    if not tls.startswith("OpenSSL"):
+    if not tls.startswith("OpenSSL") and not tls.startswith("wolfSSL"):
         raise HwsimSkip("Session resumption not supported with this TLS library: " + tls)
 
 def test_eap_ttls_pap_session_resumption(dev, apdev):
