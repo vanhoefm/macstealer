@@ -4675,6 +4675,37 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	existing configuration shall be used. By default, roaming is allowed on
  *	all bands supported by the local device. When the value is set to
  *	%QCA_SETBAND_AUTO, all supported bands shall be enabled.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_ACTIVE_CH_DWELL_TIME: u16 value in milliseconds.
+ *	Optional parameter. Scan dwell time for active channels in the 2.4/5 GHz
+ *	bands. If this attribute is not configured, the driver shall proceed
+ *	with default behavior.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_PASSIVE_CH_DWELL_TIME: u16 value in milliseconds.
+ *	Optional parameter. Scan dwell time for passive channels in the 5 GHz
+ *	band. If this attribute is not configured, the driver shall proceed with
+ *	default behavior.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_HOME_CHANNEL_TIME: u16 value in milliseconds.
+ *	Optional parameter. The minimum duration to stay on the connected AP
+ *	channel during the channel scanning. If this attribute is not
+ *	configured, the driver shall proceed with default behavior.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_MAXIMUM_AWAY_TIME: u16 value in milliseconds.
+ *	Optional parameter. The maximum duration for which the radio can scan
+ *	foreign channels consecutively without coming back to home channel. If
+ *	this attribute is not configured, the driver shall proceed with default
+ *	behavior.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_SCAN_6G_PSC_DWELL_TIME: u16 value in milliseconds.
+ *	Optional parameter. Scan dwell time for 6G Preferred Scanning Channels.
+ *	If this attribute is not configured, the driver shall proceed with
+ *	default behavior.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_SCAN_6G_NON_PSC_DWELL_TIME: u16 value in milliseconds.
+ *	Optional parameter. Scan dwell time for 6G Non Preferred Scanning
+ *	Channels. If this attribute is not configured, the driver shall proceed
+ *	with default behavior.
  */
 enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_ENABLE = 1,
@@ -4694,6 +4725,12 @@ enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_5GHZ = 15,
 	QCA_ATTR_ROAM_CONTROL_CANDIDATE_RSSI_THRESHOLD_6GHZ = 16,
 	QCA_ATTR_ROAM_CONTROL_BAND_MASK = 17,
+	QCA_ATTR_ROAM_CONTROL_ACTIVE_CH_DWELL_TIME = 18,
+	QCA_ATTR_ROAM_CONTROL_PASSIVE_CH_DWELL_TIME = 19,
+	QCA_ATTR_ROAM_CONTROL_HOME_CHANNEL_TIME = 20,
+	QCA_ATTR_ROAM_CONTROL_MAXIMUM_AWAY_TIME = 21,
+	QCA_ATTR_ROAM_CONTROL_SCAN_6G_PSC_DWELL_TIME = 22,
+	QCA_ATTR_ROAM_CONTROL_SCAN_6G_NON_PSC_DWELL_TIME = 23,
 
 	/* keep last */
 	QCA_ATTR_ROAM_CONTROL_AFTER_LAST,
