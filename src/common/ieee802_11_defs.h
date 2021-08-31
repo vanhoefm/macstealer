@@ -1363,6 +1363,8 @@ struct ieee80211_ampe_ie {
 #define SAE_PK_OUI_TYPE 0x1f
 #define QM_IE_VENDOR_TYPE 0x506f9a22
 #define QM_IE_OUI_TYPE 0x22
+#define WFA_CAPA_IE_VENDOR_TYPE 0x506f9a23
+#define WFA_CAPA_OUI_TYPE 0x23
 
 #define MULTI_AP_SUB_ELEM_TYPE 0x06
 #define MULTI_AP_TEAR_DOWN BIT(4)
@@ -2474,5 +2476,9 @@ enum dscp_policy_request_type {
 /* Request/Response Control field of DSCP Policy Request/Response frame */
 #define DSCP_POLICY_CTRL_MORE	BIT(0)
 #define DSCP_POLICY_CTRL_RESET	BIT(1)
+
+/* Wi-Fi Alliance Capabilities element - Capabilities field */
+#define WFA_CAPA_QM_DSCP_POLICY BIT(0)
+#define WFA_CAPA_QM_UNSOLIC_DSCP BIT(1)
 
 #endif /* IEEE802_11_DEFS_H */
