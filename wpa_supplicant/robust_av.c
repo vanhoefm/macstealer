@@ -1268,3 +1268,78 @@ void wpas_handle_qos_mgmt_recv_action(struct wpa_supplicant *wpa_s,
 
 	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_DSCP_POLICY "request_end");
 }
+
+
+int wpas_send_dscp_response(struct wpa_supplicant *wpa_s,
+			    struct dscp_resp_data *resp_data)
+{
+	struct wpabuf *buf = NULL;
+	size_t buf_len;
+	int ret = -1, i;
+	u8 resp_control = 0;
+
+	if (wpa_s->wpa_state != WPA_COMPLETED || !wpa_s->current_ssid) {
+		wpa_printf(MSG_ERROR,
+			   "QM: Failed to send DSCP response - not connected to AP");
+		return -1;
+	}
+
+	if (resp_data->solicited && !wpa_s->dscp_req_dialog_token) {
+		wpa_printf(MSG_ERROR, "QM: No ongoing DSCP request");
+		return -1;
+	}
+
+	buf_len = 1 +	/* Category */
+		  3 +	/* OUI */
+		  1 +	/* OUI Type */
+		  1 +	/* OUI Subtype */
+		  1 +	/* Dialog Token */
+		  1 +	/* Response Control */
+		  1 +	/* Count */
+		  2 * resp_data->num_policies;  /* Status list */
+	buf = wpabuf_alloc(buf_len);
+	if (!buf) {
+		wpa_printf(MSG_ERROR,
+			   "QM: Failed to allocate DSCP policy response");
+		return -1;
+	}
+
+	wpabuf_put_u8(buf, WLAN_ACTION_VENDOR_SPECIFIC_PROTECTED);
+	wpabuf_put_be24(buf, OUI_WFA);
+	wpabuf_put_u8(buf, QM_ACTION_OUI_TYPE);
+	wpabuf_put_u8(buf, QM_DSCP_POLICY_RESP);
+
+	wpabuf_put_u8(buf, resp_data->solicited ?
+		      wpa_s->dscp_req_dialog_token : 0);
+
+	if (resp_data->more)
+		resp_control |= DSCP_POLICY_CTRL_MORE;
+	if (resp_data->reset)
+		resp_control |= DSCP_POLICY_CTRL_RESET;
+	wpabuf_put_u8(buf, resp_control);
+
+	wpabuf_put_u8(buf, resp_data->num_policies);
+	for (i = 0; i < resp_data->num_policies; i++) {
+		wpabuf_put_u8(buf, resp_data->policy[i].id);
+		wpabuf_put_u8(buf, resp_data->policy[i].status);
+	}
+
+	wpa_hexdump_buf(MSG_MSGDUMP, "DSCP response frame: ", buf);
+	ret = wpa_drv_send_action(wpa_s, wpa_s->assoc_freq, 0, wpa_s->bssid,
+				  wpa_s->own_addr, wpa_s->bssid,
+				  wpabuf_head(buf), wpabuf_len(buf), 0);
+	if (ret < 0) {
+		wpa_msg(wpa_s, MSG_INFO, "QM: Failed to send DSCP response");
+		goto fail;
+	}
+
+	/*
+	 * Mark DSCP request complete whether response sent is solicited or
+	 * unsolicited
+	 */
+	wpa_s->dscp_req_dialog_token = 0;
+
+fail:
+	wpabuf_free(buf);
+	return ret;
+}

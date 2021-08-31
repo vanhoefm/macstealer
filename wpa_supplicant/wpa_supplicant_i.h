@@ -524,6 +524,19 @@ struct robust_av_data {
 	bool valid_config;
 };
 
+struct dscp_policy_status {
+	u8 id;
+	u8 status;
+};
+
+struct dscp_resp_data {
+	bool more;
+	bool reset;
+	bool solicited;
+	struct dscp_policy_status *policy;
+	int num_policies;
+};
+
 #ifdef CONFIG_PASN
 
 struct pasn_fils {
@@ -1846,6 +1859,8 @@ void wpas_handle_qos_mgmt_recv_action(struct wpa_supplicant *wpa_s,
 				      const u8 *src,
 				      const u8 *buf, size_t len);
 void wpas_dscp_deinit(struct wpa_supplicant *wpa_s);
+int wpas_send_dscp_response(struct wpa_supplicant *wpa_s,
+			    struct dscp_resp_data *resp_data);
 
 int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
 			 const u8 *bssid, int akmp, int cipher,

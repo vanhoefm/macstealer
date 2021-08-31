@@ -1135,3 +1135,11 @@ is as shown below:
 
 - External applications shall clear active DSCP policies upon receiving
   "CTRL-EVENT-DISCONNECTED" or "CTRL-EVENT-DSCP-POLICY clear_all" events.
+
+DSCP Response:
+A QoS Management STA that enables DSCP Policy capability shall respond
+with DSCP response on receipt of a successful DSCP request from its
+associated AP.  wpa_supplicant sends DSCP policy response based on the
+control interface command received from the user is as below:
+
+DSCP_RESP <[reset]>/<[solicited] [policy_id=1 status=0...]> [more]

@@ -11390,6 +11390,71 @@ free_scs_desc:
 }
 
 
+static int wpas_ctrl_iface_send_dscp_resp(struct wpa_supplicant *wpa_s,
+					  const char *cmd)
+{
+	char *pos;
+	struct dscp_policy_status *policy = NULL, *n;
+	int num_policies = 0, ret = -1;
+	struct dscp_resp_data resp_data;
+
+	/*
+	 * format:
+	 * <[reset]>/<[solicited] [policy_id=1 status=0...]> [more]
+	 */
+
+	os_memset(&resp_data, 0, sizeof(resp_data));
+
+	resp_data.more = os_strstr(cmd, "more") != NULL;
+
+	if (os_strstr(cmd, "reset")) {
+		resp_data.reset = true;
+		resp_data.solicited = false;
+		goto send_resp;
+	}
+
+	resp_data.solicited = os_strstr(cmd, "solicited") != NULL;
+
+	pos = os_strstr(cmd, "policy_id=");
+	while (pos) {
+		n = os_realloc(policy, (num_policies + 1) * sizeof(*policy));
+		if (!n)
+			goto fail;
+
+		policy = n;
+		pos += 10;
+		policy[num_policies].id = atoi(pos);
+		if (policy[num_policies].id == 0) {
+			wpa_printf(MSG_ERROR, "DSCP: Invalid policy id");
+			goto fail;
+		}
+
+		pos = os_strstr(pos, "status=");
+		if (!pos) {
+			wpa_printf(MSG_ERROR,
+				   "DSCP: Status is not found for a policy");
+			goto fail;
+		}
+
+		pos += 7;
+		policy[num_policies].status = atoi(pos);
+		num_policies++;
+
+		pos = os_strstr(pos, "policy_id");
+	}
+
+	resp_data.policy = policy;
+	resp_data.num_policies = num_policies;
+send_resp:
+	ret = wpas_send_dscp_response(wpa_s, &resp_data);
+	if (ret)
+		wpa_printf(MSG_ERROR, "DSCP: Failed to send DSCP response");
+fail:
+	os_free(policy);
+	return ret;
+}
+
+
 char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 					 char *buf, size_t *resp_len)
 {
@@ -12317,6 +12382,9 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_PASN */
 	} else if (os_strncmp(buf, "SCS ", 4) == 0) {
 		if (wpas_ctrl_iface_configure_scs(wpa_s, buf + 4))
+			reply_len = -1;
+	} else if (os_strncmp(buf, "DSCP_RESP ", 10) == 0) {
+		if (wpas_ctrl_iface_send_dscp_resp(wpa_s, buf + 10))
 			reply_len = -1;
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
