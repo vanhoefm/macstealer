@@ -913,6 +913,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_USABLE_CHANNELS = 198,
 	QCA_NL80211_VENDOR_SUBCMD_GET_RADAR_HISTORY = 199,
 	QCA_NL80211_VENDOR_SUBCMD_MDNS_OFFLOAD = 200,
+	/* 201 - reserved for QCA */
 };
 
 enum qca_wlan_vendor_attr {
