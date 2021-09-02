@@ -701,6 +701,8 @@ enum qca_radiotap_vendor_ids {
  *	The host driver selects Tx VDEV, and notifies user. The attributes
  *	used with this event are defined in enum
  *	qca_wlan_vendor_attr_mbssid_tx_vdev_status.
+ *	This event contains Tx VDEV group information, other VDEVs
+ *	interface index, and status information.
  *
  * @QCA_NL80211_VENDOR_SUBCMD_CONCURRENT_MULTI_STA_POLICY: Vendor command to
  *	configure the concurrent session policies when multiple STA interfaces
@@ -11074,15 +11076,51 @@ enum qca_wlan_vendor_attr_medium_assess {
  * u8 attribute. Notify the TX VDEV status. Possible values 0, 1
  * belonging to MBSSID/EMA_AP configuration. 0 means Non-Tx VDEV,
  * 1 means Tx VDEV. Mandatory attribute for all MBSSID VDEV status events.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_EVENT:
+ * u8 attribute, required. 1 means Tx VDEV up event. 0 means Tx VDEV down event.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_ID:
+ * u8 attribute, required. Indicates group id of Tx VDEV.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO:
+ * Nested attribute. This attribute shall be used by the driver to send
+ * group information. The attributes defined in enum
+ * qca_wlan_vendor_attr_mbssid_tx_vdev_group_info
+ * are nested in this attribute.
  */
 enum qca_wlan_vendor_attr_mbssid_tx_vdev_status {
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_VAL = 1,
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_EVENT = 2,
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_ID = 3,
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO = 4,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_MAX =
 	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_STATUS_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_mbssid_tx_vdev_group_info - Attributes used
+ * inside %QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO nested attribute.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO_IF_INDEX:
+ * u32 attribute, required. Contains interface index.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO_STATUS:
+ * u8 attribute, required. 0 - means vdev is in down state.
+ * 1 - means vdev is in up state.
+ */
+enum qca_wlan_vendor_attr_mbssid_tx_vdev_group_info {
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO_IF_INDEX = 1,
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO_STATUS = 2,
+
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO_MAX =
+	QCA_WLAN_VENDOR_ATTR_MBSSID_TX_VDEV_GROUP_INFO - 1,
 };
 
 /**
