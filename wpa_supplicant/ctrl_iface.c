@@ -11455,6 +11455,35 @@ fail:
 }
 
 
+static int wpas_ctrl_iface_send_dscp_query(struct wpa_supplicant *wpa_s,
+					   const char *cmd)
+{
+	char *pos;
+
+	/*
+	 * format:
+	 * Wildcard DSCP query
+	 * <wildcard>
+	 *
+	 * DSCP query with a domain name attribute:
+	 * [domain_name=<string>]
+	 */
+
+	if (os_strstr(cmd, "wildcard")) {
+		wpa_printf(MSG_DEBUG, "QM: Send wildcard DSCP policy query");
+		return wpas_send_dscp_query(wpa_s, NULL, 0);
+	}
+
+	pos = os_strstr(cmd, "domain_name=");
+	if (!pos || !os_strlen(pos + 12)) {
+		wpa_printf(MSG_ERROR, "QM: Domain name not preset");
+		return -1;
+	}
+
+	return wpas_send_dscp_query(wpa_s, pos + 12, os_strlen(pos + 12));
+}
+
+
 char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 					 char *buf, size_t *resp_len)
 {
@@ -12385,6 +12414,9 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 			reply_len = -1;
 	} else if (os_strncmp(buf, "DSCP_RESP ", 10) == 0) {
 		if (wpas_ctrl_iface_send_dscp_resp(wpa_s, buf + 10))
+			reply_len = -1;
+	} else if (os_strncmp(buf, "DSCP_QUERY ", 11) == 0) {
+		if (wpas_ctrl_iface_send_dscp_query(wpa_s, buf + 11))
 			reply_len = -1;
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);

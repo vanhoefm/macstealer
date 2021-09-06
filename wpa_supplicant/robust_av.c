@@ -1159,6 +1159,7 @@ void wpas_dscp_deinit(struct wpa_supplicant *wpa_s)
 	wpa_printf(MSG_DEBUG, "QM: Clear all active DSCP policies");
 	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_DSCP_POLICY "clear_all");
 	wpa_s->dscp_req_dialog_token = 0;
+	wpa_s->dscp_query_dialog_token = 0;
 	wpa_s->connection_dscp = 0;
 	if (wpa_s->wait_for_dscp_req) {
 		wpa_s->wait_for_dscp_req = 0;
@@ -1407,6 +1408,80 @@ int wpas_send_dscp_response(struct wpa_supplicant *wpa_s,
 	wpa_s->dscp_req_dialog_token = 0;
 
 fail:
+	wpabuf_free(buf);
+	return ret;
+}
+
+
+int wpas_send_dscp_query(struct wpa_supplicant *wpa_s, const char *domain_name,
+			 size_t domain_name_length)
+{
+	struct wpabuf *buf = NULL;
+	int ret, dscp_query_size;
+
+	if (wpa_s->wpa_state != WPA_COMPLETED || !wpa_s->current_ssid)
+		return -1;
+
+	if (!wpa_s->connection_dscp) {
+		wpa_printf(MSG_ERROR,
+			   "QM: Failed to send DSCP query - DSCP capability not enabled for the current association");
+		return -1;
+	}
+
+	if (wpa_s->wait_for_dscp_req) {
+		wpa_printf(MSG_INFO, "QM: Wait until AP sends a DSCP request");
+		return -1;
+	}
+
+#define DOMAIN_NAME_OFFSET (4 /* OUI */ + 1 /* Attr Id */ + 1 /* Attr len */)
+
+	if (domain_name_length > 255 - DOMAIN_NAME_OFFSET) {
+		wpa_printf(MSG_ERROR, "QM: Too long domain name");
+		return -1;
+	}
+
+	dscp_query_size = 1 + /* Category */
+			  4 + /* OUI Type */
+			  1 + /* OUI subtype */
+			  1; /* Dialog Token */
+	if (domain_name && domain_name_length)
+		dscp_query_size += 1 + /* Element ID */
+			1 + /* IE Length */
+			DOMAIN_NAME_OFFSET + domain_name_length;
+
+	buf = wpabuf_alloc(dscp_query_size);
+	if (!buf) {
+		wpa_printf(MSG_ERROR, "QM: Failed to allocate DSCP query");
+		return -1;
+	}
+
+	wpabuf_put_u8(buf, WLAN_ACTION_VENDOR_SPECIFIC_PROTECTED);
+	wpabuf_put_be32(buf, QM_ACTION_VENDOR_TYPE);
+	wpabuf_put_u8(buf, QM_DSCP_POLICY_QUERY);
+	wpa_s->dscp_query_dialog_token++;
+	if (wpa_s->dscp_query_dialog_token == 0)
+		wpa_s->dscp_query_dialog_token++;
+	wpabuf_put_u8(buf, wpa_s->dscp_query_dialog_token);
+
+	if (domain_name && domain_name_length) {
+		/* Domain Name attribute */
+		wpabuf_put_u8(buf, WLAN_EID_VENDOR_SPECIFIC);
+		wpabuf_put_u8(buf, DOMAIN_NAME_OFFSET + domain_name_length);
+		wpabuf_put_be32(buf, QM_IE_VENDOR_TYPE);
+		wpabuf_put_u8(buf, QM_ATTR_DOMAIN_NAME);
+		wpabuf_put_u8(buf, domain_name_length);
+		wpabuf_put_data(buf, domain_name, domain_name_length);
+	}
+#undef DOMAIN_NAME_OFFSET
+
+	ret = wpa_drv_send_action(wpa_s, wpa_s->assoc_freq, 0, wpa_s->bssid,
+				  wpa_s->own_addr, wpa_s->bssid,
+				  wpabuf_head(buf), wpabuf_len(buf), 0);
+	if (ret < 0) {
+		wpa_dbg(wpa_s, MSG_ERROR, "QM: Failed to send DSCP query");
+		wpa_s->dscp_query_dialog_token--;
+	}
+
 	wpabuf_free(buf);
 	return ret;
 }
