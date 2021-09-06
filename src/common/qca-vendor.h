@@ -1152,7 +1152,7 @@ enum qca_roaming_policy {
  * @QCA_ROAM_REASON_CONGESTION: Roam triggered considering the connected channel
  * or environment being very noisy or congested.
  *
- * @QCA_ROAM_REASON_EXPLICIT_REQUEST: Roam triggered due to an explicit request
+ * @QCA_ROAM_REASON_USER_TRIGGER: Roam triggered due to an explicit request
  * from the user (user space).
  *
  * @QCA_ROAM_REASON_BTM: Roam triggered due to BTM Request frame received from
