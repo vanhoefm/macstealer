@@ -2418,7 +2418,7 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 	struct hostapd_hw_modes *mode = NULL;
 	int ht40plus[] = { 36, 44, 52, 60, 100, 108, 116, 124, 132, 149, 157,
 			   184, 192 };
-	int vht80[] = { 36, 52, 100, 116, 132, 149 };
+	int bw80[] = { 5180, 5260, 5500, 5580, 5660, 5745 };
 	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
 	u8 channel;
 	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
@@ -2627,16 +2627,17 @@ skip_ht40:
 	freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
 
 	/* setup center_freq1, bandwidth */
-	for (j = 0; j < ARRAY_SIZE(vht80); j++) {
-		if (freq->channel >= vht80[j] &&
-		    freq->channel < vht80[j] + 16)
+	for (j = 0; j < ARRAY_SIZE(bw80); j++) {
+		if (freq->freq >= bw80[j] &&
+		    freq->freq < bw80[j] + 80)
 			break;
 	}
 
-	if (j == ARRAY_SIZE(vht80))
+	if (j == ARRAY_SIZE(bw80) ||
+	    ieee80211_freq_to_chan(bw80[j], &channel) == NUM_HOSTAPD_MODES)
 		return;
 
-	for (i = vht80[j]; i < vht80[j] + 16; i += 4) {
+	for (i = channel; i < channel + 16; i += 4) {
 		struct hostapd_channel_data *chan;
 
 		chan = hw_get_channel_chan(mode, i, NULL);
@@ -2649,16 +2650,21 @@ skip_ht40:
 	}
 
 	chwidth = CHANWIDTH_80MHZ;
-	seg0 = vht80[j] + 6;
+	seg0 = channel + 6;
 	seg1 = 0;
 
 	if (ssid->max_oper_chwidth == CHANWIDTH_80P80MHZ) {
 		/* setup center_freq2, bandwidth */
-		for (k = 0; k < ARRAY_SIZE(vht80); k++) {
+		for (k = 0; k < ARRAY_SIZE(bw80); k++) {
 			/* Only accept 80 MHz segments separated by a gap */
-			if (j == k || abs(vht80[j] - vht80[k]) == 16)
+			if (j == k || abs(bw80[j] - bw80[k]) == 80)
 				continue;
-			for (i = vht80[k]; i < vht80[k] + 16; i += 4) {
+
+			if (ieee80211_freq_to_chan(bw80[k], &channel) ==
+			    NUM_HOSTAPD_MODES)
+				return;
+
+			for (i = channel; i < channel + 16; i += 4) {
 				struct hostapd_channel_data *chan;
 
 				chan = hw_get_channel_chan(mode, i, NULL);
@@ -2674,7 +2680,7 @@ skip_ht40:
 				chwidth = CHANWIDTH_80P80MHZ;
 				vht_caps |=
 					VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
-				seg1 = vht80[k] + 6;
+				seg1 = channel + 6;
 			}
 
 			if (chwidth == CHANWIDTH_80P80MHZ)
@@ -2692,7 +2698,7 @@ skip_ht40:
 		}
 	} else if (ssid->max_oper_chwidth == CHANWIDTH_USE_HT) {
 		chwidth = CHANWIDTH_USE_HT;
-		seg0 = vht80[j] + 2;
+		seg0 = channel + 2;
 #ifdef CONFIG_HT_OVERRIDES
 		if (ssid->disable_ht40)
 			seg0 = 0;
