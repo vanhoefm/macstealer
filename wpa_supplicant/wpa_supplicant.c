@@ -2409,6 +2409,23 @@ static int drv_supports_vht(struct wpa_supplicant *wpa_s,
 }
 
 
+static bool ibss_mesh_is_80mhz_avail(int channel, struct hostapd_hw_modes *mode)
+{
+	int i;
+
+	for (i = channel; i < channel + 16; i += 4) {
+		struct hostapd_channel_data *chan;
+
+		chan = hw_get_channel_chan(mode, i, NULL);
+		if (!chan ||
+		    chan->flag & (HOSTAPD_CHAN_DISABLED | HOSTAPD_CHAN_NO_IR))
+			return false;
+	}
+
+	return true;
+}
+
+
 void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 			  const struct wpa_ssid *ssid,
 			  struct hostapd_freq_params *freq)
@@ -2421,6 +2438,7 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 	int bw80[] = { 5180, 5260, 5500, 5580, 5660, 5745, 5955,
 		       6035, 6115, 6195, 6275, 6355, 6435, 6515,
 		       6595, 6675, 6755, 6835, 6915, 6995 };
+	int bw160[] = { 5955, 6115, 6275, 6435, 6595, 6755, 6915 };
 	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
 	u8 channel;
 	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
@@ -2648,21 +2666,32 @@ skip_to_6ghz:
 	    ieee80211_freq_to_chan(bw80[j], &channel) == NUM_HOSTAPD_MODES)
 		return;
 
-	for (i = channel; i < channel + 16; i += 4) {
-		struct hostapd_channel_data *chan;
-
-		chan = hw_get_channel_chan(mode, i, NULL);
-		if (!chan)
-			return;
-
-		/* Back to HT configuration if channel not usable */
-		if (chan->flag & (HOSTAPD_CHAN_DISABLED | HOSTAPD_CHAN_NO_IR))
-			return;
-	}
+	/* Back to HT configuration if channel not usable */
+	if (!ibss_mesh_is_80mhz_avail(channel, mode))
+		return;
 
 	chwidth = CHANWIDTH_80MHZ;
 	seg0 = channel + 6;
 	seg1 = 0;
+
+	if ((mode->he_capab[ieee80211_mode].phy_cap[
+		     HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
+	     HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G) && is_6ghz) {
+		/* In 160 MHz, the initial four 20 MHz channels were validated
+		 * above; check the remaining four 20 MHz channels for the total
+		 * of 160 MHz bandwidth.
+		 */
+		if (!ibss_mesh_is_80mhz_avail(channel + 16, mode))
+			return;
+
+		for (j = 0; j < ARRAY_SIZE(bw160); j++) {
+			if (freq->freq == bw160[j]) {
+				chwidth = CHANWIDTH_160MHZ;
+				seg0 = channel + 14;
+				break;
+			}
+		}
+	}
 
 	if (ssid->max_oper_chwidth == CHANWIDTH_80P80MHZ) {
 		/* setup center_freq2, bandwidth */
