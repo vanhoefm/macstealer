@@ -2418,7 +2418,9 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 	struct hostapd_hw_modes *mode = NULL;
 	int ht40plus[] = { 36, 44, 52, 60, 100, 108, 116, 124, 132, 149, 157,
 			   184, 192 };
-	int bw80[] = { 5180, 5260, 5500, 5580, 5660, 5745 };
+	int bw80[] = { 5180, 5260, 5500, 5580, 5660, 5745, 5955,
+		       6035, 6115, 6195, 6275, 6355, 6435, 6515,
+		       6595, 6675, 6755, 6835, 6915, 6995 };
 	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
 	u8 channel;
 	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
@@ -2426,7 +2428,7 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 	struct hostapd_freq_params vht_freq;
 	int chwidth, seg0, seg1;
 	u32 vht_caps = 0;
-	int is_24ghz;
+	bool is_24ghz, is_6ghz;
 
 	freq->freq = ssid->frequency;
 
@@ -2482,6 +2484,13 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 
 	is_24ghz = hw_mode == HOSTAPD_MODE_IEEE80211G ||
 		hw_mode == HOSTAPD_MODE_IEEE80211B;
+
+	/* HT/VHT and corresponding overrides are not applicable to 6 GHz.
+	 * However, HE is mandatory for 6 GHz.
+	 */
+	is_6ghz = is_6ghz_freq(freq->freq);
+	if (is_6ghz)
+		goto skip_to_6ghz;
 
 #ifdef CONFIG_HT_OVERRIDES
 	if (ssid->disable_ht) {
@@ -2610,8 +2619,6 @@ skip_ht40:
 	    !(wpa_s->drv_flags & WPA_DRIVER_FLAGS_VHT_IBSS))
 		return;
 
-	vht_freq = *freq;
-
 #ifdef CONFIG_VHT_OVERRIDES
 	if (ssid->disable_vht) {
 		freq->vht_enabled = 0;
@@ -2619,8 +2626,12 @@ skip_ht40:
 	}
 #endif /* CONFIG_VHT_OVERRIDES */
 
+skip_to_6ghz:
+	vht_freq = *freq;
+
+	/* 6 GHz does not have VHT enabled, so allow that exception here. */
 	vht_freq.vht_enabled = vht_supported(mode);
-	if (!vht_freq.vht_enabled)
+	if (!vht_freq.vht_enabled && !is_6ghz)
 		return;
 
 	/* Enable HE with VHT for 5 GHz */
@@ -2678,8 +2689,9 @@ skip_ht40:
 
 				/* Found a suitable second segment for 80+80 */
 				chwidth = CHANWIDTH_80P80MHZ;
-				vht_caps |=
-					VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
+				if (!is_6ghz)
+					vht_caps |=
+						VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
 				seg1 = channel + 6;
 			}
 
