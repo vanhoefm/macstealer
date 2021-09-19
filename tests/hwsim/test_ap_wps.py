@@ -5066,14 +5066,14 @@ def _test_ap_wps_http_timeout(dev, apdev):
     sock.connect(addr)
     sock.send(b"G")
 
-    class DummyServer(StreamRequestHandler):
+    class StubServer(StreamRequestHandler):
         def handle(self):
-            logger.debug("DummyServer - start 31 sec wait")
+            logger.debug("StubServer - start 31 sec wait")
             time.sleep(31)
-            logger.debug("DummyServer - wait done")
+            logger.debug("StubServer - wait done")
 
     logger.debug("Start WPS ER")
-    server, sock2 = wps_er_start(dev[0], DummyServer, max_age=40,
+    server, sock2 = wps_er_start(dev[0], StubServer, max_age=40,
                                  wait_m_search=True)
 
     logger.debug("Start server to accept, but not complete, HTTP connection from WPS ER")
