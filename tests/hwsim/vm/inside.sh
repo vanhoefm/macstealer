@@ -53,7 +53,7 @@ ln -s /proc/self/fd/2 /dev/stderr
 
 echo "VM has started up" > /dev/ttyS0
 
-# create dummy sudo - everything runs as uid 0
+# create stub sudo - everything runs as uid 0
 mkdir /tmp/bin
 cat > /tmp/bin/sudo << EOF
 #!/bin/bash

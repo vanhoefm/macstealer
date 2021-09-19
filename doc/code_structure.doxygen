@@ -130,7 +130,7 @@ with with hostapd. The following C files are currently used:
 	Definition of TLS library wrapper
 
 \ref tls_none.c
-	Dummy implementation of TLS library wrapper for cases where TLS
+	Stub implementation of TLS library wrapper for cases where TLS
 	functionality is not included.
 
 \ref tls_openssl.c

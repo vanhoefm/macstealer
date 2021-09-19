@@ -5160,7 +5160,7 @@ static int wpa_driver_nl80211_sta_add(void *priv,
 			/*
 			 * cfg80211 validates that AID is non-zero, so we have
 			 * to make this a non-zero value for the TDLS case where
-			 * a dummy STA entry is used for now and for a station
+			 * a stub STA entry is used for now and for a station
 			 * that is still not associated.
 			 */
 			wpa_printf(MSG_DEBUG, "  * aid=1 (%s workaround)",
