@@ -568,10 +568,10 @@ static int wpa_supplicant_ctrl_iface_set(struct wpa_supplicant *wpa_s,
 				   (wps_version_number & 0xf0) >> 4,
 				   wps_version_number & 0x0f);
 		}
-	} else if (os_strcasecmp(cmd, "wps_testing_dummy_cred") == 0) {
-		wps_testing_dummy_cred = atoi(value);
-		wpa_printf(MSG_DEBUG, "WPS: Testing - dummy_cred=%d",
-			   wps_testing_dummy_cred);
+	} else if (os_strcasecmp(cmd, "wps_testing_stub_cred") == 0) {
+		wps_testing_stub_cred = atoi(value);
+		wpa_printf(MSG_DEBUG, "WPS: Testing - stub_cred=%d",
+			   wps_testing_stub_cred);
 	} else if (os_strcasecmp(cmd, "wps_corrupt_pkhash") == 0) {
 		wps_corrupt_pkhash = atoi(value);
 		wpa_printf(MSG_DEBUG, "WPS: Testing - wps_corrupt_pkhash=%d",
@@ -8447,7 +8447,7 @@ static void wpa_supplicant_ctrl_iface_flush(struct wpa_supplicant *wpa_s)
 
 #ifdef CONFIG_WPS_TESTING
 	wps_version_number = 0x20;
-	wps_testing_dummy_cred = 0;
+	wps_testing_stub_cred = 0;
 	wps_corrupt_pkhash = 0;
 	wps_force_auth_types_in_use = 0;
 	wps_force_encr_types_in_use = 0;
