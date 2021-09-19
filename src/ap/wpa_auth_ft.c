@@ -2259,7 +2259,7 @@ static u8 * wpa_ft_igtk_subelem(struct wpa_state_machine *sm, size_t *len)
 	const u8 *kek, *igtk;
 	size_t kek_len;
 	size_t igtk_len;
-	u8 dummy_igtk[WPA_IGTK_MAX_LEN];
+	u8 stub_igtk[WPA_IGTK_MAX_LEN];
 
 	if (wpa_key_mgmt_fils(sm->wpa_key_mgmt)) {
 		kek = sm->PTK.kek2;
@@ -2292,11 +2292,11 @@ static u8 * wpa_ft_igtk_subelem(struct wpa_state_machine *sm, size_t *len)
 		 * Provide unique random IGTK to each STA to prevent use of
 		 * IGTK in the BSS.
 		 */
-		if (random_get_bytes(dummy_igtk, igtk_len / 8) < 0) {
+		if (random_get_bytes(stub_igtk, igtk_len / 8) < 0) {
 			os_free(subelem);
 			return NULL;
 		}
-		igtk = dummy_igtk;
+		igtk = stub_igtk;
 	}
 	if (aes_wrap(kek, kek_len, igtk_len / 8, igtk, pos)) {
 		wpa_printf(MSG_DEBUG,
@@ -2319,7 +2319,7 @@ static u8 * wpa_ft_bigtk_subelem(struct wpa_state_machine *sm, size_t *len)
 	const u8 *kek, *bigtk;
 	size_t kek_len;
 	size_t bigtk_len;
-	u8 dummy_bigtk[WPA_IGTK_MAX_LEN];
+	u8 stub_bigtk[WPA_IGTK_MAX_LEN];
 
 	if (wpa_key_mgmt_fils(sm->wpa_key_mgmt)) {
 		kek = sm->PTK.kek2;
@@ -2352,11 +2352,11 @@ static u8 * wpa_ft_bigtk_subelem(struct wpa_state_machine *sm, size_t *len)
 		 * Provide unique random BIGTK to each OSEN STA to prevent use
 		 * of BIGTK in the BSS.
 		 */
-		if (random_get_bytes(dummy_bigtk, bigtk_len / 8) < 0) {
+		if (random_get_bytes(stub_bigtk, bigtk_len / 8) < 0) {
 			os_free(subelem);
 			return NULL;
 		}
-		bigtk = dummy_bigtk;
+		bigtk = stub_bigtk;
 	}
 	if (aes_wrap(kek, kek_len, bigtk_len / 8, bigtk, pos)) {
 		wpa_printf(MSG_DEBUG,
