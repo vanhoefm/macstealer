@@ -5924,7 +5924,7 @@ static struct p2ps_provision * p2p_parse_asp_provision_cmd(const char *cmd)
 	for (i = 0; p2ps_prov->cpt_priority[i]; i++)
 		p2ps_prov->cpt_mask |= p2ps_prov->cpt_priority[i];
 
-	/* force conncap with tstCap (no sanity checks) */
+	/* force conncap with tstCap (no validity checks) */
 	pos = os_strstr(cmd, "tstCap=");
 	if (pos) {
 		role = strtol(pos + 7, NULL, 16);

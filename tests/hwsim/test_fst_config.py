@@ -272,7 +272,7 @@ def parse_ies(iehex, el=-1):
     iel = [iehex[i:i + 2] for i in range(0, len(iehex), 2)]
     for i in range(0, len(iel)):
          iel[i] = int(iel[i], 16)
-    # Sanity check
+    # Validity check
     i = 0
     res = []
     while i < len(iel):

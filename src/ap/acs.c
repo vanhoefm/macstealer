@@ -309,8 +309,6 @@ acs_survey_interference_factor(struct freq_survey *survey, s8 min_nf)
 	else if (survey->filled & SURVEY_HAS_CHAN_TIME_RX)
 		busy = survey->channel_time_rx;
 	else {
-		/* This shouldn't really happen as survey data is checked in
-		 * acs_sanity_check() */
 		wpa_printf(MSG_ERROR, "ACS: Survey data missing");
 		return 0;
 	}

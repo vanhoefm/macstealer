@@ -455,7 +455,7 @@ static int wpa_ft_rrb_lin(const struct tlv_list *tlvs1,
 	pos += wpa_ft_tlv_lin(tlvs2, pos, endpos);
 	pos += wpa_ft_vlan_lin(vlan, pos, endpos);
 
-	/* sanity check */
+	/* validity check */
 	if (pos != endpos) {
 		wpa_printf(MSG_ERROR, "FT: Length error building RRB");
 		goto err;
@@ -3590,7 +3590,7 @@ int wpa_ft_action_rx(struct wpa_state_machine *sm, const u8 *data, size_t len)
 	}
 
 	/*
-	 * Do some sanity checking on the target AP address (not own and not
+	 * Do some validity checking on the target AP address (not own and not
 	 * broadcast. This could be extended to filter based on a list of known
 	 * APs in the MD (if such a list were configured).
 	 */
