@@ -38,6 +38,8 @@ TELNET=$(sed 's/.*TELNET=\([^ ]*\) .*/\1/' /proc/cmdline)
 ARGS=$(sed 's/.*ARGS=\([^ ]*\)\( \|$\).*/\1/' /proc/cmdline)
 LOGDIR=$(sed 's/.*LOGDIR=\([^ ]*\)\( \|$\).*/\1/' /proc/cmdline)
 
+mount --bind "$TESTDIR/vm/regdb/" /lib/firmware
+
 # create /dev entries we need
 mknod -m 660 /dev/ttyS0 c 4 64
 mknod -m 666 /dev/ptmx c 5 2
