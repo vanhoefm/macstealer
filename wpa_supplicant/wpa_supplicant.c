@@ -7812,6 +7812,16 @@ int wpas_get_ssid_pmf(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 }
 
 
+int pmf_in_use(struct wpa_supplicant *wpa_s, const u8 *addr)
+{
+	if (wpa_s->current_ssid == NULL ||
+	    wpa_s->wpa_state < WPA_4WAY_HANDSHAKE ||
+	    os_memcmp(addr, wpa_s->bssid, ETH_ALEN) != 0)
+		return 0;
+	return wpa_sm_pmf_enabled(wpa_s->wpa);
+}
+
+
 int wpas_is_p2p_prioritized(struct wpa_supplicant *wpa_s)
 {
 	if (wpa_s->global->conc_pref == WPA_CONC_PREF_P2P)
