@@ -8232,6 +8232,9 @@ struct hostapd_hw_modes * get_mode(struct hostapd_hw_modes *modes,
 {
 	u16 i;
 
+	if (!modes)
+		return NULL;
+
 	for (i = 0; i < num_modes; i++) {
 		if (modes[i].mode != mode ||
 		    !modes[i].num_channels || !modes[i].channels)
