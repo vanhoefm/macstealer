@@ -405,7 +405,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			    int center_segment1, u32 vht_caps,
 			    struct he_capabilities *he_cap)
 {
-	if (!he_cap)
+	if (!he_cap || !he_cap->he_supported)
 		he_enabled = 0;
 	os_memset(data, 0, sizeof(*data));
 	data->mode = mode;
