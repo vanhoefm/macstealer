@@ -1905,6 +1905,23 @@ enum qca_vendor_element_id {
 };
 
 /**
+ * enum qca_wlan_vendor_scan_priority - Specifies the valid values that the
+ * vendor scan attribute QCA_WLAN_VENDOR_ATTR_SCAN_PRIORITY can take.
+ * @QCA_WLAN_VENDOR_SCAN_PRIORITY_VERY_LOW: Very low priority
+ * @QCA_WLAN_VENDOR_SCAN_PRIORITY_LOW: Low priority
+ * @QCA_WLAN_VENDOR_SCAN_PRIORITY_MEDIUM: Medium priority
+ * @QCA_WLAN_VENDOR_SCAN_PRIORITY_HIGH: High priority
+ * @QCA_WLAN_VENDOR_SCAN_PRIORITY_VERY_HIGH: Very high priority
+ */
+enum qca_wlan_vendor_scan_priority {
+	QCA_WLAN_VENDOR_SCAN_PRIORITY_VERY_LOW = 0,
+	QCA_WLAN_VENDOR_SCAN_PRIORITY_LOW = 1,
+	QCA_WLAN_VENDOR_SCAN_PRIORITY_MEDIUM = 2,
+	QCA_WLAN_VENDOR_SCAN_PRIORITY_HIGH = 3,
+	QCA_WLAN_VENDOR_SCAN_PRIORITY_VERY_HIGH = 4,
+};
+
+/**
  * enum qca_wlan_vendor_attr_scan - Specifies vendor scan attributes
  *
  * @QCA_WLAN_VENDOR_ATTR_SCAN_IE: IEs that should be included as part of scan
@@ -1929,6 +1946,11 @@ enum qca_vendor_element_id {
  * @QCA_WLAN_VENDOR_ATTR_SCAN_DWELL_TIME: Unsigned 64-bit dwell time in
  *	microseconds. This is a common value which applies across all
  *	frequencies specified by QCA_WLAN_VENDOR_ATTR_SCAN_FREQUENCIES.
+ * @QCA_WLAN_VENDOR_ATTR_SCAN_PRIORITY: Priority of vendor scan relative to
+ *	other scan requests. It is a u32 attribute and takes values from enum
+ *	qca_wlan_vendor_scan_priority. This is an optional attribute.
+ *	If this attribute is not configured, the driver shall use
+ *	QCA_WLAN_VENDOR_SCAN_PRIORITY_HIGH as the priority of vendor scan.
  */
 enum qca_wlan_vendor_attr_scan {
 	QCA_WLAN_VENDOR_ATTR_SCAN_INVALID_PARAM = 0,
@@ -1944,6 +1966,7 @@ enum qca_wlan_vendor_attr_scan {
 	QCA_WLAN_VENDOR_ATTR_SCAN_MAC_MASK = 10,
 	QCA_WLAN_VENDOR_ATTR_SCAN_BSSID = 11,
 	QCA_WLAN_VENDOR_ATTR_SCAN_DWELL_TIME = 12,
+	QCA_WLAN_VENDOR_ATTR_SCAN_PRIORITY = 13,
 	QCA_WLAN_VENDOR_ATTR_SCAN_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_SCAN_MAX =
 	QCA_WLAN_VENDOR_ATTR_SCAN_AFTER_LAST - 1
