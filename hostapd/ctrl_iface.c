@@ -840,7 +840,7 @@ static int hostapd_ctrl_iface_bss_tm_req(struct hostapd_data *hapd,
 	const char *pos, *end;
 	int disassoc_timer = 0;
 	struct sta_info *sta;
-	u8 req_mode = 0, valid_int = 0x01;
+	u8 req_mode = 0, valid_int = 0x01, dialog_token = 0x01;
 	u8 bss_term_dur[12];
 	char *url = NULL;
 	int ret;
@@ -876,6 +876,12 @@ static int hostapd_ctrl_iface_bss_tm_req(struct hostapd_data *hapd,
 	if (pos) {
 		pos += 11;
 		valid_int = atoi(pos);
+	}
+
+	pos = os_strstr(cmd, " dialog_token=");
+	if (pos) {
+		pos += 14;
+		dialog_token = atoi(pos);
 	}
 
 	pos = os_strstr(cmd, " bss_term=");
@@ -984,7 +990,7 @@ static int hostapd_ctrl_iface_bss_tm_req(struct hostapd_data *hapd,
 #endif /* CONFIG_MBO */
 
 	ret = wnm_send_bss_tm_req(hapd, sta, req_mode, disassoc_timer,
-				  valid_int, bss_term_dur, url,
+				  valid_int, bss_term_dur, dialog_token, url,
 				  nei_len ? nei_rep : NULL, nei_len,
 				  mbo_len ? mbo : NULL, mbo_len);
 #ifdef CONFIG_MBO
