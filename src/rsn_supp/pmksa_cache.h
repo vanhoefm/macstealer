@@ -86,6 +86,7 @@ pmksa_cache_get_opportunistic(struct rsn_pmksa_cache *pmksa,
 			      void *network_ctx, const u8 *aa, int akmp);
 void pmksa_cache_flush(struct rsn_pmksa_cache *pmksa, void *network_ctx,
 		       const u8 *pmk, size_t pmk_len, bool external_only);
+void pmksa_cache_reconfig(struct rsn_pmksa_cache *pmksa);
 
 #else /* IEEE8021X_EAPOL */
 
@@ -160,6 +161,10 @@ static inline void pmksa_cache_flush(struct rsn_pmksa_cache *pmksa,
 				     void *network_ctx,
 				     const u8 *pmk, size_t pmk_len,
 				     bool external_only)
+{
+}
+
+static inline void pmksa_cache_reconfig(struct rsn_pmksa_cache *pmksa)
 {
 }
 

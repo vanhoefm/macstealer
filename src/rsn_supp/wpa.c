@@ -5246,3 +5246,10 @@ void wpa_pasn_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
 					key_mgmt, 0);
 }
 #endif /* CONFIG_PASN */
+
+
+void wpa_sm_pmksa_cache_reconfig(struct wpa_sm *sm)
+{
+	if (sm)
+		pmksa_cache_reconfig(sm->pmksa);
+}
