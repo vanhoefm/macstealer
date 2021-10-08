@@ -8426,6 +8426,10 @@ enum qca_wlan_vendor_attr_wifi_test_config {
  *
  * @QCA_WLAN_TWT_SETUP_READY_NOTIFY: Notify userspace that the firmare is
  * ready for a new TWT session setup after it issued a TWT teardown.
+ *
+ * @QCA_WLAN_TWT_SET_PARAM: Configure TWT related parameters. Required
+ * parameters are obtained through QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS. Refer
+ * the enum qca_wlan_vendor_attr_twt_set_param.
  */
 enum qca_wlan_twt_operation {
 	QCA_WLAN_TWT_SET = 0,
@@ -8438,6 +8442,7 @@ enum qca_wlan_twt_operation {
 	QCA_WLAN_TWT_CLEAR_STATS = 7,
 	QCA_WLAN_TWT_GET_CAPABILITIES = 8,
 	QCA_WLAN_TWT_SETUP_READY_NOTIFY = 9,
+	QCA_WLAN_TWT_SET_PARAM = 10,
 };
 
 /**
@@ -8452,7 +8457,8 @@ enum qca_wlan_twt_operation {
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS: Nested attribute representing the
  * parameters configured for TWT. These parameters are represented by
  * enum qca_wlan_vendor_attr_twt_setup, enum qca_wlan_vendor_attr_twt_resume,
- * or enum qca_wlan_vendor_attr_twt_stats based on the operation.
+ * enum qca_wlan_vendor_attr_twt_set_param, or
+ * enum qca_wlan_vendor_attr_twt_stats based on the operation.
  */
 enum qca_wlan_vendor_attr_config_twt {
 	QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_INVALID = 0,
@@ -9211,6 +9217,27 @@ enum qca_wlan_vendor_attr_twt_capability {
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX =
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_twt_set_param: Represents attributes for
+ * TWT (Target Wake Time) related parameters. It is used when
+ * %QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_OPERATION is set to %QCA_WLAN_TWT_SET_PARAM.
+ * These attributes are sent as part of %QCA_NL80211_VENDOR_SUBCMD_CONFIG_TWT.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_AP_AC_VALUE: Optional (u8)
+ * This attribute configures AC parameters to be used for all TWT
+ * sessions in AP mode.
+ * Uses the enum qca_wlan_ac_type values.
+ */
+enum qca_wlan_vendor_attr_twt_set_param {
+	QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_AP_AC_VALUE = 1,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_MAX =
+	QCA_WLAN_VENDOR_ATTR_TWT_SET_PARAM_AFTER_LAST - 1,
 };
 
 /**
