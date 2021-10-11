@@ -1450,6 +1450,11 @@ enum qca_wlan_vendor_attr_p2p_listen_offload {
  * Used with event to notify the EDMG channel number selected in ACS
  * operation.
  * EDMG primary channel is indicated by QCA_WLAN_VENDOR_ATTR_ACS_PRIMARY_CHANNEL
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ACS_PUNCTURE_BITMAP: Optional (u16).
+ * Used with event to notify the puncture pattern selected in ACS operation.
+ * Encoding for this attribute will follow the convention used in the Disabled
+ * Subchannel Bitmap field of the EHT Operation IE.
  */
 enum qca_wlan_vendor_attr_acs_offload {
 	QCA_WLAN_VENDOR_ATTR_ACS_CHANNEL_INVALID = 0,
@@ -1470,6 +1475,7 @@ enum qca_wlan_vendor_attr_acs_offload {
 	QCA_WLAN_VENDOR_ATTR_ACS_VHT_SEG1_CENTER_FREQUENCY = 15,
 	QCA_WLAN_VENDOR_ATTR_ACS_EDMG_ENABLED = 16,
 	QCA_WLAN_VENDOR_ATTR_ACS_EDMG_CHANNEL = 17,
+	QCA_WLAN_VENDOR_ATTR_ACS_PUNCTURE_BITMAP = 18,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_ACS_AFTER_LAST,
