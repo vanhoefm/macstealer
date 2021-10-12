@@ -4812,8 +4812,13 @@ static int wpa_supplicant_set_driver(struct wpa_supplicant *wpa_s,
 	}
 
 	if (name == NULL) {
-		/* default to first driver in the list */
-		return select_driver(wpa_s, 0);
+		/* Default to first successful driver in the list */
+		for (i = 0; wpa_drivers[i]; i++) {
+			if (select_driver(wpa_s, i) == 0)
+				return 0;
+		}
+		/* Drivers have each reported failure, so no wpa_msg() here. */
+		return -1;
 	}
 
 	do {
