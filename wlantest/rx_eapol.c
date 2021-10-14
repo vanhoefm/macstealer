@@ -124,7 +124,7 @@ static int try_pmk(struct wlantest *wt, struct wlantest_bss *bss,
 		    check_mic(ptk.kck, ptk.kck_len, sta->key_mgmt, ver, data,
 			      len) < 0)
 			return -1;
-	} else if (wpa_pmk_to_ptk(pmk->pmk, PMK_LEN,
+	} else if (wpa_pmk_to_ptk(pmk->pmk, pmk->pmk_len,
 				  "Pairwise key expansion",
 				  bss->bssid, sta->addr, sta->anonce,
 				  sta->snonce, &ptk, sta->key_mgmt,
