@@ -378,6 +378,7 @@ pmksa_cache_clone_entry(struct rsn_pmksa_cache *pmksa,
 {
 	struct rsn_pmksa_cache_entry *new_entry;
 	os_time_t old_expiration = old_entry->expiration;
+	os_time_t old_reauth_time = old_entry->reauth_time;
 	const u8 *pmkid = NULL;
 
 	if (wpa_key_mgmt_sae(old_entry->akmp) ||
@@ -394,6 +395,7 @@ pmksa_cache_clone_entry(struct rsn_pmksa_cache *pmksa,
 
 	/* TODO: reorder entries based on expiration time? */
 	new_entry->expiration = old_expiration;
+	new_entry->reauth_time = old_reauth_time;
 	new_entry->opportunistic = 1;
 
 	return new_entry;
