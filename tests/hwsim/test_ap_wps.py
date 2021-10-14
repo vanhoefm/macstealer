@@ -10599,3 +10599,10 @@ def test_ap_wps_registrar_init_errors(dev, apdev):
         with alloc_fail(hapd, count, func):
             if "FAIL" not in hapd.request("ENABLE"):
                 raise Exception("ENABLE succeeded unexpectedly")
+
+def test_ap_wps_config_without_wps(dev, apdev):
+    """AP configuration attempt using wps_config when WPS is disabled"""
+    ssid = "test-wps-init-config"
+    hapd = hostapd.add_ap(apdev[0], {"ssid": ssid})
+    if "FAIL" not in hapd.request("WPS_CONFIG " + binascii.hexlify(ssid.encode()).decode() + " WPA2PSK CCMP " + binascii.hexlify(b"12345678").decode()):
+        raise Exception("WPS_CONFIG command succeeded unexpectedly")
