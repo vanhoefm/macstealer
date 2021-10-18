@@ -676,6 +676,7 @@ int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
 int dpp_controller_start(struct dpp_global *dpp,
 			 struct dpp_controller_config *config);
 void dpp_controller_stop(struct dpp_global *dpp);
+void dpp_controller_stop_for_ctx(struct dpp_global *dpp, void *cb_ctx);
 struct dpp_authentication * dpp_controller_get_auth(struct dpp_global *dpp,
 						    unsigned int id);
 void dpp_controller_new_qr_code(struct dpp_global *dpp,

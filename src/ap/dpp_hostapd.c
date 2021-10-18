@@ -2276,6 +2276,8 @@ void hostapd_dpp_deinit(struct hostapd_data *hapd)
 	eloop_cancel_timeout(hostapd_dpp_conn_status_result_wait_timeout, hapd,
 			     NULL);
 	hostapd_dpp_chirp_stop(hapd);
+	if (hapd->iface->interfaces)
+		dpp_controller_stop_for_ctx(hapd->iface->interfaces->dpp, hapd);
 #endif /* CONFIG_DPP2 */
 	dpp_auth_deinit(hapd->dpp_auth);
 	hapd->dpp_auth = NULL;

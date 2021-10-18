@@ -1723,6 +1723,13 @@ void dpp_controller_stop(struct dpp_global *dpp)
 }
 
 
+void dpp_controller_stop_for_ctx(struct dpp_global *dpp, void *cb_ctx)
+{
+	if (dpp && dpp->controller && dpp->controller->cb_ctx == cb_ctx)
+		dpp_controller_stop(dpp);
+}
+
+
 static bool dpp_tcp_peer_id_match(struct dpp_authentication *auth,
 				  unsigned int id)
 {
