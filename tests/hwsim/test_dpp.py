@@ -5490,6 +5490,37 @@ def test_dpp_tcp_controller_management_hostapd(dev, apdev, params):
     if "FAIL" not in hapd.request("DPP_CONFIGURATOR_REMOVE %d" % conf_id):
         raise Exception("Removal of unknown Configurator accepted")
 
+def test_dpp_tcp_controller_management_hostapd2(dev, apdev, params):
+    """DPP Controller management in hostapd over interface addition/removal"""
+    check_dpp_capab(dev[0], min_ver=2)
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured"})
+    check_dpp_capab(hapd, min_ver=2)
+    hapd2 = hostapd.add_ap(apdev[1], {"ssid": "unconfigured"})
+    check_dpp_capab(hapd2, min_ver=2)
+    id_c = hapd.dpp_bootstrap_gen()
+    uri_c = hapd.request("DPP_BOOTSTRAP_GET_URI %d" % id_c)
+    if "OK" not in hapd.request("DPP_CONTROLLER_START role=enrollee"):
+        raise Exception("Failed to start Controller")
+
+    conf_id = dev[0].dpp_configurator_add()
+    dev[0].dpp_auth_init(uri=uri_c, role="configurator", conf="sta-dpp",
+                       configurator=conf_id, tcp_addr="127.0.0.1")
+    ev = dev[0].wait_event(["DPP-AUTH-SUCCESS"], timeout=5)
+    if ev is None:
+        raise Exception("DPP Authentication did not succeed")
+    ev = dev[0].wait_event(["DPP-CONF-SENT"], timeout=5)
+    if ev is None:
+        raise Exception("DPP Configuration did not succeed")
+
+    hapd_global = hostapd.HostapdGlobal(apdev)
+    hapd_global.remove(apdev[0]['ifname'])
+
+    dev[0].dpp_auth_init(uri=uri_c, role="configurator", conf="sta-dpp",
+                       configurator=conf_id, tcp_addr="127.0.0.1")
+    ev = dev[0].wait_event(["DPP-AUTH-SUCCESS"], timeout=5)
+    if ev is not None:
+        raise Exception("Unexpected DPP Authentication success")
+
 def test_dpp_tcp_controller_start_failure(dev, apdev, params):
     """DPP Controller startup failure"""
     check_dpp_capab(dev[0])
