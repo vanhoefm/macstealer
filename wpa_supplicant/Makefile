@@ -30,9 +30,9 @@ LIBS_p := $(LIBS)
 endif
 endif
 
-export LIBDIR ?= /usr/local/lib/
-export INCDIR ?= /usr/local/include/
-export BINDIR ?= /usr/local/sbin/
+export LIBDIR ?= /usr/local/lib
+export INCDIR ?= /usr/local/include
+export BINDIR ?= /usr/local/sbin
 PKG_CONFIG ?= pkg-config
 
 CFLAGS += $(EXTRA_CFLAGS)
