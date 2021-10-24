@@ -1504,7 +1504,7 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
 			return -1;
 
 		val = atoi(value);
-		if (val < 0 || val > 1)
+		if (val < 0 || val > MBO_ASSOC_DISALLOW_REASON_LOW_RSSI)
 			return -1;
 
 		hapd->mbo_assoc_disallow = val;
