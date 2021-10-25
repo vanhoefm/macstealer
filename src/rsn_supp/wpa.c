@@ -3132,9 +3132,11 @@ void wpa_sm_set_pmk(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
 #endif /* CONFIG_IEEE80211R */
 
 	if (bssid) {
-		pmksa_cache_add(sm->pmksa, pmk, pmk_len, pmkid, NULL, 0,
-				bssid, sm->own_addr,
-				sm->network_ctx, sm->key_mgmt, NULL);
+		sm->cur_pmksa = pmksa_cache_add(sm->pmksa, pmk, pmk_len,
+						pmkid, NULL, 0, bssid,
+						sm->own_addr,
+						sm->network_ctx, sm->key_mgmt,
+						NULL);
 	}
 }
 
