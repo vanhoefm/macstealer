@@ -2727,6 +2727,31 @@ static int wpa_supplicant_use_own_rsne_params(struct wpa_supplicant *wpa_s,
 		    "WPA: Update cipher suite selection based on IEs in driver-generated WPA/RSNE in AssocReq",
 		    p, l);
 
+	sel = ie.key_mgmt;
+	if (ssid->key_mgmt)
+		sel &= ssid->key_mgmt;
+
+	wpa_dbg(wpa_s, MSG_DEBUG,
+		"WPA: AP key_mgmt 0x%x network key_mgmt 0x%x; available key_mgmt 0x%x",
+		ie.key_mgmt, ssid->key_mgmt, sel);
+	if (ie.key_mgmt && !sel) {
+		wpa_supplicant_deauthenticate(
+			wpa_s, WLAN_REASON_AKMP_NOT_VALID);
+		return -1;
+	}
+
+	wpa_s->wpa_proto = ie.proto;
+	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_PROTO, wpa_s->wpa_proto);
+	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_RSN_ENABLED,
+			 !!(wpa_s->wpa_proto &
+			    (WPA_PROTO_RSN | WPA_PROTO_OSEN)));
+
+	wpa_s->key_mgmt = ie.key_mgmt;
+	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_KEY_MGMT, wpa_s->key_mgmt);
+	wpa_dbg(wpa_s, MSG_DEBUG, "WPA: using KEY_MGMT %s and proto %d",
+		wpa_key_mgmt_txt(wpa_s->key_mgmt, wpa_s->wpa_proto),
+		wpa_s->wpa_proto);
+
 	sel = ie.group_cipher;
 	if (ssid->group_cipher)
 		sel &= ssid->group_cipher;
