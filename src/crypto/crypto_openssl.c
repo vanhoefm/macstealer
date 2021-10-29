@@ -2501,15 +2501,18 @@ struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
 	unsigned char *der = NULL;
 	int der_len;
 	struct wpabuf *buf;
+	unsigned int key_flags;
 
 	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
 		return NULL;
 
+	key_flags = EC_KEY_get_enc_flags(eckey);
 	if (include_pub)
-		EC_KEY_clear_flags(eckey, EC_PKEY_NO_PUBKEY);
+		key_flags &= ~EC_PKEY_NO_PUBKEY;
 	else
-		EC_KEY_set_enc_flags(eckey, EC_PKEY_NO_PUBKEY);
+		key_flags |= EC_PKEY_NO_PUBKEY;
+	EC_KEY_set_enc_flags(eckey, key_flags);
 
 	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_UNCOMPRESSED);
 
