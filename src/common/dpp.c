@@ -8,8 +8,6 @@
  */
 
 #include "utils/includes.h"
-#include <openssl/evp.h>
-#include <openssl/x509.h>
 
 #include "utils/common.h"
 #include "utils/base64.h"

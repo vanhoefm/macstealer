@@ -214,7 +214,8 @@ def test_dpp_qr_code_keygen_fail(dev, apdev):
     """DPP QR Code and keygen failure"""
     check_dpp_capab(dev[0])
 
-    with alloc_fail(dev[0], 1, "dpp_bootstrap_key_der;dpp_keygen"):
+    with alloc_fail(dev[0], 1,
+                    "crypto_ec_key_get_subject_public_key;dpp_keygen"):
         if "FAIL" not in dev[0].request("DPP_BOOTSTRAP_GEN type=qrcode"):
             raise Exception("Failure not reported")
 

@@ -2501,11 +2501,104 @@ void crypto_ec_key_deinit(struct crypto_ec_key *key)
 }
 
 
+#ifdef OPENSSL_IS_BORINGSSL
+
+/* BoringSSL version of i2d_PUBKEY() always outputs public EC key using
+ * uncompressed form so define a custom function to export EC pubkey using
+ * the compressed format that is explicitly required for some protocols. */
+
+#include <openssl/asn1.h>
+#include <openssl/asn1t.h>
+
+typedef struct {
+	/* AlgorithmIdentifier ecPublicKey with optional parameters present
+	 * as an OID identifying the curve */
+	X509_ALGOR *alg;
+	/* Compressed format public key per ANSI X9.63 */
+	ASN1_BIT_STRING *pub_key;
+} EC_COMP_PUBKEY;
+
+ASN1_SEQUENCE(EC_COMP_PUBKEY) = {
+	ASN1_SIMPLE(EC_COMP_PUBKEY, alg, X509_ALGOR),
+	ASN1_SIMPLE(EC_COMP_PUBKEY, pub_key, ASN1_BIT_STRING)
+} ASN1_SEQUENCE_END(EC_COMP_PUBKEY);
+
+IMPLEMENT_ASN1_FUNCTIONS(EC_COMP_PUBKEY);
+
+#endif /* OPENSSL_IS_BORINGSSL */
+
+
 struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key)
 {
+#ifdef OPENSSL_IS_BORINGSSL
+	unsigned char *der = NULL;
+	int der_len;
+	const EC_KEY *eckey;
+	struct wpabuf *ret = NULL;
+	size_t len;
+	const EC_GROUP *group;
+	const EC_POINT *point;
+	BN_CTX *ctx;
+	EC_COMP_PUBKEY *pubkey = NULL;
+	int nid;
+
+	ctx = BN_CTX_new();
+	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	if (!ctx || !eckey)
+		goto fail;
+
+	group = EC_KEY_get0_group(eckey);
+	point = EC_KEY_get0_public_key(eckey);
+	if (!group || !point)
+		goto fail;
+	nid = EC_GROUP_get_curve_name(group);
+
+	pubkey = EC_COMP_PUBKEY_new();
+	if (!pubkey ||
+	    X509_ALGOR_set0(pubkey->alg, OBJ_nid2obj(EVP_PKEY_EC),
+			    V_ASN1_OBJECT, (void *) OBJ_nid2obj(nid)) != 1)
+		goto fail;
+
+	len = EC_POINT_point2oct(group, point, POINT_CONVERSION_COMPRESSED,
+				 NULL, 0, ctx);
+	if (len == 0)
+		goto fail;
+
+	der = OPENSSL_malloc(len);
+	if (!der)
+		goto fail;
+	len = EC_POINT_point2oct(group, point, POINT_CONVERSION_COMPRESSED,
+				 der, len, ctx);
+
+	OPENSSL_free(pubkey->pub_key->data);
+	pubkey->pub_key->data = der;
+	der = NULL;
+	pubkey->pub_key->length = len;
+	/* No unused bits */
+	pubkey->pub_key->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
+	pubkey->pub_key->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+
+	der_len = i2d_EC_COMP_PUBKEY(pubkey, &der);
+	if (der_len <= 0) {
+		wpa_printf(MSG_ERROR,
+			   "BoringSSL: Failed to build DER encoded public key");
+		goto fail;
+	}
+
+	ret = wpabuf_alloc_copy(der, der_len);
+fail:
+	EC_COMP_PUBKEY_free(pubkey);
+	OPENSSL_free(der);
+	BN_CTX_free(ctx);
+	return ret;
+#else /* OPENSSL_IS_BORINGSSL */
 	unsigned char *der = NULL;
 	int der_len;
 	struct wpabuf *buf;
+
+	/* For now, all users expect COMPRESSED form */
+	EC_KEY_set_conv_form(EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key),
+			     POINT_CONVERSION_COMPRESSED);
 
 	der_len = i2d_PUBKEY((EVP_PKEY *) key, &der);
 	if (der_len <= 0) {
@@ -2517,6 +2610,7 @@ struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key)
 	buf = wpabuf_alloc_copy(der, der_len);
 	OPENSSL_free(der);
 	return buf;
+#endif /* OPENSSL_IS_BORINGSSL */
 }
 
 
