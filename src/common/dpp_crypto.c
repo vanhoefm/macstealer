@@ -566,84 +566,45 @@ int dpp_derive_bk_ke(struct dpp_authentication *auth)
 int dpp_ecdh(struct crypto_ec_key *own, struct crypto_ec_key *peer,
 	     u8 *secret, size_t *secret_len)
 {
-	EVP_PKEY_CTX *ctx;
+	struct crypto_ecdh *ecdh;
+	struct wpabuf *peer_pub, *secret_buf = NULL;
 	int ret = -1;
 
-	ERR_clear_error();
 	*secret_len = 0;
 
-	ctx = EVP_PKEY_CTX_new((EVP_PKEY *) own, NULL);
-	if (!ctx) {
-		wpa_printf(MSG_ERROR, "DPP: EVP_PKEY_CTX_new failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+	ecdh = crypto_ecdh_init2(crypto_ec_key_group(own), own);
+	if (!ecdh) {
+		wpa_printf(MSG_ERROR, "DPP: crypto_ecdh_init2() failed");
 		return -1;
 	}
 
-	if (EVP_PKEY_derive_init(ctx) != 1) {
-		wpa_printf(MSG_ERROR, "DPP: EVP_PKEY_derive_init failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		goto fail;
-	}
-
-	if (EVP_PKEY_derive_set_peer(ctx, (EVP_PKEY *) peer) != 1) {
+	peer_pub = crypto_ec_key_get_pubkey_point(peer, 0);
+	if (!peer_pub) {
 		wpa_printf(MSG_ERROR,
-			   "DPP: EVP_PKEY_derive_set_peet failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+			   "DPP: crypto_ec_key_get_pubkey_point() failed");
 		goto fail;
 	}
 
-	if (EVP_PKEY_derive(ctx, NULL, secret_len) != 1) {
-		wpa_printf(MSG_ERROR, "DPP: EVP_PKEY_derive(NULL) failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+	secret_buf = crypto_ecdh_set_peerkey(ecdh, 1, wpabuf_head(peer_pub),
+					     wpabuf_len(peer_pub));
+	if (!secret_buf) {
+		wpa_printf(MSG_ERROR, "DPP: crypto_ecdh_set_peerkey() failed");
 		goto fail;
 	}
 
-	if (*secret_len > DPP_MAX_SHARED_SECRET_LEN) {
-		u8 buf[200];
-		int level = *secret_len > 200 ? MSG_ERROR : MSG_DEBUG;
-
-		/* It looks like OpenSSL can return unexpectedly large buffer
-		 * need for shared secret from EVP_PKEY_derive(NULL) in some
-		 * cases. For example, group 19 has shown cases where secret_len
-		 * is set to 72 even though the actual length ends up being
-		 * updated to 32 when EVP_PKEY_derive() is called with a buffer
-		 * for the value. Work around this by trying to fetch the value
-		 * and continue if it is within supported range even when the
-		 * initial buffer need is claimed to be larger. */
-		wpa_printf(level,
-			   "DPP: Unexpected secret_len=%d from EVP_PKEY_derive()",
-			   (int) *secret_len);
-		if (*secret_len > 200)
-			goto fail;
-		if (EVP_PKEY_derive(ctx, buf, secret_len) != 1) {
-			wpa_printf(MSG_ERROR, "DPP: EVP_PKEY_derive failed: %s",
-				   ERR_error_string(ERR_get_error(), NULL));
-			goto fail;
-		}
-		if (*secret_len > DPP_MAX_SHARED_SECRET_LEN) {
-			wpa_printf(MSG_ERROR,
-				   "DPP: Unexpected secret_len=%d from EVP_PKEY_derive()",
-				   (int) *secret_len);
-			goto fail;
-		}
-		wpa_hexdump_key(MSG_DEBUG, "DPP: Unexpected secret_len change",
-				buf, *secret_len);
-		os_memcpy(secret, buf, *secret_len);
-		forced_memzero(buf, sizeof(buf));
-		goto done;
-	}
-
-	if (EVP_PKEY_derive(ctx, secret, secret_len) != 1) {
-		wpa_printf(MSG_ERROR, "DPP: EVP_PKEY_derive failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+	if (wpabuf_len(secret_buf) > DPP_MAX_SHARED_SECRET_LEN) {
+		wpa_printf(MSG_ERROR, "DPP: ECDH secret longer than expected");
 		goto fail;
 	}
 
-done:
+	*secret_len = wpabuf_len(secret_buf);
+	os_memcpy(secret, wpabuf_head(secret_buf), wpabuf_len(secret_buf));
 	ret = 0;
 
 fail:
-	EVP_PKEY_CTX_free(ctx);
+	wpabuf_clear_free(secret_buf);
+	wpabuf_free(peer_pub);
+	crypto_ecdh_deinit(ecdh);
 	return ret;
 }
 

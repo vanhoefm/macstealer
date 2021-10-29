@@ -945,7 +945,15 @@ void crypto_ec_point_debug_print(const struct crypto_ec *e,
 				 const char *title);
 
 /**
- * struct crypto_ecdh - Elliptic curve Diffie–Hellman context
+ * struct crypto_ec_key - Elliptic curve key pair
+ *
+ * Internal data structure for EC key pair. The contents is specific to the used
+ * crypto library.
+ */
+struct crypto_ec_key;
+
+/**
+ * struct crypto_ecdh - Elliptic Curve Diffie–Hellman context
  *
  * Internal data structure for ECDH. The contents is specific to the used
  * crypto library.
@@ -956,13 +964,25 @@ struct crypto_ecdh;
  * crypto_ecdh_init - Initialize elliptic curve Diffie–Hellman context
  * @group: Identifying number for the ECC group (IANA "Group Description"
  *	attribute registry for RFC 2409)
+ * This function generates an ephemeral key pair.
  * Returns: Pointer to ECDH context or %NULL on failure
  */
 struct crypto_ecdh * crypto_ecdh_init(int group);
 
 /**
+ * crypto_ecdh_init2 - Initialize elliptic curve Diffie–Hellman context with a
+ * given EC key
+ * @group: Identifying number for the ECC group (IANA "Group Description"
+ *	attribute registry for RFC 2409)
+ * @own_key: Our own EC Key
+ * Returns: Pointer to ECDH context or %NULL on failure
+ */
+struct crypto_ecdh * crypto_ecdh_init2(int group,
+				       struct crypto_ec_key *own_key);
+
+/**
  * crypto_ecdh_get_pubkey - Retrieve public key from ECDH context
- * @ecdh: ECDH context from crypto_ecdh_init()
+ * @ecdh: ECDH context from crypto_ecdh_init() or crypto_ecdh_init2()
  * @inc_y: Whether public key should include y coordinate (explicit form)
  * or not (compressed form)
  * Returns: Binary data f the public key or %NULL on failure
@@ -971,7 +991,7 @@ struct wpabuf * crypto_ecdh_get_pubkey(struct crypto_ecdh *ecdh, int inc_y);
 
 /**
  * crypto_ecdh_set_peerkey - Compute ECDH secret
- * @ecdh: ECDH context from crypto_ecdh_init()
+ * @ecdh: ECDH context from crypto_ecdh_init() or crypto_ecdh_init2()
  * @inc_y: Whether peer's public key includes y coordinate (explicit form)
  * or not (compressed form)
  * @key: Binary data of the peer's public key
@@ -983,7 +1003,7 @@ struct wpabuf * crypto_ecdh_set_peerkey(struct crypto_ecdh *ecdh, int inc_y,
 
 /**
  * crypto_ecdh_deinit - Free ECDH context
- * @ecdh: ECDH context from crypto_ecdh_init()
+ * @ecdh: ECDH context from crypto_ecdh_init() or crypto_ecdh_init2()
  */
 void crypto_ecdh_deinit(struct crypto_ecdh *ecdh);
 
@@ -993,14 +1013,6 @@ void crypto_ecdh_deinit(struct crypto_ecdh *ecdh);
  * Returns: Length of the prime defining the group
  */
 size_t crypto_ecdh_prime_len(struct crypto_ecdh *ecdh);
-
-/**
- * struct crypto_ec_key - Elliptic curve key pair
- *
- * Internal data structure for EC key pair. The contents is specific to the used
- * crypto library.
- */
-struct crypto_ec_key;
 
 /**
  * crypto_ec_key_parse_priv - Initialize EC key pair from ECPrivateKey ASN.1

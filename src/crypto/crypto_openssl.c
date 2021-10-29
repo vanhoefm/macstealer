@@ -2085,6 +2085,32 @@ fail:
 }
 
 
+struct crypto_ecdh * crypto_ecdh_init2(int group, struct crypto_ec_key *own_key)
+{
+	struct crypto_ecdh *ecdh;
+
+	ecdh = os_zalloc(sizeof(*ecdh));
+	if (!ecdh)
+		goto fail;
+
+	ecdh->ec = crypto_ec_init(group);
+	if (!ecdh->ec)
+		goto fail;
+
+	ecdh->pkey = EVP_PKEY_new();
+	if (!ecdh->pkey ||
+	    EVP_PKEY_assign_EC_KEY(ecdh->pkey,
+				   EVP_PKEY_get1_EC_KEY((EVP_PKEY *) own_key))
+	    != 1)
+		goto fail;
+
+	return ecdh;
+fail:
+	crypto_ecdh_deinit(ecdh);
+	return NULL;
+}
+
+
 struct wpabuf * crypto_ecdh_get_pubkey(struct crypto_ecdh *ecdh, int inc_y)
 {
 	struct wpabuf *buf = NULL;
