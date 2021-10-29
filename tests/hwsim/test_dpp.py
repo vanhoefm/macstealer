@@ -370,8 +370,10 @@ def run_dpp_qr_code_auth_unicast(dev, apdev, curve, netrole=None, key=None,
                                  require_conf_failure=False,
                                  configurator=False, conf_curve=None,
                                  conf=None, qr=None, stop_responder=True):
-    check_dpp_capab(dev[0], curve and "brainpool" in curve)
-    check_dpp_capab(dev[1], curve and "brainpool" in curve)
+    brainpool = (curve and "brainpool" in curve) or \
+        (conf_curve and "brainpool" in conf_curve)
+    check_dpp_capab(dev[0], brainpool)
+    check_dpp_capab(dev[1], brainpool)
     if configurator:
         conf_id = dev[1].dpp_configurator_add(curve=conf_curve)
     else:
@@ -1752,8 +1754,10 @@ def update_hapd_config(hapd):
 
 def run_dpp_ap_config(dev, apdev, curve=None, conf_curve=None,
                       reconf_configurator=False):
-    check_dpp_capab(dev[0])
-    check_dpp_capab(dev[1])
+    brainpool = (curve and "BP-" in curve) or \
+        (conf_curve and "BP-" in conf_curve)
+    check_dpp_capab(dev[0], brainpool)
+    check_dpp_capab(dev[1], brainpool)
     hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured"})
     check_dpp_capab(hapd)
 
@@ -2215,7 +2219,7 @@ def test_dpp_test_vector_p_256_b(dev, apdev):
 def der_priv_key_p_521(priv):
     if len(priv) != 2 * 66:
         raise Exception("Unexpected der_priv_key_p_521 parameter: " + priv)
-    der_prefix = "3081500201010442"
+    der_prefix = "30500201010442"
     der_postfix = "a00706052b81040023"
     return der_prefix + priv + der_postfix
 
