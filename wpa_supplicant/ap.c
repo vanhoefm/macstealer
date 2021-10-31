@@ -196,6 +196,8 @@ wpa_supplicant_find_hw_mode(struct wpa_supplicant *wpa_s,
 }
 
 
+#ifdef CONFIG_P2P
+
 static int get_max_oper_chwidth_6ghz(int chwidth)
 {
 	switch (chwidth) {
@@ -255,6 +257,8 @@ static void wpas_conf_ap_he_6ghz(struct wpa_supplicant *wpa_s,
 	    get_max_oper_chwidth_6ghz(ssid->max_oper_chwidth) >= 80)
 		wpas_conf_ap_vht(wpa_s, ssid, conf, mode);
 }
+
+#endif /* CONFIG_P2P */
 
 
 int wpa_supplicant_conf_ap_ht(struct wpa_supplicant *wpa_s,
@@ -319,7 +323,9 @@ int wpa_supplicant_conf_ap_ht(struct wpa_supplicant *wpa_s,
 
 		if (mode && is_6ghz_freq(ssid->frequency) &&
 		    conf->hw_mode == HOSTAPD_MODE_IEEE80211A) {
+#ifdef CONFIG_P2P
 			wpas_conf_ap_he_6ghz(wpa_s, mode, ssid, conf);
+#endif /* CONFIG_P2P */
 		} else if (!no_ht && mode && mode->ht_capab) {
 			wpa_printf(MSG_DEBUG,
 				   "Enable HT support (p2p_group=%d 11a=%d ht40_hw_capab=%d ssid->ht40=%d)",
