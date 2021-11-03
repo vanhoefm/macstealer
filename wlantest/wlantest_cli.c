@@ -14,6 +14,9 @@
 #include "utils/edit.h"
 #include "wlantest_ctrl.h"
 
+static void print_help(FILE *stream, const char *cmd);
+static char ** wlantest_cli_cmd_list(void);
+
 
 static int get_cmd_arg_num(const char *str, int pos)
 {
@@ -1566,6 +1569,28 @@ static char ** complete_get_tid(int s, const char *str, int pos)
 }
 
 
+static int wlantest_cli_cmd_help(int s, int argc, char *argv[])
+{
+	print_help(stdout, argc > 0 ? argv[0] : NULL);
+	return 0;
+}
+
+
+static char ** wlantest_cli_complete_help(int s, const char *str, int pos)
+{
+	int arg = get_cmd_arg_num(str, pos);
+	char **res = NULL;
+
+	switch (arg) {
+	case 1:
+		res = wlantest_cli_cmd_list();
+		break;
+	}
+
+	return res;
+}
+
+
 struct wlantest_cli_cmd {
 	const char *cmd;
 	int (*handler)(int s, int argc, char *argv[]);
@@ -1623,8 +1648,43 @@ static const struct wlantest_cli_cmd wlantest_cli_commands[] = {
 	{ "get_rx_tid", cmd_get_rx_tid,
 	  "<BSSID> <STA> <TID> = get STA RX TID counter value",
 	  complete_get_tid },
+	{ "help", wlantest_cli_cmd_help,
+	  "= show this usage help", wlantest_cli_complete_help },
 	{ NULL, NULL, NULL, NULL }
 };
+
+
+/*
+ * Prints command usage, lines are padded with the specified string.
+ */
+static void print_cmd_help(FILE *stream, const struct wlantest_cli_cmd *cmd,
+			   const char *pad)
+{
+	char c;
+	size_t n;
+
+	if (!cmd->usage)
+		return;
+	fprintf(stream, "%s%s ", pad, cmd->cmd);
+	for (n = 0; (c = cmd->usage[n]); n++) {
+		fprintf(stream, "%c", c);
+		if (c == '\n')
+			fprintf(stream, "%s", pad);
+	}
+	fprintf(stream, "\n");
+}
+
+
+static void print_help(FILE *stream, const char *cmd)
+{
+	int n;
+
+	fprintf(stream, "commands:\n");
+	for (n = 0; wlantest_cli_commands[n].cmd; n++) {
+		if (!cmd || str_starts(wlantest_cli_commands[n].cmd, cmd))
+			print_cmd_help(stream, &wlantest_cli_commands[n], "  ");
+	}
+}
 
 
 static int ctrl_command(int s, int argc, char *argv[])
