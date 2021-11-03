@@ -12,28 +12,11 @@
 #include "utils/common.h"
 #include "utils/eloop.h"
 #include "utils/edit.h"
+#include "common/cli.h"
 #include "wlantest_ctrl.h"
 
 static void print_help(FILE *stream, const char *cmd);
 static char ** wlantest_cli_cmd_list(void);
-
-
-static int get_cmd_arg_num(const char *str, int pos)
-{
-	int arg = 0, i;
-
-	for (i = 0; i <= pos; i++) {
-		if (str[i] != ' ') {
-			arg++;
-			while (i <= pos && str[i] != ' ')
-				i++;
-		}
-	}
-
-	if (arg > 0)
-		arg--;
-	return arg;
-}
 
 
 static int get_prev_arg_pos(const char *str, int pos)
@@ -1730,38 +1713,6 @@ static int ctrl_command(int s, int argc, char *argv[])
 struct wlantest_cli {
 	int s;
 };
-
-
-#define max_args 10
-
-static int tokenize_cmd(char *cmd, char *argv[])
-{
-	char *pos;
-	int argc = 0;
-
-	pos = cmd;
-	for (;;) {
-		while (*pos == ' ')
-			pos++;
-		if (*pos == '\0')
-			break;
-		argv[argc] = pos;
-		argc++;
-		if (argc == max_args)
-			break;
-		if (*pos == '"') {
-			char *pos2 = os_strrchr(pos, '"');
-			if (pos2)
-				pos = pos2 + 1;
-		}
-		while (*pos != '\0' && *pos != ' ')
-			pos++;
-		if (*pos == ' ')
-			*pos++ = '\0';
-	}
-
-	return argc;
-}
 
 
 static void wlantest_cli_edit_cmd_cb(void *ctx, char *cmd)
