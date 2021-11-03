@@ -3099,10 +3099,17 @@ int crypto_csr_set_name(struct crypto_csr *csr, enum crypto_csr_name type,
 	if (!n)
 		return -1;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	if (!X509_NAME_add_entry_by_NID(n, nid, MBSTRING_UTF8,
+					(unsigned char *) name,
+					os_strlen(name), -1, 0))
+		return -1;
+#else
 	if (!X509_NAME_add_entry_by_NID(n, nid, MBSTRING_UTF8,
 					(const unsigned char *) name,
 					os_strlen(name), -1, 0))
 		return -1;
+#endif
 
 	return 0;
 }
