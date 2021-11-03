@@ -27,7 +27,7 @@ static void usage(void)
 	       "[-P<RADIUS shared secret>]\n"
 	       "         [-n<write pcapng file>]\n"
 	       "         [-w<write pcap file>] [-f<MSK/PMK file>]\n"
-	       "         [-L<log file>] [-T<PTK file>]\n");
+	       "         [-L<log file>] [-T<PTK file>] [-W<WEP key>]\n");
 }
 
 
