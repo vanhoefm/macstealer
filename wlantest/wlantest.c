@@ -77,6 +77,13 @@ static void ptk_deinit(struct wlantest_ptk *ptk)
 }
 
 
+static void wep_deinit(struct wlantest_wep *wep)
+{
+	dl_list_del(&wep->list);
+	os_free(wep);
+}
+
+
 static void wlantest_deinit(struct wlantest *wt)
 {
 	struct wlantest_passphrase *p, *pn;
@@ -104,7 +111,7 @@ static void wlantest_deinit(struct wlantest *wt)
 	dl_list_for_each_safe(ptk, npt, &wt->ptk, struct wlantest_ptk, list)
 		ptk_deinit(ptk);
 	dl_list_for_each_safe(wep, nw, &wt->wep, struct wlantest_wep, list)
-		os_free(wep);
+		wep_deinit(wep);
 	write_pcap_deinit(wt);
 	write_pcapng_deinit(wt);
 	clear_notes(wt);
