@@ -3193,7 +3193,7 @@ static int hostapd_ctrl_iface_set_neighbor(struct hostapd_data *hapd, char *buf)
 	int stationary = 0;
 	int bss_parameters = 0;
 	char *tmp;
-	int ret;
+	int ret = -1;
 
 	if (!(hapd->conf->radio_measurements[0] &
 	      WLAN_RRM_CAPS_NEIGHBOR_REPORT)) {
@@ -3247,8 +3247,7 @@ static int hostapd_ctrl_iface_set_neighbor(struct hostapd_data *hapd, char *buf)
 		if (!lci) {
 			wpa_printf(MSG_ERROR,
 				   "CTRL: SET_NEIGHBOR: Bad LCI subelement");
-			wpabuf_free(nr);
-			return -1;
+			goto fail;
 		}
 	}
 
@@ -3264,9 +3263,7 @@ static int hostapd_ctrl_iface_set_neighbor(struct hostapd_data *hapd, char *buf)
 		if (!civic) {
 			wpa_printf(MSG_ERROR,
 				   "CTRL: SET_NEIGHBOR: Bad civic subelement");
-			wpabuf_free(nr);
-			wpabuf_free(lci);
-			return -1;
+			goto fail;
 		}
 	}
 
@@ -3282,10 +3279,7 @@ static int hostapd_ctrl_iface_set_neighbor(struct hostapd_data *hapd, char *buf)
 		if (bss_parameters < 0 || bss_parameters > 0xff) {
 			wpa_printf(MSG_ERROR,
 				   "CTRL: SET_NEIGHBOR: Bad bss_parameters subelement");
-			wpabuf_free(nr);
-			wpabuf_free(lci);
-			wpabuf_free(civic);
-			return -1;
+			goto fail;
 		}
 	}
 
@@ -3293,6 +3287,7 @@ set:
 	ret = hostapd_neighbor_set(hapd, bssid, &ssid, nr, lci, civic,
 				   stationary, bss_parameters);
 
+fail:
 	wpabuf_free(nr);
 	wpabuf_free(lci);
 	wpabuf_free(civic);
