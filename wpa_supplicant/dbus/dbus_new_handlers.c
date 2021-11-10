@@ -152,7 +152,7 @@ static const char * const dont_quote[] = {
 #ifdef CONFIG_INTERWORKING
 	"roaming_consortium", "required_roaming_consortium",
 #endif /* CONFIG_INTERWORKING */
-	NULL
+	"mac_value", NULL
 };
 
 static dbus_bool_t should_quote_opt(const char *key)
@@ -206,6 +206,8 @@ dbus_bool_t set_network_properties(struct wpa_supplicant *wpa_s,
 	struct wpa_dbus_dict_entry entry = { .type = DBUS_TYPE_STRING };
 	DBusMessageIter	iter_dict;
 	char *value = NULL;
+	bool mac_addr3_set = false;
+	bool mac_value_set = false;
 
 	if (!wpa_dbus_dict_open_read(iter, &iter_dict, error))
 		return FALSE;
@@ -315,10 +317,28 @@ dbus_bool_t set_network_properties(struct wpa_supplicant *wpa_s,
 		else if (os_strcmp(entry.key, "priority") == 0)
 			wpa_config_update_prio_list(wpa_s->conf);
 
+		/*
+		 * MAC address policy "3" needs to come with mac_value in
+		 * the message so make sure that it is present (checked after
+		 * the loop - here we just note what has been supplied).
+		 */
+		if (os_strcmp(entry.key, "mac_addr") == 0 &&
+		    atoi(value) == 3)
+			mac_addr3_set = true;
+		if (os_strcmp(entry.key, "mac_value") == 0)
+			mac_value_set = true;
+
 	skip_update:
 		os_free(value);
 		value = NULL;
 		wpa_dbus_dict_entry_clear(&entry);
+	}
+
+	if (mac_addr3_set && !mac_value_set) {
+		wpa_printf(MSG_INFO, "dbus: Invalid mac_addr policy config");
+		dbus_set_error_const(error, DBUS_ERROR_INVALID_ARGS,
+				     "Invalid mac_addr policy config");
+		return FALSE;
 	}
 
 	return TRUE;

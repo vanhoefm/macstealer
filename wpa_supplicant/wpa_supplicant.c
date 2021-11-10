@@ -2222,13 +2222,16 @@ void wpas_connect_work_done(struct wpa_supplicant *wpa_s)
 }
 
 
-int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style)
+int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style,
+			    struct wpa_ssid *ssid)
 {
 	struct os_reltime now;
 	u8 addr[ETH_ALEN];
 
 	os_get_reltime(&now);
 	if (wpa_s->last_mac_addr_style == style &&
+	    /* Pregenerated addresses do not expire */
+	    wpa_s->last_mac_addr_style != 3 &&
 	    wpa_s->last_mac_addr_change.sec != 0 &&
 	    !os_reltime_expired(&now, &wpa_s->last_mac_addr_change,
 				wpa_s->conf->rand_addr_lifetime)) {
@@ -2246,6 +2249,14 @@ int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style)
 		os_memcpy(addr, wpa_s->perm_addr, ETH_ALEN);
 		if (random_mac_addr_keep_oui(addr) < 0)
 			return -1;
+		break;
+	case 3:
+		if (!ssid) {
+			wpa_msg(wpa_s, MSG_INFO,
+				"Invalid 'ssid' for address policy 3");
+			return -1;
+		}
+		os_memcpy(addr, ssid->mac_value, ETH_ALEN);
 		break;
 	default:
 		return -1;
@@ -2280,7 +2291,8 @@ int wpas_update_random_addr_disassoc(struct wpa_supplicant *wpa_s)
 	    !wpa_s->conf->preassoc_mac_addr)
 		return 0;
 
-	return wpas_update_random_addr(wpa_s, wpa_s->conf->preassoc_mac_addr);
+	return wpas_update_random_addr(wpa_s, wpa_s->conf->preassoc_mac_addr,
+				       NULL);
 }
 
 
@@ -2417,7 +2429,7 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_SAE */
 
 	if (rand_style > 0 && !wpa_s->reassoc_same_ess) {
-		if (wpas_update_random_addr(wpa_s, rand_style) < 0)
+		if (wpas_update_random_addr(wpa_s, rand_style, ssid) < 0)
 			return;
 		wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
 	} else if (rand_style == 0 && wpa_s->mac_addr_changed) {

@@ -2345,6 +2345,50 @@ static char * wpa_config_write_peerkey(const struct parse_data *data,
 #endif /* NO_CONFIG_WRITE */
 
 
+static int wpa_config_parse_mac_value(const struct parse_data *data,
+				      struct wpa_ssid *ssid, int line,
+				      const char *value)
+{
+	u8 mac_value[ETH_ALEN];
+
+	if (hwaddr_aton(value, mac_value) == 0) {
+		if (os_memcmp(mac_value, ssid->mac_value, ETH_ALEN) == 0)
+			return 1;
+		os_memcpy(ssid->mac_value, mac_value, ETH_ALEN);
+		return 0;
+	}
+
+	wpa_printf(MSG_ERROR, "Line %d: Invalid MAC address '%s'",
+		   line, value);
+	return -1;
+}
+
+
+#ifndef NO_CONFIG_WRITE
+static char * wpa_config_write_mac_value(const struct parse_data *data,
+					 struct wpa_ssid *ssid)
+{
+	const size_t size = 3 * ETH_ALEN;
+	char *value;
+	int res;
+
+	if (ssid->mac_addr != 3)
+		return NULL;
+
+	value = os_malloc(size);
+	if (!value)
+		return NULL;
+	res = os_snprintf(value, size, MACSTR, MAC2STR(ssid->mac_value));
+	if (os_snprintf_error(size, res)) {
+		os_free(value);
+		return NULL;
+	}
+	value[size - 1] = '\0';
+	return value;
+}
+#endif /* NO_CONFIG_WRITE */
+
+
 /* Helper macros for network block parser */
 
 #ifdef OFFSET
@@ -2643,7 +2687,8 @@ static const struct parse_data ssid_fields[] = {
 	{ INT(update_identifier) },
 	{ STR_RANGE(roaming_consortium_selection, 0, MAX_ROAMING_CONS_OI_LEN) },
 #endif /* CONFIG_HS20 */
-	{ INT_RANGE(mac_addr, 0, 2) },
+	{ INT_RANGE(mac_addr, 0, 3) },
+	{ FUNC_KEY(mac_value) },
 	{ INT_RANGE(pbss, 0, 2) },
 	{ INT_RANGE(wps_disabled, 0, 1) },
 	{ INT_RANGE(fils_dh_group, 0, 65535) },

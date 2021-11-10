@@ -974,12 +974,21 @@ struct wpa_ssid {
 	 * 0 = use permanent MAC address
 	 * 1 = use random MAC address for each ESS connection
 	 * 2 = like 1, but maintain OUI (with local admin bit set)
+	 * 3 = use dedicated/pregenerated MAC address (see mac_value)
 	 *
 	 * Internally, special value -1 is used to indicate that the parameter
 	 * was not specified in the configuration (i.e., default behavior is
 	 * followed).
 	 */
 	int mac_addr;
+
+	/**
+	 * mac_value - Specific MAC address to be used
+	 *
+	 * When mac_addr policy is equal to 3 this is the value of the MAC
+	 * address that should be used.
+	 */
+	u8 mac_value[ETH_ALEN];
 
 	/**
 	 * no_auto_peer - Do not automatically peer with compatible mesh peers
