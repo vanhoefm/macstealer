@@ -953,6 +953,7 @@ struct hostapd_config {
 	struct wpa_freq_range_list acs_freq_list;
 	u8 acs_freq_list_present;
 	int acs_exclude_dfs;
+	u8 min_tx_power;
 	enum hostapd_hw_mode hw_mode; /* HOSTAPD_MODE_IEEE80211A, .. */
 	int acs_exclude_6ghz_non_psc;
 	enum {
