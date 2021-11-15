@@ -221,8 +221,16 @@ ieee802_1x_mka_dump_dist_sak_body(struct ieee802_1x_mka_dist_sak_body *body)
 
 	wpa_printf(MSG_DEBUG, "\tKey Number............: %d",
 		   be_to_host32(body->kn));
-	/* TODO: Other than GCM-AES-128 case: MACsec Cipher Suite */
-	wpa_hexdump(MSG_DEBUG, "\tAES Key Wrap of SAK...:", body->sak, 24);
+	if (body_len == 28) {
+		wpa_hexdump(MSG_DEBUG, "\tAES Key Wrap of SAK...:",
+			    body->sak, 24);
+	} else if (body_len > CS_ID_LEN - sizeof(body->kn)) {
+		wpa_hexdump(MSG_DEBUG, "\tMACsec Cipher Suite...:",
+			    body->sak, CS_ID_LEN);
+		wpa_hexdump(MSG_DEBUG, "\tAES Key Wrap of SAK...:",
+			    body->sak + CS_ID_LEN,
+			    body_len - CS_ID_LEN - sizeof(body->kn));
+	}
 }
 
 
@@ -3456,7 +3464,8 @@ static void kay_l2_receive(void *ctx, const u8 *src_addr, const u8 *buf,
 struct ieee802_1x_kay *
 ieee802_1x_kay_init(struct ieee802_1x_kay_ctx *ctx, enum macsec_policy policy,
 		    bool macsec_replay_protect, u32 macsec_replay_window,
-		    u16 port, u8 priority, const char *ifname, const u8 *addr)
+		    u16 port, u8 priority, u32 macsec_csindex,
+		    const char *ifname, const u8 *addr)
 {
 	struct ieee802_1x_kay *kay;
 
@@ -3493,7 +3502,7 @@ ieee802_1x_kay_init(struct ieee802_1x_kay_ctx *ctx, enum macsec_policy policy,
 	kay->dist_time = 0;
 
 	kay->pn_exhaustion = PENDING_PN_EXHAUSTION;
-	kay->macsec_csindex = DEFAULT_CS_INDEX;
+	kay->macsec_csindex = macsec_csindex;
 	kay->mka_algindex = DEFAULT_MKA_ALG_INDEX;
 	kay->mka_version = MKA_VERSION_ID;
 

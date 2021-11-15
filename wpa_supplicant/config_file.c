@@ -810,6 +810,7 @@ static void wpa_config_write_network(FILE *f, struct wpa_ssid *ssid)
 	INT(macsec_replay_window);
 	INT(macsec_port);
 	INT_DEF(mka_priority, DEFAULT_PRIO_NOT_KEY_SERVER);
+	INT(macsec_csindex);
 #endif /* CONFIG_MACSEC */
 #ifdef CONFIG_HS20
 	INT(update_identifier);

@@ -849,6 +849,13 @@ struct hostapd_bss_config {
 	int mka_priority;
 
 	/**
+	 * macsec_csindex - Cipher suite index for MACsec
+	 *
+	 * Range: 0-1 (default: 0)
+	 */
+	int macsec_csindex;
+
+	/**
 	 * mka_ckn - MKA pre-shared CKN
 	 */
 #define MACSEC_CKN_MAX_LEN 32

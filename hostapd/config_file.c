@@ -4661,6 +4661,16 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 			return 1;
 		}
 		bss->mka_priority = mka_priority;
+	} else if (os_strcmp(buf, "macsec_csindex") == 0) {
+		int macsec_csindex = atoi(pos);
+
+		if (macsec_csindex < 0 || macsec_csindex > 1) {
+			wpa_printf(MSG_ERROR,
+				   "Line %d: invalid macsec_csindex (%d): '%s'.",
+				   line, macsec_csindex, pos);
+			return 1;
+		}
+		bss->macsec_csindex = macsec_csindex;
 	} else if (os_strcmp(buf, "mka_cak") == 0) {
 		size_t len = os_strlen(pos);
 

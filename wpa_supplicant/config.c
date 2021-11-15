@@ -2612,6 +2612,7 @@ static const struct parse_data ssid_fields[] = {
 	{ INT(macsec_replay_window) },
 	{ INT_RANGE(macsec_port, 1, 65534) },
 	{ INT_RANGE(mka_priority, 0, 255) },
+	{ INT_RANGE(macsec_csindex, 0, 1) },
 	{ FUNC_KEY(mka_cak) },
 	{ FUNC_KEY(mka_ckn) },
 #endif /* CONFIG_MACSEC */
