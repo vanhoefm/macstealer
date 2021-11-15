@@ -77,6 +77,9 @@ struct macsec_drv_data {
 
 	u8 encoding_sa;
 	bool encoding_sa_set;
+
+	u64 cipher_suite;
+	bool cipher_suite_set;
 };
 
 
@@ -460,8 +463,14 @@ static int macsec_drv_set_replay_protect(void *priv, bool enabled,
  */
 static int macsec_drv_set_current_cipher_suite(void *priv, u64 cs)
 {
+	struct macsec_drv_data *drv = priv;
+
 	wpa_printf(MSG_DEBUG, "%s -> %016" PRIx64, __func__, cs);
-	return 0;
+
+	drv->cipher_suite_set = true;
+	drv->cipher_suite = cs;
+
+	return try_commit(drv);
 }
 
 
@@ -1063,7 +1072,8 @@ static int macsec_drv_disable_receive_sa(void *priv, struct receive_sa *sa)
 }
 
 
-static struct rtnl_link * lookup_sc(struct nl_cache *cache, int parent, u64 sci)
+static struct rtnl_link * lookup_sc(struct nl_cache *cache, int parent, u64 sci,
+				    u64 cs)
 {
 	struct rtnl_link *needle;
 	void *match;
@@ -1074,6 +1084,8 @@ static struct rtnl_link * lookup_sc(struct nl_cache *cache, int parent, u64 sci)
 
 	rtnl_link_set_link(needle, parent);
 	rtnl_link_macsec_set_sci(needle, sci);
+	if (cs)
+		rtnl_link_macsec_set_cipher_suite(needle, cs);
 
 	match = nl_cache_find(cache, (struct nl_object *) needle);
 	rtnl_link_put(needle);
@@ -1098,6 +1110,7 @@ static int macsec_drv_create_transmit_sc(
 	char *ifname;
 	u64 sci;
 	int err;
+	u64 cs = 0;
 
 	wpa_printf(MSG_DEBUG, DRV_PREFIX
 		   "%s: create_transmit_sc -> " SCISTR " (conf_offset=%d)",
@@ -1122,6 +1135,12 @@ static int macsec_drv_create_transmit_sc(
 
 	drv->created_link = true;
 
+	if (drv->cipher_suite_set) {
+		cs = drv->cipher_suite;
+		drv->cipher_suite_set = false;
+		rtnl_link_macsec_set_cipher_suite(link, cs);
+	}
+
 	err = rtnl_link_add(drv->sk, link, NLM_F_CREATE);
 	if (err == -NLE_BUSY) {
 		wpa_printf(MSG_INFO,
@@ -1137,7 +1156,7 @@ static int macsec_drv_create_transmit_sc(
 	rtnl_link_put(link);
 
 	nl_cache_refill(drv->sk, drv->link_cache);
-	link = lookup_sc(drv->link_cache, drv->parent_ifi, sci);
+	link = lookup_sc(drv->link_cache, drv->parent_ifi, sci, cs);
 	if (!link) {
 		wpa_printf(MSG_ERROR, DRV_PREFIX "couldn't find link");
 		return -1;
