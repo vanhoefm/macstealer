@@ -4911,33 +4911,21 @@ static int wpa_config_process_ap_vendor_elements(
 	struct wpa_config *config, int line, const char *pos)
 {
 	struct wpabuf *tmp;
-	int len = os_strlen(pos) / 2;
-	u8 *p;
 
-	if (!len) {
+	if (!*pos) {
 		wpabuf_free(config->ap_vendor_elements);
 		config->ap_vendor_elements = NULL;
 		return 0;
 	}
 
-	tmp = wpabuf_alloc(len);
-	if (tmp) {
-		p = wpabuf_put(tmp, len);
-
-		if (hexstr2bin(pos, p, len)) {
-			wpa_printf(MSG_ERROR, "Line %d: invalid "
-				   "ap_vendor_elements", line);
-			wpabuf_free(tmp);
-			return -1;
-		}
-
-		wpabuf_free(config->ap_vendor_elements);
-		config->ap_vendor_elements = tmp;
-	} else {
-		wpa_printf(MSG_ERROR, "Cannot allocate memory for "
-			   "ap_vendor_elements");
+	tmp = wpabuf_parse_bin(pos);
+	if (!tmp) {
+		wpa_printf(MSG_ERROR, "Line %d: invalid ap_vendor_elements",
+			   line);
 		return -1;
 	}
+	wpabuf_free(config->ap_vendor_elements);
+	config->ap_vendor_elements = tmp;
 
 	return 0;
 }
