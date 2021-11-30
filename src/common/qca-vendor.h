@@ -6836,6 +6836,28 @@ enum qca_wlan_vendor_attr_hang {
 };
 
 /**
+ * enum qca_wlan_vendor_flush_pending_policy: Represents values for
+ * the policy to flush pending frames, configured via
+ * %QCA_NL80211_VENDOR_SUBCMD_PEER_FLUSH_PENDING. This enumeration defines the
+ * valid values for %QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_POLICY.
+ *
+ * @QCA_WLAN_VENDOR_FLUSH_PENDING_POLICY_NONE: This value clears all
+ * the flush policy configured before. This command basically disables the
+ * flush config set by the user.
+ * @QCA_WLAN_VENDOR_FLUSH_PENDING_POLICY_IMMEDIATE: This value configures
+ * the flush policy to be immediate. All pending packets for the peer/TID are
+ * flushed when this command/policy is received.
+ * @QCA_WLAN_VENDOR_FLUSH_PENDING_POLICY_TWT_SP_END: This value configures
+ * the flush policy to the end of TWT SP. All pending packets for the peer/TID
+ * are flushed when the end of TWT SP is reached.
+ */
+enum qca_wlan_vendor_flush_pending_policy  {
+	QCA_WLAN_VENDOR_FLUSH_PENDING_POLICY_NONE = 0,
+	QCA_WLAN_VENDOR_FLUSH_PENDING_POLICY_IMMEDIATE = 1,
+	QCA_WLAN_VENDOR_FLUSH_PENDING_POLICY_TWT_SP_END = 2,
+};
+
+/**
  * enum qca_wlan_vendor_attr_flush_pending - Attributes for
  * flushing pending traffic in firmware.
  *
@@ -6843,12 +6865,25 @@ enum qca_wlan_vendor_attr_hang {
  * @QCA_WLAN_VENDOR_ATTR_AC: Configure access category of the pending
  * packets. It is u8 value with bit 0~3 represent AC_BE, AC_BK,
  * AC_VI, AC_VO respectively. Set the corresponding bit to 1 to
- * flush packets with access category.
+ * flush packets with access category. This is optional. See below.
+ * @QCA_WLAN_VENDOR_ATTR_TID_MASK: Configure TID mask of the pending packets.
+ * It is a u32 value with bit 0-7 representing TID 0-7. Set corresponding
+ * bit to 1 to act upon the TID. This is optional. Either this attribute or
+ * %QCA_WLAN_VENDOR_ATTR_AC must be provided. If both are provided,
+ * %QCA_WLAN_VENDOR_ATTR_TID_MASK takes precedence. If neither are provided
+ * it is an error.
+ * @QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_POLICY: Policy of flushing the pending
+ * packets corresponding to the peer/TID provided. It is a u32 value,
+ * represented by %enum qca_wlan_vendor_flush_pending_policy. This
+ * value is honored only when TID mask is provided. This is not honored when AC
+ * mask is provided.
  */
 enum qca_wlan_vendor_attr_flush_pending {
 	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_PEER_ADDR = 1,
 	QCA_WLAN_VENDOR_ATTR_AC = 2,
+	QCA_WLAN_VENDOR_ATTR_TID_MASK = 3,
+	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_POLICY = 4,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_AFTER_LAST,
