@@ -126,8 +126,12 @@ def test_dpp_uri_version(dev, apdev):
     uri = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id1)
     info = dev[0].request("DPP_BOOTSTRAP_INFO %d" % id1)
     logger.info("Parsed URI info:\n" + info)
-    if "version=2" not in info.splitlines():
-        raise Exception("Unexpected version information (v2)")
+    capa = dev[0].request("GET_CAPABILITY dpp")
+    ver = 1
+    if capa.startswith("DPP="):
+        ver = int(capa[4:])
+    if "version=%d" % ver not in info.splitlines():
+        raise Exception("Unexpected version information (with indication)")
 
     dev[0].set("dpp_version_override", "1")
     id0 = dev[0].dpp_bootstrap_gen()

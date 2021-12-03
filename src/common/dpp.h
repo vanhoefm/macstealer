@@ -25,7 +25,9 @@ struct dpp_reconfig_id;
 #define DPP_VERSION (dpp_version_override)
 extern int dpp_version_override;
 #else /* CONFIG_TESTING_OPTIONS */
-#ifdef CONFIG_DPP2
+#ifdef CONFIG_DPP3
+#define DPP_VERSION 3
+#elif defined(CONFIG_DPP2)
 #define DPP_VERSION 2
 #else
 #define DPP_VERSION 1

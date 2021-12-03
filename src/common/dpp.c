@@ -28,7 +28,9 @@
 static const char * dpp_netrole_str(enum dpp_netrole netrole);
 
 #ifdef CONFIG_TESTING_OPTIONS
-#ifdef CONFIG_DPP2
+#ifdef CONFIG_DPP3
+int dpp_version_override = 3;
+#elif defined(CONFIG_DPP2)
 int dpp_version_override = 2;
 #else
 int dpp_version_override = 1;
@@ -306,6 +308,8 @@ int dpp_parse_uri_version(struct dpp_bootstrap_info *bi, const char *version)
 		bi->version = 1;
 	else if (*version == '2')
 		bi->version = 2;
+	else if (*version == '3')
+		bi->version = 3;
 	else
 		wpa_printf(MSG_DEBUG, "DPP: Unknown URI version");
 
@@ -628,7 +632,8 @@ int dpp_gen_uri(struct dpp_bootstrap_info *bi)
 		    macstr,
 		    bi->info ? "I:" : "", bi->info ? bi->info : "",
 		    bi->info ? ";" : "",
-		    DPP_VERSION == 2 ? "V:2;" : "",
+		    DPP_VERSION == 3 ? "V:3;" :
+		    (DPP_VERSION == 2 ? "V:2;" : ""),
 		    bi->pk);
 	return 0;
 }

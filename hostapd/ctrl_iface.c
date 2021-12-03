@@ -4492,7 +4492,9 @@ static void hostapd_ctrl_iface_flush(struct hapd_interfaces *interfaces)
 #ifdef CONFIG_TESTING_OPTIONS
 #ifdef CONFIG_DPP
 	dpp_test = DPP_TEST_DISABLED;
-#ifdef CONFIG_DPP2
+#ifdef CONFIG_DPP3
+	dpp_version_override = 3;
+#elif defined(CONFIG_DPP2)
 	dpp_version_override = 2;
 #else /* CONFIG_DPP2 */
 	dpp_version_override = 1;

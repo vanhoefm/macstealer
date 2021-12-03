@@ -4826,7 +4826,9 @@ static int wpa_supplicant_ctrl_iface_get_capability(
 
 #ifdef CONFIG_DPP
 	if (os_strcmp(field, "dpp") == 0) {
-#ifdef CONFIG_DPP2
+#ifdef CONFIG_DPP3
+		res = os_snprintf(buf, buflen, "DPP=3");
+#elif defined(CONFIG_DPP2)
 		res = os_snprintf(buf, buflen, "DPP=2");
 #else /* CONFIG_DPP2 */
 		res = os_snprintf(buf, buflen, "DPP=1");
@@ -8477,7 +8479,9 @@ static void wpa_supplicant_ctrl_iface_flush(struct wpa_supplicant *wpa_s)
 	dpp_pkex_ephemeral_key_override_len = 0;
 	dpp_protocol_key_override_len = 0;
 	dpp_nonce_override_len = 0;
-#ifdef CONFIG_DPP2
+#ifdef CONFIG_DPP3
+	dpp_version_override = 3;
+#elif defined(CONFIG_DPP2)
 	dpp_version_override = 2;
 #else /* CONFIG_DPP2 */
 	dpp_version_override = 1;
