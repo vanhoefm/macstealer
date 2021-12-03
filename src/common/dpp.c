@@ -3760,6 +3760,26 @@ fail:
 }
 
 
+#ifdef CONFIG_DPP3
+int dpp_get_connector_version(const char *connector)
+{
+	struct json_token *root, *token;
+	int ver = -1;
+
+	root = dpp_parse_own_connector(connector);
+	if (!root)
+		return -1;
+
+	token = json_get_member(root, "version");
+	if (token && token->type == JSON_NUMBER)
+		ver = token->number;
+
+	json_free(root);
+	return ver;
+}
+#endif /* CONFIG_DPP3 */
+
+
 unsigned int dpp_next_id(struct dpp_global *dpp)
 {
 	struct dpp_bootstrap_info *bi;

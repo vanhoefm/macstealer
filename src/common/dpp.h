@@ -595,6 +595,7 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 	       const u8 *csign_key, size_t csign_key_len,
 	       const u8 *peer_connector, size_t peer_connector_len,
 	       os_time_t *expiry);
+int dpp_get_connector_version(const char *connector);
 struct dpp_pkex * dpp_pkex_init(void *msg_ctx, struct dpp_bootstrap_info *bi,
 				const u8 *own_mac,
 				const char *identifier,

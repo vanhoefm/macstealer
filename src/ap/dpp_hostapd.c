@@ -1558,10 +1558,23 @@ skip_connector:
 
 #ifdef CONFIG_DPP2
 	if (DPP_VERSION > 1) {
+		u8 ver = DPP_VERSION;
+#ifdef CONFIG_DPP3
+		int conn_ver;
+
+		conn_ver = dpp_get_connector_version(hapd->conf->dpp_connector);
+		if (conn_ver > 0 && ver != conn_ver) {
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Use Connector version %d instead of current protocol version %d",
+				   conn_ver, ver);
+			ver = conn_ver;
+		}
+#endif /* CONFIG_DPP3 */
+
 		/* Protocol Version */
 		wpabuf_put_le16(msg, DPP_ATTR_PROTOCOL_VERSION);
 		wpabuf_put_le16(msg, 1);
-		wpabuf_put_u8(msg, DPP_VERSION);
+		wpabuf_put_u8(msg, ver);
 	}
 #endif /* CONFIG_DPP2 */
 
