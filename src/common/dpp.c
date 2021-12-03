@@ -3703,6 +3703,14 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 		}
 	}
 
+#ifdef CONFIG_DPP3
+	token = json_get_member(root, "version");
+	if (token && token->type == JSON_NUMBER) {
+		wpa_printf(MSG_DEBUG, "DPP: version = %d", token->number);
+		intro->peer_version = token->number;
+	}
+#endif /* CONFIG_DPP3 */
+
 	netkey = json_get_member(root, "netAccessKey");
 	if (!netkey || netkey->type != JSON_OBJECT) {
 		wpa_printf(MSG_DEBUG, "DPP: No netAccessKey object found");

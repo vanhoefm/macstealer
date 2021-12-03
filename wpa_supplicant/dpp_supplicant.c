@@ -2462,6 +2462,16 @@ static void wpas_dpp_rx_peer_disc_resp(struct wpa_supplicant *wpa_s,
 			       &version_len);
 	if (version && version_len >= 1)
 		peer_version = version[0];
+#ifdef CONFIG_DPP3
+	if (intro.peer_version && intro.peer_version >= 2 &&
+	    peer_version != intro.peer_version) {
+		wpa_printf(MSG_INFO,
+			   "DPP: Protocol version mismatch (Connector: %d Attribute: %d",
+			   intro.peer_version, peer_version);
+		wpas_dpp_send_conn_status_result(wpa_s, DPP_STATUS_NO_MATCH);
+		goto fail;
+	}
+#endif /* CONFIG_DPP3 */
 	entry->dpp_pfs = peer_version >= 2;
 #endif /* CONFIG_DPP2 */
 	if (expiry) {

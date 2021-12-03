@@ -374,6 +374,7 @@ struct dpp_introduction {
 	u8 pmkid[PMKID_LEN];
 	u8 pmk[PMK_LEN_MAX];
 	size_t pmk_len;
+	int peer_version;
 };
 
 struct dpp_relay_config {

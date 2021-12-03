@@ -1661,6 +1661,28 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 		return;
 	}
 
+#ifdef CONFIG_DPP3
+	if (intro.peer_version && intro.peer_version >= 2) {
+		const u8 *version;
+		u16 version_len;
+		u8 attr_version = 1;
+
+		version = dpp_get_attr(buf, len, DPP_ATTR_PROTOCOL_VERSION,
+				       &version_len);
+		if (version && version_len >= 1)
+			attr_version = version[0];
+		if (attr_version != intro.peer_version) {
+			wpa_printf(MSG_INFO,
+				   "DPP: Protocol version mismatch (Connector: %d Attribute: %d",
+				   intro.peer_version, attr_version);
+			hostapd_dpp_send_peer_disc_resp(hapd, src, freq,
+							trans_id[0],
+							DPP_STATUS_NO_MATCH);
+			return;
+		}
+	}
+#endif /* CONFIG_DPP3 */
+
 	if (!expire || (os_time_t) hapd->conf->dpp_netaccesskey_expiry < expire)
 		expire = hapd->conf->dpp_netaccesskey_expiry;
 	if (expire)
