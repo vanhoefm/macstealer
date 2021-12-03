@@ -1881,7 +1881,7 @@ def test_dpp_auto_connect_2_conf_ver1(dev, apdev):
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
 
 def run_dpp_auto_connect(dev, apdev, processing, ap_version=0, sta_version=0,
-                         sta1_version=0):
+                         sta1_version=0, stop_after_prov=False):
     check_dpp_capab(dev[0])
     check_dpp_capab(dev[1])
 
@@ -1920,6 +1920,8 @@ def run_dpp_auto_connect(dev, apdev, processing, ap_version=0, sta_version=0,
     if ev is None:
         raise Exception("DPP network profile not generated")
     id = ev.split(' ')[1]
+    if stop_after_prov:
+        return id, hapd
 
     if processing == 1:
         dev[0].select_network(id, freq=2412)
