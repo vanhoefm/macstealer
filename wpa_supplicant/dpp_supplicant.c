@@ -3202,6 +3202,10 @@ skip_trans_id:
 
 #ifdef CONFIG_TESTING_OPTIONS
 skip_connector:
+	if (dpp_test == DPP_TEST_NO_PROTOCOL_VERSION_PEER_DISC_REQ) {
+		wpa_printf(MSG_INFO, "DPP: TESTING - no Protocol Version");
+		goto skip_proto_ver;
+	}
 #endif /* CONFIG_TESTING_OPTIONS */
 
 #ifdef CONFIG_DPP2
@@ -3225,6 +3229,10 @@ skip_connector:
 		wpabuf_put_u8(msg, ver);
 	}
 #endif /* CONFIG_DPP2 */
+
+#ifdef CONFIG_TESTING_OPTIONS
+skip_proto_ver:
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	/* TODO: Timeout on AP response */
 	wait_time = wpa_s->max_remain_on_chan;
