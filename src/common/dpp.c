@@ -1504,6 +1504,10 @@ skip_groups:
 		json_value_sep(dppcon);
 		json_add_string(dppcon, "expiry", expiry);
 	}
+#ifdef CONFIG_DPP3
+	json_value_sep(dppcon);
+	json_add_int(dppcon, "version", auth->peer_version);
+#endif /* CONFIG_DPP3 */
 	json_end_object(dppcon);
 	wpa_printf(MSG_DEBUG, "DPP: dppCon: %s",
 		   (const char *) wpabuf_head(dppcon));
