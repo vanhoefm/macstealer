@@ -43,7 +43,7 @@ enum dpp_public_action_frame_type {
 	DPP_PA_AUTHENTICATION_CONF = 2,
 	DPP_PA_PEER_DISCOVERY_REQ = 5,
 	DPP_PA_PEER_DISCOVERY_RESP = 6,
-	DPP_PA_PKEX_EXCHANGE_REQ = 7,
+	DPP_PA_PKEX_V1_EXCHANGE_REQ = 7,
 	DPP_PA_PKEX_EXCHANGE_RESP = 8,
 	DPP_PA_PKEX_COMMIT_REVEAL_REQ = 9,
 	DPP_PA_PKEX_COMMIT_REVEAL_RESP = 10,
@@ -54,6 +54,7 @@ enum dpp_public_action_frame_type {
 	DPP_PA_RECONFIG_AUTH_REQ = 15,
 	DPP_PA_RECONFIG_AUTH_RESP = 16,
 	DPP_PA_RECONFIG_AUTH_CONF = 17,
+	DPP_PA_PKEX_EXCHANGE_REQ = 18,
 };
 
 enum dpp_attribute_id {
@@ -175,6 +176,7 @@ struct dpp_pkex {
 	unsigned int initiator:1;
 	unsigned int exchange_done:1;
 	unsigned int failed:1;
+	unsigned int v2:1;
 	struct dpp_bootstrap_info *own_bi;
 	u8 own_mac[ETH_ALEN];
 	u8 peer_mac[ETH_ALEN];
@@ -192,6 +194,7 @@ struct dpp_pkex {
 	unsigned int exch_req_wait_time;
 	unsigned int exch_req_tries;
 	unsigned int freq;
+	u8 peer_version;
 };
 
 enum dpp_akm {
@@ -601,15 +604,15 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 int dpp_get_connector_version(const char *connector);
 struct dpp_pkex * dpp_pkex_init(void *msg_ctx, struct dpp_bootstrap_info *bi,
 				const u8 *own_mac,
-				const char *identifier,
-				const char *code);
+				const char *identifier, const char *code,
+				bool v2);
 struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 					   struct dpp_bootstrap_info *bi,
 					   const u8 *own_mac,
 					   const u8 *peer_mac,
 					   const char *identifier,
 					   const char *code,
-					   const u8 *buf, size_t len);
+					   const u8 *buf, size_t len, bool v2);
 struct wpabuf * dpp_pkex_rx_exchange_resp(struct dpp_pkex *pkex,
 					  const u8 *peer_mac,
 					  const u8 *buf, size_t len);

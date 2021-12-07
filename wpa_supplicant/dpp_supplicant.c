@@ -2578,7 +2578,9 @@ static void wpas_dpp_pkex_retry_timeout(void *eloop_ctx, void *timeout_ctx)
 	wpa_printf(MSG_DEBUG, "DPP: Retransmit PKEX Exchange Request (try %u)",
 		   pkex->exch_req_tries);
 	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR " freq=%u type=%d",
-		MAC2STR(broadcast), pkex->freq, DPP_PA_PKEX_EXCHANGE_REQ);
+		MAC2STR(broadcast), pkex->freq,
+		pkex->v2 ? DPP_PA_PKEX_EXCHANGE_REQ :
+		DPP_PA_PKEX_V1_EXCHANGE_REQ);
 	offchannel_send_action(wpa_s, pkex->freq, broadcast,
 			       wpa_s->own_addr, broadcast,
 			       wpabuf_head(pkex->exchange_req),
@@ -2637,7 +2639,8 @@ wpas_dpp_tx_pkex_status(struct wpa_supplicant *wpa_s,
 
 static void
 wpas_dpp_rx_pkex_exchange_req(struct wpa_supplicant *wpa_s, const u8 *src,
-			      const u8 *buf, size_t len, unsigned int freq)
+			      const u8 *buf, size_t len, unsigned int freq,
+			      bool v2)
 {
 	struct wpabuf *msg;
 	unsigned int wait_time;
@@ -2665,7 +2668,7 @@ wpas_dpp_rx_pkex_exchange_req(struct wpa_supplicant *wpa_s, const u8 *src,
 						   wpa_s->own_addr, src,
 						   wpa_s->dpp_pkex_identifier,
 						   wpa_s->dpp_pkex_code,
-						   buf, len);
+						   buf, len, v2);
 	if (!wpa_s->dpp_pkex) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Failed to process the request - ignore it");
@@ -2888,8 +2891,17 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 	case DPP_PA_PEER_DISCOVERY_RESP:
 		wpas_dpp_rx_peer_disc_resp(wpa_s, src, buf, len);
 		break;
+#ifdef CONFIG_DPP3
 	case DPP_PA_PKEX_EXCHANGE_REQ:
-		wpas_dpp_rx_pkex_exchange_req(wpa_s, src, buf, len, freq);
+		/* This is for PKEXv2, but for now, process only with
+		 * CONFIG_DPP3 to avoid issues with a capability that has not
+		 * been tested with other implementations. */
+		wpas_dpp_rx_pkex_exchange_req(wpa_s, src, buf, len, freq, true);
+		break;
+#endif /* CONFIG_DPP3 */
+	case DPP_PA_PKEX_V1_EXCHANGE_REQ:
+		wpas_dpp_rx_pkex_exchange_req(wpa_s, src, buf, len, freq,
+					      false);
 		break;
 	case DPP_PA_PKEX_EXCHANGE_RESP:
 		wpas_dpp_rx_pkex_exchange_resp(wpa_s, src, buf, len, freq);
@@ -3301,15 +3313,16 @@ int wpas_dpp_pkex_add(struct wpa_supplicant *wpa_s, const char *cmd)
 	if (!wpa_s->dpp_pkex_code)
 		return -1;
 
-	if (os_strstr(cmd, " init=1")) {
+	if (os_strstr(cmd, " init=1") || os_strstr(cmd, " init=2")) {
 		struct dpp_pkex *pkex;
 		struct wpabuf *msg;
+		bool v2 = os_strstr(cmd, " init=2") != NULL;
 
 		wpa_printf(MSG_DEBUG, "DPP: Initiating PKEX");
 		dpp_pkex_free(wpa_s->dpp_pkex);
 		wpa_s->dpp_pkex = dpp_pkex_init(wpa_s, own_bi, wpa_s->own_addr,
 						wpa_s->dpp_pkex_identifier,
-						wpa_s->dpp_pkex_code);
+						wpa_s->dpp_pkex_code, v2);
 		pkex = wpa_s->dpp_pkex;
 		if (!pkex)
 			return -1;
@@ -3322,7 +3335,8 @@ int wpas_dpp_pkex_add(struct wpa_supplicant *wpa_s, const char *cmd)
 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
 			" freq=%u type=%d",
 			MAC2STR(broadcast), pkex->freq,
-			DPP_PA_PKEX_EXCHANGE_REQ);
+			v2 ? DPP_PA_PKEX_EXCHANGE_REQ :
+			DPP_PA_PKEX_V1_EXCHANGE_REQ);
 		offchannel_send_action(wpa_s, pkex->freq, broadcast,
 				       wpa_s->own_addr, broadcast,
 				       wpabuf_head(msg), wpabuf_len(msg),
