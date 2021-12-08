@@ -96,6 +96,9 @@ enum wpas_dbus_sta_prop {
 #define WPAS_DBUS_NEW_P2P_PEERS_PART	"Peers"
 #define	WPAS_DBUS_NEW_IFACE_P2P_PEER WPAS_DBUS_NEW_INTERFACE ".Peer"
 
+#define WPAS_DBUS_NEW_CREDENTIALS_PART "Credentials"
+#define WPAS_DBUS_NEW_IFACE_CREDENTIAL WPAS_DBUS_NEW_INTERFACE ".Credential"
+
 /* Top-level Errors */
 #define WPAS_DBUS_ERROR_UNKNOWN_ERROR \
 	WPAS_DBUS_NEW_INTERFACE ".UnknownError"

@@ -3570,6 +3570,29 @@ static const struct wpa_dbus_method_desc wpas_dbus_interface_methods[] = {
 		  END_ARGS
 	  }
 	},
+#ifdef CONFIG_INTERWORKING
+	{ "AddCred", WPAS_DBUS_NEW_IFACE_INTERFACE,
+	  (WPADBusMethodHandler) wpas_dbus_handler_add_cred,
+	  {
+		  { "args", "a{sv}", ARG_IN },
+		  { "path", "o", ARG_OUT },
+		  END_ARGS
+	  }
+	},
+	{ "RemoveCred", WPAS_DBUS_NEW_IFACE_INTERFACE,
+	  (WPADBusMethodHandler) wpas_dbus_handler_remove_cred,
+	  {
+		  { "path", "o", ARG_IN },
+		  END_ARGS
+	  }
+	},
+	{ "RemoveAllCreds", WPAS_DBUS_NEW_IFACE_INTERFACE,
+	  (WPADBusMethodHandler) wpas_dbus_handler_remove_all_creds,
+	  {
+		  END_ARGS
+	  }
+	},
+#endif /* CONFIG_INTERWORKING */
 	{ NULL, NULL, NULL, { END_ARGS } }
 };
 

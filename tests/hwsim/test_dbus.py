@@ -6091,3 +6091,48 @@ def test_dbus_roam(dev, apdev):
     with TestDbusConnect(bus) as t:
         if not t.success():
             raise Exception("Expected signals not seen")
+
+def test_dbus_creds(dev, apdev):
+    "D-Bus interworking credentials"
+    (bus, wpas_obj, path, if_obj) = prepare_dbus(dev[0])
+    iface = dbus.Interface(if_obj, WPAS_DBUS_IFACE)
+
+    args = {'domain': 'server.w1.fi',
+            'realm': 'server.w1.fi',
+            'roaming_consortium': '50a9bf',
+            'required_roaming_consortium': '23bf50',
+            'eap': 'TTLS',
+            'phase2': 'auth=MSCHAPV2',
+            'username': 'user',
+            'password': 'password',
+            'domain_suffix_match': 'server.w1.fi',
+            'ca_cert': 'auth_serv/ca.pem'}
+
+    path = iface.AddCred(dbus.Dictionary(args, signature='sv'))
+    for k, v in args.items():
+        if k == 'password':
+            continue
+        prop = dev[0].get_cred(0, k)
+        if prop != v:
+            raise Exception('Credential add failed: %s does not match %s' % (prop, v))
+
+    iface.RemoveCred(path)
+    if not "FAIL" in dev[0].get_cred(0, 'domain'):
+        raise Exception("Credential remove failed")
+
+    # Removal of multiple credentials
+    cred1 = {'domain': 'server1.w1.fi','realm': 'server1.w1.fi','eap': 'TTLS'}
+    iface.AddCred(dbus.Dictionary(cred1, signature='sv'))
+    if "FAIL" in dev[0].get_cred(0, 'domain'):
+        raise Exception("Failed to add credential")
+
+    cred2 = {'domain': 'server2.w1.fi','realm': 'server2.w1.fi','eap': 'TTLS'}
+    iface.AddCred(dbus.Dictionary(cred2, signature='sv'))
+    if "FAIL" in dev[0].get_cred(1, 'domain'):
+        raise Exception("Failed to add credential")
+
+    iface.RemoveAllCreds()
+    if not "FAIL" in dev[0].get_cred(0, 'domain'):
+        raise Exception("Credential remove failed")
+    if not "FAIL" in dev[0].get_cred(1, 'domain'):
+        raise Exception("Credential remove failed")
