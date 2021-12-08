@@ -702,12 +702,14 @@ static struct nai_realm_eap * nai_realm_find_eap(struct wpa_supplicant *wpa_s,
 	    ((cred->password == NULL ||
 	      cred->password[0] == '\0') &&
 	     (cred->private_key == NULL ||
-	      cred->private_key[0] == '\0'))) {
+	      cred->private_key[0] == '\0') &&
+	     (!cred->key_id || cred->key_id[0] == '\0'))) {
 		wpa_msg(wpa_s, MSG_DEBUG,
-			"nai-realm-find-eap: incomplete cred info: username: %s  password: %s private_key: %s",
+			"nai-realm-find-eap: incomplete cred info: username: %s  password: %s private_key: %s key_id: %s",
 			cred->username ? cred->username : "NULL",
 			cred->password ? cred->password : "NULL",
-			cred->private_key ? cred->private_key : "NULL");
+			cred->private_key ? cred->private_key : "NULL",
+			cred->key_id ? cred->key_id : "NULL");
 		return NULL;
 	}
 
@@ -716,7 +718,8 @@ static struct nai_realm_eap * nai_realm_find_eap(struct wpa_supplicant *wpa_s,
 		if (cred->password && cred->password[0] &&
 		    nai_realm_cred_username(wpa_s, eap))
 			return eap;
-		if (cred->private_key && cred->private_key[0] &&
+		if (((cred->private_key && cred->private_key[0]) ||
+		     (cred->key_id && cred->key_id[0])) &&
 		    nai_realm_cred_cert(wpa_s, eap))
 			return eap;
 	}
@@ -1538,6 +1541,24 @@ static int interworking_set_eap_params(struct wpa_ssid *ssid,
 	    wpa_config_set_quoted(ssid, "private_key_passwd",
 				  cred->private_key_passwd) < 0)
 		return -1;
+
+	if (cred->ca_cert_id && cred->ca_cert_id[0] &&
+	    wpa_config_set_quoted(ssid, "ca_cert_id", cred->ca_cert_id) < 0)
+		return -1;
+
+	if (cred->cert_id && cred->cert_id[0] &&
+	    wpa_config_set_quoted(ssid, "cert_id", cred->cert_id) < 0)
+		return -1;
+
+	if (cred->key_id && cred->key_id[0] &&
+	    wpa_config_set_quoted(ssid, "key_id", cred->key_id) < 0)
+		return -1;
+
+	if (cred->engine_id && cred->engine_id[0] &&
+	    wpa_config_set_quoted(ssid, "engine_id", cred->engine_id) < 0)
+		return -1;
+
+	ssid->eap.cert.engine = cred->engine;
 
 	if (cred->phase1) {
 		os_free(ssid->eap.phase1);

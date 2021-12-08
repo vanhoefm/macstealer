@@ -180,6 +180,31 @@ struct wpa_cred {
 	char *milenage;
 
 	/**
+	 * engine - Use an engine for private key operations
+	 */
+	int engine;
+
+	/**
+	 * engine_id - String identifying the engine to use
+	 */
+	char *engine_id;
+
+	/**
+	 * ca_cert_id - The CA certificate identifier when using an engine
+	 */
+	char *ca_cert_id;
+
+	/**
+	 * cert_id - The certificate identifier when using an engine
+	 */
+	char *cert_id;
+
+	/**
+	 * key_id - The private key identifier when using an engine
+	 */
+	char *key_id;
+
+	/**
 	 * domain_suffix_match - Constraint for server domain name
 	 *
 	 * If set, this FQDN is used as a suffix match requirement for the AAA

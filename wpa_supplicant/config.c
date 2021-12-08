@@ -2855,6 +2855,10 @@ void wpa_config_free_cred(struct wpa_cred *cred)
 	os_free(cred->client_cert);
 	os_free(cred->private_key);
 	str_clear_free(cred->private_key_passwd);
+	os_free(cred->engine_id);
+	os_free(cred->ca_cert_id);
+	os_free(cred->cert_id);
+	os_free(cred->key_id);
 	os_free(cred->imsi);
 	str_clear_free(cred->milenage);
 	for (i = 0; i < cred->num_domain; i++)
@@ -3618,6 +3622,11 @@ int wpa_config_set_cred(struct wpa_cred *cred, const char *var,
 		return 0;
 	}
 
+	if (os_strcmp(var, "engine") == 0) {
+		cred->engine = atoi(value);
+		return 0;
+	}
+
 	val = wpa_config_parse_string(value, &len);
 	if (val == NULL ||
 	    (os_strcmp(var, "excluded_ssid") != 0 &&
@@ -3670,6 +3679,30 @@ int wpa_config_set_cred(struct wpa_cred *cred, const char *var,
 	if (os_strcmp(var, "private_key_passwd") == 0) {
 		str_clear_free(cred->private_key_passwd);
 		cred->private_key_passwd = val;
+		return 0;
+	}
+
+	if (os_strcmp(var, "engine_id") == 0) {
+		os_free(cred->engine_id);
+		cred->engine_id = val;
+		return 0;
+	}
+
+	if (os_strcmp(var, "ca_cert_id") == 0) {
+		os_free(cred->ca_cert_id);
+		cred->ca_cert_id = val;
+		return 0;
+	}
+
+	if (os_strcmp(var, "cert_id") == 0) {
+		os_free(cred->cert_id);
+		cred->cert_id = val;
+		return 0;
+	}
+
+	if (os_strcmp(var, "key_id") == 0) {
+		os_free(cred->key_id);
+		cred->key_id = val;
 		return 0;
 	}
 

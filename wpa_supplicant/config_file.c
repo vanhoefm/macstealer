@@ -1026,6 +1026,17 @@ static void wpa_config_write_cred(FILE *f, struct wpa_cred *cred)
 
 	if (cred->sim_num != DEFAULT_USER_SELECTED_SIM)
 		fprintf(f, "\tsim_num=%d\n", cred->sim_num);
+
+	if (cred->engine)
+		fprintf(f, "\tengine=%d\n", cred->engine);
+	if (cred->engine_id)
+		fprintf(f, "\tengine_id=\"%s\"\n", cred->engine_id);
+	if (cred->key_id)
+		fprintf(f, "\tkey_id=\"%s\"\n", cred->key_id);
+	if (cred->cert_id)
+		fprintf(f, "\tcert_id=\"%s\"\n", cred->cert_id);
+	if (cred->ca_cert_id)
+		fprintf(f, "\tca_cert_id=\"%s\"\n", cred->ca_cert_id);
 }
 
 
