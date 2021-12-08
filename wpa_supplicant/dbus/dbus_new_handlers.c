@@ -26,6 +26,7 @@
 #include "../scan.h"
 #include "../autoscan.h"
 #include "../ap.h"
+#include "../interworking.h"
 #include "dbus_new_helpers.h"
 #include "dbus_new.h"
 #include "dbus_new_handlers.h"
@@ -1773,6 +1774,28 @@ DBusMessage * wpas_dbus_handler_remove_all_creds(DBusMessage *message,
 			   __func__);
 		reply = wpas_dbus_error_unknown_error(
 			message, "failed to remove all credentials");
+	}
+
+	return reply;
+}
+
+
+DBusMessage *
+wpas_dbus_handler_interworking_select(DBusMessage *message,
+				      struct wpa_supplicant *wpa_s)
+{
+	int result;
+	DBusMessage *reply = NULL;
+
+	/* Automatic selection is disabled and no constraint on channels */
+	result = interworking_select(wpa_s, 0, NULL);
+	if (result < 0) {
+		wpa_printf(MSG_ERROR,
+			   "%s[dbus]: failed to start Interworking selection",
+			   __func__);
+		reply = wpas_dbus_error_scan_error(
+			message,
+			"error starting Interworking selection.");
 	}
 
 	return reply;

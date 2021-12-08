@@ -575,6 +575,10 @@ fi.w1.wpa_supplicant1.CreateInterface.
 	<p>Remove all configured Interworking/Hotspot 2.0 credentials.</p>
       </li>
       <li>
+	<h3>InterworkingSelect ( ) --> nothing</h3>
+	<p>Perform Interworking (Hotspot 2.0) network selection.</p>
+      </li>
+      <li>
 	<h3>EAPLogoff ( ) --> nothing</h3>
 	<p>IEEE 802.1X EAPOL state machine logoff.</p>
       </li>
@@ -1282,6 +1286,14 @@ fi.w1.wpa_supplicant1.CreateInterface.
 	  <dt>a{sv} : args</dt>
 	  <dd>A dictionary with pairs of field names and their values. Possible dictionary keys are: "addr", "dst", "bssid", "ies", "signal".</dd>
 	</dl>
+      </li>
+
+      <li>
+	<h3>InterworkingAPAdded ( o : bss, o : cred, a{sv} : args )</h3>
+      </li>
+
+      <li>
+	<h3>InterworkingSelectDone ( )</h3>
       </li>
     </ul>
 

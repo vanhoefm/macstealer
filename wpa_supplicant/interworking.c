@@ -2502,13 +2502,9 @@ static void interworking_select_network(struct wpa_supplicant *wpa_s)
 		bh = cred_below_min_backhaul(wpa_s, cred, bss);
 		bss_load = cred_over_max_bss_load(wpa_s, cred, bss);
 		conn_capab = cred_conn_capab_missing(wpa_s, cred, bss);
-		wpa_msg(wpa_s, MSG_INFO, "%s" MACSTR " type=%s%s%s%s id=%d priority=%d sp_priority=%d",
-			excluded ? INTERWORKING_EXCLUDED : INTERWORKING_AP,
-			MAC2STR(bss->bssid), type,
-			bh ? " below_min_backhaul=1" : "",
-			bss_load ? " over_max_bss_load=1" : "",
-			conn_capab ? " conn_capab_missing=1" : "",
-			cred->id, cred->priority, cred->sp_priority);
+		wpas_notify_interworking_ap_added(wpa_s, bss, cred, excluded,
+						  type, bh, bss_load,
+						  conn_capab);
 		if (excluded)
 			continue;
 		if (wpa_s->auto_select ||
@@ -2598,6 +2594,8 @@ static void interworking_select_network(struct wpa_supplicant *wpa_s)
 		if (wpa_s->wpa_state == WPA_SCANNING)
 			wpa_supplicant_set_state(wpa_s, WPA_DISCONNECTED);
 	}
+
+	wpas_notify_interworking_select_done(wpa_s);
 
 	if (selected) {
 		wpa_printf(MSG_DEBUG, "Interworking: Selected " MACSTR,
