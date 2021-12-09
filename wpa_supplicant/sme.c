@@ -2567,6 +2567,12 @@ void sme_sched_obss_scan(struct wpa_supplicant *wpa_s, int enable)
 	    ssid == NULL || ssid->mode != WPAS_MODE_INFRA)
 		return;
 
+#ifdef CONFIG_HT_OVERRIDES
+	/* No need for OBSS scan if HT40 is explicitly disabled */
+	if (ssid->disable_ht40)
+		return;
+#endif /* CONFIG_HT_OVERRIDES */
+
 	if (!wpa_s->hw.modes)
 		return;
 
