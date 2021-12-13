@@ -1021,6 +1021,7 @@ void wpas_dpp_listen_stop(struct wpa_supplicant *wpa_s)
 	wpa_drv_dpp_listen(wpa_s, false);
 	wpa_s->dpp_listen_freq = 0;
 	wpas_dpp_listen_work_done(wpa_s);
+	radio_remove_works(wpa_s, "dpp-listen", 0);
 }
 
 
