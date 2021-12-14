@@ -2326,8 +2326,9 @@ def test_dpp_pkex_identifier_mismatch3(dev, apdev):
 def run_dpp_pkex(dev, apdev, curve=None, init_extra=None, check_config=False,
                  identifier_i="test", identifier_r="test",
                  expect_no_resp=False, v2=False):
-    check_dpp_capab(dev[0], curve and "brainpool" in curve)
-    check_dpp_capab(dev[1], curve and "brainpool" in curve)
+    min_ver = 3 if v2 else 1
+    check_dpp_capab(dev[0], curve and "brainpool" in curve, min_ver=min_ver)
+    check_dpp_capab(dev[1], curve and "brainpool" in curve, min_ver=min_ver)
     dev[0].dpp_pkex_resp(2437, identifier=identifier_r, code="secret",
                          curve=curve)
     dev[1].dpp_pkex_init(identifier=identifier_i, code="secret", curve=curve,
@@ -2557,10 +2558,10 @@ def test_dpp_pkex_hostapd_responder(dev, apdev):
 
 def test_dpp_pkex_v2_hostapd_responder(dev, apdev):
     """DPP PKEXv2 with hostapd as responder"""
-    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[0], min_ver=3)
     hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
                                      "channel": "6"})
-    check_dpp_capab(hapd)
+    check_dpp_capab(hapd, min_ver=3)
     hapd.dpp_pkex_resp(2437, identifier="test", code="secret")
     conf_id = dev[0].dpp_configurator_add()
     dev[0].dpp_pkex_init(identifier="test", code="secret",
@@ -2585,10 +2586,10 @@ def test_dpp_pkex_hostapd_initiator(dev, apdev):
 
 def test_dpp_pkex_v2_hostapd_initiator(dev, apdev):
     """DPP PKEXv2 with hostapd as initiator"""
-    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[0], min_ver=3)
     hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
                                      "channel": "6"})
-    check_dpp_capab(hapd)
+    check_dpp_capab(hapd, min_ver=3)
     conf_id = dev[0].dpp_configurator_add()
     dev[0].set("dpp_configurator_params",
                " conf=ap-dpp configurator=%d" % conf_id)
