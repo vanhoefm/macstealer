@@ -5864,6 +5864,10 @@ enum qca_wlan_vendor_attr_pcl {
 	 * bit 3 set: channel should be excluded in GO negotiation
 	 */
 	QCA_WLAN_VENDOR_ATTR_PCL_FLAG = 4,
+
+	/* Keep last */
+	QCA_WLAN_VENDOR_ATTR_PCL_LAST,
+	QCA_WLAN_VENDOR_ATTR_PCL_MAX = QCA_WLAN_VENDOR_ATTR_PCL_LAST - 1
 };
 
 /**
