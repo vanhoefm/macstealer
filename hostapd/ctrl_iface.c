@@ -3463,7 +3463,9 @@ static int hostapd_ctrl_iface_get_capability(struct hostapd_data *hapd,
 	if (os_strcmp(field, "dpp") == 0) {
 		int res;
 
-#ifdef CONFIG_DPP2
+#ifdef CONFIG_DPP3
+		res = os_snprintf(buf, buflen, "DPP=3");
+#elif defined(CONFIG_DPP2)
 		res = os_snprintf(buf, buflen, "DPP=2");
 #else /* CONFIG_DPP2 */
 		res = os_snprintf(buf, buflen, "DPP=1");
