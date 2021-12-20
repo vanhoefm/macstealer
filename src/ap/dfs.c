@@ -568,6 +568,29 @@ dfs_get_valid_channel(struct hostapd_iface *iface,
 }
 
 
+static int dfs_set_valid_channel(struct hostapd_iface *iface, int skip_radar)
+{
+	struct hostapd_channel_data *channel;
+	u8 cf1 = 0, cf2 = 0;
+	int sec = 0;
+
+	channel = dfs_get_valid_channel(iface, &sec, &cf1, &cf2,
+					skip_radar);
+	if (!channel) {
+		wpa_printf(MSG_ERROR, "could not get valid channel");
+		return -1;
+	}
+
+	iface->freq = channel->freq;
+	iface->conf->channel = channel->chan;
+	iface->conf->secondary_channel = sec;
+	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, cf1);
+	hostapd_set_oper_centr_freq_seg1_idx(iface->conf, cf2);
+
+	return 0;
+}
+
+
 static int set_dfs_state_freq(struct hostapd_iface *iface, int freq, u32 state)
 {
 	struct hostapd_hw_modes *mode;
@@ -755,7 +778,6 @@ static unsigned int dfs_get_cac_time(struct hostapd_iface *iface,
  */
 int hostapd_handle_dfs(struct hostapd_iface *iface)
 {
-	struct hostapd_channel_data *channel;
 	int res, n_chans, n_chans1, start_chan_idx, start_chan_idx1;
 	int skip_radar = 0;
 
@@ -810,22 +832,10 @@ int hostapd_handle_dfs(struct hostapd_iface *iface)
 		wpa_printf(MSG_DEBUG, "DFS %d chans unavailable - choose other channel: %s",
 			   res, res ? "yes": "no");
 		if (res) {
-			int sec = 0;
-			u8 cf1 = 0, cf2 = 0;
-
-			channel = dfs_get_valid_channel(iface, &sec, &cf1, &cf2,
-							skip_radar);
-			if (!channel) {
-				wpa_printf(MSG_ERROR, "could not get valid channel");
+			if (dfs_set_valid_channel(iface, skip_radar) < 0) {
 				hostapd_set_state(iface, HAPD_IFACE_DFS);
 				return 0;
 			}
-
-			iface->freq = channel->freq;
-			iface->conf->channel = channel->chan;
-			iface->conf->secondary_channel = sec;
-			hostapd_set_oper_centr_freq_seg0_idx(iface->conf, cf1);
-			hostapd_set_oper_centr_freq_seg1_idx(iface->conf, cf2);
 		}
 	} while (res);
 
