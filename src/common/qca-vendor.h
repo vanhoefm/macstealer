@@ -762,6 +762,11 @@ enum qca_radiotap_vendor_ids {
  *	various roam events to userspace.
  *	Applicable only for the STA mode. The attributes used with this command
  *	are defined in enum qca_wlan_vendor_attr_roam_events.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_RATEMASK_CONFIG: Subcommand to set or reset the
+ *	rate mask config for a list of PHY types. Userspace shall provide an
+ *	array of the vendor attributes defined in
+ *	enum qca_wlan_vendor_attr_ratemask_params.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -955,6 +960,7 @@ enum qca_nl80211_vendor_subcmds {
 	/* 201 - reserved for QCA */
 	QCA_NL80211_VENDOR_SUBCMD_SET_MONITOR_MODE = 202,
 	QCA_NL80211_VENDOR_SUBCMD_ROAM_EVENTS = 203,
+	QCA_NL80211_VENDOR_SUBCMD_RATEMASK_CONFIG = 204,
 };
 
 enum qca_wlan_vendor_attr {
@@ -11901,6 +11907,62 @@ enum qca_wlan_vendor_attr_roam_events
 	QCA_WLAN_VENDOR_ATTR_ROAM_EVENTS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_ROAM_EVENTS_MAX =
 	QCA_WLAN_VENDOR_ATTR_ROAM_EVENTS_AFTER_LAST -1,
+};
+
+/**
+ * enum qca_wlan_ratemask_params_type - Rate mask config type
+ *
+ * @QCA_WLAN_RATEMASK_PARAMS_TYPE_CCK_OFDM: CCK/OFDM rate mask config
+ * @QCA_WLAN_RATEMASK_PARAMS_TYPE_HT: HT rate mask config
+ * @QCA_WLAN_RATEMASK_PARAMS_TYPE_VHT: VHT rate mask config
+ * @QCA_WLAN_RATEMASK_PARAMS_TYPE_HE: HE rate mask config
+ */
+enum qca_wlan_ratemask_params_type {
+	QCA_WLAN_RATEMASK_PARAMS_TYPE_CCK_OFDM = 0,
+	QCA_WLAN_RATEMASK_PARAMS_TYPE_HT = 1,
+	QCA_WLAN_RATEMASK_PARAMS_TYPE_VHT = 2,
+	QCA_WLAN_RATEMASK_PARAMS_TYPE_HE = 3,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_ratemask_params - Used by the
+ * vendor command QCA_NL80211_VENDOR_SUBCMD_RATEMASK_CONFIG.
+ * This is used to set the rate mask value to be used in rate selection.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_LIST:
+ * Array of nested containing attributes
+ * QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_TYPE and
+ * QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_BITMAP.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_TYPE: u8, represents
+ * the different PHY types to which the rate mask config is to be applied.
+ * The values for this attribute are referred from enum
+ * qca_wlan_vendor_ratemask_params_type.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_BITMAP: binary, rate mask bitmap.
+ * A bit value of 1 represents rate is enabled and a value of 0
+ * represents rate is disabled.
+ * For HE targets, 12 bits correspond to one NSS setting.
+ * b0-13  => NSS1, MCS 0-13
+ * b14-27 => NSS2, MCS 0-13 and so on for other NSS.
+ * For VHT targets, 10 bits correspond to one NSS setting.
+ * b0-9   => NSS1, MCS 0-9
+ * b10-19 => NSS2, MCS 0-9 and so on for other NSS.
+ * For HT targets, 8 bits correspond to one NSS setting.
+ * b0-7  => NSS1, MCS 0-7
+ * b8-15 => NSS2, MCS 0-7 and so on for other NSS.
+ * For OFDM/CCK targets, 8 bits correspond to one NSS setting.
+ */
+enum qca_wlan_vendor_attr_ratemask_params {
+	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_LIST = 1,
+	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_TYPE = 2,
+	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_BITMAP = 3,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_MAX =
+	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_AFTER_LAST - 1,
 };
 
 #endif /* QCA_VENDOR_H */
