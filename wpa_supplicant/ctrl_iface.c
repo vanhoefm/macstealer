@@ -10697,7 +10697,7 @@ fail:
 #endif /* CONFIG_FILS */
 
 
-static int wpas_ctrl_cmd_debug_level(const char *cmd)
+int wpas_ctrl_cmd_debug_level(const char *cmd)
 {
 	if (os_strcmp(cmd, "PING") == 0 ||
 	    os_strncmp(cmd, "BSS ", 4) == 0 ||
