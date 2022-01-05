@@ -1203,6 +1203,7 @@ void ap_mgmt_rx(void *ctx, struct rx_mgmt *rx_mgmt)
 	struct wpa_supplicant *wpa_s = ctx;
 	struct hostapd_frame_info fi;
 	os_memset(&fi, 0, sizeof(fi));
+	fi.freq = rx_mgmt->freq;
 	fi.datarate = rx_mgmt->datarate;
 	fi.ssi_signal = rx_mgmt->ssi_signal;
 	ieee802_11_mgmt(wpa_s->ap_iface->bss[0], rx_mgmt->frame,

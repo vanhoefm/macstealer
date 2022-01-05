@@ -6098,19 +6098,17 @@ static int handle_action(struct hostapd_data *hapd,
 			end = ((const u8 *) mgmt) + len;
 			gas_query_ap_rx(hapd->gas, mgmt->sa,
 					mgmt->u.action.category,
-					pos, end - pos, hapd->iface->freq);
+					pos, end - pos, freq);
 			return 1;
 		}
 #endif /* CONFIG_DPP */
 		if (hapd->public_action_cb) {
 			hapd->public_action_cb(hapd->public_action_cb_ctx,
-					       (u8 *) mgmt, len,
-					       hapd->iface->freq);
+					       (u8 *) mgmt, len, freq);
 		}
 		if (hapd->public_action_cb2) {
 			hapd->public_action_cb2(hapd->public_action_cb2_ctx,
-						(u8 *) mgmt, len,
-						hapd->iface->freq);
+						(u8 *) mgmt, len, freq);
 		}
 		if (hapd->public_action_cb || hapd->public_action_cb2)
 			return 1;
@@ -6118,8 +6116,7 @@ static int handle_action(struct hostapd_data *hapd,
 	case WLAN_ACTION_VENDOR_SPECIFIC:
 		if (hapd->vendor_action_cb) {
 			if (hapd->vendor_action_cb(hapd->vendor_action_cb_ctx,
-						   (u8 *) mgmt, len,
-						   hapd->iface->freq) == 0)
+						   (u8 *) mgmt, len, freq) == 0)
 				return 1;
 		}
 		break;
