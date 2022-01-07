@@ -8158,7 +8158,6 @@ def test_eap_proto_pwd_errors(dev, apdev):
              (3, "crypto_bignum_init_set;compute_password_element"),
              (1, "crypto_bignum_to_bin;compute_password_element"),
              (1, "crypto_ec_point_compute_y_sqr;compute_password_element"),
-             (1, "crypto_ec_point_solve_y_coord;compute_password_element"),
              (1, "crypto_bignum_rand;compute_password_element"),
              (1, "crypto_bignum_sub;compute_password_element")]
     for count, func in funcs:
