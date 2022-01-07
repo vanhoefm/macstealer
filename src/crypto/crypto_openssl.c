@@ -1951,21 +1951,6 @@ int crypto_ec_point_invert(struct crypto_ec *e, struct crypto_ec_point *p)
 }
 
 
-int crypto_ec_point_solve_y_coord(struct crypto_ec *e,
-				  struct crypto_ec_point *p,
-				  const struct crypto_bignum *x, int y_bit)
-{
-	if (TEST_FAIL())
-		return -1;
-	if (!EC_POINT_set_compressed_coordinates_GFp(e->group, (EC_POINT *) p,
-						     (const BIGNUM *) x, y_bit,
-						     e->bnctx) ||
-	    !EC_POINT_is_on_curve(e->group, (EC_POINT *) p, e->bnctx))
-		return -1;
-	return 0;
-}
-
-
 struct crypto_bignum *
 crypto_ec_point_compute_y_sqr(struct crypto_ec *e,
 			      const struct crypto_bignum *x)
