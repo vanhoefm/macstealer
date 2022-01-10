@@ -1942,29 +1942,23 @@ struct crypto_bignum *
 crypto_ec_point_compute_y_sqr(struct crypto_ec *e,
 			      const struct crypto_bignum *x)
 {
-	BIGNUM *tmp, *tmp2, *y_sqr = NULL;
+	BIGNUM *tmp;
 
 	if (TEST_FAIL())
 		return NULL;
 
 	tmp = BN_new();
-	tmp2 = BN_new();
 
-	/* y^2 = x^3 + ax + b */
-	if (tmp && tmp2 &&
+	/* y^2 = x^3 + ax + b = (x^2 + a)x + b */
+	if (tmp &&
 	    BN_mod_sqr(tmp, (const BIGNUM *) x, e->prime, e->bnctx) &&
+	    BN_mod_add_quick(tmp, e->a, tmp, e->prime) &&
 	    BN_mod_mul(tmp, tmp, (const BIGNUM *) x, e->prime, e->bnctx) &&
-	    BN_mod_mul(tmp2, e->a, (const BIGNUM *) x, e->prime, e->bnctx) &&
-	    BN_mod_add_quick(tmp2, tmp2, tmp, e->prime) &&
-	    BN_mod_add_quick(tmp2, tmp2, e->b, e->prime)) {
-		y_sqr = tmp2;
-		tmp2 = NULL;
-	}
+	    BN_mod_add_quick(tmp, tmp, e->b, e->prime))
+		return (struct crypto_bignum *) tmp;
 
 	BN_clear_free(tmp);
-	BN_clear_free(tmp2);
-
-	return (struct crypto_bignum *) y_sqr;
+	return NULL;
 }
 
 
