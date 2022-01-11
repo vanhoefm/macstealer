@@ -2619,6 +2619,9 @@ fail:
 	int der_len;
 	struct wpabuf *buf;
 	EC_KEY *eckey;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *tmp;
+#endif /* OpenSSL version >= 3.0 */
 
 	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
@@ -2627,8 +2630,22 @@ fail:
 	/* For now, all users expect COMPRESSED form */
 	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_COMPRESSED);
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	tmp = EVP_PKEY_new();
+	if (!tmp)
+		return NULL;
+	if (EVP_PKEY_set1_EC_KEY(tmp, eckey) != 1) {
+		EVP_PKEY_free(tmp);
+		return NULL;
+	}
+	key = (struct crypto_ec_key *) tmp;
+#endif /* OpenSSL version >= 3.0 */
+
 	der_len = i2d_PUBKEY((EVP_PKEY *) key, &der);
 	EC_KEY_free(eckey);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY_free(tmp);
+#endif /* OpenSSL version >= 3.0 */
 	if (der_len <= 0) {
 		wpa_printf(MSG_INFO, "OpenSSL: i2d_PUBKEY() failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
