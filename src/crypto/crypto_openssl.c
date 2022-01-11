@@ -2474,12 +2474,13 @@ struct crypto_ec_key * crypto_ec_key_gen(int group)
 		goto fail;
 	}
 
-	eckey = EVP_PKEY_get0_EC_KEY(key);
+	eckey = EVP_PKEY_get1_EC_KEY(key);
 	if (!eckey) {
 		key = NULL;
 		goto fail;
 	}
 	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_COMPRESSED);
+	EC_KEY_free(eckey);
 
 fail:
 	EC_KEY_free(ec_params);
@@ -2589,12 +2590,17 @@ fail:
 	unsigned char *der = NULL;
 	int der_len;
 	struct wpabuf *buf;
+	EC_KEY *eckey;
+
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
+	if (!eckey)
+		return NULL;
 
 	/* For now, all users expect COMPRESSED form */
-	EC_KEY_set_conv_form(EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key),
-			     POINT_CONVERSION_COMPRESSED);
+	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_COMPRESSED);
 
 	der_len = i2d_PUBKEY((EVP_PKEY *) key, &der);
+	EC_KEY_free(eckey);
 	if (der_len <= 0) {
 		wpa_printf(MSG_INFO, "OpenSSL: i2d_PUBKEY() failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
@@ -2617,7 +2623,7 @@ struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
 	struct wpabuf *buf;
 	unsigned int key_flags;
 
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
 		return NULL;
 
@@ -2631,6 +2637,7 @@ struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
 	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_UNCOMPRESSED);
 
 	der_len = i2d_ECPrivateKey(eckey, &der);
+	EC_KEY_free(eckey);
 	if (der_len <= 0)
 		return NULL;
 	buf = wpabuf_alloc_copy(der, der_len);
@@ -2691,7 +2698,7 @@ struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
 const struct crypto_ec_point *
 crypto_ec_key_get_public_key(struct crypto_ec_key *key)
 {
-	EC_KEY *eckey;
+	const EC_KEY *eckey;
 
 	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
@@ -2703,7 +2710,7 @@ crypto_ec_key_get_public_key(struct crypto_ec_key *key)
 const struct crypto_bignum *
 crypto_ec_key_get_private_key(struct crypto_ec_key *key)
 {
-	EC_KEY *eckey;
+	const EC_KEY *eckey;
 
 	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
