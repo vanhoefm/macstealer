@@ -234,7 +234,7 @@ def test_sae_group_nego(dev, apdev):
     params['sae_groups'] = '19'
     hostapd.add_ap(apdev[0], params)
 
-    dev[0].request("SET sae_groups 25 26 20 19")
+    dev[0].request("SET sae_groups 25 20 19")
     dev[0].connect("test-sae-group-nego", psk="12345678", key_mgmt="SAE",
                    scan_freq="2412")
     if dev[0].get_status_field('sae_group') != '19':

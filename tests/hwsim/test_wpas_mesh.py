@@ -613,7 +613,7 @@ def test_wpas_mesh_secure_sae_group_mismatch(dev, apdev):
     id = add_mesh_secure_net(dev[1])
     dev[1].mesh_group_add(id)
 
-    dev[2].request("SET sae_groups 26")
+    dev[2].request("SET sae_groups 20")
     id = add_mesh_secure_net(dev[2])
     dev[2].mesh_group_add(id)
 
@@ -656,11 +656,11 @@ def test_wpas_mesh_secure_sae_group_negotiation(dev, apdev):
     addr1 = dev[1].own_addr()
 
     #dev[0].request("SET sae_groups 21 20 25 26")
-    dev[0].request("SET sae_groups 26")
+    dev[0].request("SET sae_groups 25")
     id = add_mesh_secure_net(dev[0])
     dev[0].mesh_group_add(id)
 
-    dev[1].request("SET sae_groups 19 26")
+    dev[1].request("SET sae_groups 19 25")
     id = add_mesh_secure_net(dev[1])
     dev[1].mesh_group_add(id)
 
@@ -1827,7 +1827,7 @@ def test_mesh_sae_groups_invalid(dev, apdev):
     """Mesh with invalid SAE group configuration"""
     check_mesh_support(dev[0], secure=True)
 
-    dev[0].request("SET sae_groups 26")
+    dev[0].request("SET sae_groups 25")
     id = add_mesh_secure_net(dev[0])
     dev[0].mesh_group_add(id)
 
