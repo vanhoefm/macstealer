@@ -957,6 +957,10 @@ void * tls_init(const struct tls_config *conf)
 	const char *ciphers;
 
 	if (tls_openssl_ref_count == 0) {
+		void openssl_load_legacy_provider(void);
+
+		openssl_load_legacy_provider();
+
 		tls_global = context = tls_context_new(conf);
 		if (context == NULL)
 			return NULL;
