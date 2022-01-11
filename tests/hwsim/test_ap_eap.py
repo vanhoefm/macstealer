@@ -97,6 +97,11 @@ def check_pkcs5_v15_support(dev):
     if "BoringSSL" in tls or "GnuTLS" in tls:
         raise HwsimSkip("PKCS#5 v1.5 not supported with this TLS library: " + tls)
 
+def check_tls13_support(dev):
+    tls = dev.request("GET tls_library")
+    if "run=OpenSSL 1.1.1" not in tls and "run=OpenSSL 3.0" not in tls:
+        raise HwsimSkip("TLS v1.3 not supported")
+
 def check_ocsp_multi_support(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("internal"):
@@ -3971,7 +3976,7 @@ def test_ap_wpa2_eap_fast_cipher_suites(dev, apdev):
             if cipher == "RC4-SHA" and \
                ("Could not select EAP method" in str(e) or \
                 "EAP failed" in str(e)):
-                if "run=OpenSSL 1.1" in tls:
+                if "run=OpenSSL 1.1" in tls or "run=OpenSSL 3.0" in tls:
                     logger.info("Allow failure due to missing TLS library support")
                     dev[0].request("REMOVE_NETWORK all")
                     dev[0].wait_disconnected()
@@ -5905,7 +5910,7 @@ def test_ap_wpa2_eap_tls_versions(dev, apdev):
                   "tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=0 tls_disable_tlsv1_2=1", "TLSv1.1")
     check_tls_ver(dev[2], hapd,
                   "tls_disable_tlsv1_0=0 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1", "TLSv1")
-    if "run=OpenSSL 1.1.1" in tls:
+    if "run=OpenSSL 1.1.1" in tls or "run=OpenSSL 3.0" in tls:
         check_tls_ver(dev[0], hapd,
                       "tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0", "TLSv1.3")
 
@@ -5937,9 +5942,7 @@ def test_ap_wpa2_eap_tls_13(dev, apdev):
     params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
     hapd = hostapd.add_ap(apdev[0], params)
 
-    tls = dev[0].request("GET tls_library")
-    if "run=OpenSSL 1.1.1" not in tls:
-        raise HwsimSkip("TLS v1.3 not supported")
+    check_tls13_support(dev[0])
     id = eap_connect(dev[0], hapd, "TLS", "tls user",
                      ca_cert="auth_serv/ca.pem",
                      client_cert="auth_serv/user.pem",
@@ -5961,9 +5964,7 @@ def test_ap_wpa2_eap_ttls_13(dev, apdev):
     params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
     hapd = hostapd.add_ap(apdev[0], params)
 
-    tls = dev[0].request("GET tls_library")
-    if "run=OpenSSL 1.1.1" not in tls:
-        raise HwsimSkip("TLS v1.3 not supported")
+    check_tls13_support(dev[0])
     id = eap_connect(dev[0], hapd, "TTLS", "pap user",
                      anonymous_identity="ttls", password="password",
                      ca_cert="auth_serv/ca.pem",
@@ -5986,9 +5987,7 @@ def test_ap_wpa2_eap_peap_13(dev, apdev):
     params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
     hapd = hostapd.add_ap(apdev[0], params)
 
-    tls = dev[0].request("GET tls_library")
-    if "run=OpenSSL 1.1.1" not in tls:
-        raise HwsimSkip("TLS v1.3 not supported")
+    check_tls13_support(dev[0])
     id = eap_connect(dev[0], hapd, "PEAP", "user",
                      anonymous_identity="peap", password="password",
                      ca_cert="auth_serv/ca.pem",
@@ -6019,13 +6018,9 @@ def test_ap_wpa2_eap_tls_13_ec(dev, apdev):
               "private_key": "auth_serv/ec-server.key",
               "tls_flags": "[ENABLE-TLSv1.3]"}
     hapd = hostapd.add_ap(apdev[0], params)
-    tls = hapd.request("GET tls_library")
-    if "run=OpenSSL 1.1.1" not in tls:
-        raise HwsimSkip("TLS v1.3 not supported")
+    check_tls13_support(hapd)
 
-    tls = dev[0].request("GET tls_library")
-    if "run=OpenSSL 1.1.1" not in tls:
-        raise HwsimSkip("TLS v1.3 not supported")
+    check_tls13_support(dev[0])
     id = eap_connect(dev[0], hapd, "TLS", "tls user",
                      ca_cert="auth_serv/ec-ca.pem",
                      client_cert="auth_serv/ec-user.pem",
