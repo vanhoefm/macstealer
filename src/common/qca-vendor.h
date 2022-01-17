@@ -4888,14 +4888,14 @@ enum qca_vendor_attr_roam_control {
  *	ignored BSSIDs and accordingly clear the respective ones with the
  *	matching ID.
  *
- * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_NUM_NETWORKS: Unsigned
- *	32-bit value.Represents the number of whitelist SSIDs configured.
+ * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_NUM_NETWORKS: Unsigned
+ *	32-bit value. Represents the number of allowlist SSIDs configured.
  *
- * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_LIST: Nested attribute
- *	to carry the list of Whitelist SSIDs.
+ * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_LIST: Nested attribute
+ *	to carry the list of allowlist SSIDs.
  *
- * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID: SSID (binary attribute,
- *	0..32 octets). Represents the white list SSID. Whitelist SSIDs
+ * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID: SSID (binary attribute,
+ *	0..32 octets). Represents the allow list SSID. Allowlist SSIDs
  *	represent the list of SSIDs to which the firmware/driver can consider
  *	to roam to.
  *
@@ -4933,7 +4933,7 @@ enum qca_vendor_attr_roam_control {
  *
  * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_SET_LAZY_ROAM_ENABLE: Unsigned 32-bit
  *	value. 1-Enable, 0-Disable. Represents "Lazy" mode, where
- *	firmware is hunting for a better BSSID or white listed SSID even though
+ *	firmware is hunting for a better BSSID or allow listed SSID even though
  *	the RSSI of the link is good. The parameters enabling the roaming are
  *	configured through the PARAM_A_BAND_XX attrbutes.
  *
@@ -4975,10 +4975,10 @@ enum qca_wlan_vendor_attr_roaming_config_params {
 	QCA_WLAN_VENDOR_ATTR_ROAMING_SUBCMD = 1,
 	QCA_WLAN_VENDOR_ATTR_ROAMING_REQ_ID = 2,
 
-	/* Attributes for wifi_set_ssid_white_list */
-	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_NUM_NETWORKS = 3,
-	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_LIST = 4,
-	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID = 5,
+	/* Attributes for wifi_set_ssid_allow_list */
+	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_NUM_NETWORKS = 3,
+	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_LIST = 4,
+	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID = 5,
 
 	/* Attributes for set_roam_params */
 	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_A_BAND_BOOST_THRESHOLD = 6,
@@ -5013,16 +5013,24 @@ enum qca_wlan_vendor_attr_roaming_config_params {
 	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_AFTER_LAST - 1,
 };
 
+/* old names for API compatibility */
+#define QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_NUM_NETWORKS \
+	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_NUM_NETWORKS
+#define QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_LIST \
+	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_LIST
+#define QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID \
+	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID
+
 /*
  * enum qca_wlan_vendor_roaming_subcmd: Referred by
  * QCA_WLAN_VENDOR_ATTR_ROAMING_SUBCMD.
  *
- * @QCA_WLAN_VENDOR_ROAMING_SUBCMD_SSID_WHITE_LIST: Sub command to
- *	configure the white list SSIDs. These are configured through
+ * @QCA_WLAN_VENDOR_ROAMING_SUBCMD_SSID_ALLOW_LIST: Sub command to
+ *	configure the allow list SSIDs. These are configured through
  *	the following attributes.
- *	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_NUM_NETWORKS,
- *	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_LIST,
- *	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID
+ *	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_NUM_NETWORKS,
+ *	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID_LIST,
+ *	QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_ALLOW_LIST_SSID
  *
  * @QCA_WLAN_VENDOR_ROAMING_SUBCMD_SET_GSCAN_ROAM_PARAMS: Sub command to
  *	configure the Roam params. These parameters are evaluated on the GScan
@@ -5062,7 +5070,7 @@ enum qca_wlan_vendor_attr_roaming_config_params {
  */
 enum qca_wlan_vendor_roaming_subcmd {
 	QCA_WLAN_VENDOR_ROAMING_SUBCMD_INVALID = 0,
-	QCA_WLAN_VENDOR_ROAMING_SUBCMD_SSID_WHITE_LIST = 1,
+	QCA_WLAN_VENDOR_ROAMING_SUBCMD_SSID_ALLOW_LIST = 1,
 	QCA_WLAN_VENDOR_ROAMING_SUBCMD_SET_GSCAN_ROAM_PARAMS = 2,
 	QCA_WLAN_VENDOR_ROAMING_SUBCMD_SET_LAZY_ROAM = 3,
 	QCA_WLAN_VENDOR_ROAMING_SUBCMD_SET_BSSID_PREFS = 4,
@@ -5072,6 +5080,10 @@ enum qca_wlan_vendor_roaming_subcmd {
 	QCA_WLAN_VENDOR_ROAMING_SUBCMD_CONTROL_GET = 8,
 	QCA_WLAN_VENDOR_ROAMING_SUBCMD_CONTROL_CLEAR = 9,
 };
+
+/* old names for API compatibility */
+#define QCA_WLAN_VENDOR_ROAMING_SUBCMD_SSID_WHITE_LIST \
+	QCA_WLAN_VENDOR_ROAMING_SUBCMD_SSID_ALLOW_LIST
 
 enum qca_wlan_vendor_attr_gscan_config_params {
 	QCA_WLAN_VENDOR_ATTR_GSCAN_SUBCMD_CONFIG_PARAM_INVALID = 0,
@@ -5431,7 +5443,7 @@ enum qca_wlan_vendor_attr_gscan_results {
 	QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_CAPABILITIES_MAX_NUM_EPNO_NETS_BY_SSID
 	= 43,
 	/* Unsigned 32-bit value; a GSCAN Capabilities attribute. */
-	QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_CAPABILITIES_MAX_NUM_WHITELISTED_SSID
+	QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_CAPABILITIES_MAX_NUM_ALLOWLISTED_SSID
 	= 44,
 
 	QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_BUCKETS_SCANNED = 45,
@@ -5449,6 +5461,10 @@ enum qca_wlan_vendor_attr_gscan_results {
 	QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_MAX =
 	QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_AFTER_LAST - 1,
 };
+
+/* old names for API compatibility */
+#define QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_CAPABILITIES_MAX_NUM_WHITELISTED_SSID \
+	QCA_WLAN_VENDOR_ATTR_GSCAN_RESULTS_CAPABILITIES_MAX_NUM_ALLOWLISTED_SSID
 
 enum qca_wlan_vendor_attr_pno_config_params {
 	QCA_WLAN_VENDOR_ATTR_PNO_INVALID = 0,
