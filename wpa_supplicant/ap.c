@@ -382,7 +382,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa_supplicant *wpa_s,
 					HT_CAP_INFO_SUPP_CHANNEL_WIDTH_SET;
 
 			/*
-			 * white-list capabilities that won't cause issues
+			 * include capabilities that won't cause issues
 			 * to connecting stations, while leaving the current
 			 * capabilities intact (currently disabled SMPS).
 			 */
