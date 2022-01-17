@@ -26,7 +26,7 @@ to verify that operations have been performed correctly and that the
 network connection works in the expected way.
 
 These test cases are run automatically against the hostap.git commits
-for regression testing and to help in keeping the hostap.git master
+for regression testing and to help in keeping the hostap.git main
 branch in stable state. Results from these tests are available here:
 http://buildbot.w1.fi/hwsim/
 
