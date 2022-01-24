@@ -1577,7 +1577,8 @@ class WpaSupplicant:
         return int(peer)
 
     def dpp_pkex_init(self, identifier, code, role=None, key=None, curve=None,
-                      extra=None, use_id=None, allow_fail=False, ver=None):
+                      extra=None, use_id=None, allow_fail=False, ver=None,
+                      tcp_addr=None, tcp_port=None):
         if use_id is None:
             id1 = self.dpp_bootstrap_gen(type="pkex", key=key, curve=curve)
         else:
@@ -1590,6 +1591,10 @@ class WpaSupplicant:
             cmd += "ver=" + str(ver) + " "
         if role:
             cmd += "role=%s " % role
+        if tcp_addr:
+            cmd += "tcp_addr=" + tcp_addr + " "
+        if tcp_port:
+            cmd += "tcp_port=" + tcp_port + " "
         if extra:
             cmd += extra + " "
         cmd += "code=%s" % code
