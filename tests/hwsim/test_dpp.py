@@ -2600,6 +2600,46 @@ def test_dpp_pkex_v2_hostapd_initiator(dev, apdev):
     wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
                       stop_initiator=True)
 
+def test_dpp_pkex_hostapd_initiator_fallback(dev, apdev):
+    """DPP PKEX with hostapd as initiator and fallback to v1"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd, min_ver=3)
+    conf_id = dev[0].dpp_configurator_add()
+    dev[0].set("dpp_configurator_params",
+               " conf=ap-dpp configurator=%d" % conf_id)
+    dev[0].dpp_listen(2437, role="configurator")
+    hapd.dpp_pkex_init(identifier="test", code="secret", role="enrollee")
+    while True:
+        ev = dev[0].wait_event(["DPP-RX"], timeout=5)
+        if ev is None:
+            raise Exception("DPP-RX not reported")
+        if "type=7" in ev:
+            logger.info("Starting PKEXv1 responder")
+            conf_id = dev[0].dpp_configurator_add()
+            dev[0].set("dpp_configurator_params",
+                       " conf=ap-dpp configurator=%d" % conf_id)
+            dev[0].dpp_pkex_resp(2437, identifier="test", code="secret",
+                                 listen_role="configurator")
+            break
+    wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
+                      stop_initiator=True)
+
+def test_dpp_pkex_hostapd_initiator_no_response(dev, apdev):
+    """DPP PKEX with hostapd as initiator and no response"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd)
+    conf_id = dev[0].dpp_configurator_add()
+    hapd.dpp_pkex_init(identifier="test", code="secret", role="enrollee")
+    ev = hapd.wait_event(["DPP-FAIL"], timeout=30)
+    if not ev:
+        raise Exception("Failure not reported")
+    if "No response from PKEX peer" not in ev:
+        raise Exception("Unexpected failure reason: " + ev)
+
 def test_dpp_pkex_hostapd_errors(dev, apdev):
     """DPP PKEX errors with hostapd"""
     hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
