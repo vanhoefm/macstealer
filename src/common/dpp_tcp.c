@@ -24,10 +24,12 @@ struct dpp_connection {
 	struct dpp_controller *ctrl;
 	struct dpp_relay_controller *relay;
 	struct dpp_global *global;
+	struct dpp_pkex *pkex;
 	struct dpp_authentication *auth;
 	void *msg_ctx;
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
+	int (*pkex_done)(void *ctx, void *conn, struct dpp_bootstrap_info *bi);
 	int sock;
 	u8 mac_addr[ETH_ALEN];
 	unsigned int freq;
@@ -71,6 +73,9 @@ struct dpp_controller {
 	struct dl_list conn; /* struct dpp_connection */
 	char *configurator_params;
 	enum dpp_netrole netrole;
+	struct dpp_bootstrap_info *pkex_bi;
+	char *pkex_code;
+	char *pkex_identifier;
 	void *msg_ctx;
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
@@ -102,6 +107,7 @@ static void dpp_connection_free(struct dpp_connection *conn)
 	wpabuf_free(conn->msg);
 	wpabuf_free(conn->msg_out);
 	dpp_auth_deinit(conn->auth);
+	dpp_pkex_free(conn->pkex);
 	os_free(conn->name);
 	os_free(conn);
 }
@@ -525,6 +531,8 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 		/* TODO: Could send this to all configured Controllers. For now,
 		 * only the first Controller is supported. */
 		ctrl = dpp_relay_controller_get_ctx(dpp, cb_ctx);
+	} else if (type == DPP_PA_PKEX_EXCHANGE_REQ) {
+		ctrl = dpp_relay_controller_get_ctx(dpp, cb_ctx);
 	} else {
 		if (!r_bootstrap)
 			return -1;
@@ -609,6 +617,8 @@ static void dpp_controller_free(struct dpp_controller *ctrl)
 		eloop_unregister_sock(ctrl->sock, EVENT_TYPE_READ);
 	}
 	os_free(ctrl->configurator_params);
+	os_free(ctrl->pkex_code);
+	os_free(ctrl->pkex_identifier);
 	os_free(ctrl);
 }
 
@@ -955,6 +965,143 @@ static int dpp_controller_rx_reconfig_auth_resp(struct dpp_connection *conn,
 }
 
 
+static int dpp_controller_rx_pkex_exchange_req(struct dpp_connection *conn,
+					       const u8 *hdr, const u8 *buf,
+					       size_t len)
+{
+	struct dpp_controller *ctrl = conn->ctrl;
+
+	if (!ctrl)
+		return 0;
+
+	wpa_printf(MSG_DEBUG, "DPP: PKEX Exchange Request");
+
+	/* TODO: Support multiple PKEX codes by iterating over all the enabled
+	 * values here */
+
+	if (!ctrl->pkex_code || !ctrl->pkex_bi) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: No PKEX code configured - ignore request");
+		return 0;
+	}
+
+	if (conn->pkex || conn->auth) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Already in PKEX/Authentication session - ignore new PKEX request");
+		return 0;
+	}
+
+	conn->pkex = dpp_pkex_rx_exchange_req(conn->ctrl->global, ctrl->pkex_bi,
+					      NULL, NULL,
+					      ctrl->pkex_identifier,
+					      ctrl->pkex_code,
+					      buf, len, true);
+	if (!conn->pkex) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Failed to process the request");
+		return -1;
+	}
+
+	return dpp_tcp_send_msg(conn, conn->pkex->exchange_resp);
+}
+
+
+static int dpp_controller_rx_pkex_exchange_resp(struct dpp_connection *conn,
+						const u8 *hdr, const u8 *buf,
+						size_t len)
+{
+	struct dpp_pkex *pkex = conn->pkex;
+	struct wpabuf *msg;
+	int res;
+
+	wpa_printf(MSG_DEBUG, "DPP: PKEX Exchange Response");
+
+	if (!pkex || !pkex->initiator || pkex->exchange_done) {
+		wpa_printf(MSG_DEBUG, "DPP: No matching PKEX session");
+		return 0;
+	}
+
+	msg = dpp_pkex_rx_exchange_resp(pkex, NULL, buf, len);
+	if (!msg) {
+		wpa_printf(MSG_DEBUG, "DPP: Failed to process the response");
+		return -1;
+	}
+
+	wpa_printf(MSG_DEBUG, "DPP: Send PKEX Commit-Reveal Request");
+	res = dpp_tcp_send_msg(conn, msg);
+	wpabuf_free(msg);
+	return res;
+}
+
+
+static int dpp_controller_rx_pkex_commit_reveal_req(struct dpp_connection *conn,
+						    const u8 *hdr,
+						    const u8 *buf, size_t len)
+{
+	struct dpp_pkex *pkex = conn->pkex;
+	struct wpabuf *msg;
+	int res;
+	struct dpp_bootstrap_info *bi;
+
+	wpa_printf(MSG_DEBUG, "DPP: PKEX Commit-Reveal Request");
+
+	if (!pkex || pkex->initiator || !pkex->exchange_done) {
+		wpa_printf(MSG_DEBUG, "DPP: No matching PKEX session");
+		return 0;
+	}
+
+	msg = dpp_pkex_rx_commit_reveal_req(pkex, hdr, buf, len);
+	if (!msg) {
+		wpa_printf(MSG_DEBUG, "DPP: Failed to process the request");
+		return -1;
+	}
+
+	wpa_printf(MSG_DEBUG, "DPP: Send PKEX Commit-Reveal Response");
+	res = dpp_tcp_send_msg(conn, msg);
+	wpabuf_free(msg);
+	if (res < 0)
+		return res;
+	bi = dpp_pkex_finish(conn->global, pkex, NULL, 0);
+	if (!bi)
+		return -1;
+	conn->pkex = NULL;
+	return 0;
+}
+
+
+static int
+dpp_controller_rx_pkex_commit_reveal_resp(struct dpp_connection *conn,
+					  const u8 *hdr,
+					  const u8 *buf, size_t len)
+{
+	struct dpp_pkex *pkex = conn->pkex;
+	int res;
+	struct dpp_bootstrap_info *bi;
+
+	wpa_printf(MSG_DEBUG, "DPP: PKEX Commit-Reveal Response");
+
+	if (!pkex || !pkex->initiator || !pkex->exchange_done) {
+		wpa_printf(MSG_DEBUG, "DPP: No matching PKEX session");
+		return 0;
+	}
+
+	res = dpp_pkex_rx_commit_reveal_resp(pkex, hdr, buf, len);
+	if (res < 0) {
+		wpa_printf(MSG_DEBUG, "DPP: Failed to process the response");
+		return res;
+	}
+
+	bi = dpp_pkex_finish(conn->global, pkex, NULL, 0);
+	if (!bi)
+		return -1;
+	conn->pkex = NULL;
+
+	if (!conn->pkex_done)
+		return -1;
+	return conn->pkex_done(conn->cb_ctx, conn, bi);
+}
+
+
 static int dpp_controller_rx_action(struct dpp_connection *conn, const u8 *msg,
 				    size_t len)
 {
@@ -1014,6 +1161,22 @@ static int dpp_controller_rx_action(struct dpp_connection *conn, const u8 *msg,
 	case DPP_PA_RECONFIG_AUTH_RESP:
 		return dpp_controller_rx_reconfig_auth_resp(conn, msg, pos,
 							    end - pos);
+	case DPP_PA_PKEX_V1_EXCHANGE_REQ:
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Ignore PKEXv1 Exchange Request - not supported over TCP");
+		return -1;
+	case DPP_PA_PKEX_EXCHANGE_REQ:
+		return dpp_controller_rx_pkex_exchange_req(conn, msg, pos,
+							   end - pos);
+	case DPP_PA_PKEX_EXCHANGE_RESP:
+		return dpp_controller_rx_pkex_exchange_resp(conn, msg, pos,
+							    end - pos);
+	case DPP_PA_PKEX_COMMIT_REVEAL_REQ:
+		return dpp_controller_rx_pkex_commit_reveal_req(conn, msg, pos,
+								end - pos);
+	case DPP_PA_PKEX_COMMIT_REVEAL_RESP:
+		return dpp_controller_rx_pkex_commit_reveal_resp(conn, msg, pos,
+								 end - pos);
 	default:
 		/* TODO: missing messages types */
 		wpa_printf(MSG_DEBUG,
@@ -1559,6 +1722,101 @@ fail:
 }
 
 
+int dpp_tcp_pkex_init(struct dpp_global *dpp, struct dpp_pkex *pkex,
+		      const struct hostapd_ip_addr *addr, int port,
+		      void *msg_ctx, void *cb_ctx,
+		      int (*pkex_done)(void *ctx, void *conn,
+				       struct dpp_bootstrap_info *bi))
+{
+	struct dpp_connection *conn;
+	struct sockaddr_storage saddr;
+	socklen_t addrlen;
+	const u8 *hdr, *pos, *end;
+	char txt[100];
+
+	wpa_printf(MSG_DEBUG, "DPP: Initialize TCP connection to %s port %d",
+		   hostapd_ip_txt(addr, txt, sizeof(txt)), port);
+	if (dpp_ipaddr_to_sockaddr((struct sockaddr *) &saddr, &addrlen,
+				   addr, port) < 0) {
+		dpp_pkex_free(pkex);
+		return -1;
+	}
+
+	conn = os_zalloc(sizeof(*conn));
+	if (!conn) {
+		dpp_pkex_free(pkex);
+		return -1;
+	}
+
+	conn->msg_ctx = msg_ctx;
+	conn->cb_ctx = cb_ctx;
+	conn->pkex_done = pkex_done;
+	conn->global = dpp;
+	conn->pkex = pkex;
+	conn->sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (conn->sock < 0)
+		goto fail;
+
+	if (fcntl(conn->sock, F_SETFL, O_NONBLOCK) != 0) {
+		wpa_printf(MSG_DEBUG, "DPP: fnctl(O_NONBLOCK) failed: %s",
+			   strerror(errno));
+		goto fail;
+	}
+
+	if (connect(conn->sock, (struct sockaddr *) &saddr, addrlen) < 0) {
+		if (errno != EINPROGRESS) {
+			wpa_printf(MSG_DEBUG, "DPP: Failed to connect: %s",
+				   strerror(errno));
+			goto fail;
+		}
+
+		/*
+		 * Continue connecting in the background; eloop will call us
+		 * once the connection is ready (or failed).
+		 */
+	}
+
+	if (eloop_register_sock(conn->sock, EVENT_TYPE_WRITE,
+				dpp_conn_tx_ready, conn, NULL) < 0)
+		goto fail;
+	conn->write_eloop = 1;
+
+	hdr = wpabuf_head(pkex->exchange_req);
+	end = hdr + wpabuf_len(pkex->exchange_req);
+	hdr += 2; /* skip Category and Actiom */
+	pos = hdr + DPP_HDR_LEN;
+	conn->msg_out = dpp_tcp_encaps(hdr, pos, end - pos);
+	if (!conn->msg_out)
+		goto fail;
+	/* Message will be sent in dpp_conn_tx_ready() */
+
+	/* TODO: eloop timeout to clear a connection if it does not complete
+	 * properly */
+	dl_list_add(&dpp->tcp_init, &conn->list);
+	return 0;
+fail:
+	dpp_connection_free(conn);
+	return -1;
+}
+
+
+static int dpp_tcp_auth_start(struct dpp_connection *conn,
+			      struct dpp_authentication *auth)
+{
+	const u8 *hdr, *pos, *end;
+
+	hdr = wpabuf_head(auth->req_msg);
+	end = hdr + wpabuf_len(auth->req_msg);
+	hdr += 2; /* skip Category and Actiom */
+	pos = hdr + DPP_HDR_LEN;
+	conn->msg_out = dpp_tcp_encaps(hdr, pos, end - pos);
+	if (!conn->msg_out)
+		return -1;
+	/* Message will be sent in dpp_conn_tx_ready() */
+	return 0;
+}
+
+
 int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 		 const struct hostapd_ip_addr *addr, int port, const char *name,
 		 enum dpp_netrole netrole, void *msg_ctx, void *cb_ctx,
@@ -1568,7 +1826,6 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 	struct dpp_connection *conn;
 	struct sockaddr_storage saddr;
 	socklen_t addrlen;
-	const u8 *hdr, *pos, *end;
 	char txt[100];
 
 	wpa_printf(MSG_DEBUG, "DPP: Initialize TCP connection to %s port %d",
@@ -1620,14 +1877,8 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 		goto fail;
 	conn->write_eloop = 1;
 
-	hdr = wpabuf_head(auth->req_msg);
-	end = hdr + wpabuf_len(auth->req_msg);
-	hdr += 2; /* skip Category and Actiom */
-	pos = hdr + DPP_HDR_LEN;
-	conn->msg_out = dpp_tcp_encaps(hdr, pos, end - pos);
-	if (!conn->msg_out)
+	if (dpp_tcp_auth_start(conn, auth) < 0)
 		goto fail;
-	/* Message will be sent in dpp_conn_tx_ready() */
 
 	/* TODO: eloop timeout to clear a connection if it does not complete
 	 * properly */
@@ -1636,6 +1887,30 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 fail:
 	dpp_connection_free(conn);
 	return -1;
+}
+
+
+int dpp_tcp_auth(struct dpp_global *dpp, void *_conn,
+		 struct dpp_authentication *auth, const char *name,
+		 enum dpp_netrole netrole,
+		 int (*process_conf_obj)(void *ctx,
+					 struct dpp_authentication *auth))
+{
+	struct dpp_connection *conn = _conn;
+
+	/* Continue with Authentication exchange on an existing TCP connection.
+	 */
+	conn->process_conf_obj = process_conf_obj;
+	os_free(conn->name);
+	conn->name = os_strdup(name ? name : "Test");
+	conn->netrole = netrole;
+	conn->auth = auth;
+
+	if (dpp_tcp_auth_start(conn, auth) < 0)
+		return -1;
+
+	dpp_conn_tx_ready(conn->sock, conn, NULL);
+	return 0;
 }
 
 
@@ -1786,6 +2061,23 @@ void dpp_controller_new_qr_code(struct dpp_global *dpp,
 			   "DPP: Sending out pending authentication response");
 		dpp_tcp_send_msg(conn, conn->auth->resp_msg);
 	}
+}
+
+
+void dpp_controller_pkex_add(struct dpp_global *dpp,
+			     struct dpp_bootstrap_info *bi,
+			     const char *code, const char *identifier)
+{
+	struct dpp_controller *ctrl = dpp->controller;
+
+	if (!ctrl)
+		return;
+
+	ctrl->pkex_bi = bi;
+	os_free(ctrl->pkex_code);
+	ctrl->pkex_code = code ? os_strdup(code) : NULL;
+	os_free(ctrl->pkex_identifier);
+	ctrl->pkex_identifier = identifier ? os_strdup(identifier) : NULL;
 }
 
 

@@ -550,6 +550,9 @@ int dpp_auth_conf_rx(struct dpp_authentication *auth, const u8 *hdr,
 		     const u8 *attr_start, size_t attr_len);
 int dpp_notify_new_qr_code(struct dpp_authentication *auth,
 			   struct dpp_bootstrap_info *peer_bi);
+void dpp_controller_pkex_add(struct dpp_global *dpp,
+			     struct dpp_bootstrap_info *bi,
+			     const char *code, const char *identifier);
 struct dpp_configuration * dpp_configuration_alloc(const char *type);
 int dpp_akm_psk(enum dpp_akm akm);
 int dpp_akm_sae(enum dpp_akm akm);
@@ -688,10 +691,20 @@ struct dpp_authentication * dpp_controller_get_auth(struct dpp_global *dpp,
 						    unsigned int id);
 void dpp_controller_new_qr_code(struct dpp_global *dpp,
 				struct dpp_bootstrap_info *bi);
+int dpp_tcp_pkex_init(struct dpp_global *dpp, struct dpp_pkex *pkex,
+		      const struct hostapd_ip_addr *addr, int port,
+		      void *msg_ctx, void *cb_ctx,
+		      int (*pkex_done)(void *ctx, void *conn,
+				       struct dpp_bootstrap_info *bi));
 int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 		 const struct hostapd_ip_addr *addr, int port,
 		 const char *name, enum dpp_netrole netrole, void *msg_ctx,
 		 void *cb_ctx,
+		 int (*process_conf_obj)(void *ctx,
+					 struct dpp_authentication *auth));
+int dpp_tcp_auth(struct dpp_global *dpp, void *_conn,
+		 struct dpp_authentication *auth, const char *name,
+		 enum dpp_netrole netrole,
 		 int (*process_conf_obj)(void *ctx,
 					 struct dpp_authentication *auth));
 

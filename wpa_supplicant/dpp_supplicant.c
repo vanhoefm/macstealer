@@ -2557,6 +2557,71 @@ static int wpas_dpp_pkex_next_channel(struct wpa_supplicant *wpa_s,
 }
 
 
+#ifdef CONFIG_DPP2
+static int wpas_dpp_pkex_done(void *ctx, void *conn,
+			      struct dpp_bootstrap_info *peer_bi)
+{
+	struct wpa_supplicant *wpa_s = ctx;
+	const char *cmd = wpa_s->dpp_pkex_auth_cmd;
+	const char *pos;
+	u8 allowed_roles = DPP_CAPAB_CONFIGURATOR;
+	struct dpp_bootstrap_info *own_bi = NULL;
+	struct dpp_authentication *auth;
+
+	if (!cmd)
+		cmd = "";
+	wpa_printf(MSG_DEBUG, "DPP: Start authentication after PKEX (cmd: %s)",
+		   cmd);
+
+	pos = os_strstr(cmd, " own=");
+	if (pos) {
+		pos += 5;
+		own_bi = dpp_bootstrap_get_id(wpa_s->dpp, atoi(pos));
+		if (!own_bi) {
+			wpa_printf(MSG_INFO,
+				   "DPP: Could not find bootstrapping info for the identified local entry");
+			return -1;
+		}
+
+		if (peer_bi->curve != own_bi->curve) {
+			wpa_printf(MSG_INFO,
+				   "DPP: Mismatching curves in bootstrapping info (peer=%s own=%s)",
+				   peer_bi->curve->name, own_bi->curve->name);
+			return -1;
+		}
+	}
+
+	pos = os_strstr(cmd, " role=");
+	if (pos) {
+		pos += 6;
+		if (os_strncmp(pos, "configurator", 12) == 0)
+			allowed_roles = DPP_CAPAB_CONFIGURATOR;
+		else if (os_strncmp(pos, "enrollee", 8) == 0)
+			allowed_roles = DPP_CAPAB_ENROLLEE;
+		else if (os_strncmp(pos, "either", 6) == 0)
+			allowed_roles = DPP_CAPAB_CONFIGURATOR |
+				DPP_CAPAB_ENROLLEE;
+		else
+			return -1;
+	}
+
+	auth = dpp_auth_init(wpa_s->dpp, wpa_s, peer_bi, own_bi, allowed_roles,
+			     0, wpa_s->hw.modes, wpa_s->hw.num_modes);
+	if (!auth)
+		return -1;
+
+	wpas_dpp_set_testing_options(wpa_s, auth);
+	if (dpp_set_configurator(auth, cmd) < 0) {
+		dpp_auth_deinit(auth);
+		return -1;
+	}
+
+	return dpp_tcp_auth(wpa_s->dpp, conn, auth, wpa_s->conf->dpp_name,
+			    DPP_NETROLE_STA, wpas_dpp_process_conf_obj);
+}
+#endif /* CONFIG_DPP2 */
+
+
 enum wpas_dpp_pkex_ver {
 	PKEX_VER_AUTO,
 	PKEX_VER_ONLY_1,
@@ -2564,7 +2629,9 @@ enum wpas_dpp_pkex_ver {
 };
 
 static int wpas_dpp_pkex_init(struct wpa_supplicant *wpa_s,
-			      enum wpas_dpp_pkex_ver ver)
+			      enum wpas_dpp_pkex_ver ver,
+			      const struct hostapd_ip_addr *ipaddr,
+			      int tcp_port)
 {
 	struct dpp_pkex *pkex;
 	struct wpabuf *msg;
@@ -2573,15 +2640,24 @@ static int wpas_dpp_pkex_init(struct wpa_supplicant *wpa_s,
 
 	wpa_printf(MSG_DEBUG, "DPP: Initiating PKEXv%d", v2 ? 2 : 1);
 	dpp_pkex_free(wpa_s->dpp_pkex);
-	wpa_s->dpp_pkex = dpp_pkex_init(wpa_s, wpa_s->dpp_pkex_bi,
-					wpa_s->own_addr,
-					wpa_s->dpp_pkex_identifier,
-					wpa_s->dpp_pkex_code, v2);
-	pkex = wpa_s->dpp_pkex;
+	wpa_s->dpp_pkex = NULL;
+	pkex = dpp_pkex_init(wpa_s, wpa_s->dpp_pkex_bi, wpa_s->own_addr,
+			     wpa_s->dpp_pkex_identifier,
+			     wpa_s->dpp_pkex_code, v2);
 	if (!pkex)
 		return -1;
 	pkex->forced_ver = ver != PKEX_VER_AUTO;
 
+	if (ipaddr) {
+#ifdef CONFIG_DPP2
+		return dpp_tcp_pkex_init(wpa_s->dpp, pkex, ipaddr, tcp_port,
+					 wpa_s, wpa_s, wpas_dpp_pkex_done);
+#else /* CONFIG_DPP2 */
+		return -1;
+#endif /* CONFIG_DPP2 */
+	}
+
+	wpa_s->dpp_pkex = pkex;
 	msg = pkex->exchange_req;
 	wait_time = wpa_s->max_remain_on_chan;
 	if (wait_time > 2000)
@@ -2618,7 +2694,8 @@ static void wpas_dpp_pkex_retry_timeout(void *eloop_ctx, void *timeout_ctx)
 			if (pkex->v2 && !pkex->forced_ver) {
 				wpa_printf(MSG_DEBUG,
 					   "DPP: Fall back to PKEXv1");
-				wpas_dpp_pkex_init(wpa_s, PKEX_VER_ONLY_1);
+				wpas_dpp_pkex_init(wpa_s, PKEX_VER_ONLY_1,
+						   NULL, 0);
 				return;
 			}
 #endif /* CONFIG_DPP3 */
@@ -3327,6 +3404,29 @@ int wpas_dpp_pkex_add(struct wpa_supplicant *wpa_s, const char *cmd)
 {
 	struct dpp_bootstrap_info *own_bi;
 	const char *pos, *end;
+	int tcp_port = DPP_TCP_PORT;
+	struct hostapd_ip_addr *ipaddr = NULL;
+#ifdef CONFIG_DPP2
+	struct hostapd_ip_addr ipaddr_buf;
+	char *addr;
+
+	pos = os_strstr(cmd, " tcp_port=");
+	if (pos) {
+		pos += 10;
+		tcp_port = atoi(pos);
+	}
+
+	addr = get_param(cmd, " tcp_addr=");
+	if (addr) {
+		int res;
+
+		res = hostapd_parse_ip_addr(addr, &ipaddr_buf);
+		os_free(addr);
+		if (res)
+			return -1;
+		ipaddr = &ipaddr_buf;
+	}
+#endif /* CONFIG_DPP2 */
 
 	pos = os_strstr(cmd, " own=");
 	if (!pos)
@@ -3390,8 +3490,14 @@ int wpas_dpp_pkex_add(struct wpa_supplicant *wpa_s, const char *cmd)
 				return -1;
 		}
 
-		if (wpas_dpp_pkex_init(wpa_s, ver) < 0)
+		if (wpas_dpp_pkex_init(wpa_s, ver, ipaddr, tcp_port) < 0)
 			return -1;
+	} else {
+#ifdef CONFIG_DPP2
+		dpp_controller_pkex_add(wpa_s->dpp, own_bi,
+					wpa_s->dpp_pkex_code,
+					wpa_s->dpp_pkex_identifier);
+#endif /* CONFIG_DPP2 */
 	}
 
 	/* TODO: Support multiple PKEX info entries */

@@ -469,8 +469,10 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 	pkex->t = bi->pkex_t;
 	pkex->msg_ctx = msg_ctx;
 	pkex->own_bi = bi;
-	os_memcpy(pkex->own_mac, own_mac, ETH_ALEN);
-	os_memcpy(pkex->peer_mac, peer_mac, ETH_ALEN);
+	if (own_mac)
+		os_memcpy(pkex->own_mac, own_mac, ETH_ALEN);
+	if (peer_mac)
+		os_memcpy(pkex->peer_mac, peer_mac, ETH_ALEN);
 	if (identifier) {
 		pkex->identifier = os_strdup(identifier);
 		if (!pkex->identifier)
@@ -742,7 +744,8 @@ struct wpabuf * dpp_pkex_rx_exchange_resp(struct dpp_pkex *pkex,
 	}
 #endif /* CONFIG_DPP2 */
 
-	os_memcpy(pkex->peer_mac, peer_mac, ETH_ALEN);
+	if (peer_mac)
+		os_memcpy(pkex->peer_mac, peer_mac, ETH_ALEN);
 
 	attr_status = dpp_get_attr(buf, buflen, DPP_ATTR_STATUS,
 				   &attr_status_len);
@@ -1341,9 +1344,12 @@ dpp_pkex_finish(struct dpp_global *dpp, struct dpp_pkex *pkex, const u8 *peer,
 		return NULL;
 	bi->id = dpp_next_id(dpp);
 	bi->type = DPP_BOOTSTRAP_PKEX;
-	os_memcpy(bi->mac_addr, peer, ETH_ALEN);
-	bi->num_freq = 1;
-	bi->freq[0] = freq;
+	if (peer)
+		os_memcpy(bi->mac_addr, peer, ETH_ALEN);
+	if (freq) {
+		bi->num_freq = 1;
+		bi->freq[0] = freq;
+	}
 	bi->curve = pkex->own_bi->curve;
 	bi->pubkey = pkex->peer_bootstrap_key;
 	pkex->peer_bootstrap_key = NULL;

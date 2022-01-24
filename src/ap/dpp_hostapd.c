@@ -28,12 +28,16 @@ static void hostapd_dpp_auth_conf_wait_timeout(void *eloop_ctx,
 static void hostapd_dpp_auth_success(struct hostapd_data *hapd, int initiator);
 static void hostapd_dpp_init_timeout(void *eloop_ctx, void *timeout_ctx);
 static int hostapd_dpp_auth_init_next(struct hostapd_data *hapd);
+static void hostapd_dpp_set_testing_options(struct hostapd_data *hapd,
+					    struct dpp_authentication *auth);
 #ifdef CONFIG_DPP2
 static void hostapd_dpp_reconfig_reply_wait_timeout(void *eloop_ctx,
 						    void *timeout_ctx);
 static void hostapd_dpp_handle_config_obj(struct hostapd_data *hapd,
 					  struct dpp_authentication *auth,
 					  struct dpp_config_obj *conf);
+static int hostapd_dpp_process_conf_obj(void *ctx,
+					struct dpp_authentication *auth);
 #endif /* CONFIG_DPP2 */
 
 static const u8 broadcast[ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
@@ -272,6 +276,75 @@ static int hostapd_dpp_pkex_next_channel(struct hostapd_data *hapd,
 }
 
 
+#ifdef CONFIG_DPP2
+static int hostapd_dpp_pkex_done(void *ctx, void *conn,
+				 struct dpp_bootstrap_info *peer_bi)
+{
+	struct hostapd_data *hapd = ctx;
+	const char *cmd = hapd->dpp_pkex_auth_cmd;
+	const char *pos;
+	u8 allowed_roles = DPP_CAPAB_CONFIGURATOR;
+	struct dpp_bootstrap_info *own_bi = NULL;
+	struct dpp_authentication *auth;
+
+	if (!cmd)
+		cmd = "";
+	wpa_printf(MSG_DEBUG, "DPP: Start authentication after PKEX (cmd: %s)",
+		   cmd);
+
+	pos = os_strstr(cmd, " own=");
+	if (pos) {
+		pos += 5;
+		own_bi = dpp_bootstrap_get_id(hapd->iface->interfaces->dpp,
+					      atoi(pos));
+		if (!own_bi) {
+			wpa_printf(MSG_INFO,
+				   "DPP: Could not find bootstrapping info for the identified local entry");
+			return -1;
+		}
+
+		if (peer_bi->curve != own_bi->curve) {
+			wpa_printf(MSG_INFO,
+				   "DPP: Mismatching curves in bootstrapping info (peer=%s own=%s)",
+				   peer_bi->curve->name, own_bi->curve->name);
+			return -1;
+		}
+	}
+
+	pos = os_strstr(cmd, " role=");
+	if (pos) {
+		pos += 6;
+		if (os_strncmp(pos, "configurator", 12) == 0)
+			allowed_roles = DPP_CAPAB_CONFIGURATOR;
+		else if (os_strncmp(pos, "enrollee", 8) == 0)
+			allowed_roles = DPP_CAPAB_ENROLLEE;
+		else if (os_strncmp(pos, "either", 6) == 0)
+			allowed_roles = DPP_CAPAB_CONFIGURATOR |
+				DPP_CAPAB_ENROLLEE;
+		else
+			return -1;
+	}
+
+	auth = dpp_auth_init(hapd->iface->interfaces->dpp, hapd->msg_ctx,
+			     peer_bi, own_bi, allowed_roles, 0,
+			     hapd->iface->hw_features,
+			     hapd->iface->num_hw_features);
+	if (!auth)
+		return -1;
+
+	hostapd_dpp_set_testing_options(hapd, auth);
+	if (dpp_set_configurator(auth, cmd) < 0) {
+		dpp_auth_deinit(auth);
+		return -1;
+	}
+
+	return dpp_tcp_auth(hapd->iface->interfaces->dpp, conn, auth,
+			    hapd->conf->dpp_name, DPP_NETROLE_AP,
+			    hostapd_dpp_process_conf_obj);
+}
+#endif /* CONFIG_DPP2 */
+
+
 enum hostapd_dpp_pkex_ver {
 	PKEX_VER_AUTO,
 	PKEX_VER_ONLY_1,
@@ -279,7 +352,9 @@ enum hostapd_dpp_pkex_ver {
 };
 
 static int hostapd_dpp_pkex_init(struct hostapd_data *hapd,
-				 enum hostapd_dpp_pkex_ver ver)
+				 enum hostapd_dpp_pkex_ver ver,
+				 const struct hostapd_ip_addr *ipaddr,
+				 int tcp_port)
 {
 	struct dpp_pkex *pkex;
 	struct wpabuf *msg;
@@ -288,15 +363,26 @@ static int hostapd_dpp_pkex_init(struct hostapd_data *hapd,
 
 	wpa_printf(MSG_DEBUG, "DPP: Initiating PKEXv%d", v2 ? 2 : 1);
 	dpp_pkex_free(hapd->dpp_pkex);
-	hapd->dpp_pkex = dpp_pkex_init(hapd->msg_ctx, hapd->dpp_pkex_bi,
-				       hapd->own_addr,
-				       hapd->dpp_pkex_identifier,
-				       hapd->dpp_pkex_code, v2);
-	pkex = hapd->dpp_pkex;
+	hapd->dpp_pkex = NULL;
+	pkex = dpp_pkex_init(hapd->msg_ctx, hapd->dpp_pkex_bi, hapd->own_addr,
+			     hapd->dpp_pkex_identifier,
+			     hapd->dpp_pkex_code, v2);
 	if (!pkex)
 		return -1;
 	pkex->forced_ver = ver != PKEX_VER_AUTO;
 
+	if (ipaddr) {
+#ifdef CONFIG_DPP2
+		return dpp_tcp_pkex_init(hapd->iface->interfaces->dpp, pkex,
+					 ipaddr, tcp_port,
+					 hapd->msg_ctx, hapd,
+					 hostapd_dpp_pkex_done);
+#else /* CONFIG_DPP2 */
+		return -1;
+#endif /* CONFIG_DPP2 */
+	}
+
+	hapd->dpp_pkex = pkex;
 	msg = hapd->dpp_pkex->exchange_req;
 	wait_time = 2000; /* TODO: hapd->max_remain_on_chan; */
 	pkex->freq = 2437;
@@ -326,7 +412,8 @@ static void hostapd_dpp_pkex_retry_timeout(void *eloop_ctx, void *timeout_ctx)
 			if (pkex->v2 && !pkex->forced_ver) {
 				wpa_printf(MSG_DEBUG,
 					   "DPP: Fall back to PKEXv1");
-				hostapd_dpp_pkex_init(hapd, PKEX_VER_ONLY_1);
+				hostapd_dpp_pkex_init(hapd, PKEX_VER_ONLY_1,
+						      NULL, 0);
 				return;
 			}
 #endif /* CONFIG_DPP3 */
@@ -1883,7 +1970,7 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 
 static void
 hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
-				 const u8 *buf, size_t len,
+				 const u8 *hdr, const u8 *buf, size_t len,
 				 unsigned int freq, bool v2)
 {
 	struct wpabuf *msg;
@@ -1897,14 +1984,14 @@ hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
 	if (!hapd->dpp_pkex_code || !hapd->dpp_pkex_bi) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No PKEX code configured - ignore request");
-		return;
+		goto try_relay;
 	}
 
 	if (hapd->dpp_pkex) {
 		/* TODO: Support parallel operations */
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Already in PKEX session - ignore new request");
-		return;
+		goto try_relay;
 	}
 
 	hapd->dpp_pkex = dpp_pkex_rx_exchange_req(hapd->msg_ctx,
@@ -1916,7 +2003,7 @@ hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
 	if (!hapd->dpp_pkex) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Failed to process the request - ignore it");
-		return;
+		goto try_relay;
 	}
 
 	msg = hapd->dpp_pkex->exchange_resp;
@@ -1933,6 +2020,17 @@ hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
 		dpp_pkex_free(hapd->dpp_pkex);
 		hapd->dpp_pkex = NULL;
 	}
+
+	return;
+
+try_relay:
+#ifdef CONFIG_DPP2
+	if (v2)
+		dpp_relay_rx_action(hapd->iface->interfaces->dpp,
+				    src, hdr, buf, len, freq, NULL, NULL, hapd);
+#else /* CONFIG_DPP2 */
+	wpa_printf(MSG_DEBUG, "DPP: No relay functionality included - skip");
+#endif /* CONFIG_DPP2 */
 }
 
 
@@ -2132,12 +2230,12 @@ void hostapd_dpp_rx_action(struct hostapd_data *hapd, const u8 *src,
 		/* This is for PKEXv2, but for now, process only with
 		 * CONFIG_DPP3 to avoid issues with a capability that has not
 		 * been tested with other implementations. */
-		hostapd_dpp_rx_pkex_exchange_req(hapd, src, buf, len, freq,
+		hostapd_dpp_rx_pkex_exchange_req(hapd, src, hdr, buf, len, freq,
 						 true);
 		break;
 #endif /* CONFIG_DPP3 */
 	case DPP_PA_PKEX_V1_EXCHANGE_REQ:
-		hostapd_dpp_rx_pkex_exchange_req(hapd, src, buf, len, freq,
+		hostapd_dpp_rx_pkex_exchange_req(hapd, src, hdr, buf, len, freq,
 						 false);
 		break;
 	case DPP_PA_PKEX_EXCHANGE_RESP:
@@ -2303,6 +2401,29 @@ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd)
 {
 	struct dpp_bootstrap_info *own_bi;
 	const char *pos, *end;
+	int tcp_port = DPP_TCP_PORT;
+	struct hostapd_ip_addr *ipaddr = NULL;
+#ifdef CONFIG_DPP2
+	struct hostapd_ip_addr ipaddr_buf;
+	char *addr;
+
+	pos = os_strstr(cmd, " tcp_port=");
+	if (pos) {
+		pos += 10;
+		tcp_port = atoi(pos);
+	}
+
+	addr = get_param(cmd, " tcp_addr=");
+	if (addr) {
+		int res;
+
+		res = hostapd_parse_ip_addr(addr, &ipaddr_buf);
+		os_free(addr);
+		if (res)
+			return -1;
+		ipaddr = &ipaddr_buf;
+	}
+#endif /* CONFIG_DPP2 */
 
 	pos = os_strstr(cmd, " own=");
 	if (!pos)
@@ -2366,8 +2487,14 @@ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd)
 				return -1;
 		}
 
-		if (hostapd_dpp_pkex_init(hapd, ver) < 0)
+		if (hostapd_dpp_pkex_init(hapd, ver, ipaddr, tcp_port) < 0)
 			return -1;
+	} else {
+#ifdef CONFIG_DPP2
+		dpp_controller_pkex_add(hapd->iface->interfaces->dpp, own_bi,
+					hapd->dpp_pkex_code,
+					hapd->dpp_pkex_identifier);
+#endif /* CONFIG_DPP2 */
 	}
 
 	/* TODO: Support multiple PKEX info entries */
