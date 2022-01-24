@@ -3797,7 +3797,7 @@ def test_dpp_proto_after_wrapped_data_pkex_cr_req(dev, apdev):
     """DPP protocol testing - attribute after Wrapped Data in PKEX CR Req"""
     run_dpp_proto_init_pkex(dev, 1, 4)
     ev = dev[0].wait_event(["DPP-RX"], timeout=5)
-    if ev is None or "type=7" not in ev:
+    if ev is None or ("type=7" not in ev and "type=18" not in ev):
         raise Exception("PKEX Exchange Request not seen")
     ev = dev[0].wait_event(["DPP-RX"], timeout=5)
     if ev is None or "type=9" not in ev:
