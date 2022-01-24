@@ -6618,8 +6618,6 @@ static void handle_action_cb(struct hostapd_data *hapd,
 	struct sta_info *sta;
 	const struct rrm_measurement_report_element *report;
 
-	if (is_multicast_ether_addr(mgmt->da))
-		return;
 #ifdef CONFIG_DPP
 	if (len >= IEEE80211_HDRLEN + 6 &&
 	    mgmt->u.action.category == WLAN_ACTION_PUBLIC &&
@@ -6650,6 +6648,8 @@ static void handle_action_cb(struct hostapd_data *hapd,
 		return;
 	}
 #endif /* CONFIG_DPP */
+	if (is_multicast_ether_addr(mgmt->da))
+		return;
 	sta = ap_get_sta(hapd, mgmt->da);
 	if (!sta) {
 		wpa_printf(MSG_DEBUG, "handle_action_cb: STA " MACSTR
