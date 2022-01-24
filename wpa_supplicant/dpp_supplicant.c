@@ -2557,6 +2557,45 @@ static int wpas_dpp_pkex_next_channel(struct wpa_supplicant *wpa_s,
 }
 
 
+static int wpas_dpp_pkex_init(struct wpa_supplicant *wpa_s, bool v2)
+{
+	struct dpp_pkex *pkex;
+	struct wpabuf *msg;
+	unsigned int wait_time;
+
+	wpa_printf(MSG_DEBUG, "DPP: Initiating PKEXv%d", v2 ? 2 : 1);
+	dpp_pkex_free(wpa_s->dpp_pkex);
+	wpa_s->dpp_pkex = dpp_pkex_init(wpa_s, wpa_s->dpp_pkex_bi,
+					wpa_s->own_addr,
+					wpa_s->dpp_pkex_identifier,
+					wpa_s->dpp_pkex_code, v2);
+	pkex = wpa_s->dpp_pkex;
+	if (!pkex)
+		return -1;
+
+	msg = pkex->exchange_req;
+	wait_time = wpa_s->max_remain_on_chan;
+	if (wait_time > 2000)
+		wait_time = 2000;
+	pkex->freq = 2437;
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
+		" freq=%u type=%d",
+		MAC2STR(broadcast), pkex->freq,
+		v2 ? DPP_PA_PKEX_EXCHANGE_REQ :
+		DPP_PA_PKEX_V1_EXCHANGE_REQ);
+	offchannel_send_action(wpa_s, pkex->freq, broadcast,
+			       wpa_s->own_addr, broadcast,
+			       wpabuf_head(msg), wpabuf_len(msg),
+			       wait_time, wpas_dpp_tx_pkex_status, 0);
+	if (wait_time == 0)
+		wait_time = 2000;
+	pkex->exch_req_wait_time = wait_time;
+	pkex->exch_req_tries = 1;
+
+	return 0;
+}
+
+
 static void wpas_dpp_pkex_retry_timeout(void *eloop_ctx, void *timeout_ctx)
 {
 	struct wpa_supplicant *wpa_s = eloop_ctx;
@@ -2566,6 +2605,14 @@ static void wpas_dpp_pkex_retry_timeout(void *eloop_ctx, void *timeout_ctx)
 		return;
 	if (pkex->exch_req_tries >= 5) {
 		if (wpas_dpp_pkex_next_channel(wpa_s, pkex) < 0) {
+#ifdef CONFIG_DPP3
+			if (pkex->v2) {
+				wpa_printf(MSG_DEBUG,
+					   "DPP: Fall back to PKEXv1");
+				wpas_dpp_pkex_init(wpa_s, false);
+				return;
+			}
+#endif /* CONFIG_DPP3 */
 			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_FAIL
 				"No response from PKEX peer");
 			dpp_pkex_free(pkex);
@@ -3271,7 +3318,6 @@ int wpas_dpp_pkex_add(struct wpa_supplicant *wpa_s, const char *cmd)
 {
 	struct dpp_bootstrap_info *own_bi;
 	const char *pos, *end;
-	unsigned int wait_time;
 
 	pos = os_strstr(cmd, " own=");
 	if (!pos)
@@ -3315,37 +3361,14 @@ int wpas_dpp_pkex_add(struct wpa_supplicant *wpa_s, const char *cmd)
 		return -1;
 
 	if (os_strstr(cmd, " init=1") || os_strstr(cmd, " init=2")) {
-		struct dpp_pkex *pkex;
-		struct wpabuf *msg;
+#ifdef CONFIG_DPP3
+		bool v2 = true;
+#else /* CONFIG_DPP3 */
 		bool v2 = os_strstr(cmd, " init=2") != NULL;
+#endif /* CONFIG_DPP3 */
 
-		wpa_printf(MSG_DEBUG, "DPP: Initiating PKEX");
-		dpp_pkex_free(wpa_s->dpp_pkex);
-		wpa_s->dpp_pkex = dpp_pkex_init(wpa_s, own_bi, wpa_s->own_addr,
-						wpa_s->dpp_pkex_identifier,
-						wpa_s->dpp_pkex_code, v2);
-		pkex = wpa_s->dpp_pkex;
-		if (!pkex)
+		if (wpas_dpp_pkex_init(wpa_s, v2) < 0)
 			return -1;
-
-		msg = pkex->exchange_req;
-		wait_time = wpa_s->max_remain_on_chan;
-		if (wait_time > 2000)
-			wait_time = 2000;
-		pkex->freq = 2437;
-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
-			" freq=%u type=%d",
-			MAC2STR(broadcast), pkex->freq,
-			v2 ? DPP_PA_PKEX_EXCHANGE_REQ :
-			DPP_PA_PKEX_V1_EXCHANGE_REQ);
-		offchannel_send_action(wpa_s, pkex->freq, broadcast,
-				       wpa_s->own_addr, broadcast,
-				       wpabuf_head(msg), wpabuf_len(msg),
-				       wait_time, wpas_dpp_tx_pkex_status, 0);
-		if (wait_time == 0)
-			wait_time = 2000;
-		pkex->exch_req_wait_time = wait_time;
-		pkex->exch_req_tries = 1;
 	}
 
 	/* TODO: Support multiple PKEX info entries */
