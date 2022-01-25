@@ -2270,7 +2270,7 @@ def test_dpp_pkex(dev, apdev):
 
 def test_dpp_pkex_v2(dev, apdev):
     """DPP and PKEXv2"""
-    run_dpp_pkex(dev, apdev, v2=True)
+    run_dpp_pkex(dev, apdev, ver=2)
 
 def test_dpp_pkex_p256(dev, apdev):
     """DPP and PKEX (P-256)"""
@@ -2325,14 +2325,14 @@ def test_dpp_pkex_identifier_mismatch3(dev, apdev):
 
 def run_dpp_pkex(dev, apdev, curve=None, init_extra=None, check_config=False,
                  identifier_i="test", identifier_r="test",
-                 expect_no_resp=False, v2=False):
-    min_ver = 3 if v2 else 1
+                 expect_no_resp=False, ver=None):
+    min_ver = 3 if ver else 1
     check_dpp_capab(dev[0], curve and "brainpool" in curve, min_ver=min_ver)
     check_dpp_capab(dev[1], curve and "brainpool" in curve, min_ver=min_ver)
     dev[0].dpp_pkex_resp(2437, identifier=identifier_r, code="secret",
                          curve=curve)
     dev[1].dpp_pkex_init(identifier=identifier_i, code="secret", curve=curve,
-                         extra=init_extra, v2=v2)
+                         extra=init_extra, ver=ver)
 
     if expect_no_resp:
         ev = dev[0].wait_event(["DPP-RX"], timeout=10)
@@ -2565,7 +2565,7 @@ def test_dpp_pkex_v2_hostapd_responder(dev, apdev):
     hapd.dpp_pkex_resp(2437, identifier="test", code="secret")
     conf_id = dev[0].dpp_configurator_add()
     dev[0].dpp_pkex_init(identifier="test", code="secret",
-                         extra="conf=ap-dpp configurator=%d" % conf_id, v2=True)
+                         extra="conf=ap-dpp configurator=%d" % conf_id, ver=2)
     wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
                       stop_initiator=True)
 
@@ -2596,7 +2596,7 @@ def test_dpp_pkex_v2_hostapd_initiator(dev, apdev):
     dev[0].dpp_pkex_resp(2437, identifier="test", code="secret",
                          listen_role="configurator")
     hapd.dpp_pkex_init(identifier="test", code="secret", role="enrollee",
-                       v2=True)
+                       ver=2)
     wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
                       stop_initiator=True)
 
