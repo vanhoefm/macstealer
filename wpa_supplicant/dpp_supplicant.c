@@ -2557,11 +2557,19 @@ static int wpas_dpp_pkex_next_channel(struct wpa_supplicant *wpa_s,
 }
 
 
-static int wpas_dpp_pkex_init(struct wpa_supplicant *wpa_s, bool v2)
+enum wpas_dpp_pkex_ver {
+	PKEX_VER_AUTO,
+	PKEX_VER_ONLY_1,
+	PKEX_VER_ONLY_2,
+};
+
+static int wpas_dpp_pkex_init(struct wpa_supplicant *wpa_s,
+			      enum wpas_dpp_pkex_ver ver)
 {
 	struct dpp_pkex *pkex;
 	struct wpabuf *msg;
 	unsigned int wait_time;
+	bool v2 = ver != PKEX_VER_ONLY_1;
 
 	wpa_printf(MSG_DEBUG, "DPP: Initiating PKEXv%d", v2 ? 2 : 1);
 	dpp_pkex_free(wpa_s->dpp_pkex);
@@ -2572,6 +2580,7 @@ static int wpas_dpp_pkex_init(struct wpa_supplicant *wpa_s, bool v2)
 	pkex = wpa_s->dpp_pkex;
 	if (!pkex)
 		return -1;
+	pkex->forced_ver = ver != PKEX_VER_AUTO;
 
 	msg = pkex->exchange_req;
 	wait_time = wpa_s->max_remain_on_chan;
@@ -2606,10 +2615,10 @@ static void wpas_dpp_pkex_retry_timeout(void *eloop_ctx, void *timeout_ctx)
 	if (pkex->exch_req_tries >= 5) {
 		if (wpas_dpp_pkex_next_channel(wpa_s, pkex) < 0) {
 #ifdef CONFIG_DPP3
-			if (pkex->v2) {
+			if (pkex->v2 && !pkex->forced_ver) {
 				wpa_printf(MSG_DEBUG,
 					   "DPP: Fall back to PKEXv1");
-				wpas_dpp_pkex_init(wpa_s, false);
+				wpas_dpp_pkex_init(wpa_s, PKEX_VER_ONLY_1);
 				return;
 			}
 #endif /* CONFIG_DPP3 */
@@ -3360,14 +3369,28 @@ int wpas_dpp_pkex_add(struct wpa_supplicant *wpa_s, const char *cmd)
 	if (!wpa_s->dpp_pkex_code)
 		return -1;
 
-	if (os_strstr(cmd, " init=1") || os_strstr(cmd, " init=2")) {
+	if (os_strstr(cmd, " init=1")) {
 #ifdef CONFIG_DPP3
-		bool v2 = true;
+		enum wpas_dpp_pkex_ver ver = PKEX_VER_AUTO;
 #else /* CONFIG_DPP3 */
-		bool v2 = os_strstr(cmd, " init=2") != NULL;
+		enum wpas_dpp_pkex_ver ver = PKEX_VER_ONLY_1;
 #endif /* CONFIG_DPP3 */
 
-		if (wpas_dpp_pkex_init(wpa_s, v2) < 0)
+		pos = os_strstr(cmd, " ver=");
+		if (pos) {
+			int v;
+
+			pos += 5;
+			v = atoi(pos);
+			if (v == 1)
+				ver = PKEX_VER_ONLY_1;
+			else if (v == 2)
+				ver = PKEX_VER_ONLY_2;
+			else
+				return -1;
+		}
+
+		if (wpas_dpp_pkex_init(wpa_s, ver) < 0)
 			return -1;
 	}
 

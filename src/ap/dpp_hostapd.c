@@ -272,11 +272,19 @@ static int hostapd_dpp_pkex_next_channel(struct hostapd_data *hapd,
 }
 
 
-static int hostapd_dpp_pkex_init(struct hostapd_data *hapd, bool v2)
+enum hostapd_dpp_pkex_ver {
+	PKEX_VER_AUTO,
+	PKEX_VER_ONLY_1,
+	PKEX_VER_ONLY_2,
+};
+
+static int hostapd_dpp_pkex_init(struct hostapd_data *hapd,
+				 enum hostapd_dpp_pkex_ver ver)
 {
 	struct dpp_pkex *pkex;
 	struct wpabuf *msg;
 	unsigned int wait_time;
+	bool v2 = ver != PKEX_VER_ONLY_1;
 
 	wpa_printf(MSG_DEBUG, "DPP: Initiating PKEXv%d", v2 ? 2 : 1);
 	dpp_pkex_free(hapd->dpp_pkex);
@@ -287,6 +295,7 @@ static int hostapd_dpp_pkex_init(struct hostapd_data *hapd, bool v2)
 	pkex = hapd->dpp_pkex;
 	if (!pkex)
 		return -1;
+	pkex->forced_ver = ver != PKEX_VER_AUTO;
 
 	msg = hapd->dpp_pkex->exchange_req;
 	wait_time = 2000; /* TODO: hapd->max_remain_on_chan; */
@@ -314,10 +323,10 @@ static void hostapd_dpp_pkex_retry_timeout(void *eloop_ctx, void *timeout_ctx)
 	if (pkex->exch_req_tries >= 5) {
 		if (hostapd_dpp_pkex_next_channel(hapd, pkex) < 0) {
 #ifdef CONFIG_DPP3
-			if (pkex->v2) {
+			if (pkex->v2 && !pkex->forced_ver) {
 				wpa_printf(MSG_DEBUG,
 					   "DPP: Fall back to PKEXv1");
-				hostapd_dpp_pkex_init(hapd, false);
+				hostapd_dpp_pkex_init(hapd, PKEX_VER_ONLY_1);
 				return;
 			}
 #endif /* CONFIG_DPP3 */
@@ -2336,14 +2345,28 @@ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd)
 	if (!hapd->dpp_pkex_code)
 		return -1;
 
-	if (os_strstr(cmd, " init=1") || os_strstr(cmd, " init=2")) {
+	if (os_strstr(cmd, " init=1")) {
 #ifdef CONFIG_DPP3
-		bool v2 = true;
+		enum hostapd_dpp_pkex_ver ver = PKEX_VER_AUTO;
 #else /* CONFIG_DPP3 */
-		bool v2 = os_strstr(cmd, " init=2") != NULL;
+		enum hostapd_dpp_pkex_ver ver = PKEX_VER_ONLY_1;
 #endif /* CONFIG_DPP3 */
 
-		if (hostapd_dpp_pkex_init(hapd, v2) < 0)
+		pos = os_strstr(cmd, " ver=");
+		if (pos) {
+			int v;
+
+			pos += 5;
+			v = atoi(pos);
+			if (v == 1)
+				ver = PKEX_VER_ONLY_1;
+			else if (v == 2)
+				ver = PKEX_VER_ONLY_2;
+			else
+				return -1;
+		}
+
+		if (hostapd_dpp_pkex_init(hapd, ver) < 0)
 			return -1;
 	}
 

@@ -177,6 +177,7 @@ struct dpp_pkex {
 	unsigned int exchange_done:1;
 	unsigned int failed:1;
 	unsigned int v2:1;
+	unsigned int forced_ver:1;
 	struct dpp_bootstrap_info *own_bi;
 	u8 own_mac[ETH_ALEN];
 	u8 peer_mac[ETH_ALEN];
