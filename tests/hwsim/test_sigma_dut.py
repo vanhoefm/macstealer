@@ -2301,6 +2301,27 @@ def test_sigma_dut_dpp_pkexv2_init_fallback_to_v1(dev, apdev):
     finally:
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_pkex_v1_only(dev, apdev):
+    """sigma_dut DPP/PKEX as v1 only initiator"""
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        id1 = dev[1].dpp_bootstrap_gen(type="pkex")
+        cmd = "DPP_PKEX_ADD own=%d identifier=test code=secret" % (id1)
+        res = dev[1].request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to set PKEX data (responder)")
+        cmd = "DPP_LISTEN 2437 role=enrollee"
+        if "OK" not in dev[1].request(cmd):
+            raise Exception("Failed to start listen operation")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,PKEXv1,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,6")
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+
 def dpp_init_conf(dev, id1, conf, conf_id, extra):
     logger.info("Starting DPP initiator/configurator in a thread")
     cmd = "DPP_AUTH_INIT peer=%d conf=%s %s configurator=%d" % (id1, conf, extra, conf_id)
