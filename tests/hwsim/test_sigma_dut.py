@@ -2268,6 +2268,28 @@ def test_sigma_dut_dpp_pkex_init_configurator(dev, apdev):
     finally:
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_pkex_init_configurator_tcp(dev, apdev):
+    """sigma_dut DPP/PKEX initiator as Configurator (TCP)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        cmd = "DPP_CONTROLLER_START"
+        res = dev[1].request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to start Controller")
+        id1 = dev[1].dpp_bootstrap_gen(type="pkex")
+        cmd = "DPP_PKEX_ADD own=%d identifier=test code=secret" % (id1)
+        res = dev[1].request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to set PKEX data (responder)")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,PKEX,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,6,DPPOverTCP,127.0.0.1")
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+
 def dpp_pkex_resp_start_on_v1(dev):
     while True:
         ev = dev.wait_event(["DPP-RX"], timeout=5)
@@ -2489,6 +2511,50 @@ def run_sigma_dut_ap_dpp_pkex_responder(dev, apdev):
     t = threading.Thread(target=dpp_init_conf_pkex, args=(dev[0], conf_id))
     t.start()
     res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Mutual,DPPProvisioningRole,Enrollee,DPPBS,PKEX,DPPPKEXCode,password,DPPTimeout,6,DPPWaitForConnect,No", timeout=10)
+    t.join()
+    if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+        raise Exception("Unexpected result: " + res)
+
+    sigma_dut_cmd_check("ap_reset_default")
+
+def test_sigma_dut_ap_dpp_pkex_responder_tcp(dev, apdev, params):
+    """sigma_dut controlled AP as DPP PKEX responder (TCP)"""
+    check_dpp_capab(dev[0])
+    logdir = params['prefix'] + ".sigma-hostapd"
+    with HWSimRadio() as (radio, iface):
+        sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
+        try:
+            run_sigma_dut_ap_dpp_pkex_responder_tcp(dev, apdev)
+        finally:
+            stop_sigma_dut(sigma)
+
+def dpp_init_conf_pkex_tcp(dev, conf_id, check_config=True):
+    logger.info("Starting DPP PKEX initiator/configurator in a thread")
+    time.sleep(1.5)
+    id = dev.dpp_bootstrap_gen(type="pkex")
+    cmd = "DPP_PKEX_ADD own=%d tcp_addr=127.0.0.1 init=1 conf=ap-dpp configurator=%d code=password" % (id, conf_id)
+    res = dev.request(cmd)
+    if "FAIL" in res:
+        raise Exception("Failed to initiate DPP PKEX")
+    if not check_config:
+        return
+    ev = dev.wait_event(["DPP-CONF-SENT"], timeout=5)
+    if ev is None:
+        raise Exception("DPP configuration not completed (Configurator)")
+    logger.info("DPP initiator/configurator done")
+
+def run_sigma_dut_ap_dpp_pkex_responder_tcp(dev, apdev):
+    sigma_dut_cmd_check("ap_reset_default,program,DPP")
+
+    cmd = "DPP_CONFIGURATOR_ADD"
+    res = dev[0].request(cmd)
+    if "FAIL" in res:
+        raise Exception("Failed to add configurator")
+    conf_id = int(res)
+
+    t = threading.Thread(target=dpp_init_conf_pkex_tcp, args=(dev[0], conf_id))
+    t.start()
+    res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPProvisioningRole,Enrollee,DPPBS,PKEX,DPPPKEXCode,password,DPPOverTCP,yes,DPPTimeout,6,DPPWaitForConnect,No", timeout=10)
     t.join()
     if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
         raise Exception("Unexpected result: " + res)
