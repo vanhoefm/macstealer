@@ -1833,6 +1833,13 @@ skip_connector:
 		}
 #endif /* CONFIG_DPP3 */
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (dpp_test == DPP_TEST_INVALID_PROTOCOL_VERSION_PEER_DISC_RESP) {
+		wpa_printf(MSG_INFO, "DPP: TESTING - invalid Protocol Version");
+		ver = 1;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
 		/* Protocol Version */
 		wpabuf_put_le16(msg, DPP_ATTR_PROTOCOL_VERSION);
 		wpabuf_put_le16(msg, 1);
