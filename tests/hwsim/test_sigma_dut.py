@@ -2889,18 +2889,31 @@ def init_sigma_dut_dpp_proto_peer_disc_req(dev, apdev):
     if "status,COMPLETE" not in res:
         raise Exception("dev_exec_action did not succeed: " + res)
 
-def test_sigma_dut_dpp_proto_peer_disc_req(dev, apdev):
-    """sigma_dut DPP protocol testing - Peer Discovery Request"""
+def run_sigma_dut_dpp_proto_peer_disc_req(dev, apdev, args):
     sigma = start_sigma_dut(dev[0].ifname)
     try:
         init_sigma_dut_dpp_proto_peer_disc_req(dev, apdev)
 
-        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,6,DPPWaitForConnect,Yes,DPPStep,MissingAttribute,DPPFrameType,PeerDiscoveryRequest,DPPIEAttribute,TransactionID", timeout=10)
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,6,DPPWaitForConnect,Yes,DPPFrameType,PeerDiscoveryRequest," + args, timeout=10)
         if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK,NetworkIntroResult,Errorsent" not in res:
             raise Exception("Unexpected result: " + res)
     finally:
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
         stop_sigma_dut(sigma)
+
+def test_sigma_dut_dpp_proto_peer_disc_req(dev, apdev):
+    """sigma_dut DPP protocol testing - Peer Discovery Request"""
+    run_sigma_dut_dpp_proto_peer_disc_req(dev, apdev, "DPPStep,MissingAttribute,DPPIEAttribute,TransactionID")
+
+def test_sigma_dut_dpp_proto_peer_disc_req2(dev, apdev):
+    """sigma_dut DPP protocol testing - Peer Discovery Request (2)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    run_sigma_dut_dpp_proto_peer_disc_req(dev, apdev, "DPPStep,MissingAttribute,DPPIEAttribute,ProtocolVersion")
+
+def test_sigma_dut_dpp_proto_peer_disc_req3(dev, apdev):
+    """sigma_dut DPP protocol testing - Peer Discovery Request (e)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    run_sigma_dut_dpp_proto_peer_disc_req(dev, apdev, "DPPStep,InvalidValue,DPPIEAttribute,ProtocolVersion")
 
 def test_sigma_dut_dpp_self_config(dev, apdev):
     """sigma_dut DPP Configurator enrolling an AP and using self-configuration"""
