@@ -1,9 +1,10 @@
 # Test cases for Device Provisioning Protocol (DPP) version 3
-# Copyright (c) 2021, Qualcomm Innovation Center, Inc.
+# Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc.
 #
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+import binascii
 import os
 import time
 
@@ -53,7 +54,7 @@ def test_dpp_network_intro_version_missing_req(dev, apdev):
     finally:
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
 
-def run_dpp_tcp_pkex(dev0, dev1, cap_lo):
+def run_dpp_tcp_pkex(dev0, dev1, cap_lo, sae=False, status=False):
     check_dpp_capab(dev0, min_ver=3)
     check_dpp_capab(dev1, min_ver=3)
 
@@ -61,9 +62,17 @@ def run_dpp_tcp_pkex(dev0, dev1, cap_lo):
     time.sleep(1)
 
     # Controller
-    conf_id = dev1.dpp_configurator_add()
-    dev1.set("dpp_configurator_params",
-             " conf=sta-dpp configurator=%d" % conf_id)
+    if sae:
+        ssid = binascii.hexlify("sae".encode()).decode()
+        password = binascii.hexlify("sae-password".encode()).decode()
+        val = "conf=sta-sae ssid=%s pass=%s" % (ssid, password)
+        if status:
+            val += " conn_status=1"
+        dev1.set("dpp_configurator_params", val)
+    else:
+        conf_id = dev1.dpp_configurator_add()
+        dev1.set("dpp_configurator_params",
+                 "conf=sta-dpp configurator=%d" % conf_id)
 
     req = "DPP_CONTROLLER_START"
     own = None
@@ -82,9 +91,13 @@ def run_dpp_tcp_pkex(dev0, dev1, cap_lo):
     dev0.dpp_pkex_init(identifier=None, code=code, role="enrollee",
                        tcp_addr="127.0.0.1")
 
-    wait_auth_success(dev1, dev0, configurator=dev1, enrollee=dev0,
-                      allow_enrollee_failure=True,
-                      allow_configurator_failure=True)
+    res = wait_auth_success(dev1, dev0, configurator=dev1, enrollee=dev0,
+                            allow_enrollee_failure=True,
+                            allow_configurator_failure=True)
+    if status:
+        if 'wait_conn_status' not in res or not res['wait_conn_status']:
+            raise Exception("wait_conn_status not reported")
+
     time.sleep(0.5)
     wt.close()
 
@@ -96,6 +109,52 @@ def test_dpp_tcp_pkex(dev, apdev, params):
         run_dpp_tcp_pkex(dev[0], dev[1], cap_lo)
     finally:
         dev[1].request("DPP_CONTROLLER_STOP")
+
+def run_dpp_tcp_pkex_auto_connect_2(dev, apdev, params, status, start_ap=True):
+    if "SAE" not in dev[0].get_capability("auth_alg"):
+        raise HwsimSkip("SAE not supported")
+    dev[0].set("sae_groups", "")
+
+    cap_lo = params['prefix'] + ".lo.pcap"
+
+    params = {"ssid": "sae",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password"}
+    if start_ap:
+        hapd = hostapd.add_ap(apdev[0], params)
+    try:
+        dev[0].set("dpp_config_processing", "2")
+        run_dpp_tcp_pkex(dev[0], dev[1], cap_lo, sae=True, status=status)
+        if start_ap:
+            dev[0].wait_connected()
+        if status:
+            ev = dev[1].wait_event(["DPP-CONN-STATUS-RESULT"], timeout=16)
+            if ev is None:
+                raise Exception("Connection status resutl not reported")
+            if start_ap and "result=0" not in ev:
+                raise Exception("Unexpected result in success case: " + ev)
+            if (not start_ap) and "result=10" not in ev:
+                raise Exception("Unexpected result in failure case: " + ev)
+            if "ssid=sae " not in ev:
+                raise Exception("Missing SSID: " + ssid)
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+        dev[1].request("DPP_CONTROLLER_STOP")
+
+def test_dpp_tcp_pkex_auto_connect_2(dev, apdev, params):
+    """DPP/PKEXv2 over TCP and automatic connection"""
+    run_dpp_tcp_pkex_auto_connect_2(dev, apdev, params, False)
+
+def test_dpp_tcp_pkex_auto_connect_2_status(dev, apdev, params):
+    """DPP/PKEXv2 over TCP and automatic connection status"""
+    run_dpp_tcp_pkex_auto_connect_2(dev, apdev, params, True)
+
+def test_dpp_tcp_pkex_auto_connect_2_status_fail(dev, apdev, params):
+    """DPP/PKEXv2 over TCP and automatic connection status for failure"""
+    run_dpp_tcp_pkex_auto_connect_2(dev, apdev, params, True, start_ap=False)
 
 def test_dpp_controller_relay_pkex(dev, apdev, params):
     """DPP Controller/Relay with PKEX"""
