@@ -1454,7 +1454,7 @@ static bool wpa_scan_res_ok(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 	if (wpa_s->ignore_assoc_disallow)
 		goto skip_assoc_disallow;
 #endif /* CONFIG_TESTING_OPTIONS */
-	assoc_disallow = wpas_mbo_get_bss_attr(bss, MBO_ATTR_ID_ASSOC_DISALLOW);
+	assoc_disallow = wpas_mbo_check_assoc_disallow(bss);
 	if (assoc_disallow && assoc_disallow[1] >= 1) {
 		if (debug_print)
 			wpa_dbg(wpa_s, MSG_DEBUG,
