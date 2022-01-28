@@ -2,6 +2,7 @@
  * hostapd / DPP integration
  * Copyright (c) 2017, Qualcomm Atheros, Inc.
  * Copyright (c) 2018-2020, The Linux Foundation
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc.
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -340,7 +341,7 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
 
 	return dpp_tcp_auth(hapd->iface->interfaces->dpp, conn, auth,
 			    hapd->conf->dpp_name, DPP_NETROLE_AP,
-			    hostapd_dpp_process_conf_obj);
+			    hostapd_dpp_process_conf_obj, NULL);
 }
 #endif /* CONFIG_DPP2 */
 
@@ -922,7 +923,7 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
 		return dpp_tcp_init(hapd->iface->interfaces->dpp, auth,
 				    &ipaddr, tcp_port, hapd->conf->dpp_name,
 				    DPP_NETROLE_AP, hapd->msg_ctx, hapd,
-				    hostapd_dpp_process_conf_obj);
+				    hostapd_dpp_process_conf_obj, NULL);
 #endif /* CONFIG_DPP2 */
 
 	hapd->dpp_auth = auth;

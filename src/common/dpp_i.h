@@ -2,6 +2,7 @@
  * DPP module internal definitions
  * Copyright (c) 2017, Qualcomm Atheros, Inc.
  * Copyright (c) 2018-2020, The Linux Foundation
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc.
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -22,6 +23,7 @@ struct dpp_global {
 	struct dl_list tcp_init; /* struct dpp_connection */
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
+	bool (*tcp_msg_sent)(void *ctx, struct dpp_authentication *auth);
 	void (*remove_bi)(void *ctx, struct dpp_bootstrap_info *bi);
 #endif /* CONFIG_DPP2 */
 };

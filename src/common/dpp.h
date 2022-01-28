@@ -2,6 +2,7 @@
  * DPP functionality shared between hostapd and wpa_supplicant
  * Copyright (c) 2017, Qualcomm Atheros, Inc.
  * Copyright (c) 2018-2020, The Linux Foundation
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc.
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -402,6 +403,7 @@ struct dpp_controller_config {
 	void *msg_ctx;
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
+	bool (*tcp_msg_sent)(void *ctx, struct dpp_authentication *auth);
 };
 
 #ifdef CONFIG_TESTING_OPTIONS
@@ -703,12 +705,21 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 		 const char *name, enum dpp_netrole netrole, void *msg_ctx,
 		 void *cb_ctx,
 		 int (*process_conf_obj)(void *ctx,
-					 struct dpp_authentication *auth));
+					 struct dpp_authentication *auth),
+		 bool (*tcp_msg_sent)(void *ctx,
+				      struct dpp_authentication *auth));
 int dpp_tcp_auth(struct dpp_global *dpp, void *_conn,
 		 struct dpp_authentication *auth, const char *name,
 		 enum dpp_netrole netrole,
 		 int (*process_conf_obj)(void *ctx,
-					 struct dpp_authentication *auth));
+					 struct dpp_authentication *auth),
+		 bool (*tcp_msg_sent)(void *ctx,
+				      struct dpp_authentication *auth));
+bool dpp_tcp_conn_status_requested(struct dpp_global *dpp);
+void dpp_tcp_send_conn_status(struct dpp_global *dpp,
+			      enum dpp_status_error result,
+			      const u8 *ssid, size_t ssid_len,
+			      const char *channel_list);
 
 struct wpabuf * dpp_build_presence_announcement(struct dpp_bootstrap_info *bi);
 void dpp_notify_chirp_received(void *msg_ctx, int id, const u8 *src,

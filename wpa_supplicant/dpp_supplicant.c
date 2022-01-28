@@ -2,6 +2,7 @@
  * wpa_supplicant - DPP
  * Copyright (c) 2017, Qualcomm Atheros, Inc.
  * Copyright (c) 2018-2020, The Linux Foundation
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc.
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -53,6 +54,7 @@ static void wpas_dpp_reconfig_reply_wait_timeout(void *eloop_ctx,
 static void wpas_dpp_start_gas_client(struct wpa_supplicant *wpa_s);
 static int wpas_dpp_process_conf_obj(void *ctx,
 				     struct dpp_authentication *auth);
+static bool wpas_dpp_tcp_msg_sent(void *ctx, struct dpp_authentication *auth);
 #endif /* CONFIG_DPP2 */
 
 static const u8 broadcast[ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
@@ -295,7 +297,8 @@ static void wpas_dpp_conn_status_result_timeout(void *eloop_ctx,
 	struct dpp_authentication *auth = wpa_s->dpp_auth;
 	enum dpp_status_error result;
 
-	if (!auth || !auth->conn_status_requested)
+	if ((!auth || !auth->conn_status_requested) &&
+	    !dpp_tcp_conn_status_requested(wpa_s->dpp))
 		return;
 
 	wpa_printf(MSG_DEBUG,
@@ -371,9 +374,10 @@ void wpas_dpp_send_conn_status_result(struct wpa_supplicant *wpa_s,
 
 	eloop_cancel_timeout(wpas_dpp_conn_status_result_timeout, wpa_s, NULL);
 
-	if (!auth || !auth->conn_status_requested)
+	if ((!auth || !auth->conn_status_requested) &&
+	    !dpp_tcp_conn_status_requested(wpa_s->dpp))
 		return;
-	auth->conn_status_requested = 0;
+
 	wpa_printf(MSG_DEBUG, "DPP: Report connection status result %d",
 		   result);
 
@@ -381,6 +385,19 @@ void wpas_dpp_send_conn_status_result(struct wpa_supplicant *wpa_s,
 		channel_list_buf = wpas_dpp_scan_channel_list(wpa_s);
 		channel_list = channel_list_buf;
 	}
+
+	if (!auth || !auth->conn_status_requested) {
+		dpp_tcp_send_conn_status(wpa_s->dpp, result,
+					 ssid ? ssid->ssid :
+					 wpa_s->dpp_last_ssid,
+					 ssid ? ssid->ssid_len :
+					 wpa_s->dpp_last_ssid_len,
+					 channel_list);
+		os_free(channel_list_buf);
+		return;
+	}
+
+	auth->conn_status_requested = 0;
 
 	msg = dpp_build_conn_status_result(auth, result,
 					   ssid ? ssid->ssid :
@@ -416,7 +433,8 @@ void wpas_dpp_connected(struct wpa_supplicant *wpa_s)
 {
 	struct dpp_authentication *auth = wpa_s->dpp_auth;
 
-	if (auth && auth->conn_status_requested)
+	if ((auth && auth->conn_status_requested) ||
+	    dpp_tcp_conn_status_requested(wpa_s->dpp))
 		wpas_dpp_send_conn_status_result(wpa_s, DPP_STATUS_OK);
 }
 
@@ -874,7 +892,8 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
 	if (tcp)
 		return dpp_tcp_init(wpa_s->dpp, auth, &ipaddr, tcp_port,
 				    wpa_s->conf->dpp_name, DPP_NETROLE_STA,
-				    wpa_s, wpa_s, wpas_dpp_process_conf_obj);
+				    wpa_s, wpa_s, wpas_dpp_process_conf_obj,
+				    wpas_dpp_tcp_msg_sent);
 #endif /* CONFIG_DPP2 */
 
 	wpa_s->dpp_auth = auth;
@@ -2028,6 +2047,34 @@ static int wpas_dpp_process_conf_obj(void *ctx,
 }
 
 
+static bool wpas_dpp_tcp_msg_sent(void *ctx, struct dpp_authentication *auth)
+{
+	struct wpa_supplicant *wpa_s = ctx;
+
+	wpa_printf(MSG_DEBUG, "DPP: TCP message sent callback");
+
+	if (auth->connect_on_tx_status) {
+		auth->connect_on_tx_status = 0;
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Try to connect after completed configuration result");
+		wpas_dpp_try_to_connect(wpa_s);
+		if (auth->conn_status_requested) {
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Start 15 second timeout for reporting connection status result");
+			eloop_cancel_timeout(
+				wpas_dpp_conn_status_result_timeout,
+				wpa_s, NULL);
+			eloop_register_timeout(
+				15, 0, wpas_dpp_conn_status_result_timeout,
+				wpa_s, NULL);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 static void wpas_dpp_remove_bi(void *ctx, struct dpp_bootstrap_info *bi)
 {
 	struct wpa_supplicant *wpa_s = ctx;
@@ -2617,7 +2664,8 @@ static int wpas_dpp_pkex_done(void *ctx, void *conn,
 	}
 
 	return dpp_tcp_auth(wpa_s->dpp, conn, auth, wpa_s->conf->dpp_name,
-			    DPP_NETROLE_STA, wpas_dpp_process_conf_obj);
+			    DPP_NETROLE_STA, wpas_dpp_process_conf_obj,
+			    wpas_dpp_tcp_msg_sent);
 }
 #endif /* CONFIG_DPP2 */
 
@@ -3641,6 +3689,7 @@ int wpas_dpp_controller_start(struct wpa_supplicant *wpa_s, const char *cmd)
 	config.msg_ctx = wpa_s;
 	config.cb_ctx = wpa_s;
 	config.process_conf_obj = wpas_dpp_process_conf_obj;
+	config.tcp_msg_sent = wpas_dpp_tcp_msg_sent;
 	if (cmd) {
 		pos = os_strstr(cmd, " tcp_port=");
 		if (pos) {

@@ -1,6 +1,7 @@
 /*
  * DPP over TCP
  * Copyright (c) 2019-2020, The Linux Foundation
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc.
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -30,6 +31,7 @@ struct dpp_connection {
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
 	int (*pkex_done)(void *ctx, void *conn, struct dpp_bootstrap_info *bi);
+	bool (*tcp_msg_sent)(void *ctx, struct dpp_authentication *auth);
 	int sock;
 	u8 mac_addr[ETH_ALEN];
 	unsigned int freq;
@@ -79,6 +81,7 @@ struct dpp_controller {
 	void *msg_ctx;
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
+	bool (*tcp_msg_sent)(void *ctx, struct dpp_authentication *auth);
 };
 
 static void dpp_controller_rx(int sd, void *eloop_ctx, void *sock_ctx);
@@ -245,6 +248,10 @@ static int dpp_tcp_send(struct dpp_connection *conn)
 				dpp_controller_rx, conn, NULL) == 0)
 		conn->read_eloop = 1;
 	if (conn->on_tcp_tx_complete_remove) {
+		if (conn->auth && conn->auth->connect_on_tx_status &&
+		    conn->tcp_msg_sent &&
+		    conn->tcp_msg_sent(conn->cb_ctx, conn->auth))
+			return 0;
 		dpp_connection_remove(conn);
 	} else if (conn->auth && (conn->ctrl || conn->auth->configurator) &&
 		   conn->on_tcp_tx_complete_gas_done) {
@@ -781,6 +788,7 @@ static int dpp_controller_rx_conf_result(struct dpp_connection *conn,
 		wpa_msg(msg_ctx, MSG_INFO,
 			DPP_EVENT_CONF_SENT "wait_conn_status=1");
 		wpa_printf(MSG_DEBUG, "DPP: Wait for Connection Status Result");
+		auth->waiting_conn_status_result = 1;
 		eloop_cancel_timeout(
 			dpp_controller_conn_status_result_wait_timeout,
 			conn, NULL);
@@ -1697,6 +1705,7 @@ static void dpp_controller_tcp_cb(int sd, void *eloop_ctx, void *sock_ctx)
 	conn->msg_ctx = ctrl->msg_ctx;
 	conn->cb_ctx = ctrl->cb_ctx;
 	conn->process_conf_obj = ctrl->process_conf_obj;
+	conn->tcp_msg_sent = ctrl->tcp_msg_sent;
 	conn->sock = fd;
 	conn->netrole = ctrl->netrole;
 
@@ -1821,7 +1830,9 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 		 const struct hostapd_ip_addr *addr, int port, const char *name,
 		 enum dpp_netrole netrole, void *msg_ctx, void *cb_ctx,
 		 int (*process_conf_obj)(void *ctx,
-					 struct dpp_authentication *auth))
+					 struct dpp_authentication *auth),
+		 bool (*tcp_msg_sent)(void *ctx,
+				      struct dpp_authentication *auth))
 {
 	struct dpp_connection *conn;
 	struct sockaddr_storage saddr;
@@ -1845,6 +1856,7 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 	conn->msg_ctx = msg_ctx;
 	conn->cb_ctx = cb_ctx;
 	conn->process_conf_obj = process_conf_obj;
+	conn->tcp_msg_sent = tcp_msg_sent;
 	conn->name = os_strdup(name ? name : "Test");
 	conn->netrole = netrole;
 	conn->global = dpp;
@@ -1894,13 +1906,16 @@ int dpp_tcp_auth(struct dpp_global *dpp, void *_conn,
 		 struct dpp_authentication *auth, const char *name,
 		 enum dpp_netrole netrole,
 		 int (*process_conf_obj)(void *ctx,
-					 struct dpp_authentication *auth))
+					 struct dpp_authentication *auth),
+		 bool (*tcp_msg_sent)(void *ctx,
+				      struct dpp_authentication *auth))
 {
 	struct dpp_connection *conn = _conn;
 
 	/* Continue with Authentication exchange on an existing TCP connection.
 	 */
 	conn->process_conf_obj = process_conf_obj;
+	conn->tcp_msg_sent = tcp_msg_sent;
 	os_free(conn->name);
 	conn->name = os_strdup(name ? name : "Test");
 	conn->netrole = netrole;
@@ -1939,6 +1954,7 @@ int dpp_controller_start(struct dpp_global *dpp,
 	ctrl->msg_ctx = config->msg_ctx;
 	ctrl->cb_ctx = config->cb_ctx;
 	ctrl->process_conf_obj = config->process_conf_obj;
+	ctrl->tcp_msg_sent = config->tcp_msg_sent;
 
 	ctrl->sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (ctrl->sock < 0)
@@ -2113,6 +2129,67 @@ void dpp_relay_flush_controllers(struct dpp_global *dpp)
 			      struct dpp_relay_controller, list) {
 		dl_list_del(&ctrl->list);
 		dpp_relay_controller_free(ctrl);
+	}
+}
+
+
+bool dpp_tcp_conn_status_requested(struct dpp_global *dpp)
+{
+	struct dpp_connection *conn;
+
+	dl_list_for_each(conn, &dpp->tcp_init, struct dpp_connection, list) {
+		if (conn->auth && conn->auth->conn_status_requested)
+			return true;
+	}
+
+	return false;
+}
+
+
+static void dpp_tcp_send_conn_status_msg(struct dpp_connection *conn,
+					 enum dpp_status_error result,
+					 const u8 *ssid, size_t ssid_len,
+					 const char *channel_list)
+{
+	struct dpp_authentication *auth = conn->auth;
+	int res;
+	struct wpabuf *msg;
+
+	auth->conn_status_requested = 0;
+
+	msg = dpp_build_conn_status_result(auth, result, ssid, ssid_len,
+					   channel_list);
+	if (!msg) {
+		dpp_connection_remove(conn);
+		return;
+	}
+
+	res = dpp_tcp_send_msg(conn, msg);
+	wpabuf_free(msg);
+
+	if (res < 0) {
+		dpp_connection_remove(conn);
+		return;
+	}
+
+	/* This exchange will be terminated in the TX status handler */
+	conn->on_tcp_tx_complete_remove = 1;
+}
+
+
+void dpp_tcp_send_conn_status(struct dpp_global *dpp,
+			      enum dpp_status_error result,
+			      const u8 *ssid, size_t ssid_len,
+			      const char *channel_list)
+{
+	struct dpp_connection *conn;
+
+	dl_list_for_each(conn, &dpp->tcp_init, struct dpp_connection, list) {
+		if (conn->auth && conn->auth->conn_status_requested) {
+			dpp_tcp_send_conn_status_msg(conn, result, ssid,
+						     ssid_len, channel_list);
+			break;
+		}
 	}
 }
 
