@@ -2519,7 +2519,7 @@ def run_sigma_dut_ap_dpp_pkex_responder(dev, apdev):
 
 def test_sigma_dut_ap_dpp_pkex_responder_tcp(dev, apdev, params):
     """sigma_dut controlled AP as DPP PKEX responder (TCP)"""
-    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[0], min_ver=3)
     logdir = params['prefix'] + ".sigma-hostapd"
     with HWSimRadio() as (radio, iface):
         sigma = start_sigma_dut(iface, hostapd_logdir=logdir)

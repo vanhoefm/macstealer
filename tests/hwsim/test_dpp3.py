@@ -165,8 +165,8 @@ def test_dpp_controller_relay_pkex(dev, apdev, params):
         dev[1].request("DPP_CONTROLLER_STOP")
 
 def run_dpp_controller_relay_pkex(dev, apdev, params):
-    check_dpp_capab(dev[0], min_ver=2)
-    check_dpp_capab(dev[1], min_ver=2)
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
     prefix = "dpp_controller_relay_pkex"
     cap_lo = os.path.join(params['logdir'], prefix + ".lo.pcap")
 
