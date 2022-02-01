@@ -24,8 +24,8 @@ from hwsim_utils import set_group_map
 def check_mesh_support(dev, secure=False):
     if "MESH" not in dev.get_capability("modes"):
         raise HwsimSkip("Driver does not support mesh")
-    if secure and "SAE" not in dev.get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    if secure:
+        check_sae_capab(dev)
 
 def check_mesh_scan(dev, params, other_started=False, beacon_int=0):
     if not other_started:

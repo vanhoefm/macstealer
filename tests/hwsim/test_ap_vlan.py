@@ -20,7 +20,7 @@ except ImportError:
 
 import hwsim_utils
 import hostapd
-from utils import iface_is_in_bridge, HwsimSkip, alloc_fail
+from utils import *
 import os
 from tshark import run_tshark
 
@@ -785,8 +785,7 @@ def test_ap_vlan_psk(dev, apdev, params):
 def test_ap_vlan_sae(dev, apdev, params):
     """AP VLAN based on SAE Password Identifier"""
     for i in range(3):
-        if "SAE" not in dev[i].get_capability("auth_alg"):
-            raise HwsimSkip("SAE not supported")
+        check_sae_capab(dev[i])
     params = hostapd.wpa2_params(ssid="test-sae-vlan")
     params['wpa_key_mgmt'] = 'SAE'
     params['sae_password'] = ['pw1|vlanid=1|id=id1',

@@ -1612,8 +1612,7 @@ def test_dpp_and_sae_akm(dev, apdev):
     """DPP and SAE AKMs"""
     check_dpp_capab(dev[0])
     check_dpp_capab(dev[1])
-    if "SAE" not in dev[1].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[1])
 
     params = {"ssid": "dpp+sae",
               "wpa": "2",
@@ -6446,8 +6445,7 @@ def test_dpp_pfs_connect_cmd_ap_2_sae(dev, apdev):
     wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
     wpas.interface_add("wlan5", drv_params="force_connect_cmd=1")
     check_dpp_capab(wpas)
-    if "SAE" not in wpas.get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(wpas)
     hapd = start_dpp_pfs_ap(apdev[0], 2, sae=True)
     run_dpp_pfs_sta(wpas, 0, pfs_expected=False, sae=True)
     run_dpp_pfs_sta(wpas, 1, fail=True, sae=True)

@@ -11,6 +11,7 @@ import time
 import hostapd
 from wlantest import WlantestCapture
 from test_dpp import check_dpp_capab, run_dpp_auto_connect, wait_auth_success, update_hapd_config
+from utils import *
 
 def test_dpp_network_intro_version(dev, apdev):
     """DPP Network Introduction and protocol version"""
@@ -111,8 +112,7 @@ def test_dpp_tcp_pkex(dev, apdev, params):
         dev[1].request("DPP_CONTROLLER_STOP")
 
 def run_dpp_tcp_pkex_auto_connect_2(dev, apdev, params, status, start_ap=True):
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
     dev[0].set("sae_groups", "")
 
     cap_lo = params['prefix'] + ".lo.pcap"

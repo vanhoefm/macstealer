@@ -785,10 +785,8 @@ def test_wpas_ap_sae_pwe_1(dev):
         dev[1].set("sae_pwe", "0")
 
 def run_wpas_ap_sae(dev, sae_password, sae_password_id=False):
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
-    if "SAE" not in dev[1].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
+    check_sae_capab(dev[1])
     dev[0].request("SET sae_groups ")
     id = dev[0].add_network()
     dev[0].set_network(id, "mode", "2")
@@ -855,10 +853,8 @@ def test_wpas_ap_sae(dev):
 
 def test_wpas_ap_sae_and_psk_transition_disable(dev):
     """wpa_supplicant AP mode - SAE+PSK transition disable indication"""
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
-    if "SAE" not in dev[1].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
+    check_sae_capab(dev[1])
     dev[0].set("sae_groups", "")
     id = dev[0].add_network()
     dev[0].set_network(id, "mode", "2")

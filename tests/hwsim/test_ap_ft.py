@@ -1027,8 +1027,7 @@ def start_ft_sae(dev, apdev, wpa_ptk_rekey=None, sae_pwe=None,
                  no_beacon_rsnxe2=False, ext_key_id=False,
                  skip_prune_assoc=False, ft_rsnxe_used=False,
                  sae_transition=False):
-    if "SAE" not in dev.get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev)
     ssid = "test-ft"
     passphrase = "12345678"
 
@@ -1302,8 +1301,7 @@ def test_ap_ft_sae_rsnxe_used_mismatch2(dev, apdev):
 
 def test_ap_ft_sae_pw_id(dev, apdev):
     """FT-SAE with Password Identifier"""
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
     ssid = "test-ft"
 
     params = ft_params1(ssid=ssid)
@@ -1323,8 +1321,7 @@ def test_ap_ft_sae_pw_id(dev, apdev):
 
 def test_ap_ft_sae_with_both_akms(dev, apdev):
     """SAE + FT-SAE configuration"""
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
     ssid = "test-ft"
     passphrase = "12345678"
 
@@ -1344,8 +1341,7 @@ def test_ap_ft_sae_with_both_akms(dev, apdev):
 
 def test_ap_ft_sae_pmksa_caching(dev, apdev):
     """WPA2-FT-SAE AP and PMKSA caching for initial mobility domain association"""
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
     ssid = "test-ft"
     passphrase = "12345678"
 
@@ -1365,8 +1361,7 @@ def test_ap_ft_sae_pmksa_caching(dev, apdev):
 
 def test_ap_ft_sae_pmksa_caching_pwe(dev, apdev):
     """WPA2-FT-SAE AP and PMKSA caching for initial mobility domain association (STA PWE both)"""
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
     ssid = "test-ft"
     passphrase = "12345678"
 
@@ -1391,8 +1386,7 @@ def test_ap_ft_sae_pmksa_caching_pwe(dev, apdev):
 
 def test_ap_ft_sae_pmksa_caching_h2e(dev, apdev):
     """WPA2-FT-SAE AP and PMKSA caching for initial mobility domain association (H2E)"""
-    if "SAE" not in dev[0].get_capability("auth_alg"):
-        raise HwsimSkip("SAE not supported")
+    check_sae_capab(dev[0])
     ssid = "test-ft"
     passphrase = "12345678"
 
