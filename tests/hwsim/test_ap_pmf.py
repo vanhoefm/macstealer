@@ -280,6 +280,31 @@ def test_ap_pmf_assoc_comeback2(dev, apdev):
         raise Exception("AP did not use reassociation comeback request")
 
 @remote_compatible
+def test_ap_pmf_assoc_comeback3(dev, apdev):
+    """WPA2-PSK AP with PMF association comeback (using radio_disabled)"""
+    drv_flags = dev[0].get_driver_status_field("capa.flags")
+    if int(drv_flags, 0) & 0x20 == 0:
+        raise HwsimSkip("Driver does not support radio_disabled")
+    ssid = "assoc-comeback"
+    params = hostapd.wpa2_params(ssid=ssid, passphrase="12345678")
+    params["wpa_key_mgmt"] = "WPA-PSK"
+    params["ieee80211w"] = "1"
+    hapd = hostapd.add_ap(apdev[0], params)
+    Wlantest.setup(hapd)
+    wt = Wlantest()
+    wt.flush()
+    wt.add_passphrase("12345678")
+    dev[0].connect(ssid, psk="12345678", ieee80211w="2",
+                   key_mgmt="WPA-PSK", proto="WPA2", scan_freq="2412")
+    dev[0].set("radio_disabled", "1")
+    dev[0].set("radio_disabled", "0")
+    dev[0].request("REASSOCIATE")
+    dev[0].wait_connected(timeout=10, error="Timeout on re-connection")
+    if wt.get_sta_counter("assocresp_comeback", apdev[0]['bssid'],
+                          dev[0].own_addr()) < 1:
+        raise Exception("AP did not use reassociation comeback request")
+
+@remote_compatible
 def test_ap_pmf_assoc_comeback_wps(dev, apdev):
     """WPA2-PSK AP with PMF association comeback (WPS)"""
     ssid = "assoc-comeback"
