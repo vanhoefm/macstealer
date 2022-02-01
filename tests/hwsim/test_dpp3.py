@@ -156,6 +156,55 @@ def test_dpp_tcp_pkex_auto_connect_2_status_fail(dev, apdev, params):
     """DPP/PKEXv2 over TCP and automatic connection status for failure"""
     run_dpp_tcp_pkex_auto_connect_2(dev, apdev, params, True, start_ap=False)
 
+def test_dpp_tcp_pkex_while_associated(dev, apdev, params):
+    """DPP/PKEXv2 over TCP while associated"""
+    try:
+        run_dpp_tcp_pkex_while_associated(dev, apdev, params, False)
+    finally:
+        dev[1].request("DPP_CONTROLLER_STOP")
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+
+def test_dpp_tcp_pkex_while_associated_conn_status(dev, apdev, params):
+    """DPP/PKEXv2 over TCP while associated (conn status)"""
+    try:
+        run_dpp_tcp_pkex_while_associated(dev, apdev, params, True)
+    finally:
+        dev[1].request("DPP_CONTROLLER_STOP")
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+
+def run_dpp_tcp_pkex_while_associated(dev, apdev, params, status):
+    check_sae_capab(dev[0])
+    cap_lo = params['prefix'] + ".lo.pcap"
+
+    params = {"ssid": "current",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "password"}
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    params = {"ssid": "sae",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password"}
+    hapd2 = hostapd.add_ap(apdev[1], params)
+
+    dev[0].set("dpp_config_processing", "2")
+    dev[0].set("sae_groups", "")
+    dev[0].connect("current", psk="password", key_mgmt="SAE", ieee80211w="2",
+                   scan_freq="2412")
+    run_dpp_tcp_pkex(dev[0], dev[1], cap_lo, sae=True, status=status)
+    if status:
+        ev = dev[1].wait_event(["DPP-CONN-STATUS-RESULT"], timeout=16)
+        if ev is None:
+            raise Exception("Connection status result not reported")
+        if "result=0" not in ev:
+            raise Exception("Unexpected result in success case: " + ev)
+    dev[0].wait_connected(timeout=30)
+
 def test_dpp_controller_relay_pkex(dev, apdev, params):
     """DPP Controller/Relay with PKEX"""
     try:
