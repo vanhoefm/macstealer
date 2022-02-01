@@ -12095,6 +12095,7 @@ static int nl80211_dpp_listen(void *priv, bool enable)
 
 
 #ifdef CONFIG_TESTING_OPTIONS
+
 static int testing_nl80211_register_frame(void *priv, u16 type,
 					  const u8 *match, size_t match_len,
 					  bool multicast)
@@ -12108,6 +12109,33 @@ static int testing_nl80211_register_frame(void *priv, u16 type,
 	return nl80211_register_frame(bss, handle, type, match, match_len,
 				      multicast);
 }
+
+
+static int testing_nl80211_radio_disable(void *priv, int disabled)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+
+	/* For now, this is supported only partially in station mode with
+	 * SME-in-wpa_supplicant case where the NL80211_ATTR_LOCAL_STATE_CHANGE
+	 * attribute can be used to avoid sending out the Deauthentication frame
+	 * to the currently associated AP. */
+
+	if (!disabled)
+		return 0;
+
+	if (!(drv->capa.flags & WPA_DRIVER_FLAGS_SME))
+		return -1;
+
+	if (!drv->associated)
+		return 0;
+
+	return wpa_driver_nl80211_mlme(drv, drv->bssid,
+				       NL80211_CMD_DEAUTHENTICATE,
+				       WLAN_REASON_PREV_AUTH_NOT_VALID, 1,
+				       drv->first_bss);
+}
+
 #endif /* CONFIG_TESTING_OPTIONS */
 
 
@@ -12251,5 +12279,6 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #endif /* CONFIG_DPP */
 #ifdef CONFIG_TESTING_OPTIONS
 	.register_frame = testing_nl80211_register_frame,
+	.radio_disable = testing_nl80211_radio_disable,
 #endif /* CONFIG_TESTING_OPTIONS */
 };
