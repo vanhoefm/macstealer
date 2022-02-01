@@ -275,7 +275,7 @@ int compute_password_element(EAP_PWD_group *grp, u16 num,
 	    crypto_bignum_sub(prime, y, y) < 0 ||
 	    crypto_bignum_to_bin(y, x_y + MAX_ECC_PRIME_LEN,
 				 MAX_ECC_PRIME_LEN, primebytelen) < 0) {
-		wpa_printf(MSG_DEBUG, "SAE: Could not solve y");
+		wpa_printf(MSG_DEBUG, "EAP-pwd: Could not solve y");
 		goto fail;
 	}
 
