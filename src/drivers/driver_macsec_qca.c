@@ -861,7 +861,7 @@ static int macsec_qca_get_available_transmit_sc(void *priv, u32 *channel)
 		}
 	}
 
-	wpa_printf(MSG_DEBUG, "%s: no avaiable channel", __func__);
+	wpa_printf(MSG_DEBUG, "%s: no available channel", __func__);
 
 	return -1;
 }

@@ -2831,7 +2831,8 @@ static void nl80211_control_port_frame(struct wpa_driver_nl80211_data *drv,
 				   nla_len(tb[NL80211_ATTR_FRAME]));
 		break;
 	default:
-		wpa_printf(MSG_INFO, "nl80211: Unxpected ethertype 0x%04x from "
+		wpa_printf(MSG_INFO,
+			   "nl80211: Unexpected ethertype 0x%04x from "
 			   MACSTR " over control port",
 			   ethertype, MAC2STR(src_addr));
 		break;

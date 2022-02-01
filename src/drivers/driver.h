@@ -1036,7 +1036,7 @@ struct wpa_driver_associate_params {
 	 *
 	 * If the driver needs to do special configuration for WPS association,
 	 * this variable provides more information on what type of association
-	 * is being requested. Most drivers should not need ot use this.
+	 * is being requested. Most drivers should not need to use this.
 	 */
 	enum wps_mode wps;
 
@@ -1775,7 +1775,7 @@ enum wpa_driver_if_type {
 	WPA_IF_P2P_GROUP,
 
 	/**
-	 * WPA_IF_P2P_DEVICE - P2P Device interface is used to indentify the
+	 * WPA_IF_P2P_DEVICE - P2P Device interface is used to identify the
 	 * abstracted P2P Device function in the driver
 	 */
 	WPA_IF_P2P_DEVICE,
@@ -2603,7 +2603,7 @@ struct wpa_driver_ops {
 	 * some drivers may expect them in different order than wpa_supplicant
 	 * is using. If the TX/RX keys are swapped, all TKIP encrypted packets
 	 * will trigger Michael MIC errors. This can be fixed by changing the
-	 * order of MIC keys by swapping te bytes 16..23 and 24..31 of the key
+	 * order of MIC keys by swapping the bytes 16..23 and 24..31 of the key
 	 * in driver_*.c set_key() implementation, see driver_ndis.c for an
 	 * example on how this can be done.
 	 */
@@ -4612,7 +4612,7 @@ enum wpa_event_type {
 	 * This event must be delivered when a Michael MIC error is detected by
 	 * the local driver. Additional data for event processing is
 	 * provided with union wpa_event_data::michael_mic_failure. This
-	 * information is used to request new encyption key and to initiate
+	 * information is used to request new encryption key and to initiate
 	 * TKIP countermeasures if needed.
 	 */
 	EVENT_MICHAEL_MIC_FAILURE,

@@ -1341,7 +1341,7 @@ int wpa_driver_nl80211_capa(struct wpa_driver_nl80211_data *drv)
 	drv->has_capability = 1;
 	drv->has_driver_key_mgmt = info.has_key_mgmt | info.has_key_mgmt_iftype;
 
-	/* Fallback to hardcoded defaults if the driver does nott advertize any
+	/* Fallback to hardcoded defaults if the driver does not advertise any
 	 * AKM capabilities. */
 	if (!drv->has_driver_key_mgmt) {
 		drv->capa.key_mgmt = WPA_DRIVER_CAPA_KEY_MGMT_WPA |
