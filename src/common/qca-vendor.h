@@ -7036,7 +7036,7 @@ enum qca_wlan_vendor_attr_rtplinst {
  *	Use XR level to benefit XR (extended reality) application to achieve
  *	latency and power by via constraint scan/roaming/adaptive PS.
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_LATENCY_LEVEL_LOW:
- *	Use low latency level to benifit application like concurrent
+ *	Use low latency level to benefit application like concurrent
  *	downloading or video streaming via constraint scan/adaptive PS.
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_LATENCY_LEVEL_ULTRALOW:
  *	Use ultra low latency level to benefit for gaming/voice
@@ -8597,7 +8597,7 @@ enum qca_wlan_vendor_attr_wifi_test_config {
  * peer. Refers the enum qca_wlan_vendor_attr_twt_capability. It's a synchronous
  * operation.
  *
- * @QCA_WLAN_TWT_SETUP_READY_NOTIFY: Notify userspace that the firmare is
+ * @QCA_WLAN_TWT_SETUP_READY_NOTIFY: Notify userspace that the firmware is
  * ready for a new TWT session setup after it issued a TWT teardown.
  *
  * @QCA_WLAN_TWT_SET_PARAM: Configure TWT related parameters. Required
