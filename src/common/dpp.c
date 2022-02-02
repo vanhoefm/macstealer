@@ -1209,6 +1209,13 @@ int dpp_set_configurator(struct dpp_authentication *auth, const char *cmd)
 
 	wpa_printf(MSG_DEBUG, "DPP: Set configurator parameters: %s", cmd);
 
+	if (os_strstr(cmd, " conf=query")) {
+		auth->configurator_set = 0;
+		auth->use_config_query = true;
+		ret = 0;
+		goto fail;
+	}
+
 	pos = os_strstr(cmd, " configurator=");
 	if (!auth->conf && pos) {
 		pos += 14;
@@ -1639,6 +1646,25 @@ dpp_build_conf_obj_legacy(struct dpp_authentication *auth,
 }
 
 
+static int dpp_get_peer_bi_id(struct dpp_authentication *auth)
+{
+	struct dpp_bootstrap_info *bi;
+
+	if (auth->peer_bi)
+		return auth->peer_bi->id;
+	if (auth->tmp_peer_bi)
+		return auth->tmp_peer_bi->id;
+
+	bi = os_zalloc(sizeof(*bi));
+	if (!bi)
+		return -1;
+	bi->id = dpp_next_id(auth->global);
+	dl_list_add(&auth->global->bootstrap, &bi->list);
+	auth->tmp_peer_bi = bi;
+	return bi->id;
+}
+
+
 static struct wpabuf *
 dpp_build_conf_obj(struct dpp_authentication *auth, enum dpp_netrole netrole,
 		   int idx, bool cert_req)
@@ -1667,10 +1693,19 @@ dpp_build_conf_obj(struct dpp_authentication *auth, enum dpp_netrole netrole,
 			conf = auth->conf2_ap;
 	}
 	if (!conf) {
-		if (idx == 0)
+		if (idx == 0) {
+			if (auth->use_config_query) {
+				wpa_printf(MSG_DEBUG,
+					   "DPP: No configuration available for Enrollee(%s) - waiting for configuration",
+					   dpp_netrole_str(netrole));
+				auth->waiting_config = true;
+				dpp_get_peer_bi_id(auth);
+				return NULL;
+			}
 			wpa_printf(MSG_DEBUG,
 				   "DPP: No configuration available for Enrollee(%s) - reject configuration request",
 				   dpp_netrole_str(netrole));
+		}
 		return NULL;
 	}
 
@@ -1724,6 +1759,8 @@ dpp_build_conf_resp(struct dpp_authentication *auth, const u8 *e_nonce,
 		}
 	}
 
+	if (!conf && auth->waiting_config)
+		return NULL;
 	if (conf || env_data)
 		status = DPP_STATUS_OK;
 	else if (!cert_req && netrole == DPP_NETROLE_STA && auth->conf_sta &&
@@ -2069,21 +2106,9 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
 			goto cont;
 		}
 
-		if (auth->peer_bi) {
-			id = auth->peer_bi->id;
-		} else if (auth->tmp_peer_bi) {
-			id = auth->tmp_peer_bi->id;
-		} else {
-			struct dpp_bootstrap_info *bi;
-
-			bi = os_zalloc(sizeof(*bi));
-			if (!bi)
-				goto fail;
-			bi->id = dpp_next_id(auth->global);
-			dl_list_add(&auth->global->bootstrap, &bi->list);
-			auth->tmp_peer_bi = bi;
-			id = bi->id;
-		}
+		id = dpp_get_peer_bi_id(auth);
+		if (id < 0)
+			goto fail;
 
 		wpa_printf(MSG_DEBUG, "DPP: CSR is valid - forward to CA/RA");
 		txt = base64_encode_no_lf(wpabuf_head(cert_req),

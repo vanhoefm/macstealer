@@ -3140,6 +3140,22 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 }
 
 
+static void wpas_dpp_gas_initial_resp_timeout(void *eloop_ctx,
+					      void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+
+	if (!auth || !auth->waiting_config || !auth->config_resp_ctx)
+		return;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: No configuration available from upper layers - send initial response with comeback delay");
+	gas_server_set_comeback_delay(wpa_s->gas_server, auth->config_resp_ctx,
+				      500);
+}
+
+
 static struct wpabuf *
 wpas_dpp_gas_req_handler(void *ctx, void *resp_ctx, const u8 *sa,
 			 const u8 *query, size_t query_len, int *comeback_delay)
@@ -3174,19 +3190,73 @@ wpas_dpp_gas_req_handler(void *ctx, void *resp_ctx, const u8 *sa,
 		MAC2STR(sa));
 	resp = dpp_conf_req_rx(auth, query, query_len);
 
+	auth->gas_server_ctx = resp_ctx;
+
 #ifdef CONFIG_DPP2
 	if (!resp && auth->waiting_cert) {
 		wpa_printf(MSG_DEBUG, "DPP: Certificate not yet ready");
-		auth->cert_resp_ctx = resp_ctx;
+		auth->config_resp_ctx = resp_ctx;
 		*comeback_delay = 500;
 		return NULL;
 	}
 #endif /* CONFIG_DPP2 */
 
+	if (!resp && auth->waiting_config &&
+	    (auth->peer_bi || auth->tmp_peer_bi)) {
+		char *buf = NULL, *name = "";
+		char band[200], *pos, *end;
+		int i, res, *opclass = auth->e_band_support;
+		char *mud_url = "N/A";
+
+		wpa_printf(MSG_DEBUG, "DPP: Configuration not yet ready");
+		auth->config_resp_ctx = resp_ctx;
+		*comeback_delay = -1;
+		if (auth->e_name) {
+			size_t len = os_strlen(auth->e_name);
+
+			buf = os_malloc(len * 4 + 1);
+			if (buf) {
+				printf_encode(buf, len * 4 + 1,
+					      (const u8 *) auth->e_name, len);
+				name = buf;
+			}
+		}
+		band[0] = '\0';
+		pos = band;
+		end = band + sizeof(band);
+		for (i = 0; opclass && opclass[i]; i++) {
+			res = os_snprintf(pos, end - pos, "%s%d",
+					  pos == band ? "" : ",", opclass[i]);
+			if (os_snprintf_error(end - pos, res)) {
+				*pos = '\0';
+				break;
+			}
+			pos += res;
+		}
+		if (auth->e_mud_url) {
+			size_t len = os_strlen(auth->e_mud_url);
+
+			if (!has_ctrl_char((const u8 *) auth->e_mud_url, len))
+				mud_url = auth->e_mud_url;
+		}
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_NEEDED "peer=%d src="
+			MACSTR " net_role=%s name=\"%s\" opclass=%s mud_url=%s",
+			auth->peer_bi ? auth->peer_bi->id :
+			auth->tmp_peer_bi->id, MAC2STR(sa),
+			dpp_netrole_str(auth->e_netrole), name, band, mud_url);
+		os_free(buf);
+
+		eloop_cancel_timeout(wpas_dpp_gas_initial_resp_timeout, wpa_s,
+				     NULL);
+		eloop_register_timeout(0, 50000,
+				       wpas_dpp_gas_initial_resp_timeout, wpa_s,
+				       NULL);
+		return NULL;
+	}
+
 	if (!resp)
 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	auth->conf_resp = resp;
-	auth->gas_server_ctx = resp_ctx;
 	return resp;
 }
 
@@ -3651,6 +3721,7 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 	eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_init_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_auth_resp_retry_timeout, wpa_s, NULL);
+	eloop_cancel_timeout(wpas_dpp_gas_initial_resp_timeout, wpa_s, NULL);
 #ifdef CONFIG_DPP2
 	eloop_cancel_timeout(wpas_dpp_config_result_wait_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_conn_status_result_wait_timeout,
@@ -3673,6 +3744,87 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 	os_free(wpa_s->dpp_configurator_params);
 	wpa_s->dpp_configurator_params = NULL;
 	dpp_global_clear(wpa_s->dpp);
+}
+
+
+static int wpas_dpp_build_conf_resp(struct wpa_supplicant *wpa_s,
+				    struct dpp_authentication *auth, bool tcp)
+{
+	struct wpabuf *resp;
+
+	resp = dpp_build_conf_resp(auth, auth->e_nonce, auth->curve->nonce_len,
+				   auth->e_netrole, true);
+	if (!resp)
+		return -1;
+
+	if (tcp) {
+		auth->conf_resp_tcp = resp;
+		return 0;
+	}
+
+	eloop_cancel_timeout(wpas_dpp_gas_initial_resp_timeout, wpa_s, NULL);
+	if (gas_server_set_resp(wpa_s->gas_server, auth->config_resp_ctx,
+				resp) < 0) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Could not find pending GAS response");
+		wpabuf_free(resp);
+		return -1;
+	}
+	auth->conf_resp = resp;
+	return 0;
+}
+
+
+int wpas_dpp_conf_set(struct wpa_supplicant *wpa_s, const char *cmd)
+{
+	int peer;
+	const char *pos;
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+	bool tcp = false;
+
+	pos = os_strstr(cmd, " peer=");
+	if (!pos)
+		return -1;
+	peer = atoi(pos + 6);
+#ifdef CONFIG_DPP2
+	if (!auth || !auth->waiting_config ||
+	    (auth->peer_bi &&
+	     (unsigned int) peer != auth->peer_bi->id)) {
+		auth = dpp_controller_get_auth(wpa_s->dpp, peer);
+		tcp = true;
+	}
+#endif /* CONFIG_DPP2 */
+
+	if (!auth || !auth->waiting_config) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: No authentication exchange waiting for configuration information");
+		return -1;
+	}
+
+	if ((!auth->peer_bi ||
+	     (unsigned int) peer != auth->peer_bi->id) &&
+	    (!auth->tmp_peer_bi ||
+	     (unsigned int) peer != auth->tmp_peer_bi->id)) {
+		wpa_printf(MSG_DEBUG, "DPP: Peer mismatch");
+		return -1;
+	}
+
+	pos = os_strstr(cmd, " comeback=");
+	if (pos) {
+		eloop_cancel_timeout(wpas_dpp_gas_initial_resp_timeout, wpa_s,
+				     NULL);
+		gas_server_set_comeback_delay(wpa_s->gas_server,
+					      auth->config_resp_ctx,
+					      atoi(pos + 10));
+		return 0;
+	}
+
+	if (dpp_set_configurator(auth, cmd) < 0)
+		return -1;
+
+	auth->use_config_query = false;
+	auth->waiting_config = false;
+	return wpas_dpp_build_conf_resp(wpa_s, auth, tcp);
 }
 
 
@@ -4091,33 +4243,6 @@ int wpas_dpp_reconfig(struct wpa_supplicant *wpa_s, const char *cmd)
 	wpa_s->dpp_chirp_listen = 0;
 
 	return eloop_register_timeout(0, 0, wpas_dpp_chirp_next, wpa_s, NULL);
-}
-
-
-static int wpas_dpp_build_conf_resp(struct wpa_supplicant *wpa_s,
-				    struct dpp_authentication *auth, bool tcp)
-{
-	struct wpabuf *resp;
-
-	resp = dpp_build_conf_resp(auth, auth->e_nonce, auth->curve->nonce_len,
-				   auth->e_netrole, true);
-	if (!resp)
-		return -1;
-
-	if (tcp) {
-		auth->conf_resp_tcp = resp;
-		return 0;
-	}
-
-	if (gas_server_set_resp(wpa_s->gas_server, auth->cert_resp_ctx,
-				resp) < 0) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Could not find pending GAS response");
-		wpabuf_free(resp);
-		return -1;
-	}
-	auth->conf_resp = resp;
-	return 0;
 }
 
 

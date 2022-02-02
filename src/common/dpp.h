@@ -352,8 +352,10 @@ struct dpp_authentication {
 	char *trusted_eap_server_name;
 	struct wpabuf *cacert;
 	struct wpabuf *certbag;
-	void *cert_resp_ctx;
+	void *config_resp_ctx;
 	void *gas_server_ctx;
+	bool use_config_query;
+	bool waiting_config;
 	char *e_name;
 	char *e_mud_url;
 	int *e_band_support;

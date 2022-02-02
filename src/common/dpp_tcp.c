@@ -1328,6 +1328,52 @@ static int dpp_controller_rx_gas_req(struct dpp_connection *conn, const u8 *msg,
 						   WLAN_PA_GAS_INITIAL_RESP);
 	}
 
+	if (!resp && auth->waiting_config && auth->peer_bi) {
+		char *buf = NULL, *name = "";
+		char band[200], *b_pos, *b_end;
+		int i, res, *opclass = auth->e_band_support;
+		char *mud_url = "N/A";
+
+		wpa_printf(MSG_DEBUG, "DPP: Configuration not yet ready");
+		if (auth->e_name) {
+			size_t e_len = os_strlen(auth->e_name);
+
+			buf = os_malloc(e_len * 4 + 1);
+			if (buf) {
+				printf_encode(buf, len * 4 + 1,
+					      (const u8 *) auth->e_name, e_len);
+				name = buf;
+			}
+		}
+		band[0] = '\0';
+		b_pos = band;
+		b_end = band + sizeof(band);
+		for (i = 0; opclass && opclass[i]; i++) {
+			res = os_snprintf(b_pos, b_end - b_pos, "%s%d",
+					  b_pos == band ? "" : ",", opclass[i]);
+			if (os_snprintf_error(b_end - b_pos, res)) {
+				*b_pos = '\0';
+				break;
+			}
+			b_pos += res;
+		}
+		if (auth->e_mud_url) {
+			size_t e_len = os_strlen(auth->e_mud_url);
+
+			if (!has_ctrl_char((const u8 *) auth->e_mud_url, e_len))
+				mud_url = auth->e_mud_url;
+		}
+		wpa_msg(conn->msg_ctx, MSG_INFO, DPP_EVENT_CONF_NEEDED
+			"peer=%d net_role=%s name=\"%s\" opclass=%s mud_url=%s",
+			auth->peer_bi->id, dpp_netrole_str(auth->e_netrole),
+			name, band, mud_url);
+		os_free(buf);
+
+		conn->gas_comeback_in_progress = 1;
+		return dpp_tcp_send_comeback_delay(conn,
+						   WLAN_PA_GAS_INITIAL_RESP);
+	}
+
 	return dpp_tcp_send_gas_resp(conn, WLAN_PA_GAS_INITIAL_RESP, resp);
 }
 
