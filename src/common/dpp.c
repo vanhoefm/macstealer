@@ -1289,6 +1289,9 @@ void dpp_auth_deinit(struct dpp_authentication *auth)
 		dl_list_del(&auth->tmp_peer_bi->list);
 		dpp_bootstrap_info_free(auth->tmp_peer_bi);
 	}
+	os_free(auth->e_name);
+	os_free(auth->e_mud_url);
+	os_free(auth->e_band_support);
 #ifdef CONFIG_TESTING_OPTIONS
 	os_free(auth->config_obj_override);
 	os_free(auth->discovery_override);
@@ -1969,6 +1972,8 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
 		goto fail;
 	}
 	wpa_printf(MSG_DEBUG, "DPP: Enrollee name = '%s'", token->string);
+	os_free(auth->e_name);
+	auth->e_name = os_strdup(token->string);
 
 	token = json_get_member(root, "wi-fi_tech");
 	if (!token || token->type != JSON_STRING) {
@@ -2008,6 +2013,8 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
 		wpa_printf(MSG_DEBUG, "DPP: mudurl = '%s'", token->string);
 		wpa_msg(auth->msg_ctx, MSG_INFO, DPP_EVENT_MUD_URL "%s",
 			token->string);
+		os_free(auth->e_mud_url);
+		auth->e_mud_url = os_strdup(token->string);
 	}
 
 	token = json_get_member(root, "bandSupport");
@@ -2043,7 +2050,8 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
 			}
 			pos += res;
 		}
-		os_free(opclass);
+		os_free(auth->e_band_support);
+		auth->e_band_support = opclass;
 		wpa_msg(auth->msg_ctx, MSG_INFO, DPP_EVENT_BAND_SUPPORT "%s",
 			txt);
 	}

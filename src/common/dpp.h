@@ -354,6 +354,9 @@ struct dpp_authentication {
 	struct wpabuf *certbag;
 	void *cert_resp_ctx;
 	void *gas_server_ctx;
+	char *e_name;
+	char *e_mud_url;
+	int *e_band_support;
 #ifdef CONFIG_TESTING_OPTIONS
 	char *config_obj_override;
 	char *discovery_override;
