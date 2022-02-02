@@ -26,8 +26,6 @@
 #include "dpp_i.h"
 
 
-static const char * dpp_netrole_str(enum dpp_netrole netrole);
-
 #ifdef CONFIG_TESTING_OPTIONS
 #ifdef CONFIG_DPP3
 int dpp_version_override = 3;
@@ -1401,7 +1399,7 @@ static void dpp_build_legacy_cred_params(struct wpabuf *buf,
 }
 
 
-static const char * dpp_netrole_str(enum dpp_netrole netrole)
+const char * dpp_netrole_str(enum dpp_netrole netrole)
 {
 	switch (netrole) {
 	case DPP_NETROLE_STA:

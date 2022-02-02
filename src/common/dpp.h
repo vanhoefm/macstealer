@@ -525,6 +525,7 @@ int dpp_parse_uri_mac(struct dpp_bootstrap_info *bi, const char *mac);
 int dpp_parse_uri_info(struct dpp_bootstrap_info *bi, const char *info);
 int dpp_nfc_update_bi(struct dpp_bootstrap_info *own_bi,
 		      struct dpp_bootstrap_info *peer_bi);
+const char * dpp_netrole_str(enum dpp_netrole netrole);
 struct dpp_authentication *
 dpp_alloc_auth(struct dpp_global *dpp, void *msg_ctx);
 struct hostapd_hw_modes;
