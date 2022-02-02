@@ -1,6 +1,7 @@
 # Test cases for Device Provisioning Protocol (DPP)
 # Copyright (c) 2017, Qualcomm Atheros, Inc.
 # Copyright (c) 2018-2019, The Linux Foundation
+# Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc.
 #
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
@@ -7046,3 +7047,170 @@ def run_dpp_enterprise_tcp2(dev, apdev, params):
                          tcp_addr="127.0.0.1")
 
     run_dpp_enterprise_tcp_end(params, dev, wt)
+
+def test_dpp_qr_code_config_event_initiator(dev, apdev):
+    """DPP QR Code and config event on Configurator Initiator"""
+    run_dpp_qr_code_config_event_initiator(dev, apdev)
+
+def test_dpp_qr_code_config_event_initiator_set_comeback(dev, apdev):
+    """DPP QR Code and config event on Configurator Initiator (set comeback)"""
+    run_dpp_qr_code_config_event_initiator(dev, apdev, set_comeback=True)
+
+def test_dpp_qr_code_config_event_initiator_slow(dev, apdev):
+    """DPP QR Code and config event on Configurator Initiator (slow)"""
+    run_dpp_qr_code_config_event_initiator(dev, apdev, slow=True)
+
+def test_dpp_qr_code_config_event_initiator_failure(dev, apdev):
+    """DPP QR Code and config event on Configurator Initiator (failure)"""
+    run_dpp_qr_code_config_event_initiator(dev, apdev, failure=True)
+
+def test_dpp_qr_code_config_event_initiator_no_response(dev, apdev):
+    """DPP QR Code and config event on Configurator Initiator (no response)"""
+    run_dpp_qr_code_config_event_initiator(dev, apdev, failure=True,
+                                           no_response=True)
+
+def run_dpp_qr_code_config_event_initiator(dev, apdev, set_comeback=False,
+                                           slow=False, failure=False,
+                                           no_response=False):
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    dev[0].dpp_listen(2412)
+    id1 = dev[1].dpp_auth_init(uri=uri0, conf="query")
+    wait_auth_success(dev[0], dev[1])
+    ev = dev[1].wait_event(["DPP-CONF-NEEDED"])
+    if ev is None:
+        raise Exception("Configuration query not seen")
+    if "peer=%d " % id1 not in ev:
+        raise Exception("Peer id mismatch: " + ev)
+    if "net_role=sta" not in ev:
+        raise Exception("Net role mismatch: " + ev)
+
+    if set_comeback:
+        if "OK" not in dev[1].request(("DPP_CONF_SET peer=%d comeback=123" % id1)):
+            raise Exception("DPP_CONF_SET failed")
+
+    if slow:
+        time.sleep(0.100)
+
+    if failure:
+        conf = "conf=failure"
+    else:
+        ssid = "sae"
+        password = "password"
+        conf = "conf=sta-sae"
+        conf += " ssid=" + binascii.hexlify(ssid.encode()).decode()
+        conf += " pass=" + binascii.hexlify(password.encode()).decode()
+    if not no_response:
+        if "OK" not in dev[1].request(("DPP_CONF_SET peer=%d " % id1) + conf):
+            raise Exception("DPP_CONF_SET failed")
+
+    ev = dev[0].wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"], timeout=15)
+    if ev is None:
+        raise Exception("DPP configuration not completed (Enrollee)")
+    if failure and "DPP-CONF-FAILED" not in ev:
+        raise Exception("DPP configuration did not fail (Enrollee)")
+    if (not failure) and "DPP-CONF-RECEIVED" not in ev:
+        raise Exception("DPP configuration did not succeed (Enrollee)")
+    time.sleep(0.01)
+    dev[0].dump_monitor()
+    dev[1].dump_monitor()
+
+def test_dpp_qr_code_config_event_initiator_both(dev, apdev):
+    """DPP QR Code and config event on Configurator/Enrollee Initiator"""
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    ssid = "sae"
+    password = "password"
+    dev[0].set("dpp_configurator_params",
+               "conf=sta-sae ssid=%s pass=%s" % (binascii.hexlify(ssid.encode()).decode(), binascii.hexlify(password.encode()).decode()))
+    dev[0].dpp_listen(2412, role="configurator")
+    id1 = dev[1].dpp_auth_init(uri=uri0, conf="query", role="either")
+    wait_auth_success(dev[0], dev[1], configurator=dev[0], enrollee=dev[1])
+    time.sleep(0.01)
+    dev[0].dump_monitor()
+    dev[1].dump_monitor()
+
+def test_dpp_tcp_qr_code_config_event_initiator(dev, apdev, params):
+    """DPP over TCP (Configurator initiates with config event)"""
+    try:
+        run_dpp_tcp_qr_code_config_event_initiator(dev[0], dev[1])
+    finally:
+        dev[1].request("DPP_CONTROLLER_STOP")
+
+def run_dpp_tcp_qr_code_config_event_initiator(dev0, dev1):
+    check_dpp_capab(dev0, min_ver=2)
+    check_dpp_capab(dev1, min_ver=2)
+
+    id_c = dev1.dpp_bootstrap_gen()
+    uri_c = dev1.request("DPP_BOOTSTRAP_GET_URI %d" % id_c)
+    res = dev1.request("DPP_BOOTSTRAP_INFO %d" % id_c)
+    req = "DPP_CONTROLLER_START role=enrollee"
+    if "OK" not in dev1.request(req):
+        raise Exception("Failed to start Controller")
+
+    conf_id = dev0.dpp_configurator_add()
+    id1 = dev0.dpp_auth_init(uri=uri_c, role="configurator", conf="query",
+                             tcp_addr="127.0.0.1")
+    wait_auth_success(dev1, dev0)
+    ev = dev0.wait_event(["DPP-CONF-NEEDED"])
+    if ev is None:
+        raise Exception("Configuration query not seen")
+    if "peer=%d " % id1 not in ev:
+        raise Exception("Peer id mismatch: " + ev)
+    if "net_role=sta" not in ev:
+        raise Exception("Net role mismatch: " + ev)
+
+    ssid = "sae"
+    password = "password"
+    conf = "conf=sta-sae"
+    conf += " ssid=" + binascii.hexlify(ssid.encode()).decode()
+    conf += " pass=" + binascii.hexlify(password.encode()).decode()
+    if "OK" not in dev0.request(("DPP_CONF_SET peer=%d " % id1) + conf):
+        raise Exception("DPP_CONF_SET failed")
+
+    ev = dev1.wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"], timeout=15)
+    if ev is None:
+        raise Exception("DPP configuration not completed (Enrollee)")
+    if "DPP-CONF-RECEIVED" not in ev:
+        raise Exception("DPP configuration did not succeed (Enrollee)")
+    time.sleep(0.01)
+    dev0.dump_monitor()
+    dev1.dump_monitor()
+
+def test_dpp_qr_code_config_event_responder(dev, apdev):
+    """DPP QR Code and config event on Configurator Responder"""
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    dev[0].set("dpp_configurator_params", "conf=query")
+    dev[0].dpp_listen(2412, role="configurator")
+    dev[1].dpp_auth_init(uri=uri0, role="enrollee")
+    wait_auth_success(dev[0], dev[1])
+    ev = dev[0].wait_event(["DPP-CONF-NEEDED"])
+    if ev is None:
+        raise Exception("Configuration query not seen")
+    if "net_role=sta" not in ev:
+        raise Exception("Net role mismatch: " + ev)
+    peer_id = int(ev.split()[1].split('=')[1])
+
+    ssid = "sae"
+    password = "password"
+    conf = "conf=sta-sae"
+    conf += " ssid=" + binascii.hexlify(ssid.encode()).decode()
+    conf += " pass=" + binascii.hexlify(password.encode()).decode()
+    if "OK" not in dev[0].request(("DPP_CONF_SET peer=%d " % peer_id) + conf):
+        raise Exception("DPP_CONF_SET failed")
+
+    ev = dev[1].wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"], timeout=15)
+    if ev is None:
+        raise Exception("DPP configuration not completed (Enrollee)")
+    if "DPP-CONF-RECEIVED" not in ev:
+        raise Exception("DPP configuration did not succeed (Enrollee)")
+    time.sleep(0.01)
+    dev[0].dump_monitor()
+    dev[1].dump_monitor()
