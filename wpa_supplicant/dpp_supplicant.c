@@ -48,6 +48,7 @@ wpas_dpp_tx_pkex_status(struct wpa_supplicant *wpa_s,
 			const u8 *src, const u8 *bssid,
 			const u8 *data, size_t data_len,
 			enum offchannel_send_action_result result);
+static void wpas_dpp_gas_client_timeout(void *eloop_ctx, void *timeout_ctx);
 #ifdef CONFIG_DPP2
 static void wpas_dpp_reconfig_reply_wait_timeout(void *eloop_ctx,
 						 void *timeout_ctx);
@@ -1666,6 +1667,7 @@ static void wpas_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
 	enum dpp_status_error status = DPP_STATUS_CONFIG_REJECTED;
 	unsigned int i;
 
+	eloop_cancel_timeout(wpas_dpp_gas_client_timeout, wpa_s, NULL);
 	wpa_s->dpp_gas_dialog_token = -1;
 
 	if (!auth || (!auth->auth_success && !auth->reconfig_success) ||
@@ -1767,6 +1769,22 @@ fail2:
 }
 
 
+static void wpas_dpp_gas_client_timeout(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+
+	if (!wpa_s->dpp_gas_client || !auth ||
+	    (!auth->auth_success && !auth->reconfig_success))
+		return;
+
+	wpa_printf(MSG_DEBUG, "DPP: Timeout while waiting for Config Response");
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_FAILED);
+	dpp_auth_deinit(wpa_s->dpp_auth);
+	wpa_s->dpp_auth = NULL;
+}
+
+
 static void wpas_dpp_start_gas_client(struct wpa_supplicant *wpa_s)
 {
 	struct dpp_authentication *auth = wpa_s->dpp_auth;
@@ -1792,6 +1810,16 @@ static void wpas_dpp_start_gas_client(struct wpa_supplicant *wpa_s)
 
 	wpa_printf(MSG_DEBUG, "DPP: GAS request to " MACSTR " (freq %u MHz)",
 		   MAC2STR(auth->peer_mac_addr), auth->curr_freq);
+
+	/* Use a 120 second timeout since the gas_query_req() operation could
+	 * remain waiting indefinitely for the response if the Configurator
+	 * keeps sending out comeback responses with additional delay. The
+	 * DPP technical specification expects the Enrollee to continue sending
+	 * out new Config Requests for 60 seconds, so this gives an extra 60
+	 * second time after the last expected new Config Request for the
+	 * Configurator to determine what kind of configuration to provide. */
+	eloop_register_timeout(120, 0, wpas_dpp_gas_client_timeout,
+			       wpa_s, NULL);
 
 	res = gas_query_req(wpa_s->gas, auth->peer_mac_addr, auth->curr_freq,
 			    1, 1, buf, wpas_dpp_gas_resp_cb, wpa_s);
@@ -3752,6 +3780,7 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 	eloop_cancel_timeout(wpas_dpp_init_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_auth_resp_retry_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_gas_initial_resp_timeout, wpa_s, NULL);
+	eloop_cancel_timeout(wpas_dpp_gas_client_timeout, wpa_s, NULL);
 #ifdef CONFIG_DPP2
 	eloop_cancel_timeout(wpas_dpp_config_result_wait_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_conn_status_result_wait_timeout,
