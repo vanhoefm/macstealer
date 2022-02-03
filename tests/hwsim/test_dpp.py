@@ -7106,7 +7106,7 @@ def run_dpp_qr_code_config_event_initiator(dev, apdev, set_comeback=False,
         if "OK" not in dev[1].request(("DPP_CONF_SET peer=%d " % id1) + conf):
             raise Exception("DPP_CONF_SET failed")
 
-    ev = dev[0].wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"], timeout=15)
+    ev = dev[0].wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"], timeout=65)
     if ev is None:
         raise Exception("DPP configuration not completed (Enrollee)")
     if failure and "DPP-CONF-FAILED" not in ev:
