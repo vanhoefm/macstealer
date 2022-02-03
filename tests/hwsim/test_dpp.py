@@ -1462,7 +1462,7 @@ def test_dpp_gas_timeout(dev, apdev):
         raise Exception("Unexpected GAS result (Enrollee): " + ev)
     dev[0].set("ext_mgmt_frame_handling", "0")
 
-    ev = dev[1].wait_event(["DPP-CONF-FAILED"], timeout=15)
+    ev = dev[1].wait_event(["DPP-CONF-FAILED"], timeout=65)
     if ev is None:
         raise Exception("DPP configuration failure not reported (Configurator)")
 
