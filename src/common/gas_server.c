@@ -19,7 +19,7 @@
 
 
 #define MAX_ADV_PROTO_ID_LEN 10
-#define GAS_QUERY_TIMEOUT 10
+#define GAS_QUERY_TIMEOUT 60
 
 struct gas_server_handler {
 	struct dl_list list;
