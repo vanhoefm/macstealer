@@ -2027,6 +2027,8 @@ struct wpa_driver_capa {
 #define WPA_DRIVER_FLAGS2_OCV			0x0000000000000080ULL
 /** Driver expects user space implementation of SME in AP mode */
 #define WPA_DRIVER_FLAGS2_AP_SME		0x0000000000000100ULL
+/** Driver handles SA Query procedures in AP mode */
+#define WPA_DRIVER_FLAGS2_SA_QUERY_OFFLOAD_AP	0x0000000000000200ULL
 	u64 flags2;
 
 #define FULL_AP_CLIENT_STATE_SUPP(drv_flags) \

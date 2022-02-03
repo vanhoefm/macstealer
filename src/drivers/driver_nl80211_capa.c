@@ -920,8 +920,15 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 	wiphy_info_tdls(capa, tb[NL80211_ATTR_TDLS_SUPPORT],
 			tb[NL80211_ATTR_TDLS_EXTERNAL_SETUP]);
 
-	if (tb[NL80211_ATTR_DEVICE_AP_SME])
+	if (tb[NL80211_ATTR_DEVICE_AP_SME]) {
+		u32 ap_sme_features_flags =
+			nla_get_u32(tb[NL80211_ATTR_DEVICE_AP_SME]);
+
+		if (ap_sme_features_flags & NL80211_AP_SME_SA_QUERY_OFFLOAD)
+			capa->flags2 |= WPA_DRIVER_FLAGS2_SA_QUERY_OFFLOAD_AP;
+
 		info->device_ap_sme = 1;
+	}
 
 	wiphy_info_feature_flags(info, tb[NL80211_ATTR_FEATURE_FLAGS]);
 	wiphy_info_ext_feature_flags(info, tb[NL80211_ATTR_EXT_FEATURES]);

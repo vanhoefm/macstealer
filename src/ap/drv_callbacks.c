@@ -1011,7 +1011,9 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
 		hostapd_neighbor_set_own_report(hapd->iface->bss[i]);
 
 #ifdef CONFIG_OCV
-	if (hapd->conf->ocv) {
+	if (hapd->conf->ocv &&
+	    !(hapd->iface->drv_flags2 &
+	      WPA_DRIVER_FLAGS2_SA_QUERY_OFFLOAD_AP)) {
 		struct sta_info *sta;
 		bool check_sa_query = false;
 

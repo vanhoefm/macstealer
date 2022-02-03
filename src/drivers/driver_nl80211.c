@@ -4656,10 +4656,24 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 	     nla_put_flag(msg, NL80211_ATTR_CONTROL_PORT_NO_ENCRYPT)))
 		goto fail;
 
-	if (drv->device_ap_sme &&
-	    (params->key_mgmt_suites & WPA_KEY_MGMT_SAE) &&
-	    nla_put_flag(msg, NL80211_ATTR_EXTERNAL_AUTH_SUPPORT))
-		goto fail;
+	if (drv->device_ap_sme) {
+		u32 flags = 0;
+
+		if (params->key_mgmt_suites & WPA_KEY_MGMT_SAE) {
+			/* Add the previously used flag attribute to support
+			 * older kernel versions and the newer flag bit for
+			 * newer kernels. */
+			if (nla_put_flag(msg,
+					 NL80211_ATTR_EXTERNAL_AUTH_SUPPORT))
+				goto fail;
+			flags |= NL80211_AP_SETTINGS_EXTERNAL_AUTH_SUPPORT;
+		}
+
+		flags |= NL80211_AP_SETTINGS_SA_QUERY_OFFLOAD_SUPPORT;
+
+		if (nla_put_u32(msg, NL80211_ATTR_AP_SETTINGS_FLAGS, flags))
+			goto fail;
+	}
 
 	wpa_printf(MSG_DEBUG, "nl80211: pairwise_ciphers=0x%x",
 		   params->pairwise_ciphers);
