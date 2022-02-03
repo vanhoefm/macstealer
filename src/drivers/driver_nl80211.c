@@ -10626,6 +10626,7 @@ static int wpa_driver_nl80211_leave_mesh(void *priv)
 	} else {
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: mesh leave request send successfully");
+		drv->first_bss->freq = 0;
 	}
 
 	if (drv->start_mode_sta &&
