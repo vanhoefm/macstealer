@@ -5129,6 +5129,15 @@ enum wpa_event_type {
 	 * is required to provide more details of the frame.
 	 */
 	EVENT_UNPROT_BEACON,
+
+	/**
+	 * EVENT_TX_WAIT_EXPIRE - TX wait timed out
+	 *
+	 * This event is used to indicate when the driver has completed
+	 * wait for a response frame based on a TX request that specified a
+	 * non-zero wait time and that has not been explicitly cancelled.
+	 */
+	EVENT_TX_WAIT_EXPIRE,
 };
 
 

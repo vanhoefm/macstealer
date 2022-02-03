@@ -2855,6 +2855,40 @@ nl80211_control_port_frame_tx_status(struct wpa_driver_nl80211_data *drv,
 }
 
 
+static void nl80211_frame_wait_cancel(struct wpa_driver_nl80211_data *drv,
+				      struct nlattr *cookie_attr)
+{
+	unsigned int i;
+	u64 cookie;
+	bool match = false;
+
+	if (!cookie_attr)
+		return;
+	cookie = nla_get_u64(cookie_attr);
+
+	for (i = 0; i < drv->num_send_frame_cookies; i++) {
+		if (cookie == drv->send_frame_cookies[i]) {
+			match = true;
+			break;
+		}
+	}
+	wpa_printf(MSG_DEBUG,
+		   "nl80211: TX frame wait expired for cookie 0x%llx%s",
+		   (long long unsigned int) cookie,
+		   match ? " (match)" : "");
+	if (!match)
+		return;
+
+	if (i < drv->num_send_frame_cookies - 1)
+		os_memmove(&drv->send_frame_cookies[i],
+			   &drv->send_frame_cookies[i + 1],
+			   (drv->num_send_frame_cookies - i - 1) * sizeof(u64));
+	drv->num_send_frame_cookies--;
+
+	wpa_supplicant_event(drv->ctx, EVENT_TX_WAIT_EXPIRE, NULL);
+}
+
+
 static void do_process_drv_event(struct i802_bss *bss, int cmd,
 				 struct nlattr **tb)
 {
@@ -3100,6 +3134,9 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 						     nla_len(frame),
 						     tb[NL80211_ATTR_ACK],
 						     tb[NL80211_ATTR_COOKIE]);
+		break;
+	case NL80211_CMD_FRAME_WAIT_CANCEL:
+		nl80211_frame_wait_cancel(drv, tb[NL80211_ATTR_COOKIE]);
 		break;
 	default:
 		wpa_dbg(drv->ctx, MSG_DEBUG, "nl80211: Ignored unknown event "
