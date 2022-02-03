@@ -24,6 +24,7 @@ void wpas_dpp_remain_on_channel_cb(struct wpa_supplicant *wpa_s,
 				   unsigned int freq, unsigned int duration);
 void wpas_dpp_cancel_remain_on_channel_cb(struct wpa_supplicant *wpa_s,
 					  unsigned int freq);
+void wpas_dpp_tx_wait_expire(struct wpa_supplicant *wpa_s);
 void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 			const u8 *buf, size_t len, unsigned int freq);
 int wpas_dpp_configurator_sign(struct wpa_supplicant *wpa_s, const char *cmd);

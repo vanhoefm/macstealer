@@ -777,6 +777,7 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
 #endif /* CONFIG_DPP2 */
 
 	wpa_s->dpp_gas_client = 0;
+	wpa_s->dpp_gas_server = 0;
 
 	pos = os_strstr(cmd, " peer=");
 	if (!pos)
@@ -1144,6 +1145,7 @@ static void wpas_dpp_rx_auth_req(struct wpa_supplicant *wpa_s, const u8 *src,
 	}
 
 	wpa_s->dpp_gas_client = 0;
+	wpa_s->dpp_gas_server = 0;
 	wpa_s->dpp_auth_ok_on_ack = 0;
 	wpa_s->dpp_auth = dpp_auth_req_rx(wpa_s->dpp, wpa_s,
 					  wpa_s->dpp_allowed_roles,
@@ -1181,9 +1183,33 @@ static void wpas_dpp_rx_auth_req(struct wpa_supplicant *wpa_s, const u8 *src,
 }
 
 
+void wpas_dpp_tx_wait_expire(struct wpa_supplicant *wpa_s)
+{
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+	int freq;
+
+	if (!wpa_s->dpp_gas_server || !auth)
+		return;
+
+	freq = auth->neg_freq > 0 ? auth->neg_freq : auth->curr_freq;
+	if (wpa_s->dpp_listen_work || (int) wpa_s->dpp_listen_freq == freq)
+		return; /* listen state is already in progress */
+
+	wpa_printf(MSG_DEBUG, "DPP: Start listen on %u MHz for GAS", freq);
+	wpa_s->dpp_in_response_listen = 1;
+	wpas_dpp_listen_start(wpa_s, freq);
+}
+
+
 static void wpas_dpp_start_gas_server(struct wpa_supplicant *wpa_s)
 {
-	/* TODO: stop wait and start ROC */
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Starting GAS server (curr_freq=%d neg_freq=%d dpp_listen_freq=%d dpp_listen_work=%d)",
+		   auth->curr_freq, auth->neg_freq, wpa_s->dpp_listen_freq,
+		   !!wpa_s->dpp_listen_work);
+	wpa_s->dpp_gas_server = 1;
 }
 
 
@@ -1965,6 +1991,8 @@ static void wpas_dpp_rx_conf_result(struct wpa_supplicant *wpa_s, const u8 *src,
 	status = dpp_conf_result_rx(auth, hdr, buf, len);
 
 	if (status == DPP_STATUS_OK && auth->send_conn_status) {
+		int freq;
+
 		wpa_msg(wpa_s, MSG_INFO,
 			DPP_EVENT_CONF_SENT "wait_conn_status=1");
 		wpa_printf(MSG_DEBUG, "DPP: Wait for Connection Status Result");
@@ -1977,8 +2005,10 @@ static void wpas_dpp_rx_conf_result(struct wpa_supplicant *wpa_s, const u8 *src,
 				       wpas_dpp_conn_status_result_wait_timeout,
 				       wpa_s, NULL);
 		offchannel_send_action_done(wpa_s);
-		wpas_dpp_listen_start(wpa_s, auth->neg_freq ? auth->neg_freq :
-				      auth->curr_freq);
+		freq = auth->neg_freq ? auth->neg_freq : auth->curr_freq;
+		if (!wpa_s->dpp_in_response_listen ||
+		    (int) wpa_s->dpp_listen_freq != freq)
+			wpas_dpp_listen_start(wpa_s, freq);
 		return;
 	}
 	offchannel_send_action_done(wpa_s);
