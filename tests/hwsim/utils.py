@@ -304,11 +304,3 @@ def disable_ipv6(fn):
             sysctl_write('net.ipv6.conf.all.disable_ipv6=0')
             sysctl_write('net.ipv6.conf.default.disable_ipv6=0')
     return cloned_wrapper(wrapper, fn)
-
-def reset_ignore_old_scan_res(fn):
-    def wrapper(dev, apdev, params):
-        try:
-            var_arg_call(fn, dev, apdev, params)
-        finally:
-            dev[0].set("ignore_old_scan_res", "0")
-    return cloned_wrapper(wrapper, fn)
