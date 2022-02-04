@@ -9948,7 +9948,6 @@ enum qca_vendor_attr_coex_config {
  *		has priority over BT_A2DP and ZB_HIGH.
  *	3: BT_A2DP has priority over ZB_HIGH.
  */
-
 enum qca_vendor_attr_coex_config_three_way {
 	QCA_VENDOR_ATTR_COEX_CONFIG_THREE_WAY_INVALID = 0,
 	QCA_VENDOR_ATTR_COEX_CONFIG_THREE_WAY_CONFIG_TYPE = 1,
@@ -11677,7 +11676,6 @@ enum qca_wlan_vendor_monitor_data_frame_type {
  * the Beacon frames obtained during the scan (off channel and connected
  * channel), when in connected state.
  */
-
 enum qca_wlan_vendor_monitor_mgmt_frame_type {
 	QCA_WLAN_VENDOR_MONITOR_MGMT_FRAME_TYPE_ALL = BIT(0),
 	/* valid only if QCA_WLAN_VENDOR_MONITOR_MGMT_FRAME_TYPE_ALL is not set
@@ -11737,8 +11735,7 @@ enum qca_wlan_vendor_monitor_ctrl_frame_type {
  * expecting the connected BSS's Beacon frames to be sent on the monitor
  * interface at this specific interval.
  */
-enum qca_wlan_vendor_attr_set_monitor_mode
-{
+enum qca_wlan_vendor_attr_set_monitor_mode {
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_DATA_TX_FRAME_TYPE = 1,
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_DATA_RX_FRAME_TYPE = 2,
@@ -11890,9 +11887,7 @@ enum qca_wlan_vendor_attr_roam_events_candidate_info {
  * u32 values. List of frequencies in MHz considered for a roam scan.
  * This is sent as an event through QCA_NL80211_VENDOR_SUBCMD_ROAM_EVENTS.
  */
-
-enum qca_wlan_vendor_attr_roam_events
-{
+enum qca_wlan_vendor_attr_roam_events {
 	QCA_WLAN_VENDOR_ATTR_ROAM_EVENTS_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_ROAM_EVENTS_CONFIGURE = 1,
 	QCA_WLAN_VENDOR_ATTR_ROAM_EVENTS_SUSPEND_STATE = 2,
