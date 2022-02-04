@@ -1395,7 +1395,7 @@ def test_scan_parsing(dev, apdev):
              # Too long SSID
              "bssid=02:ff:00:00:00:01 ie=0033" + 33*'FF',
              # All parameters
-             "flags=ffffffff bssid=02:ff:00:00:00:02 freq=1234 beacon_int=102 caps=1234 qual=10 noise=10 level=10 tsf=1122334455667788 age=123456 est_throughput=100 snr=10 parent_tsf=1122334455667788 tsf_bssid=02:03:04:05:06:07 ie=000474657374 beacon_ie=000474657374",
+             "flags=ffffffff bssid=02:ff:00:00:00:02 freq=1234 beacon_int=102 caps=1234 qual=10 noise=10 level=10 tsf=1122334455667788 age=123 est_throughput=100 snr=10 parent_tsf=1122334455667788 tsf_bssid=02:03:04:05:06:07 ie=000474657374 beacon_ie=000474657374",
              # Beacon IEs truncated
              "bssid=02:ff:00:00:00:03 ie=0000 beacon_ie=0003ffff",
              # Probe Response IEs truncated
