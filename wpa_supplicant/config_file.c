@@ -297,8 +297,8 @@ struct wpa_config * wpa_config_read(const char *name, struct wpa_config *cfgp)
 	struct wpa_ssid *ssid, *tail, *head;
 	struct wpa_cred *cred, *cred_tail, *cred_head;
 	struct wpa_config *config;
-	int id = 0;
-	int cred_id = 0;
+	static int id = 0;
+	static int cred_id = 0;
 
 	if (name == NULL)
 		return NULL;
