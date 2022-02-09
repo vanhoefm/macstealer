@@ -2896,6 +2896,17 @@ static void nl80211_frame_wait_cancel(struct wpa_driver_nl80211_data *drv,
 }
 
 
+static void nl80211_assoc_comeback(struct wpa_driver_nl80211_data *drv,
+				   struct nlattr *mac, struct nlattr *timeout)
+{
+	if (!mac || !timeout)
+		return;
+	wpa_printf(MSG_DEBUG, "nl80211: Association comeback requested by "
+		   MACSTR " (timeout: %u ms)",
+		   MAC2STR((u8 *) nla_data(mac)), nla_get_u32(timeout));
+}
+
+
 static void do_process_drv_event(struct i802_bss *bss, int cmd,
 				 struct nlattr **tb)
 {
@@ -3144,6 +3155,10 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 		break;
 	case NL80211_CMD_FRAME_WAIT_CANCEL:
 		nl80211_frame_wait_cancel(drv, tb[NL80211_ATTR_COOKIE]);
+		break;
+	case NL80211_CMD_ASSOC_COMEBACK:
+		nl80211_assoc_comeback(drv, tb[NL80211_ATTR_MAC],
+				       tb[NL80211_ATTR_TIMEOUT]);
 		break;
 	default:
 		wpa_dbg(drv->ctx, MSG_DEBUG, "nl80211: Ignored unknown event "
