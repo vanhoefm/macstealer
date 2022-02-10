@@ -148,19 +148,22 @@ static struct wpa_bss * wpa_supplicant_get_new_bss(
 }
 
 
-static void wpa_supplicant_update_current_bss(struct wpa_supplicant *wpa_s)
+static struct wpa_bss *
+wpa_supplicant_update_current_bss(struct wpa_supplicant *wpa_s, const u8 *bssid)
 {
-	struct wpa_bss *bss = wpa_supplicant_get_new_bss(wpa_s, wpa_s->bssid);
+	struct wpa_bss *bss = wpa_supplicant_get_new_bss(wpa_s, bssid);
 
 	if (!bss) {
 		wpa_supplicant_update_scan_results(wpa_s);
 
 		/* Get the BSS from the new scan results */
-		bss = wpa_supplicant_get_new_bss(wpa_s, wpa_s->bssid);
+		bss = wpa_supplicant_get_new_bss(wpa_s, bssid);
 	}
 
 	if (bss)
 		wpa_s->current_bss = bss;
+
+	return bss;
 }
 
 
@@ -172,7 +175,7 @@ static int wpa_supplicant_select_config(struct wpa_supplicant *wpa_s)
 	int res;
 
 	if (wpa_s->conf->ap_scan == 1 && wpa_s->current_ssid) {
-		wpa_supplicant_update_current_bss(wpa_s);
+		wpa_supplicant_update_current_bss(wpa_s, wpa_s->bssid);
 
 		if (wpa_s->current_ssid->ssid_len == 0)
 			return 0; /* current profile still in use */
@@ -249,7 +252,7 @@ static int wpa_supplicant_select_config(struct wpa_supplicant *wpa_s)
 	old_ssid = wpa_s->current_ssid;
 	wpa_s->current_ssid = ssid;
 
-	wpa_supplicant_update_current_bss(wpa_s);
+	wpa_supplicant_update_current_bss(wpa_s, wpa_s->bssid);
 
 	wpa_supplicant_rsn_supp_set_config(wpa_s, wpa_s->current_ssid);
 	wpa_supplicant_initiate_eapol(wpa_s);
@@ -3281,6 +3284,26 @@ static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
 	wpa_s->own_reconnect_req = 0;
 
 	ft_completed = wpa_ft_is_completed(wpa_s->wpa);
+
+	if (wpa_drv_get_bssid(wpa_s, bssid) < 0) {
+		wpa_dbg(wpa_s, MSG_ERROR, "Failed to get BSSID");
+		wpa_supplicant_deauthenticate(
+			wpa_s, WLAN_REASON_DEAUTH_LEAVING);
+		return;
+	}
+
+	if (ft_completed &&
+	    (wpa_s->drv_flags & WPA_DRIVER_FLAGS_BSS_SELECTION)) {
+		wpa_msg(wpa_s, MSG_INFO, "Attempt to roam to " MACSTR,
+			MAC2STR(bssid));
+		if (!wpa_supplicant_update_current_bss(wpa_s, bssid)) {
+			wpa_printf(MSG_ERROR,
+				   "Can't find target AP's information!");
+			return;
+		}
+		wpa_supplicant_assoc_update_ie(wpa_s);
+	}
+
 	if (data && wpa_supplicant_event_associnfo(wpa_s, data) < 0)
 		return;
 	/*
@@ -3290,13 +3313,6 @@ static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
 	 */
 	if (!ft_completed)
 		ft_completed = wpa_fils_is_completed(wpa_s->wpa);
-
-	if (wpa_drv_get_bssid(wpa_s, bssid) < 0) {
-		wpa_dbg(wpa_s, MSG_ERROR, "Failed to get BSSID");
-		wpa_supplicant_deauthenticate(
-			wpa_s, WLAN_REASON_DEAUTH_LEAVING);
-		return;
-	}
 
 	wpa_supplicant_set_state(wpa_s, WPA_ASSOCIATED);
 	if (os_memcmp(bssid, wpa_s->bssid, ETH_ALEN) != 0) {
