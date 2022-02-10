@@ -17,7 +17,6 @@
 #include "eloop.h"
 #include "common/ieee802_11_defs.h"
 #include "l2_packet/l2_packet.h"
-#include "p2p/p2p.h"
 
 #include "common.h"
 #ifndef _BYTE_ORDER
