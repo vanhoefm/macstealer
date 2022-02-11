@@ -508,7 +508,7 @@ void p2p_copy_channels(struct p2p_channels *dst,
 		return;
 	}
 
-	for (i = 0, j = 0; i < P2P_MAX_REG_CLASSES; i++) {
+	for (i = 0, j = 0; i < src->reg_classes; i++) {
 		if (is_6ghz_op_class(src->reg_class[i].reg_class))
 			continue;
 		os_memcpy(&dst->reg_class[j], &src->reg_class[i],
