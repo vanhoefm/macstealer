@@ -1145,6 +1145,7 @@ def test_ap_wps_cancel(dev, apdev):
     bss = dev[0].get_bss(apdev[0]['bssid'])
     if "[WPS-AUTH]" in bss['flags']:
         raise Exception("WPS-AUTH flag not cleared")
+    dev[0].flush_scan_cache()
 
 def test_ap_wps_er_add_enrollee(dev, apdev):
     """WPS ER configuring AP and adding a new enrollee using PIN"""
