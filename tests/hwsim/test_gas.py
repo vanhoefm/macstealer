@@ -1641,6 +1641,7 @@ def test_gas_anqp_venue_url(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq="2412", force_scan=True)
     if "OK" not in dev[0].request("ANQP_GET " + bssid + " 257,258,277"):
         raise Exception("ANQP_GET command failed")
@@ -1703,6 +1704,7 @@ def test_gas_anqp_venue_url2(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq="2412", force_scan=True)
     if "OK" not in dev[0].request("ANQP_GET " + bssid + " 257,258,277"):
         raise Exception("ANQP_GET command failed")
@@ -1759,6 +1761,7 @@ def test_gas_anqp_venue_url_pmf(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
+    dev[0].flush_scan_cache()
     dev[0].connect("gas/anqp/pmf", psk="12345678", ieee80211w="2",
                    scan_freq="2412")
     if "OK" not in dev[0].request("ANQP_GET " + bssid + " 277"):
@@ -1799,6 +1802,7 @@ def test_gas_anqp_capab_list(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq="2412", force_scan=True)
     if "OK" not in dev[0].request("ANQP_GET " + bssid + " 257"):
         raise Exception("ANQP_GET command failed")
