@@ -415,6 +415,7 @@ def test_ap_open_tdls_vht(dev, apdev):
 
 def test_ap_open_tdls_vht80(dev, apdev):
     """Open AP and two stations using TDLS with VHT 80"""
+    clear_scan_cache(apdev[0])
     params = {"ssid": "test-open",
               "country_code": "US",
               "hw_mode": "a",
@@ -453,6 +454,7 @@ def test_ap_open_tdls_vht80(dev, apdev):
 
 def test_ap_open_tdls_vht80plus80(dev, apdev):
     """Open AP and two stations using TDLS with VHT 80+80"""
+    clear_scan_cache(apdev[0])
     params = {"ssid": "test-open",
               "country_code": "US",
               "hw_mode": "a",

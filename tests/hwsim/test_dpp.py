@@ -6328,6 +6328,7 @@ def test_dpp_chirp_ap_5g(dev, apdev):
         update_hapd_config(hapd)
     finally:
         clear_regdom(hapd, dev)
+        clear_scan_cache(apdev[0])
 
 def test_dpp_chirp_ap_errors(dev, apdev):
     """DPP chirp errors in hostapd"""

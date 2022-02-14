@@ -18,6 +18,7 @@ from test_dfs import wait_dfs_event
 
 def test_ap_vht80(dev, apdev):
     """VHT with 80 MHz channel width"""
+    clear_scan_cache(apdev[0])
     try:
         hapd = None
         params = {"ssid": "vht",
@@ -82,6 +83,7 @@ def test_ap_vht80(dev, apdev):
 
 def test_ap_vht_wifi_generation(dev, apdev):
     """VHT and wifi_generation"""
+    clear_scan_cache(apdev[0])
     try:
         hapd = None
         params = {"ssid": "vht",
@@ -165,6 +167,7 @@ def test_ap_vht80d(dev, apdev):
 
 def test_ap_vht80_params(dev, apdev):
     """VHT with 80 MHz channel width and number of optional features enabled"""
+    clear_scan_cache(apdev[0])
     try:
         hapd = None
         params = {"ssid": "vht",
@@ -301,6 +304,7 @@ def test_ap_vht_40(devs, apdevs):
     """VHT and 40 MHz channel"""
     dev = devs[0]
     ap = apdevs[0]
+    clear_scan_cache(ap)
     try:
         hapd = None
         params = {"ssid": "test-vht40",
@@ -354,6 +358,7 @@ def test_ap_vht_capab_not_supported(dev, apdev):
 
 def test_ap_vht160(dev, apdev):
     """VHT with 160 MHz channel width (1)"""
+    clear_scan_cache(apdev[0])
     try:
         hapd = None
         params = {"ssid": "vht",
@@ -1077,6 +1082,7 @@ def test_ap_vht_on_24ghz_2(dev, apdev):
 
 def test_prefer_vht40(dev, apdev):
     """Preference on VHT40 over HT40"""
+    clear_scan_cache(apdev[0])
     try:
         hapd = None
         hapd2 = None
@@ -1124,6 +1130,7 @@ def test_prefer_vht40(dev, apdev):
 
 def test_ap_vht80_pwr_constraint(dev, apdev):
     """VHT with 80 MHz channel width and local power constraint"""
+    clear_scan_cache(apdev[0])
     hapd = None
     try:
         params = {"ssid": "vht",
@@ -1156,6 +1163,7 @@ def test_ap_vht80_pwr_constraint(dev, apdev):
 
 def test_ap_vht_use_sta_nsts(dev, apdev):
     """VHT with 80 MHz channel width and use_sta_nsts=1"""
+    clear_scan_cache(apdev[0])
     try:
         hapd = None
         params = {"ssid": "vht",
@@ -1184,6 +1192,7 @@ def test_ap_vht_use_sta_nsts(dev, apdev):
 def test_ap_vht_tkip(dev, apdev):
     """VHT and TKIP"""
     skip_without_tkip(dev[0])
+    clear_scan_cache(apdev[0])
     try:
         hapd = None
         params = {"ssid": "vht",
