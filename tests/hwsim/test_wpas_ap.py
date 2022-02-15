@@ -20,6 +20,13 @@ def wait_ap_ready(dev):
     if ev is None:
         raise Exception("AP failed to start")
 
+def log_channel_info(dev):
+    gen = dev.get_status_field('wifi_generation')
+    if gen:
+        logger.info("Wi-Fi Generation: " + gen)
+    sig = dev.request("SIGNAL_POLL").splitlines()
+    logger.info(sig)
+
 def test_wpas_ap_open(dev):
     """wpa_supplicant AP mode - open network"""
     if "FAIL" not in dev[0].request("DEAUTHENTICATE 00:11:22:33:44:55"):
@@ -669,8 +676,38 @@ def _test_wpas_ap_5ghz(dev):
     wait_ap_ready(dev[0])
 
     dev[1].connect("wpas-ap-5ghz", key_mgmt="NONE", scan_freq="5180")
+    log_channel_info(dev[1])
     dev[1].request("DISCONNECT")
     dev[1].wait_disconnected()
+
+def test_wpas_ap_open_ht40(dev):
+    """wpa_supplicant AP mode - HT 40 MHz"""
+    id = dev[0].add_network()
+    dev[0].set("country", "FI")
+    try:
+        dev[0].set_network(id, "mode", "2")
+        dev[0].set_network_quoted(id, "ssid", "wpas-ap-open")
+        dev[0].set_network(id, "key_mgmt", "NONE")
+        dev[0].set_network(id, "frequency", "5180")
+        dev[0].set_network(id, "scan_freq", "5180")
+        dev[0].set_network(id, "ht40", "1")
+        dev[0].select_network(id)
+        wait_ap_ready(dev[0])
+
+        dev[1].connect("wpas-ap-open", key_mgmt="NONE", scan_freq="5180")
+        log_channel_info(dev[1])
+        sig = dev[1].request("SIGNAL_POLL").splitlines()
+        hwsim_utils.test_connectivity(dev[0], dev[1])
+        dev[1].request("DISCONNECT")
+        dev[1].wait_disconnected()
+        if "FREQUENCY=5180" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
+        if "WIDTH=40 MHz" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+    finally:
+        set_country("00")
+        dev[0].set("country", "00")
+        dev[1].flush_scan_cache()
 
 def test_wpas_ap_open_vht80(dev):
     """wpa_supplicant AP mode - VHT 80 MHz"""
@@ -690,11 +727,44 @@ def test_wpas_ap_open_vht80(dev):
         wait_ap_ready(dev[0])
 
         dev[1].connect("wpas-ap-open", key_mgmt="NONE", scan_freq="5180")
+        log_channel_info(dev[1])
         sig = dev[1].request("SIGNAL_POLL").splitlines()
         hwsim_utils.test_connectivity(dev[0], dev[1])
         dev[1].request("DISCONNECT")
         dev[1].wait_disconnected()
         if "FREQUENCY=5180" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
+        if "WIDTH=80 MHz" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+    finally:
+        set_country("00")
+        dev[0].set("country", "00")
+        dev[1].flush_scan_cache()
+
+def test_wpas_ap_open_vht80_us(dev):
+    """wpa_supplicant AP mode - VHT 80 MHz (US)"""
+    id = dev[0].add_network()
+    dev[0].set("country", "US")
+    try:
+        dev[0].set_network(id, "mode", "2")
+        dev[0].set_network_quoted(id, "ssid", "wpas-ap-open")
+        dev[0].set_network(id, "key_mgmt", "NONE")
+        dev[0].set_network(id, "frequency", "5745")
+        dev[0].set_network(id, "scan_freq", "5745")
+        dev[0].set_network(id, "vht", "1")
+        dev[0].set_network(id, "vht_center_freq1", "5775")
+        dev[0].set_network(id, "max_oper_chwidth", "1")
+        dev[0].set_network(id, "ht40", "1")
+        dev[0].select_network(id)
+        wait_ap_ready(dev[0])
+
+        dev[1].connect("wpas-ap-open", key_mgmt="NONE", scan_freq="5745")
+        log_channel_info(dev[1])
+        sig = dev[1].request("SIGNAL_POLL").splitlines()
+        hwsim_utils.test_connectivity(dev[0], dev[1])
+        dev[1].request("DISCONNECT")
+        dev[1].wait_disconnected()
+        if "FREQUENCY=5745" not in sig:
             raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
         if "WIDTH=80 MHz" not in sig:
             raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
