@@ -3312,9 +3312,12 @@ wpas_dpp_gas_req_handler(void *ctx, void *resp_ctx, const u8 *sa,
 		return NULL;
 	}
 
-	if (!resp)
-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	auth->conf_resp = resp;
+	if (!resp) {
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_FAILED);
+		dpp_auth_deinit(wpa_s->dpp_auth);
+		wpa_s->dpp_auth = NULL;
+	}
 	return resp;
 }
 
