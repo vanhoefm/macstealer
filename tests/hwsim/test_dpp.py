@@ -3685,13 +3685,22 @@ def test_dpp_proto_auth_conf_replaced_by_resp(dev, apdev):
     wait_dpp_fail(dev[0], "Unexpected Authentication Response")
 
 def run_dpp_proto_conf_req_missing(dev, test, reason):
-    run_dpp_proto_init(dev, 0, test)
+    res = run_dpp_proto_init(dev, 0, test)
     wait_dpp_fail(dev[1], reason)
+    return res
 
 def test_dpp_proto_conf_req_no_e_nonce(dev, apdev):
     """DPP protocol testing - no E-nonce in Conf Req"""
-    run_dpp_proto_conf_req_missing(dev, 51,
-                                   "Missing or invalid Enrollee Nonce attribute")
+    res = run_dpp_proto_conf_req_missing(dev, 51,
+                                         "Missing or invalid Enrollee Nonce attribute")
+    # Verify that the DPP session has been cleared on failure during GAS request
+    # handling.
+    dev[0].set("dpp_test", "0")
+    dev[1].dpp_listen(freq=2412)
+    id0 = dev[1].dpp_bootstrap_gen(chan="81/1", mac=True)
+    uri0 = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    dev[0].dpp_auth_init(uri=uri0)
+    wait_auth_success(dev[1], dev[0])
 
 def test_dpp_proto_conf_req_invalid_e_nonce(dev, apdev):
     """DPP protocol testing - invalid E-nonce in Conf Req"""
