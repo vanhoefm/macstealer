@@ -38,6 +38,7 @@ def test_fils_sk_full_auth(dev, apdev, params):
     params['wpa_group_rekey'] = '1'
     hapd = hostapd.add_ap(apdev[0]['ifname'], params)
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq=2412)
     bss = dev[0].get_bss(bssid)
     logger.debug("BSS: " + str(bss))
@@ -86,6 +87,7 @@ def test_fils_sk_sha384_full_auth(dev, apdev, params):
     params['wpa_group_rekey'] = '1'
     hapd = hostapd.add_ap(apdev[0]['ifname'], params)
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq=2412)
     bss = dev[0].get_bss(bssid)
     logger.debug("BSS: " + str(bss))
@@ -567,6 +569,7 @@ def test_fils_sk_multiple_realms(dev, apdev, params):
     params['hessid'] = bssid
     hapd = hostapd.add_ap(apdev[0]['ifname'], params)
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq=2412)
 
     if "OK" not in dev[0].request("ANQP_GET " + bssid + " 275"):
