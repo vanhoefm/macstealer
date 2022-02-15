@@ -7360,6 +7360,14 @@ enum qca_wlan_vendor_attr_ndp_params {
 	 * 1:support 0:not support
 	 */
 	QCA_WLAN_VENDOR_ATTR_PEER_NDPE_SUPPORT = 30,
+	/* As per Wi-Fi Aware Specification v3.2 Service Id is the first
+	 * 48 bits of the SHA-256 hash of the Service Name.
+	 * A lower-case representation of the Service Name shall be used to
+	 * calculate the Service ID.
+	 * Array of u8: length is 6 bytes
+	 * This attribute is used and optional for ndp indication.
+	 */
+	QCA_WLAN_VENDOR_ATTR_NDP_SERVICE_ID = 31,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_NDP_PARAMS_AFTER_LAST,
