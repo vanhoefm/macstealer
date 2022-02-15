@@ -555,6 +555,7 @@ def main():
                     skip -= 1
                     continue
                 print(t, end=' ')
+            logger.info("Failure sequence: " + " ".join(vm[i]['fail_seq']))
             print('')
         print("Failed test cases:")
         for f in first_run_failures:
