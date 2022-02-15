@@ -2880,9 +2880,12 @@ static void nl80211_frame_wait_cancel(struct wpa_driver_nl80211_data *drv,
 		}
 	}
 	wpa_printf(MSG_DEBUG,
-		   "nl80211: TX frame wait expired for cookie 0x%llx%s",
+		   "nl80211: TX frame wait expired for cookie 0x%llx%s%s",
 		   (long long unsigned int) cookie,
-		   match ? " (match)" : "");
+		   match ? " (match)" : "",
+		   drv->send_frame_cookie == cookie ? " (match-saved)" : "");
+	if (drv->send_frame_cookie == cookie)
+		drv->send_frame_cookie = (u64) -1;
 	if (!match)
 		return;
 

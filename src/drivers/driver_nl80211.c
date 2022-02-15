@@ -8294,7 +8294,8 @@ static void wpa_driver_nl80211_send_action_cancel_wait(void *priv)
 	u64 cookie;
 
 	/* Cancel the last pending TX cookie */
-	nl80211_frame_wait_cancel(bss, drv->send_frame_cookie);
+	if (drv->send_frame_cookie != (u64) -1)
+		nl80211_frame_wait_cancel(bss, drv->send_frame_cookie);
 
 	/*
 	 * Cancel the other pending TX cookies, if any. This is needed since
