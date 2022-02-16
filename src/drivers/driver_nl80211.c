@@ -8164,6 +8164,11 @@ static int nl80211_send_frame_cmd(struct i802_bss *bss,
 		if (save_cookie)
 			drv->send_frame_cookie = no_ack ? (u64) -1 : cookie;
 
+		if (!wait) {
+			 /* There is no need to store this cookie since there
+			  * is no wait that could be canceled later.  */
+			goto fail;
+		}
 		if (drv->num_send_frame_cookies == MAX_SEND_FRAME_COOKIES) {
 			wpa_printf(MSG_DEBUG,
 				   "nl80211: Drop oldest pending send frame cookie 0x%llx",
