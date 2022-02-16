@@ -445,6 +445,7 @@ def test_wpa2_ocv_ap_mismatch(dev, apdev):
 @remote_compatible
 def test_wpa2_ocv_ap_ht_mismatch(dev, apdev):
     """OCV AP mismatch (HT)"""
+    clear_scan_cache(apdev[0])
     params = {"channel": "6",
               "ht_capab": "[HT40-]",
               "ieee80211w": "1",
