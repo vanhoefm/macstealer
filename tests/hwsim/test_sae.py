@@ -2506,6 +2506,7 @@ def test_sae_okc(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].set("sae_groups", "")
     id = dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE",
                         okc=True, scan_freq="2412")
@@ -2538,6 +2539,7 @@ def test_sae_okc_sta_only(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].set("sae_groups", "")
     id = dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE",
                         okc=True, scan_freq="2412")
@@ -2565,6 +2567,7 @@ def test_sae_okc_pmk_lifetime(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].set("sae_groups", "")
     dev[0].set("dot11RSNAConfigPMKLifetime", "10")
     dev[0].set("dot11RSNAConfigPMKReauthThreshold", "30")
@@ -2607,6 +2610,7 @@ def test_sae_pmk_lifetime(dev, apdev):
     hapd2 = hostapd.add_ap(apdev[1], params)
     bssid2 = hapd2.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid2, freq=2412)
     dev[0].roam(bssid2)
     dev[0].dump_monitor()
@@ -2682,6 +2686,7 @@ def test_sae_pmf_roam(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].set("sae_groups", "")
     id = dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE",
                         ieee80211w="2", scan_freq="2412")
