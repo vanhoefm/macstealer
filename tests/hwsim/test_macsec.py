@@ -115,8 +115,17 @@ def test_macsec_psk_256(dev, apdev, params):
     finally:
         cleanup_macsec()
 
+def test_macsec_gcm_aes_256(dev, apdev, params):
+    """MACsec PSK with GCM-AES-256"""
+    try:
+        cak = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        run_macsec_psk(dev, apdev, params, "macsec_gcm_aes_256",
+                       cak0=cak, cak1=cak, csindex=1)
+    finally:
+        cleanup_macsec()
+
 def set_mka_psk_config(dev, mka_priority=None, integ_only=False, port=None,
-                       ckn=None, cak=None):
+                       ckn=None, cak=None, csindex=None):
     dev.set("eapol_version", "3")
     dev.set("ap_scan", "0")
     dev.set("fast_reauth", "1")
@@ -137,6 +146,8 @@ def set_mka_psk_config(dev, mka_priority=None, integ_only=False, port=None,
         dev.set_network(id, "mka_priority", str(mka_priority))
     if port is not None:
         dev.set_network(id, "macsec_port", str(port))
+    if csindex is not None:
+        dev.set_network(id, "macsec_csindex", str(csindex))
 
     dev.select_network(id)
 
@@ -264,7 +275,7 @@ def wait_mka_done(wpa, expect_failure=False, hostapd=False):
 
 def run_macsec_psk(dev, apdev, params, prefix, integ_only=False, port0=None,
                    port1=None, ckn0=None, ckn1=None, cak0=None, cak1=None,
-                   expect_failure=False):
+                   csindex=None, expect_failure=False):
     add_veth()
 
     cap_veth0 = os.path.join(params['logdir'], prefix + ".veth0.pcap")
@@ -284,9 +295,9 @@ def run_macsec_psk(dev, apdev, params, prefix, integ_only=False, port0=None,
     wpas1 = wpa[1]
 
     set_mka_psk_config(wpas0, integ_only=integ_only, port=port0, ckn=ckn0,
-                       cak=cak0)
+                       cak=cak0, csindex=csindex)
     set_mka_psk_config(wpas1, mka_priority=100, integ_only=integ_only,
-                       port=port1, ckn=ckn1, cak=cak1)
+                       port=port1, ckn=ckn1, cak=cak1, csindex=csindex)
 
     log_ip_macsec()
     log_ip_link()
