@@ -3249,7 +3249,6 @@ int main(int argc, char *argv[])
 		default:
 			usage();
 			exit(0);
-			break;
 		}
 	}
 

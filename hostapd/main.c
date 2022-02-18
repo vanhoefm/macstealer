@@ -723,7 +723,6 @@ int main(int argc, char *argv[])
 		case 'v':
 			show_version();
 			exit(1);
-			break;
 		case 'g':
 			if (hostapd_get_global_ctrl_iface(&interfaces, optarg))
 				return -1;

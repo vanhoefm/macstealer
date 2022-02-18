@@ -138,7 +138,6 @@ static unsigned int conf_offset_val(enum confidentiality_offset co)
 	switch (co) {
 	case CONFIDENTIALITY_OFFSET_30:
 		return 30;
-		break;
 	case CONFIDENTIALITY_OFFSET_50:
 		return 50;
 	default:
