@@ -498,6 +498,7 @@ static const char * sae_get_password(struct hostapd_data *hapd,
 	struct sae_password_entry *pw;
 	struct sae_pt *pt = NULL;
 	const struct sae_pk *pk = NULL;
+	struct hostapd_sta_wpa_psk_short *psk = NULL;
 
 	for (pw = hapd->conf->sae_passwords; pw; pw = pw->next) {
 		if (!is_broadcast_ether_addr(pw->peer_addr) &&
@@ -517,6 +518,15 @@ static const char * sae_get_password(struct hostapd_data *hapd,
 	if (!password) {
 		password = hapd->conf->ssid.wpa_passphrase;
 		pt = hapd->conf->ssid.pt;
+	}
+
+	if (!password) {
+		for (psk = sta->psk; psk; psk = psk->next) {
+			if (psk->is_passphrase) {
+				password = psk->passphrase;
+				break;
+			}
+		}
 	}
 
 	if (pw_entry)
