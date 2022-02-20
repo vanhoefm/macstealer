@@ -1087,6 +1087,10 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 	if (tb[NL80211_ATTR_WIPHY_SELF_MANAGED_REG])
 		capa->flags |= WPA_DRIVER_FLAGS_SELF_MANAGED_REGULATORY;
 
+	if (tb[NL80211_ATTR_MAX_NUM_AKM_SUITES])
+		capa->max_num_akms =
+			nla_get_u16(tb[NL80211_ATTR_MAX_NUM_AKM_SUITES]);
+
 	return NL_SKIP;
 }
 
@@ -1164,6 +1168,9 @@ static int wpa_driver_nl80211_get_info(struct wpa_driver_nl80211_data *drv,
 
 	if (info->update_ft_ies_supported)
 		drv->capa.flags |= WPA_DRIVER_FLAGS_UPDATE_FT_IES;
+
+	if (!drv->capa.max_num_akms)
+		drv->capa.max_num_akms = NL80211_MAX_NR_AKM_SUITES;
 
 	return 0;
 }
