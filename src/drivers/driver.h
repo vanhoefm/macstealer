@@ -1000,6 +1000,17 @@ struct wpa_driver_associate_params {
 	unsigned int key_mgmt_suite;
 
 	/**
+	 * allowed_key_mgmts - Bitfield of allowed key management suites
+	 * (WPA_KEY_MGMT_*) other than @key_mgmt_suite for the current
+	 * connection
+	 *
+	 * SME in the driver may choose key_mgmt from this list for the initial
+	 * connection or roaming. The driver which doesn't support this
+	 * ignores this parameter.
+	 */
+	unsigned int allowed_key_mgmts;
+
+	/**
 	 * auth_alg - Allowed authentication algorithms
 	 * Bit field of WPA_AUTH_ALG_*
 	 */

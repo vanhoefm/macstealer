@@ -181,6 +181,13 @@ static inline int wpa_key_mgmt_cckm(int akm)
 	return akm == WPA_KEY_MGMT_CCKM;
 }
 
+static inline int wpa_key_mgmt_cross_akm(int akm)
+{
+	return !!(akm & (WPA_KEY_MGMT_PSK |
+			 WPA_KEY_MGMT_PSK_SHA256 |
+			 WPA_KEY_MGMT_SAE |
+			 WPA_KEY_MGMT_SAE_EXT_KEY));
+}
 
 #define WPA_PROTO_WPA BIT(0)
 #define WPA_PROTO_RSN BIT(1)
