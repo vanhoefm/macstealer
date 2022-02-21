@@ -890,6 +890,7 @@ def test_rrm_beacon_req_frame_body_fragmentation(dev, apdev):
               "203dd0400137400dd04001374ffdd051122330203dd0400137400dd04001374ff"
               "dd051122330203dd0400137400dd04001374ff"))
 
+    dev[0].flush_scan_cache()
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
