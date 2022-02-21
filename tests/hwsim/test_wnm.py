@@ -775,6 +775,7 @@ def test_wnm_bss_tm(dev, apdev):
         hapd = None
         hapd2 = None
         hapd = start_wnm_ap(apdev[0], country_code="FI")
+        dev[0].flush_scan_cache()
         id = dev[0].connect("test-wnm", key_mgmt="NONE", scan_freq="2412")
         dev[0].set_network(id, "scan_freq", "")
 
@@ -876,6 +877,7 @@ def test_wnm_bss_tm(dev, apdev):
 def test_wnm_bss_tm_steering_timeout(dev, apdev):
     """WNM BSS Transition Management and steering timeout"""
     hapd = start_wnm_ap(apdev[0])
+    dev[0].flush_scan_cache()
     id = dev[0].connect("test-wnm", key_mgmt="NONE", scan_freq="2412")
     hapd2 = start_wnm_ap(apdev[1])
     dev[0].scan_for_bss(apdev[1]['bssid'], 2412)
@@ -1029,6 +1031,7 @@ def test_wnm_bss_tm_scan_needed(dev, apdev):
         hapd2 = start_wnm_ap(apdev[1], country_code="FI", hw_mode="a",
                              channel="36")
 
+        dev[0].flush_scan_cache()
         dev[0].scan_for_bss(apdev[1]['bssid'], 5180)
 
         id = dev[0].connect("test-wnm", key_mgmt="NONE",
@@ -1070,6 +1073,7 @@ def test_wnm_bss_tm_scan_needed_e4(dev, apdev):
                             hw_mode="g", channel="1")
         hapd2 = start_wnm_ap(apdev[1], country_code="FI", country3="0x04",
                              hw_mode="a", channel="36")
+        dev[0].flush_scan_cache()
         id = dev[0].connect("test-wnm", key_mgmt="NONE",
                             bssid=apdev[0]['bssid'], scan_freq="2412")
         dev[0].set_network(id, "scan_freq", "")
