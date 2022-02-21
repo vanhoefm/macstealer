@@ -950,8 +950,8 @@ def test_ap_ft_over_ds_unexpected(dev, apdev):
     msg['payload'] = binascii.unhexlify("0602" + addrs + "00003603a1b20137660000" + "00000000000000000000000000000000" + "0000000000000000000000000000000000000000000000000000000000000000" + snonce + "030a" + r0khid + "0106000102030405")
     hapd1ap.mgmt_tx(msg)
 
-def test_ap_ft_pmf_over_ds(dev, apdev):
-    """WPA2-PSK-FT AP over DS with PMF"""
+def test_ap_ft_pmf_bip_over_ds(dev, apdev):
+    """WPA2-PSK-FT AP over DS with PMF/BIP"""
     run_ap_ft_pmf_bip_over_ds(dev, apdev, None)
 
 def test_ap_ft_pmf_bip_cmac_128_over_ds(dev, apdev):
