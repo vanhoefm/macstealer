@@ -1145,6 +1145,7 @@ static void wpas_dpp_rx_auth_req(struct wpa_supplicant *wpa_s, const u8 *src,
 		return;
 	}
 
+	wpa_s->dpp_pkex_wait_auth_req = false;
 	wpa_s->dpp_gas_client = 0;
 	wpa_s->dpp_gas_server = 0;
 	wpa_s->dpp_auth_ok_on_ack = 0;
@@ -2915,6 +2916,7 @@ wpas_dpp_rx_pkex_exchange_req(struct wpa_supplicant *wpa_s, const u8 *src,
 		return;
 	}
 
+	wpa_s->dpp_pkex_wait_auth_req = false;
 	msg = wpa_s->dpp_pkex->exchange_resp;
 	wait_time = wpa_s->max_remain_on_chan;
 	if (wait_time > 2000)
@@ -3031,6 +3033,7 @@ wpas_dpp_rx_pkex_commit_reveal_req(struct wpa_supplicant *wpa_s, const u8 *src,
 	wpabuf_free(msg);
 
 	wpas_dpp_pkex_finish(wpa_s, src, freq);
+	wpa_s->dpp_pkex_wait_auth_req = true;
 }
 
 
@@ -3727,12 +3730,13 @@ int wpas_dpp_pkex_remove(struct wpa_supplicant *wpa_s, const char *id)
 
 void wpas_dpp_stop(struct wpa_supplicant *wpa_s)
 {
-	if (wpa_s->dpp_auth || wpa_s->dpp_pkex)
+	if (wpa_s->dpp_auth || wpa_s->dpp_pkex || wpa_s->dpp_pkex_wait_auth_req)
 		offchannel_send_action_done(wpa_s);
 	dpp_auth_deinit(wpa_s->dpp_auth);
 	wpa_s->dpp_auth = NULL;
 	dpp_pkex_free(wpa_s->dpp_pkex);
 	wpa_s->dpp_pkex = NULL;
+	wpa_s->dpp_pkex_wait_auth_req = false;
 	if (wpa_s->dpp_gas_client && wpa_s->dpp_gas_dialog_token >= 0)
 		gas_query_stop(wpa_s->gas, wpa_s->dpp_gas_dialog_token);
 }
