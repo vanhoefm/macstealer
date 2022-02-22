@@ -1,23 +1,28 @@
 BINALL=wpa_supplicant wpa_cli
 
-ifndef CONFIG_NO_WPA_PASSPHRASE
-BINALL += wpa_passphrase
-endif
-
 ALL = $(BINALL)
 ALL += systemd/wpa_supplicant.service
 ALL += systemd/wpa_supplicant@.service
 ALL += systemd/wpa_supplicant-nl80211@.service
 ALL += systemd/wpa_supplicant-wired@.service
 ALL += dbus/fi.w1.wpa_supplicant1.service
-ifdef CONFIG_BUILD_WPA_CLIENT_SO
-ALL += libwpa_client.so
-endif
 
 EXTRA_TARGETS=dynamic_eap_methods
 
 CONFIG_FILE=.config
 include ../src/build.rules
+
+ifdef CONFIG_BUILD_WPA_CLIENT_SO
+# add the dependency this way to allow CONFIG_BUILD_WPA_CLIENT_SO
+# being set in the config which is read by build.rules
+_all: libwpa_client.so
+endif
+
+ifndef CONFIG_NO_WPA_PASSPHRASE
+# add the dependency this way to allow CONFIG_NO_WPA_PASSPHRASE
+# being set in the config which is read by build.rules
+_all: wpa_passphrase
+endif
 
 ifdef LIBS
 # If LIBS is set with some global build system defaults, clone those for
