@@ -131,6 +131,7 @@ def test_wpa2_ocv_ht40(dev, apdev):
         dev[1].flush_scan_cache()
 
 def run_wpa2_ocv_ht40(dev, apdev):
+    clear_scan_cache(apdev[0])
     for channel, capab, freq, mode in [("6", "[HT40-]", "2437", "g"),
                                        ("6", "[HT40+]", "2437", "g"),
                                        ("40", "[HT40-]", "5200", "a"),
@@ -169,6 +170,7 @@ def test_wpa2_ocv_vht40(dev, apdev):
         dev[2].flush_scan_cache()
 
 def run_wpa2_ocv_vht40(dev, apdev):
+    clear_scan_cache(apdev[0])
     for channel, capab, freq in [("40", "[HT40-]", "5200"),
                                  ("36", "[HT40+]", "5180")]:
         params = {"hw_mode": "a",
@@ -213,6 +215,7 @@ def test_wpa2_ocv_vht80(dev, apdev):
         dev[2].flush_scan_cache()
 
 def run_wpa2_ocv_vht80(dev, apdev):
+    clear_scan_cache(apdev[0])
     for channel, capab, freq in [("40", "[HT40-]", "5200"),
                                  ("36", "[HT40+]", "5180")]:
         params = {"hw_mode": "a",
