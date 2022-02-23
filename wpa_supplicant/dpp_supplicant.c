@@ -3472,6 +3472,8 @@ int wpas_dpp_check_connect(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 	wpa_printf(MSG_DEBUG,
 		   "DPP: Starting network introduction protocol to derive PMKSA for "
 		   MACSTR, MAC2STR(bss->bssid));
+	if (wpa_s->wpa_state == WPA_SCANNING)
+		wpa_supplicant_set_state(wpa_s, wpa_s->scan_prev_wpa_state);
 
 	len = 5 + 4 + os_strlen(ssid->dpp_connector);
 #ifdef CONFIG_DPP2
