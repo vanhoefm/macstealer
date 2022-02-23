@@ -4900,6 +4900,7 @@ def test_sigma_dut_ap_ft_rsnxe_used_mismatch(dev, apdev, params):
                 with open(conffile, "wb") as f2:
                     f2.write(f.read())
 
+            dev[0].set("sae_groups", "")
             dev[0].connect("test-sae", key_mgmt="FT-SAE", sae_password="hello",
                            ieee80211w="2", scan_freq="2412")
 
