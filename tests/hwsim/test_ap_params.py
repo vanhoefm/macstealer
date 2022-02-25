@@ -818,6 +818,7 @@ def test_ap_dtim_period(dev, apdev):
     params = {'ssid': ssid, 'dtim_period': "10"}
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
+    dev[0].flush_scan_cache()
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     for i in range(10):
         dev[0].scan(freq="2412")

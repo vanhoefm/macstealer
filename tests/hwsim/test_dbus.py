@@ -114,6 +114,8 @@ def test_dbus_getall(dev, apdev):
     """D-Bus GetAll"""
     (bus, wpas_obj, path, if_obj) = prepare_dbus(dev[0])
 
+    dev[0].flush_scan_cache()
+
     props = wpas_obj.GetAll(WPAS_DBUS_SERVICE,
                             dbus_interface=dbus.PROPERTIES_IFACE)
     logger.debug("GetAll(fi.w1.wpa.supplicant1, /fi/w1/wpa_supplicant1) ==> " + str(props))
@@ -145,8 +147,10 @@ def test_dbus_getall(dev, apdev):
 
     res = if_obj.Get(WPAS_DBUS_IFACE, 'BSSs',
                      dbus_interface=dbus.PROPERTIES_IFACE)
-    if len(res) != 1:
+    if len(res) < 1:
         raise Exception("Missing BSSs entry: " + str(res))
+    if len(res) > 1:
+        raise Exception("Too manu BSSs entries: " + str(res))
     bss_obj = bus.get_object(WPAS_DBUS_SERVICE, res[0])
     props = bss_obj.GetAll(WPAS_DBUS_BSS, dbus_interface=dbus.PROPERTIES_IFACE)
     logger.debug("GetAll(%s, %s): %s" % (WPAS_DBUS_BSS, res[0], str(props)))
@@ -621,6 +625,7 @@ def _test_dbus_wps_pbc(dev, apdev):
     hapd = start_ap(apdev[0])
     hapd.request("WPS_PBC")
     bssid = apdev[0]['bssid']
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid, freq="2412")
     dev[0].request("SET wps_cred_processing 2")
 

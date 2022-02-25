@@ -2787,6 +2787,8 @@ def test_ap_hs20_osen_single_ssid(dev, apdev):
     params['hessid'] = bssid
     hapd = hostapd.add_ap(apdev[0], params)
 
+    dev[0].flush_scan_cache()
+
     # RSN-OSEN (for OSU)
     dev[0].connect("test-hs20", proto="OSEN", key_mgmt="OSEN", pairwise="CCMP",
                    group="CCMP GTK_NOT_USED",

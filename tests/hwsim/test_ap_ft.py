@@ -1932,6 +1932,7 @@ def test_ap_ft_gtk_rekey(dev, apdev):
     params['wpa_group_rekey'] = '1'
     hapd = hostapd.add_ap(apdev[0], params)
 
+    dev[0].flush_scan_cache()
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    ieee80211w="1", scan_freq="2412")
 
@@ -2071,6 +2072,7 @@ def test_ap_ft_invalid_resp(dev, apdev):
 
     params = ft_params1(ssid=ssid, passphrase=passphrase)
     hapd0 = hostapd.add_ap(apdev[0], params)
+    dev[0].flush_scan_cache()
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
 
@@ -2148,6 +2150,7 @@ def setup_ap_ft_oom(dev, apdev):
     params = ft_params2(ssid=ssid, passphrase=passphrase)
     hapd1 = hostapd.add_ap(apdev[1], params)
 
+    dev[0].flush_scan_cache()
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
     if dev[0].get_status_field('bssid') == apdev[0]['bssid']:
@@ -2196,6 +2199,7 @@ def test_ap_ft_ap_oom(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     with alloc_fail(hapd0, 1, "wpa_ft_store_pmk_r0"):
         dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
@@ -2217,6 +2221,7 @@ def test_ap_ft_ap_oom2(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     with alloc_fail(hapd0, 1, "wpa_ft_store_pmk_r1"):
         dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
@@ -2241,6 +2246,7 @@ def test_ap_ft_ap_oom3(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
@@ -2291,6 +2297,7 @@ def test_ap_ft_ap_oom4(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
@@ -2323,6 +2330,7 @@ def test_ap_ft_ap_oom5(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
@@ -2385,6 +2393,7 @@ def test_ap_ft_ap_oom7a(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    ieee80211w="2", scan_freq="2412")
@@ -2408,6 +2417,7 @@ def test_ap_ft_ap_oom7b(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    ieee80211w="2", scan_freq="2412")
@@ -2431,6 +2441,7 @@ def test_ap_ft_ap_oom7c(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    ieee80211w="2", scan_freq="2412")
@@ -2454,6 +2465,7 @@ def test_ap_ft_ap_oom7d(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    ieee80211w="2", scan_freq="2412")
@@ -2477,6 +2489,7 @@ def test_ap_ft_ap_oom8(dev, apdev):
     hapd0 = hostapd.add_ap(apdev[0], params)
     bssid0 = hapd0.own_addr()
 
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(bssid0, freq="2412")
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
@@ -3333,6 +3346,7 @@ def test_ap_ft_roam_rrm(dev, apdev):
     bssid0 = hapd0.own_addr()
 
     addr = dev[0].own_addr()
+    dev[0].flush_scan_cache()
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
     check_beacon_req(hapd0, addr, 1)

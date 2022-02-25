@@ -262,6 +262,7 @@ def test_scan_bss_operations(dev, apdev):
     hostapd.add_ap(apdev[1], {"ssid": "test2-scan"})
     bssid2 = apdev[1]['bssid']
 
+    dev[0].flush_scan_cache()
     dev[0].scan(freq="2412")
     dev[0].scan(freq="2412")
     dev[0].scan(freq="2412")
