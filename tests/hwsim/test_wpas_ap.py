@@ -14,6 +14,7 @@ import hwsim_utils
 from utils import *
 from wpasupplicant import WpaSupplicant
 from test_p2p_channel import set_country
+from test_ap_psk import find_wpas_process, read_process_memory, verify_not_present, get_key_locations
 
 def wait_ap_ready(dev):
     ev = dev.wait_event(["CTRL-EVENT-CONNECTED"])
@@ -991,3 +992,110 @@ def test_wpas_ap_vendor_elems(dev):
     bss = dev[1].get_bss(dev[0].own_addr())
     if beacon_elems not in bss['ie']:
         raise Exception("Vendor element not visible in scan results")
+
+def test_wpas_ap_lifetime_in_memory(dev, apdev, params):
+    """wpa_supplicant AP mode and PSK/PTK lifetime in memory"""
+    run_wpas_ap_lifetime_in_memory(dev, apdev, params, False)
+
+def test_wpas_ap_lifetime_in_memory2(dev, apdev, params):
+    """wpa_supplicant AP mode and PSK/PTK lifetime in memory (raw PSK)"""
+    run_wpas_ap_lifetime_in_memory(dev, apdev, params, True)
+
+def run_wpas_ap_lifetime_in_memory(dev, apdev, params, raw):
+    ssid = "test-wpa2-psk"
+    passphrase = 'qwertyuiop'
+    psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
+    pmk = binascii.unhexlify(psk)
+
+    pid = find_wpas_process(dev[0])
+
+    id = dev[0].add_network()
+    dev[0].set_network(id, "mode", "2")
+    dev[0].set_network_quoted(id, "ssid", ssid)
+    dev[0].set_network(id, "proto", "WPA2")
+    dev[0].set_network(id, "pairwise", "CCMP")
+    dev[0].set_network(id, "group", "CCMP")
+    if raw:
+        dev[0].set_network(id, "psk", psk)
+    else:
+        dev[0].set_network_quoted(id, "psk", passphrase)
+    dev[0].set_network(id, "frequency", "2412")
+    dev[0].set_network(id, "scan_freq", "2412")
+
+    logger.info("Checking keys in memory after network profile configuration")
+    buf = read_process_memory(pid, pmk)
+    get_key_locations(buf, pmk, "PMK")
+
+    dev[0].select_network(id)
+    wait_ap_ready(dev[0])
+
+    logger.info("Checking keys in memory after AP start")
+    buf = read_process_memory(pid, pmk)
+    get_key_locations(buf, pmk, "PMK")
+
+    dev[1].connect(ssid, psk=passphrase, scan_freq="2412")
+
+    buf = read_process_memory(pid, pmk)
+
+    dev[1].request("DISCONNECT")
+    dev[1].wait_disconnected()
+
+    buf2 = read_process_memory(pid, pmk)
+
+    dev[0].request("REMOVE_NETWORK all")
+    dev[0].wait_disconnected()
+
+    buf3 = read_process_memory(pid, pmk)
+
+    dev[1].relog()
+    ptk = None
+    gtk = None
+    with open(os.path.join(params['logdir'], 'log1'), 'r') as f:
+        for l in f.readlines():
+            if "WPA: PTK - hexdump" in l:
+                val = l.strip().split(':')[3].replace(' ', '')
+                ptk = binascii.unhexlify(val)
+            if "WPA: Group Key - hexdump" in l:
+                val = l.strip().split(':')[3].replace(' ', '')
+                gtk = binascii.unhexlify(val)
+    if not pmk or not ptk or not gtk:
+        raise Exception("Could not find keys from debug log")
+    if len(gtk) != 16:
+        raise Exception("Unexpected GTK length")
+
+    kck = ptk[0:16]
+    kek = ptk[16:32]
+    tk = ptk[32:48]
+
+    logger.info("Checking keys in memory while associated")
+    get_key_locations(buf, pmk, "PMK")
+    if pmk not in buf:
+        raise HwsimSkip("PMK not found while associated")
+    if kck not in buf:
+        raise Exception("KCK not found while associated")
+    if kek not in buf:
+        raise Exception("KEK not found while associated")
+    #if tk in buf:
+    #    raise Exception("TK found from memory")
+
+    logger.info("Checking keys in memory after disassociation")
+    get_key_locations(buf2, pmk, "PMK")
+
+    # Note: PMK/PSK is still present in network configuration and GTK is still
+    # in use.
+
+    fname = params['prefix'] + '.memctx-'
+    verify_not_present(buf2, kck, fname, "KCK")
+    verify_not_present(buf2, kek, fname, "KEK")
+    verify_not_present(buf2, tk, fname, "TK")
+    get_key_locations(buf2, gtk, "GTK")
+
+    logger.info("Checking keys in memory after network profile removal")
+    get_key_locations(buf3, pmk, "PMK")
+
+    verify_not_present(buf3, pmk, fname, "PMK")
+    verify_not_present(buf3, kck, fname, "KCK")
+    verify_not_present(buf3, kek, fname, "KEK")
+    verify_not_present(buf3, tk, fname, "TK")
+    get_key_locations(buf3, gtk, "GTK")
+    verify_not_present(buf3, gtk, fname, "GTK")
