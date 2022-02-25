@@ -1631,4 +1631,10 @@ void hostapd_deinit_wpa(struct hostapd_data *hapd)
 	hapd->l2 = NULL;
 	hostapd_wpa_unregister_ft_oui(hapd);
 #endif /* CONFIG_IEEE80211R_AP */
+
+#ifdef CONFIG_TESTING_OPTIONS
+	forced_memzero(hapd->last_gtk, WPA_GTK_MAX_LEN);
+	forced_memzero(hapd->last_igtk, WPA_IGTK_MAX_LEN);
+	forced_memzero(hapd->last_bigtk, WPA_BIGTK_MAX_LEN);
+#endif /* CONFIG_TESTING_OPTIONS */
 }

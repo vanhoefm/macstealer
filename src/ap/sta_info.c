@@ -410,6 +410,7 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
 
 #ifdef CONFIG_TESTING_OPTIONS
 	os_free(sta->sae_postponed_commit);
+	forced_memzero(sta->last_tk, WPA_TK_MAX_LEN);
 #endif /* CONFIG_TESTING_OPTIONS */
 
 	os_free(sta);
