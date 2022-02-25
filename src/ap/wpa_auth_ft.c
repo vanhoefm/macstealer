@@ -2240,6 +2240,7 @@ static u8 * wpa_ft_gtk_subelem(struct wpa_state_machine *sm, size_t *len)
 		wpa_printf(MSG_DEBUG,
 			   "FT: GTK subelem encryption failed: kek_len=%d",
 			   (int) kek_len);
+		forced_memzero(keybuf, sizeof(keybuf));
 		os_free(subelem);
 		return NULL;
 	}
