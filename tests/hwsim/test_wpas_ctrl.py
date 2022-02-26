@@ -303,6 +303,13 @@ def test_wpas_ctrl_many_networks(dev, apdev):
     """wpa_supplicant ctrl_iface LIST_NETWORKS with huge number of networks"""
     for i in range(1000):
         id = dev[0].add_network()
+    ev = dev[0].wait_event(["CTRL-EVENT-NETWORK-ADDED %d" % id])
+    if ev is None:
+        raise Exception("Network added event not seen for the last network")
+    ev = dev[0].wait_global_event(["CTRL-EVENT-NETWORK-ADDED %d" % id], timeout=10)
+    if ev is None:
+        raise Exception("Network added event (global) not seen for the last network")
+    dev[0].dump_monitor()
     res = dev[0].request("LIST_NETWORKS")
     if str(id) in res:
         raise Exception("Last added network was unexpectedly included")
@@ -313,6 +320,13 @@ def test_wpas_ctrl_many_networks(dev, apdev):
     # power CPU, so increase the command timeout significantly to avoid issues
     # with the test case failing and following reset operation timing out.
     dev[0].request("REMOVE_NETWORK all", timeout=60)
+    ev = dev[0].wait_event(["CTRL-EVENT-NETWORK-REMOVED %d" % id])
+    if ev is None:
+        raise Exception("Network removed event not seen for the last network")
+    ev = dev[0].wait_global_event(["CTRL-EVENT-NETWORK-REMOVED %d" % id], timeout=10)
+    if ev is None:
+        raise Exception("Network removed event (global) not seen for the last network")
+    dev[0].dump_monitor()
 
 @remote_compatible
 def test_wpas_ctrl_dup_network(dev, apdev):
