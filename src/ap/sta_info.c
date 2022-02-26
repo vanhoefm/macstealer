@@ -1252,8 +1252,6 @@ const char * ap_sta_wpa_get_keyid(struct hostapd_data *hapd,
 	for (psk = ssid->wpa_psk; psk; psk = psk->next)
 		if (os_memcmp(pmk, psk->psk, PMK_LEN) == 0)
 			break;
-	if (!psk)
-		return NULL;
 	if (!psk || !psk->keyid[0])
 		return NULL;
 
