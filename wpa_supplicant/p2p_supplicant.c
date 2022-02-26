@@ -8825,7 +8825,7 @@ static void wpas_p2p_remove_client_go(struct wpa_supplicant *wpa_s,
 				hapd->conf->ssid.wpa_psk = psk->next;
 			rem = psk;
 			psk = psk->next;
-			os_free(rem);
+			bin_clear_free(rem, sizeof(*rem));
 		} else {
 			prev = psk;
 			psk = psk->next;

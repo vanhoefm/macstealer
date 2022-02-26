@@ -646,6 +646,6 @@ void hostapd_free_psk_list(struct hostapd_sta_wpa_psk_short *psk)
 	while (psk) {
 		struct hostapd_sta_wpa_psk_short *prev = psk;
 		psk = psk->next;
-		os_free(prev);
+		bin_clear_free(prev, sizeof(*prev));
 	}
 }
