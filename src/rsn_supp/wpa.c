@@ -2023,6 +2023,13 @@ static int wpa_supplicant_send_2_of_2(struct wpa_sm *sm,
 	u8 *rbuf, *key_mic;
 	size_t kde_len = 0;
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (sm->disable_eapol_g2_tx) {
+		wpa_printf(MSG_INFO, "TEST: Disable sending EAPOL-Key 2/2");
+		return 0;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
 #ifdef CONFIG_OCV
 	if (wpa_sm_ocv_enabled(sm))
 		kde_len = OCV_OCI_KDE_LEN;
@@ -3379,6 +3386,9 @@ int wpa_sm_set_param(struct wpa_sm *sm, enum wpa_sm_conf_params param,
 		break;
 	case WPA_PARAM_OCI_FREQ_FILS_ASSOC:
 		sm->oci_freq_override_fils_assoc = value;
+		break;
+	case WPA_PARAM_DISABLE_EAPOL_G2_TX:
+		sm->disable_eapol_g2_tx = value;
 		break;
 #endif /* CONFIG_TESTING_OPTIONS */
 #ifdef CONFIG_DPP2
