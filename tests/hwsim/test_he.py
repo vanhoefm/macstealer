@@ -1219,3 +1219,129 @@ def test_he_prefer_he20(dev, apdev):
     est = dev[0].get_bss(bssid2)['est_throughput']
     if est != "143402":
         raise Exception("Unexpected BSS1 est_throughput: " + est)
+
+def test_he_capab_parsing(dev, apdev):
+    """HE AP and capability parsing"""
+    params = {"ssid": "he",
+              "ieee80211ax": "1",
+              "he_bss_color": "42",
+              "he_mu_edca_ac_be_ecwmin": "7",
+              "he_mu_edca_ac_be_ecwmax": "15"}
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    hapd.set("ext_mgmt_frame_handling", "1")
+    bssid = hapd.own_addr().replace(':', '')
+    addr = "020304050607"
+    addr_ = "02:03:04:05:06:07"
+
+    tests = []
+    mac_capa = binascii.unhexlify("0178c81a4000")
+    phy_capa = binascii.unhexlify("00bfce0000000000000000")
+    mcs_nss = binascii.unhexlify("faff")
+    payload = mac_capa + phy_capa + 2*mcs_nss
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, True) ]
+
+    phy_capa = binascii.unhexlify("08bfce0000000000000000")
+    payload = mac_capa + phy_capa + 4*mcs_nss
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, True) ]
+
+    phy_capa = binascii.unhexlify("10bfce0000000000000000")
+    payload = mac_capa + phy_capa + 4*mcs_nss
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, True) ]
+
+    phy_capa = binascii.unhexlify("18bfce0000000000000000")
+    payload = mac_capa + phy_capa + 6*mcs_nss
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, True) ]
+
+    # Missing PPE Threshold field
+    phy_capa = binascii.unhexlify("00bfce0000008000000000")
+    payload = mac_capa + phy_capa + 2*mcs_nss
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, False) ]
+
+    # Truncated PPE Threshold field
+    phy_capa = binascii.unhexlify("00bfce0000008000000000")
+    payload = mac_capa + phy_capa + 2*mcs_nss + struct.pack('B', 0x79)
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, False) ]
+
+    # Extra field at the end (without PPE Threshold field)
+    phy_capa = binascii.unhexlify("00bfce0000000000000000")
+    payload = mac_capa + phy_capa + 2*mcs_nss
+    payload += struct.pack('B', 0)
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, True) ]
+
+    # Extra field at the end (with PPE Threshold field)
+    phy_capa = binascii.unhexlify("00bfce0000008000000000")
+    payload = mac_capa + phy_capa + 2*mcs_nss
+    payload += binascii.unhexlify("79000000000000")
+    payload += struct.pack('B', 0)
+    hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+    tests += [ (hdr + payload, True) ]
+
+    ppet = []
+    # NSTS=1 (i.e., NSTS field value 0), RU Index Bitmask=0x0
+    # --> 3 + 4 + 0 * 6 * 1 = 7 bits --> 1 octet
+    ppet += ["00"]
+    # NSTS=1 (i.e., NSTS field value 0), RU Index Bitmask=0x1
+    # --> 3 + 4 + 1 * 6 * 1 = 13 bits --> 2 octets
+    ppet += ["08" + "00"]
+    # NSTS=1 (i.e., NSTS field value 0), RU Index Bitmask=0x8
+    # --> 3 + 4 + 1 * 6 * 1 = 13 bits --> 2 octets
+    ppet += ["40" + "00"]
+    # NSTS=2 (i.e., NSTS field value 1), RU Index Bitmask=0xf
+    # --> 3 + 4 + 4 * 6 * 2 = 55 bits --> 7 octets
+    ppet += ["79" + 6*"00"]
+    # NSTS=3 (i.e., NSTS field value 2), RU Index Bitmask=0xf
+    # --> 3 + 4 + 4 * 6 * 3 = 79 bits --> 10 octets
+    ppet += ["7a" + 9*"00"]
+    # NSTS=4 (i.e., NSTS field value 3), RU Index Bitmask=0x5
+    # --> 3 + 4 + 2 * 6 * 4 = 55 bits --> 7 octets
+    ppet += ["2b" + 6*"00"]
+    # NSTS=8 (i.e., NSTS field value 7), RU Index Bitmask=0xf
+    # --> 3 + 4 + 4 * 6 * 8 = 199 bits --> 25 octets
+    ppet += ["ff" + 24*"00"]
+    for p in ppet:
+        phy_capa = binascii.unhexlify("00bfce0000008000000000")
+        payload = mac_capa + phy_capa + 2*mcs_nss + binascii.unhexlify(p)
+        hdr = struct.pack('BBB', 255, 1 + len(payload), 35)
+        tests += [ (hdr + payload, True) ]
+
+    for capab, result in tests:
+        auth = "b0003a01" + bssid + addr + bssid + '1000000001000000'
+        if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % auth):
+            raise Exception("MGMT_RX_PROCESS failed")
+
+        he_capab = binascii.hexlify(capab).decode()
+
+        ies = "00026865" # SSID
+        ies += "010802040b160c121824" # Supp Rates
+        ies += "32043048606c" # Ext Supp Rates
+        ies += "2d1afe131bffff000000000000000000000100000000000000000000" # HT Capab
+        ies += "7f0b04004a0201404040000120" # Ext Capab
+        ies += he_capab
+        ies += "3b155151525354737475767778797a7b7c7d7e7f808182" # Supp Op Classes
+        ies += "dd070050f202000100" # WMM
+
+        assoc_req = "00003a01" + bssid + addr + bssid + "2000" + "21040500" + ies
+        if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc_req):
+            raise Exception("MGMT_RX_PROCESS failed")
+
+        sta = hapd.get_sta(addr_)
+        if result:
+            if "[HE]" not in sta['flags']:
+                raise Exception("Missing STA flag: HE (HE Capab: %s)" % he_capab)
+        else:
+            if "[HE]" in sta['flags']:
+                raise Exception("Unexpected STA flag: HE (HE Capab: %s)" % he_capab)
+
+        deauth = "c0003a01" + bssid + addr + bssid + "3000" + "0300"
+        if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % deauth):
+            raise Exception("MGMT_RX_PROCESS failed")
+
+        hapd.dump_monitor()
