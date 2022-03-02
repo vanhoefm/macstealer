@@ -66,6 +66,7 @@ static int ieee80211_invalid_he_cap_size(const u8 *buf, size_t len)
 {
 	struct ieee80211_he_capabilities *cap;
 	size_t cap_len;
+	u8 ppe_thres_hdr;
 
 	cap = (struct ieee80211_he_capabilities *) buf;
 	cap_len = sizeof(*cap) - sizeof(cap->optional);
@@ -76,9 +77,11 @@ static int ieee80211_invalid_he_cap_size(const u8 *buf, size_t len)
 	if (len < cap_len)
 		return 1;
 
-	cap_len += ieee80211_he_ppet_size(buf[cap_len], cap->he_phy_capab_info);
+	ppe_thres_hdr = len > cap_len ? buf[cap_len] : 0xff;
+	cap_len += ieee80211_he_ppet_size(ppe_thres_hdr,
+					  cap->he_phy_capab_info);
 
-	return len != cap_len;
+	return len < cap_len;
 }
 
 
