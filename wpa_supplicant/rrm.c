@@ -501,7 +501,7 @@ static int wpas_add_channel(u8 op_class, u8 chan, u8 num_primary_channels,
 
 
 static int * wpas_add_channels(const struct oper_class_map *op,
-			       struct hostapd_hw_modes *mode, int active,
+			       struct hostapd_hw_modes *mode,
 			       const u8 *channels, const u8 size)
 {
 	int *freqs, *next_freq;
@@ -532,7 +532,7 @@ static int * wpas_add_channels(const struct oper_class_map *op,
 		enum chan_allowed res = verify_channel(mode, op->op_class, chan,
 						       op->bw);
 
-		if (res == NOT_ALLOWED || (res == NO_IR && active))
+		if (res == NOT_ALLOWED)
 			continue;
 
 		if (wpas_add_channel(op->op_class, chan, num_primary_channels,
@@ -554,7 +554,7 @@ static int * wpas_add_channels(const struct oper_class_map *op,
 
 
 static int * wpas_op_class_freqs(const struct oper_class_map *op,
-				 struct hostapd_hw_modes *mode, int active)
+				 struct hostapd_hw_modes *mode)
 {
 	u8 channels_80mhz_5ghz[] = { 42, 58, 106, 122, 138, 155, 171 };
 	u8 channels_160mhz_5ghz[] = { 50, 114, 163 };
@@ -581,11 +581,11 @@ static int * wpas_op_class_freqs(const struct oper_class_map *op,
 			ARRAY_SIZE(channels_160mhz_5ghz);
 	}
 
-	return wpas_add_channels(op, mode, active, channels, num_chan);
+	return wpas_add_channels(op, mode, channels, num_chan);
 }
 
 
-static int * wpas_channel_report_freqs(struct wpa_supplicant *wpa_s, int active,
+static int * wpas_channel_report_freqs(struct wpa_supplicant *wpa_s,
 				       const char *country, const u8 *subelems,
 				       size_t len)
 {
@@ -633,7 +633,7 @@ static int * wpas_channel_report_freqs(struct wpa_supplicant *wpa_s, int active,
 		 * by a corresponding AP Channel Report element as specified in
 		 * IEEE Std 802.11-2016, 11.11.9.1.
 		 */
-		new_freqs = wpas_add_channels(op, mode, active, pos, left);
+		new_freqs = wpas_add_channels(op, mode, pos, left);
 		if (new_freqs)
 			int_array_concat(&freqs, new_freqs);
 
@@ -648,7 +648,7 @@ out:
 
 
 static int * wpas_beacon_request_freqs(struct wpa_supplicant *wpa_s,
-				       u8 op_class, u8 chan, int active,
+				       u8 op_class, u8 chan,
 				       const u8 *subelems, size_t len)
 {
 	int *freqs = NULL, *ext_freqs = NULL;
@@ -678,7 +678,7 @@ static int * wpas_beacon_request_freqs(struct wpa_supplicant *wpa_s,
 
 	switch (chan) {
 	case 0:
-		freqs = wpas_op_class_freqs(op, mode, active);
+		freqs = wpas_op_class_freqs(op, mode);
 		if (!freqs)
 			return NULL;
 		break;
@@ -686,14 +686,13 @@ static int * wpas_beacon_request_freqs(struct wpa_supplicant *wpa_s,
 		/* freqs will be added from AP channel subelements */
 		break;
 	default:
-		freqs = wpas_add_channels(op, mode, active, &chan, 1);
+		freqs = wpas_add_channels(op, mode, &chan, 1);
 		if (!freqs)
 			return NULL;
 		break;
 	}
 
-	ext_freqs = wpas_channel_report_freqs(wpa_s, active, country, subelems,
-					      len);
+	ext_freqs = wpas_channel_report_freqs(wpa_s, country, subelems, len);
 	if (ext_freqs) {
 		int_array_concat(&freqs, ext_freqs);
 		os_free(ext_freqs);
@@ -1220,10 +1219,9 @@ wpas_rm_handle_beacon_req(struct wpa_supplicant *wpa_s,
 		goto out;
 	}
 
-	params->freqs = wpas_beacon_request_freqs(
-		wpa_s, req->oper_class, req->channel,
-		req->mode == BEACON_REPORT_MODE_ACTIVE,
-		req->variable, len - sizeof(*req));
+	params->freqs = wpas_beacon_request_freqs(wpa_s, req->oper_class,
+						  req->channel, req->variable,
+						  len - sizeof(*req));
 	if (!params->freqs) {
 		wpa_printf(MSG_DEBUG, "Beacon request: No valid channels");
 		reject_mode = MEASUREMENT_REPORT_MODE_REJECT_REFUSED;
