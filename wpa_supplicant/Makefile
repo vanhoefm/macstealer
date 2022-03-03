@@ -2077,3 +2077,4 @@ clean: common-clean
 	rm -f libwpa_client.a
 	rm -f libwpa_client.so
 	rm -f libwpa_test1 libwpa_test2
+	rm -f wpa_passphrase
