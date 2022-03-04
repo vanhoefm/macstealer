@@ -1351,6 +1351,25 @@ def test_radius_psk_oom(dev, apdev):
         t_events['stop'].set()
         t.join()
 
+def test_radius_sae_password(dev, apdev):
+    """WPA3 with SAE password from RADIUS"""
+    t, t_events = start_radius_psk_server("12345678")
+
+    try:
+        params = hostapd_radius_psk_test_params()
+        params['ssid'] = "test-wpa3-sae"
+        params["wpa_key_mgmt"] = "SAE"
+        params['ieee80211w'] = '2'
+        hapd = hostapd.add_ap(apdev[0], params)
+        dev[0].connect("test-wpa3-sae", sae_password="12345678", key_mgmt="SAE",
+                       ieee80211w="2", scan_freq="2412")
+        t_events['psk'] = "0123456789abcdef"
+        dev[1].connect("test-wpa3-sae", sae_password="0123456789abcdef",
+                       key_mgmt="SAE", ieee80211w="2", scan_freq="2412")
+    finally:
+        t_events['stop'].set()
+        t.join()
+
 def test_radius_psk_default(dev, apdev):
     """WPA2 with default PSK"""
     ssid = "test-wpa2-psk"
