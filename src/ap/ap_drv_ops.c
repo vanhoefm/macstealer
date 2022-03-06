@@ -812,7 +812,8 @@ int hostapd_start_dfs_cac(struct hostapd_iface *iface,
 			  int channel, int ht_enabled, int vht_enabled,
 			  int he_enabled,
 			  int sec_channel_offset, int oper_chwidth,
-			  int center_segment0, int center_segment1)
+			  int center_segment0, int center_segment1,
+			  bool radar_background)
 {
 	struct hostapd_data *hapd = iface->bss[0];
 	struct hostapd_freq_params data;
@@ -838,10 +839,14 @@ int hostapd_start_dfs_cac(struct hostapd_iface *iface,
 		wpa_printf(MSG_ERROR, "Can't set freq params");
 		return -1;
 	}
+	data.radar_background = radar_background;
 
 	res = hapd->driver->start_dfs_cac(hapd->drv_priv, &data);
 	if (!res) {
-		iface->cac_started = 1;
+		if (radar_background)
+			iface->radar_background.cac_started = 1;
+		else
+			iface->cac_started = 1;
 		os_get_reltime(&iface->dfs_cac_start);
 	}
 

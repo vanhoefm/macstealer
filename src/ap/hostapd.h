@@ -522,6 +522,21 @@ struct hostapd_iface {
 	int *basic_rates;
 	int freq;
 
+	/* Background radar configuration */
+	struct {
+		int channel;
+		int secondary_channel;
+		int freq;
+		int centr_freq_seg0_idx;
+		int centr_freq_seg1_idx;
+		/* Main chain is on temporary channel during
+		 * CAC detection on radar offchain.
+		 */
+		unsigned int temp_ch:1;
+		/* CAC started on radar offchain */
+		unsigned int cac_started:1;
+	} radar_background;
+
 	u16 hw_flags;
 
 	/* Number of associated Non-ERP stations (i.e., stations using 802.11b
