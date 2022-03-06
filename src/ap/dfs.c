@@ -1277,6 +1277,53 @@ static int hostapd_dfs_start_channel_switch_cac(struct hostapd_iface *iface)
 }
 
 
+static int
+hostapd_dfs_background_start_channel_switch(struct hostapd_iface *iface,
+					    int freq)
+{
+	if (!dfs_use_radar_background(iface))
+		return -1; /* Background radar chain not supported. */
+
+	wpa_printf(MSG_DEBUG,
+		   "%s called (background CAC active: %s, CSA active: %s)",
+		   __func__, iface->radar_background.cac_started ? "yes" : "no",
+		   hostapd_csa_in_progress(iface) ? "yes" : "no");
+
+	/* Check if CSA in progress */
+	if (hostapd_csa_in_progress(iface))
+		return 0;
+
+	if (hostapd_dfs_is_background_event(iface, freq)) {
+		/*
+		 * Radar pattern is reported on the background chain.
+		 * Just select a new random channel according to the
+		 * regulations for monitoring.
+		 */
+		hostpad_dfs_update_background_chain(iface);
+		return 0;
+	}
+
+	/*
+	 * If background radar detection is supported and the radar channel
+	 * monitored by the background chain is available switch to it without
+	 * waiting for the CAC.
+	 */
+	if (iface->radar_background.channel == -1)
+		return -1; /* Background radar chain not available. */
+
+	if (iface->radar_background.cac_started) {
+		/*
+		 * Background channel not available yet. Perform CAC on the
+		 * main chain.
+		 */
+		iface->radar_background.temp_ch = 1;
+		return -1;
+	}
+
+	return hostapd_dfs_start_channel_switch_background(iface);
+}
+
+
 static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
 {
 	struct hostapd_channel_data *channel;
@@ -1379,15 +1426,19 @@ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
 	if (!res)
 		return 0;
 
-	/* Skip if reported radar event not overlapped our channels */
-	res = dfs_are_channels_overlapped(iface, freq, chan_width, cf1, cf2);
-	if (!res)
-		return 0;
+	if (!hostapd_dfs_is_background_event(iface, freq)) {
+		/* Skip if reported radar event not overlapped our channels */
+		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
+						 cf1, cf2))
+			return 0;
+	}
 
-	/* radar detected while operating, switch the channel. */
-	res = hostapd_dfs_start_channel_switch(iface);
+	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
+		/* Radar detected while operating, switch the channel. */
+		return hostapd_dfs_start_channel_switch(iface);
+	}
 
-	return res;
+	return 0;
 }
 
 
