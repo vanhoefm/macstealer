@@ -782,6 +782,11 @@ struct hostapd_freq_params {
 	 * for IEEE 802.11ay EDMG configuration.
 	 */
 	struct ieee80211_edmg_config edmg;
+
+	/**
+	 * radar_background - Whether radar/CAC background is requested
+	 */
+	bool radar_background;
 };
 
 /**
