@@ -969,7 +969,8 @@ int hostapd_dfs_pre_cac_expired(struct hostapd_iface *iface, int freq,
 static struct hostapd_channel_data *
 dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
 			u8 *oper_centr_freq_seg0_idx,
-			u8 *oper_centr_freq_seg1_idx, int *skip_radar)
+			u8 *oper_centr_freq_seg1_idx,
+			enum dfs_channel_type *channel_type)
 {
 	struct hostapd_channel_data *channel;
 
@@ -977,23 +978,22 @@ dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
 		channel = dfs_get_valid_channel(iface, secondary_channel,
 						oper_centr_freq_seg0_idx,
 						oper_centr_freq_seg1_idx,
-						*skip_radar ? DFS_AVAILABLE :
-						DFS_ANY_CHANNEL);
+						*channel_type);
 		if (channel) {
 			wpa_printf(MSG_DEBUG, "DFS: Selected channel: %d",
 				   channel->chan);
 			return channel;
 		}
 
-		if (*skip_radar) {
-			*skip_radar = 0;
+		if (*channel_type != DFS_ANY_CHANNEL) {
+			*channel_type = DFS_ANY_CHANNEL;
 		} else {
 			int oper_chwidth;
 
 			oper_chwidth = hostapd_get_oper_chwidth(iface->conf);
 			if (oper_chwidth == CHANWIDTH_USE_HT)
 				break;
-			*skip_radar = 1;
+			*channel_type = DFS_AVAILABLE;
 			hostapd_set_oper_chwidth(iface->conf, oper_chwidth - 1);
 		}
 	}
@@ -1011,7 +1011,7 @@ static int hostapd_dfs_start_channel_switch_cac(struct hostapd_iface *iface)
 	int secondary_channel;
 	u8 oper_centr_freq_seg0_idx = 0;
 	u8 oper_centr_freq_seg1_idx = 0;
-	int skip_radar = 0;
+	enum dfs_channel_type channel_type = DFS_ANY_CHANNEL;
 	int err = 1;
 
 	/* Radar detected during active CAC */
@@ -1019,14 +1019,13 @@ static int hostapd_dfs_start_channel_switch_cac(struct hostapd_iface *iface)
 	channel = dfs_get_valid_channel(iface, &secondary_channel,
 					&oper_centr_freq_seg0_idx,
 					&oper_centr_freq_seg1_idx,
-					skip_radar ? DFS_AVAILABLE :
-					DFS_ANY_CHANNEL);
+					channel_type);
 
 	if (!channel) {
 		channel = dfs_downgrade_bandwidth(iface, &secondary_channel,
 						  &oper_centr_freq_seg0_idx,
 						  &oper_centr_freq_seg1_idx,
-						  &skip_radar);
+						  &channel_type);
 		if (!channel) {
 			wpa_printf(MSG_ERROR, "No valid channel available");
 			return err;
@@ -1060,7 +1059,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
 	u8 oper_centr_freq_seg0_idx;
 	u8 oper_centr_freq_seg1_idx;
 	u8 new_vht_oper_chwidth;
-	int skip_radar = 1;
+	enum dfs_channel_type channel_type = DFS_AVAILABLE;
 	struct csa_settings csa_settings;
 	unsigned int i;
 	int err = 1;
@@ -1085,14 +1084,13 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
 	 * uniform spreading.
 	 */
 	if (iface->dfs_domain == HOSTAPD_DFS_REGION_ETSI)
-		skip_radar = 0;
+		channel_type = DFS_ANY_CHANNEL;
 
 	/* Perform channel switch/CSA */
 	channel = dfs_get_valid_channel(iface, &secondary_channel,
 					&oper_centr_freq_seg0_idx,
 					&oper_centr_freq_seg1_idx,
-					skip_radar ? DFS_AVAILABLE :
-					DFS_ANY_CHANNEL);
+					channel_type);
 
 	if (!channel) {
 		/*
@@ -1100,11 +1098,11 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
 		 * there is another channel where we can switch even if it
 		 * requires to perform a CAC first.
 		 */
-		skip_radar = 0;
+		channel_type = DFS_ANY_CHANNEL;
 		channel = dfs_downgrade_bandwidth(iface, &secondary_channel,
 						  &oper_centr_freq_seg0_idx,
 						  &oper_centr_freq_seg1_idx,
-						  &skip_radar);
+						  &channel_type);
 		if (!channel) {
 			/*
 			 * Toggle interface state to enter DFS state
@@ -1115,7 +1113,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
 			return 0;
 		}
 
-		if (!skip_radar) {
+		if (channel_type == DFS_ANY_CHANNEL) {
 			iface->freq = channel->freq;
 			iface->conf->channel = channel->chan;
 			iface->conf->secondary_channel = secondary_channel;
