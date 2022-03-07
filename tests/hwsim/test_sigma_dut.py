@@ -3626,6 +3626,64 @@ def test_sigma_dut_dpp_reconfig_configurator(dev, apdev):
         dev[1].set("dpp_config_processing", "0")
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_reconfig_no_proto_ver(dev, apdev):
+    """sigma_dut DPP reconfiguration (Configurator) - missing Protocol Version"""
+    run_sigma_dut_dpp_reconfig_proto(dev, apdev, "MissingAttribute")
+
+def test_sigma_dut_dpp_reconfig_invalid_proto_ver(dev, apdev):
+    """sigma_dut DPP reconfiguration (Configurator) - invalid Protocol Version"""
+    run_sigma_dut_dpp_reconfig_proto(dev, apdev, "InvalidValue")
+
+def run_sigma_dut_dpp_reconfig_proto(dev, apdev, dpp_step):
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        dev[1].set("dpp_config_processing", "1")
+        id0 = dev[1].dpp_bootstrap_gen(chan="81/6", mac=True)
+        uri0 = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+        cmd = "DPP_LISTEN 2437"
+        if "OK" not in dev[1].request(cmd):
+            raise Exception("Failed to start listen operation")
+
+        ifname = dev[0].ifname
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" % ifname)
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,SetPeerBootstrap,DPPBootstrappingdata,%s,DPPBS,QR" % to_hex(uri0))
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Configurator,DPPConfEnrolleeRole,STA,DPPSigningKeyECC,P-256,DPPConfIndex,1,DPPBS,QR,DPPTimeout,6", timeout=10)
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+
+        dev[0].dump_monitor()
+
+        ev = dev[1].wait_event(["DPP-NETWORK-ID"], timeout=1)
+        if ev is None:
+            raise Exception("No network profile created")
+        id = int(ev.split(' ')[1])
+
+        ev = dev[1].wait_event(["DPP-TX-STATUS"], timeout=5)
+        if ev is None:
+            raise Exception("Configuration Result not sent")
+        dev[1].dump_monitor()
+        cmd = "DPP_RECONFIG %d" % id
+        if "OK" not in dev[1].request(cmd):
+            raise Exception("Failed to start reconfiguration")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,DPPReconfigure,DPPProvisioningRole,Configurator,DPPConfEnrolleeRole,STA,DPPSigningKeyECC,P-256,DPPConfIndex,2,DPPStep,%s,DPPFrameType,ReconfigAuthRequest,DPPIEAttribute,ProtocolVersion,DPPListenChannel,6,DPPTimeout,6" % dpp_step, timeout=10)
+        if "status,COMPLETE,ReconfigAuthResult,Errorsent" not in res:
+            raise Exception("Unexpected reconfiguration result: " + res)
+
+        ev = dev[1].wait_event(["DPP-CONF-RECEIVED"], timeout=5)
+        if ev is not None:
+            raise Exception("DPP Config Response (reconfig) received unexpectedly")
+    finally:
+        dev[0].set("dpp_config_processing", "0")
+        dev[1].set("dpp_config_processing", "0")
+        stop_sigma_dut(sigma)
+
 def test_sigma_dut_preconfigured_profile(dev, apdev):
     """sigma_dut controlled connection using preconfigured profile"""
     ifname = dev[0].ifname
