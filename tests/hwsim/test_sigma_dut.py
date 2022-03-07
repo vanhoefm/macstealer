@@ -2317,6 +2317,43 @@ def test_sigma_dut_dpp_pkex_v1_only(dev, apdev):
     finally:
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_pkex_v1_only_responder(dev, apdev):
+    """sigma_dut DPP/PKEX as v1 only responder"""
+    run_sigma_dut_dpp_pkex_responder(dev, apdev, v1=True)
+
+def test_sigma_dut_dpp_pkex_responder(dev, apdev):
+    """sigma_dut DPP/PKEX as responder"""
+    run_sigma_dut_dpp_pkex_responder(dev, apdev)
+
+def dpp_init_enrollee_pkex(dev):
+    logger.info("Starting DPP PKEX initiator/enrollee in a thread")
+    time.sleep(1.5)
+    id = dev.dpp_bootstrap_gen(type="pkex")
+    cmd = "DPP_PKEX_ADD own=%d init=1 role=enrollee identifier=test code=secret" % id
+    res = dev.request(cmd)
+    if "FAIL" in res:
+        raise Exception("Failed to initiate DPP PKEX")
+    ev = dev.wait_event(["DPP-CONF-RECEIVED"], timeout=15)
+    if ev is None:
+        raise Exception("DPP configuration not completed (Enrollee)")
+    logger.info("DPP initiator/enrollee done")
+
+def run_sigma_dut_dpp_pkex_responder(dev, apdev, v1=False):
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" %
+                            dev[0].ifname)
+        t = threading.Thread(target=dpp_init_enrollee_pkex, args=(dev[1],))
+        t.start()
+        dppbs = "PKEXv1" if v1 else "PKEX"
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,%s,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,16" % dppbs, timeout=20)
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+
 def dpp_init_conf(dev, id1, conf, conf_id, extra):
     logger.info("Starting DPP initiator/configurator in a thread")
     cmd = "DPP_AUTH_INIT peer=%d conf=%s %s configurator=%d" % (id1, conf, extra, conf_id)
@@ -2457,6 +2494,17 @@ def test_sigma_dut_ap_dpp_pkex_responder(dev, apdev, params):
         finally:
             stop_sigma_dut(sigma)
 
+def test_sigma_dut_ap_dpp_pkex_v1_responder(dev, apdev, params):
+    """sigma_dut controlled AP as DPP PKEXv1 responder"""
+    check_dpp_capab(dev[0])
+    logdir = params['prefix'] + ".sigma-hostapd"
+    with HWSimRadio() as (radio, iface):
+        sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
+        try:
+            run_sigma_dut_ap_dpp_pkex_responder(dev, apdev, v1=True)
+        finally:
+            stop_sigma_dut(sigma)
+
 def dpp_init_conf_pkex(dev, conf_id, check_config=True):
     logger.info("Starting DPP PKEX initiator/configurator in a thread")
     time.sleep(1.5)
@@ -2467,12 +2515,12 @@ def dpp_init_conf_pkex(dev, conf_id, check_config=True):
         raise Exception("Failed to initiate DPP PKEX")
     if not check_config:
         return
-    ev = dev.wait_event(["DPP-CONF-SENT"], timeout=5)
+    ev = dev.wait_event(["DPP-CONF-SENT"], timeout=15)
     if ev is None:
         raise Exception("DPP configuration not completed (Configurator)")
     logger.info("DPP initiator/configurator done")
 
-def run_sigma_dut_ap_dpp_pkex_responder(dev, apdev):
+def run_sigma_dut_ap_dpp_pkex_responder(dev, apdev, v1=False):
     sigma_dut_cmd_check("ap_reset_default,program,DPP")
 
     cmd = "DPP_CONFIGURATOR_ADD"
@@ -2483,7 +2531,9 @@ def run_sigma_dut_ap_dpp_pkex_responder(dev, apdev):
 
     t = threading.Thread(target=dpp_init_conf_pkex, args=(dev[0], conf_id))
     t.start()
-    res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Mutual,DPPProvisioningRole,Enrollee,DPPBS,PKEX,DPPPKEXCode,password,DPPTimeout,6,DPPWaitForConnect,No", timeout=10)
+    dppbs = "PKEXv1" if v1 else "PKEX"
+    res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Mutual,DPPProvisioningRole,Enrollee,DPPBS,%s,DPPPKEXCode,password,DPPTimeout,16,DPPWaitForConnect,No" % dppbs,
+                        timeout=20)
     t.join()
     if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
         raise Exception("Unexpected result: " + res)
