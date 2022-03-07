@@ -346,14 +346,8 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
 #endif /* CONFIG_DPP2 */
 
 
-enum hostapd_dpp_pkex_ver {
-	PKEX_VER_AUTO,
-	PKEX_VER_ONLY_1,
-	PKEX_VER_ONLY_2,
-};
-
 static int hostapd_dpp_pkex_init(struct hostapd_data *hapd,
-				 enum hostapd_dpp_pkex_ver ver,
+				 enum dpp_pkex_ver ver,
 				 const struct hostapd_ip_addr *ipaddr,
 				 int tcp_port)
 {
@@ -1986,6 +1980,17 @@ hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
 	wpa_printf(MSG_DEBUG, "DPP: PKEX Exchange Request from " MACSTR,
 		   MAC2STR(src));
 
+	if (hapd->dpp_pkex_ver == PKEX_VER_ONLY_1 && v2) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Ignore PKEXv2 Exchange Request when configured to be PKEX v1 only");
+		return;
+	}
+	if (hapd->dpp_pkex_ver == PKEX_VER_ONLY_2 && !v2) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Ignore PKEXv1 Exchange Request when configured to be PKEX v2 only");
+		return;
+	}
+
 	/* TODO: Support multiple PKEX codes by iterating over all the enabled
 	 * values here */
 
@@ -2409,6 +2414,11 @@ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd)
 {
 	struct dpp_bootstrap_info *own_bi;
 	const char *pos, *end;
+#ifdef CONFIG_DPP3
+		enum dpp_pkex_ver ver = PKEX_VER_AUTO;
+#else /* CONFIG_DPP3 */
+		enum dpp_pkex_ver ver = PKEX_VER_ONLY_1;
+#endif /* CONFIG_DPP3 */
 	int tcp_port = DPP_TCP_PORT;
 	struct hostapd_ip_addr *ipaddr = NULL;
 #ifdef CONFIG_DPP2
@@ -2474,27 +2484,22 @@ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd)
 	if (!hapd->dpp_pkex_code)
 		return -1;
 
+	pos = os_strstr(cmd, " ver=");
+	if (pos) {
+		int v;
+
+		pos += 5;
+		v = atoi(pos);
+		if (v == 1)
+			ver = PKEX_VER_ONLY_1;
+		else if (v == 2)
+			ver = PKEX_VER_ONLY_2;
+		else
+			return -1;
+	}
+	hapd->dpp_pkex_ver = ver;
+
 	if (os_strstr(cmd, " init=1")) {
-#ifdef CONFIG_DPP3
-		enum hostapd_dpp_pkex_ver ver = PKEX_VER_AUTO;
-#else /* CONFIG_DPP3 */
-		enum hostapd_dpp_pkex_ver ver = PKEX_VER_ONLY_1;
-#endif /* CONFIG_DPP3 */
-
-		pos = os_strstr(cmd, " ver=");
-		if (pos) {
-			int v;
-
-			pos += 5;
-			v = atoi(pos);
-			if (v == 1)
-				ver = PKEX_VER_ONLY_1;
-			else if (v == 2)
-				ver = PKEX_VER_ONLY_2;
-			else
-				return -1;
-		}
-
 		if (hostapd_dpp_pkex_init(hapd, ver, ipaddr, tcp_port) < 0)
 			return -1;
 	} else {

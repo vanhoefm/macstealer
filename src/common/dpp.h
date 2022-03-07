@@ -172,6 +172,12 @@ struct dpp_bootstrap_info {
 
 #define PKEX_COUNTER_T_LIMIT 5
 
+enum dpp_pkex_ver {
+	PKEX_VER_AUTO,
+	PKEX_VER_ONLY_1,
+	PKEX_VER_ONLY_2,
+};
+
 struct dpp_pkex {
 	void *msg_ctx;
 	unsigned int initiator:1;

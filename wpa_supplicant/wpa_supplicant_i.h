@@ -14,6 +14,7 @@
 #include "common/defs.h"
 #include "common/sae.h"
 #include "common/wpa_ctrl.h"
+#include "common/dpp.h"
 #include "crypto/sha384.h"
 #include "eapol_supp/eapol_supp_sm.h"
 #include "wps/wps_defs.h"
@@ -1456,6 +1457,7 @@ struct wpa_supplicant {
 	struct dpp_bootstrap_info *dpp_pkex_bi;
 	char *dpp_pkex_code;
 	char *dpp_pkex_identifier;
+	enum dpp_pkex_ver dpp_pkex_ver;
 	char *dpp_pkex_auth_cmd;
 	char *dpp_configurator_params;
 	struct os_reltime dpp_last_init;
