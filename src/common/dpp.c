@@ -815,7 +815,7 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
 	size_t len, name_len;
 	const char *tech = "infra";
 	const char *dpp_name;
-	struct wpabuf *buf, *json;
+	struct wpabuf *buf = NULL, *json = NULL;
 	char *csr = NULL;
 
 #ifdef CONFIG_TESTING_OPTIONS
@@ -840,19 +840,17 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
 		csr = base64_encode_no_lf(wpabuf_head(auth->csr),
 					  wpabuf_len(auth->csr), &csr_len);
 		if (!csr)
-			return NULL;
+			goto fail;
 		len += 30 + csr_len;
 	}
 #endif /* CONFIG_DPP2 */
 	json = wpabuf_alloc(len);
 	if (!json)
-		return NULL;
+		goto fail;
 
 	json_start_object(json, NULL);
-	if (json_add_string_escape(json, "name", dpp_name, name_len) < 0) {
-		wpabuf_free(json);
-		return NULL;
-	}
+	if (json_add_string_escape(json, "name", dpp_name, name_len) < 0)
+		goto fail;
 	json_value_sep(json);
 	json_add_string(json, "wi-fi_tech", tech);
 	json_value_sep(json);
@@ -877,6 +875,7 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
 	json_end_object(json);
 
 	buf = dpp_build_conf_req(auth, wpabuf_head(json));
+fail:
 	wpabuf_free(json);
 	os_free(csr);
 
