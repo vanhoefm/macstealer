@@ -541,10 +541,13 @@ class Hostapd:
             raise Exception("Failed to set PKEX data (responder)")
         self.dpp_listen(freq, role=listen_role)
 
-    def dpp_configurator_add(self, curve=None, key=None):
+    def dpp_configurator_add(self, curve=None, key=None,
+                             net_access_key_curve=None):
         cmd = "DPP_CONFIGURATOR_ADD"
         if curve:
             cmd += " curve=" + curve
+        if net_access_key_curve:
+            cmd += " net_access_key_curve=" + curve
         if key:
             cmd += " key=" + key
         res = self.request(cmd)

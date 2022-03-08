@@ -374,13 +374,15 @@ def run_dpp_qr_code_auth_unicast(dev, apdev, curve, netrole=None, key=None,
                                  require_conf_success=False, init_extra=None,
                                  require_conf_failure=False,
                                  configurator=False, conf_curve=None,
+                                 net_access_key_curve=None,
                                  conf=None, qr=None, stop_responder=True):
     brainpool = (curve and "brainpool" in curve) or \
         (conf_curve and "brainpool" in conf_curve)
     check_dpp_capab(dev[0], brainpool)
     check_dpp_capab(dev[1], brainpool)
     if configurator:
-        conf_id = dev[1].dpp_configurator_add(curve=conf_curve)
+        conf_id = dev[1].dpp_configurator_add(curve=conf_curve,
+                                              net_access_key_curve=net_access_key_curve)
     else:
         conf_id = None
 
@@ -401,7 +403,7 @@ def run_dpp_qr_code_auth_unicast(dev, apdev, curve, netrole=None, key=None,
     dev[1].dpp_auth_init(uri=uri0, extra=init_extra, configurator=conf_id,
                          conf=conf, own=id1)
     wait_auth_success(dev[0], dev[1], configurator=dev[1], enrollee=dev[0],
-                      allow_enrollee_failure=True,
+                      allow_enrollee_failure=not require_conf_success,
                       allow_configurator_failure=not require_conf_success,
                       require_configurator_failure=require_conf_failure,
                       stop_responder=stop_responder)
@@ -956,6 +958,15 @@ def test_dpp_config_dpp_gen_secp521r1_secp521r1(dev, apdev):
                                  require_conf_success=True,
                                  configurator=True,
                                  conf_curve="secp521r1")
+
+def test_dpp_config_dpp_gen_prime256v1_secp384r1_secp384r1(dev, apdev):
+    """Generate DPP Config Object for DPP network (P-256 + P-384 + P-384)"""
+    run_dpp_qr_code_auth_unicast(dev, apdev, "prime256v1",
+                                 init_extra="conf=sta-dpp",
+                                 require_conf_success=True,
+                                 configurator=True,
+                                 conf_curve="secp384r1",
+                                 net_access_key_curve="secp384r1")
 
 def test_dpp_config_dpp_gen_expiry(dev, apdev):
     """Generate DPP Config Object for DPP network with expiry value"""
