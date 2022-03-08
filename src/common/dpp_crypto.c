@@ -2355,6 +2355,100 @@ fail:
 #endif /* CONFIG_DPP2 */
 
 
+#ifdef CONFIG_DPP3
+int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i)
+{
+	int ret = -1, res;
+	u8 Sx[DPP_MAX_SHARED_SECRET_LEN];
+	size_t Sx_len;
+	unsigned int hash_len;
+	const char *info = "New DPP Protocol Key";
+	const u8 *addr[4];
+	size_t len[4];
+	u8 tmp[DPP_MAX_HASH_LEN], k[DPP_MAX_HASH_LEN];
+	struct wpabuf *pcx = NULL, *pex = NULL;
+
+	if (!auth->new_curve)
+		return -1;
+
+	hash_len = auth->new_curve->hash_len;
+
+	/*
+	 * Configurator: S = pc * Pe
+	 * Enrollee: S = pe * Pc
+	 * k = HKDF(bk, "New DPP Protocol Key", S.x)
+	 *   = HKDF-Expand(HKDF-Extract(bk, S.X), "New DPP Protocol Key",
+	 *                 len(new-curve-hash-out))
+	 * Auth-I = H(k, E-nonce | Pc.x | Pe.x)
+	 * Note: Assume this H(k, ..) is actually H(k | ..)
+	 *
+	 * auth->own_protocol_key, auth->peer_protocol_key, and auth->curve have
+	 * already been updated to use the new keys and curve.
+	 */
+
+	if (dpp_ecdh(auth->own_protocol_key, auth->peer_protocol_key,
+		     Sx, &Sx_len) < 0)
+		goto fail;
+
+	wpa_hexdump_key(MSG_DEBUG, "DPP: S.x", Sx, Sx_len);
+
+	/* tmp = HKDF-Extract(bk, S.x) */
+	addr[0] = Sx;
+	len[0] = Sx_len;
+	res = dpp_hmac_vector(hash_len, auth->bk, auth->new_curve->hash_len,
+			      1, addr, len, tmp);
+	if (res < 0)
+		goto fail;
+	wpa_hexdump_key(MSG_DEBUG, "DPP: HKDF-Extract(bk, S.x)",
+			tmp, hash_len);
+	/* k = HKDF-Expand(tmp, "New DPP Protocol Key", len(new-curve-hash-out))
+	 */
+	res = dpp_hkdf_expand(hash_len, tmp, hash_len, info, k, hash_len);
+	if (res < 0)
+		return -1;
+
+	wpa_hexdump_key(MSG_DEBUG,
+			"DPP: k = HKDF-Expand(\"New DPP Protocol Key\")",
+			k, hash_len);
+
+	/* Auth-I = H(k | E-nonce | Pc.x | Pe.x) */
+	addr[0] = k;
+	len[0] = hash_len;
+	addr[1] = auth->e_nonce;
+	len[1] = auth->new_curve->nonce_len;
+
+	if (auth->configurator) {
+		pcx = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
+		pex = crypto_ec_key_get_pubkey_point(auth->peer_protocol_key,
+						     0);
+	} else {
+		pcx = crypto_ec_key_get_pubkey_point(auth->peer_protocol_key,
+						     0);
+		pex = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
+	}
+	if (!pcx || !pex)
+		goto fail;
+	addr[2] = wpabuf_head(pcx);
+	len[2] = wpabuf_len(pcx) / 2;
+	addr[3] = wpabuf_head(pex);
+	len[3] = wpabuf_len(pex) / 2;
+
+	if (dpp_hash_vector(auth->new_curve, 4, addr, len, auth_i) < 0)
+		goto fail;
+	wpa_hexdump_key(MSG_DEBUG, "DPP: Auth-I = H(k | E-nonce | Pc.x | Pe.x)",
+			auth_i, hash_len);
+	ret = 0;
+fail:
+	forced_memzero(Sx, sizeof(Sx));
+	forced_memzero(tmp, sizeof(tmp));
+	forced_memzero(k, sizeof(k));
+	wpabuf_free(pcx);
+	wpabuf_free(pex);
+	return ret;
+}
+#endif /* CONFIG_DPP3 */
+
+
 #ifdef CONFIG_TESTING_OPTIONS
 
 int dpp_test_gen_invalid_key(struct wpabuf *msg,

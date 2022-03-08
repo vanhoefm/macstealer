@@ -1656,6 +1656,21 @@ static void wpas_dpp_build_csr(void *eloop_ctx, void *timeout_ctx)
 #endif /* CONFIG_DPP2 */
 
 
+#ifdef CONFIG_DPP3
+static void wpas_dpp_build_new_key(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+
+	if (!auth || !auth->waiting_new_key)
+		return;
+
+	wpa_printf(MSG_DEBUG, "DPP: Build config request with a new key");
+	wpas_dpp_start_gas_client(wpa_s);
+}
+#endif /* CONFIG_DPP3 */
+
+
 static void wpas_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
 				 enum gas_query_result result,
 				 const struct wpabuf *adv_proto,
@@ -1709,6 +1724,14 @@ static void wpas_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
 		return;
 	}
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	if (res == -3) {
+		wpa_printf(MSG_DEBUG, "DPP: New protocol key needed");
+		eloop_register_timeout(0, 0, wpas_dpp_build_new_key, wpa_s,
+				       NULL);
+		return;
+	}
+#endif /* CONFIG_DPP3 */
 	if (res < 0) {
 		wpa_printf(MSG_DEBUG, "DPP: Configuration attempt failed");
 		goto fail;
@@ -3356,6 +3379,14 @@ wpas_dpp_gas_status_handler(void *ctx, struct wpabuf *resp, int ok)
 	}
 #endif /* CONFIG_DPP2 */
 
+#ifdef CONFIG_DPP3
+	if (auth->waiting_new_key && ok) {
+		wpa_printf(MSG_DEBUG, "DPP: Waiting for a new key");
+		wpabuf_free(resp);
+		return;
+	}
+#endif /* CONFIG_DPP3 */
+
 	wpa_printf(MSG_DEBUG, "DPP: Configuration exchange completed (ok=%d)",
 		   ok);
 	eloop_cancel_timeout(wpas_dpp_reply_wait_timeout, wpa_s, NULL);
@@ -3809,6 +3840,9 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 	dpp_free_reconfig_id(wpa_s->dpp_reconfig_id);
 	wpa_s->dpp_reconfig_id = NULL;
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	eloop_cancel_timeout(wpas_dpp_build_new_key, wpa_s, NULL);
+#endif /* CONFIG_DPP3 */
 	offchannel_send_action_done(wpa_s);
 	wpas_dpp_listen_stop(wpa_s);
 	wpas_dpp_stop(wpa_s);

@@ -89,6 +89,9 @@ static void dpp_conn_tx_ready(int sock, void *eloop_ctx, void *sock_ctx);
 static void dpp_controller_auth_success(struct dpp_connection *conn,
 					int initiator);
 static void dpp_tcp_build_csr(void *eloop_ctx, void *timeout_ctx);
+#ifdef CONFIG_DPP3
+static void dpp_tcp_build_new_key(void *eloop_ctx, void *timeout_ctx);
+#endif /* CONFIG_DPP3 */
 static void dpp_tcp_gas_query_comeback(void *eloop_ctx, void *timeout_ctx);
 static void dpp_relay_conn_timeout(void *eloop_ctx, void *timeout_ctx);
 
@@ -107,6 +110,9 @@ static void dpp_connection_free(struct dpp_connection *conn)
 	eloop_cancel_timeout(dpp_tcp_build_csr, conn, NULL);
 	eloop_cancel_timeout(dpp_tcp_gas_query_comeback, conn, NULL);
 	eloop_cancel_timeout(dpp_relay_conn_timeout, conn, NULL);
+#ifdef CONFIG_DPP3
+	eloop_cancel_timeout(dpp_tcp_build_new_key, conn, NULL);
+#endif /* CONFIG_DPP3 */
 	wpabuf_free(conn->msg);
 	wpabuf_free(conn->msg_out);
 	dpp_auth_deinit(conn->auth);
@@ -192,6 +198,14 @@ static void dpp_controller_gas_done(struct dpp_connection *conn)
 		conn->on_tcp_tx_complete_gas_done = 0;
 		return;
 	}
+
+#ifdef CONFIG_DPP3
+	if (auth->waiting_new_key) {
+		wpa_printf(MSG_DEBUG, "DPP: Waiting for a new key");
+		conn->on_tcp_tx_complete_gas_done = 0;
+		return;
+	}
+#endif /* CONFIG_DPP3 */
 
 	if (auth->peer_version >= 2 &&
 	    auth->conf_resp_status == DPP_STATUS_OK) {
@@ -1440,6 +1454,21 @@ static void dpp_tcp_build_csr(void *eloop_ctx, void *timeout_ctx)
 }
 
 
+#ifdef CONFIG_DPP3
+static void dpp_tcp_build_new_key(void *eloop_ctx, void *timeout_ctx)
+{
+	struct dpp_connection *conn = eloop_ctx;
+	struct dpp_authentication *auth = conn->auth;
+
+	if (!auth || !auth->waiting_new_key)
+		return;
+
+	wpa_printf(MSG_DEBUG, "DPP: Build config request with a new key");
+	dpp_controller_start_gas_client(conn);
+}
+#endif /* CONFIG_DPP3 */
+
+
 static int dpp_tcp_rx_gas_resp(struct dpp_connection *conn, struct wpabuf *resp)
 {
 	struct dpp_authentication *auth = conn->auth;
@@ -1460,6 +1489,14 @@ static int dpp_tcp_rx_gas_resp(struct dpp_connection *conn, struct wpabuf *resp)
 		eloop_register_timeout(0, 0, dpp_tcp_build_csr, conn, NULL);
 		return 0;
 	}
+#ifdef CONFIG_DPP3
+	if (res == -3) {
+		wpa_printf(MSG_DEBUG, "DPP: New protocol key needed");
+		eloop_register_timeout(0, 0, dpp_tcp_build_new_key, conn,
+				       NULL);
+		return 0;
+	}
+#endif /* CONFIG_DPP3 */
 	if (res < 0) {
 		wpa_printf(MSG_DEBUG, "DPP: Configuration attempt failed");
 		return -1;

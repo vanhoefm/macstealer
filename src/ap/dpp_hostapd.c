@@ -31,6 +31,7 @@ static void hostapd_dpp_init_timeout(void *eloop_ctx, void *timeout_ctx);
 static int hostapd_dpp_auth_init_next(struct hostapd_data *hapd);
 static void hostapd_dpp_set_testing_options(struct hostapd_data *hapd,
 					    struct dpp_authentication *auth);
+static void hostapd_dpp_start_gas_client(struct hostapd_data *hapd);
 #ifdef CONFIG_DPP2
 static void hostapd_dpp_reconfig_reply_wait_timeout(void *eloop_ctx,
 						    void *timeout_ctx);
@@ -1154,6 +1155,21 @@ static int hostapd_dpp_handle_key_pkg(struct hostapd_data *hapd,
 }
 
 
+#ifdef CONFIG_DPP3
+static void hostapd_dpp_build_new_key(void *eloop_ctx, void *timeout_ctx)
+{
+	struct hostapd_data *hapd = eloop_ctx;
+	struct dpp_authentication *auth = hapd->dpp_auth;
+
+	if (!auth || !auth->waiting_new_key)
+		return;
+
+	wpa_printf(MSG_DEBUG, "DPP: Build config request with a new key");
+	hostapd_dpp_start_gas_client(hapd);
+}
+#endif /* CONFIG_DPP3 */
+
+
 static void hostapd_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
 				    enum gas_query_ap_result result,
 				    const struct wpabuf *adv_proto,
@@ -1163,6 +1179,7 @@ static void hostapd_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
 	const u8 *pos;
 	struct dpp_authentication *auth = hapd->dpp_auth;
 	enum dpp_status_error status = DPP_STATUS_CONFIG_REJECTED;
+	int res;
 
 	if (!auth || !auth->auth_success) {
 		wpa_printf(MSG_DEBUG, "DPP: No matching exchange in progress");
@@ -1193,7 +1210,16 @@ static void hostapd_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
 		goto fail;
 	}
 
-	if (dpp_conf_resp_rx(auth, resp) < 0) {
+	res = dpp_conf_resp_rx(auth, resp);
+#ifdef CONFIG_DPP3
+	if (res == -3) {
+		wpa_printf(MSG_DEBUG, "DPP: New protocol key needed");
+		eloop_register_timeout(0, 0, hostapd_dpp_build_new_key, hapd,
+				       NULL);
+		return;
+	}
+#endif /* CONFIG_DPP3 */
+	if (res < 0) {
 		wpa_printf(MSG_DEBUG, "DPP: Configuration attempt failed");
 		goto fail;
 	}
@@ -2354,6 +2380,13 @@ void hostapd_dpp_gas_status_handler(struct hostapd_data *hapd, int ok)
 	if (!auth)
 		return;
 
+#ifdef CONFIG_DPP3
+	if (auth->waiting_new_key && ok) {
+		wpa_printf(MSG_DEBUG, "DPP: Waiting for a new key");
+		return;
+	}
+#endif /* CONFIG_DPP3 */
+
 	wpa_printf(MSG_DEBUG, "DPP: Configuration exchange completed (ok=%d)",
 		   ok);
 	eloop_cancel_timeout(hostapd_dpp_reply_wait_timeout, hapd, NULL);
@@ -2651,6 +2684,9 @@ void hostapd_dpp_deinit(struct hostapd_data *hapd)
 	if (hapd->iface->interfaces)
 		dpp_controller_stop_for_ctx(hapd->iface->interfaces->dpp, hapd);
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	eloop_cancel_timeout(hostapd_dpp_build_new_key, hapd, NULL);
+#endif /* CONFIG_DPP3 */
 	dpp_auth_deinit(hapd->dpp_auth);
 	hapd->dpp_auth = NULL;
 	hostapd_dpp_pkex_remove(hapd, "*");

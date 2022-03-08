@@ -136,6 +136,7 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 struct crypto_ec_point * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
 					  struct crypto_ec_key *a_nonce,
 					  struct crypto_ec_key *e_prime_id);
+int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i);
 char * dpp_sign_connector(struct dpp_configurator *conf,
 			  const struct wpabuf *dppcon);
 int dpp_test_gen_invalid_key(struct wpabuf *msg,

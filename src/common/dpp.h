@@ -110,6 +110,7 @@ enum dpp_status_error {
 	DPP_STATUS_CONFIGURE_PENDING = 11,
 	DPP_STATUS_CSR_NEEDED = 12,
 	DPP_STATUS_CSR_BAD = 13,
+	DPP_STATUS_NEW_KEY_NEEDED = 14,
 };
 
 /* DPP Reconfig Flags object - connectorKey values */
@@ -258,6 +259,7 @@ struct dpp_authentication {
 	void *msg_ctx;
 	u8 peer_version;
 	const struct dpp_curve_params *curve;
+	const struct dpp_curve_params *new_curve;
 	struct dpp_bootstrap_info *peer_bi;
 	struct dpp_bootstrap_info *own_bi;
 	struct dpp_bootstrap_info *tmp_own_bi;
@@ -358,6 +360,8 @@ struct dpp_authentication {
 	char *trusted_eap_server_name;
 	struct wpabuf *cacert;
 	struct wpabuf *certbag;
+	bool waiting_new_key;
+	bool new_key_received;
 	void *config_resp_ctx;
 	void *gas_server_ctx;
 	bool use_config_query;
@@ -381,6 +385,7 @@ struct dpp_configurator {
 	u8 kid_hash[SHA256_MAC_LEN];
 	char *kid;
 	const struct dpp_curve_params *curve;
+	const struct dpp_curve_params *net_access_key_curve;
 	char *connector; /* own Connector for reconfiguration */
 	struct crypto_ec_key *connector_key;
 	struct crypto_ec_key *pp_key;
