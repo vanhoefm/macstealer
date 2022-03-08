@@ -1522,6 +1522,10 @@ def test_sigma_dut_dpp_qr_resp_11(dev, apdev, params):
         f.write(b'MAsGCSqGSIb3DQEJBw==')
     run_sigma_dut_dpp_qr_resp(dev, apdev, 11, cert_path=logdir)
 
+def test_sigma_dut_dpp_qr_resp_curve_change(dev, apdev):
+    """sigma_dut DPP/QR responder (curve change)"""
+    run_sigma_dut_dpp_qr_resp(dev, apdev, 1, net_access_key_curve="P-384")
+
 def test_sigma_dut_dpp_qr_resp_chan_list(dev, apdev):
     """sigma_dut DPP/QR responder (channel list override)"""
     run_sigma_dut_dpp_qr_resp(dev, apdev, 1, chan_list='81/2 81/6 81/1',
@@ -1546,7 +1550,8 @@ def test_sigma_dut_dpp_qr_resp_configurator(dev, apdev):
 
 def run_sigma_dut_dpp_qr_resp(dev, apdev, conf_idx, chan_list=None,
                               listen_chan=None, status_query=False,
-                              enrollee_role="STA", cert_path=None):
+                              enrollee_role="STA", cert_path=None,
+                              net_access_key_curve=None):
     check_dpp_capab(dev[0])
     check_dpp_capab(dev[1])
     sigma = start_sigma_dut(dev[0].ifname, cert_path=cert_path)
@@ -1573,6 +1578,8 @@ def run_sigma_dut_dpp_qr_resp(dev, apdev, conf_idx, chan_list=None,
             cmd += ",DPPListenChannel," + str(listen_chan)
         if status_query:
             cmd += ",DPPStatusQuery,Yes"
+        if net_access_key_curve:
+            cmd += ",DPPNAKECC," + net_access_key_curve
         res = sigma_dut_cmd(cmd, timeout=10)
         t.join()
         if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
