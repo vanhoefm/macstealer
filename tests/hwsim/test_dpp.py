@@ -3142,6 +3142,7 @@ def run_dpp_own_config(dev, apdev, own_curve=None, expect_failure=False,
     dev[0].set("dpp_config_processing", "1")
     cmd = "DPP_CONFIGURATOR_SIGN conf=sta-dpp configurator=%d%s" % (conf_id, extra)
     if own_curve:
+        dev[0].dpp_configurator_set(conf_id, net_access_key_curve=own_curve)
         cmd += " curve=" + own_curve
     res = dev[0].request(cmd)
     if "FAIL" in res:
