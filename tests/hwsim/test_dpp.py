@@ -3226,8 +3226,8 @@ def test_dpp_intro_mismatch(dev, apdev):
 
 def run_dpp_intro_mismatch(dev, apdev, wpas):
     check_dpp_capab(dev[0])
-    check_dpp_capab(dev[1])
-    check_dpp_capab(dev[2])
+    check_dpp_capab(dev[1], min_ver=3)
+    check_dpp_capab(dev[2], min_ver=3)
     logger.info("Start AP in unconfigured state")
     hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured"})
     check_dpp_capab(hapd)
@@ -3264,6 +3264,7 @@ def run_dpp_intro_mismatch(dev, apdev, wpas):
     uri5 = wpas.request("DPP_BOOTSTRAP_GET_URI %d" % id5)
     wpas.dpp_listen(2412)
     dev[1].set("dpp_groups_override", '')
+    dev[1].dpp_configurator_set(conf_id, net_access_key_curve="P-521")
     dev[1].dpp_auth_init(uri=uri5, conf="sta-dpp", configurator=conf_id)
     wait_auth_success(wpas, dev[1], configurator=dev[1], enrollee=wpas)
 
