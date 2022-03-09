@@ -1627,13 +1627,21 @@ class WpaSupplicant:
         if curve:
             cmd += " curve=" + curve
         if net_access_key_curve:
-            cmd += " net_access_key_curve=" + curve
+            cmd += " net_access_key_curve=" + net_access_key_curve
         if key:
             cmd += " key=" + key
         res = self.request(cmd)
         if "FAIL" in res:
             raise Exception("Failed to add configurator")
         return int(res)
+
+    def dpp_configurator_set(self, conf_id, net_access_key_curve=None):
+        cmd = "DPP_CONFIGURATOR_SET %d" % conf_id
+        if net_access_key_curve:
+            cmd += " net_access_key_curve=" + net_access_key_curve
+        res = self.request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to set configurator")
 
     def dpp_configurator_remove(self, conf_id):
         res = self.request("DPP_CONFIGURATOR_REMOVE %d" % conf_id)

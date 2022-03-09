@@ -2680,6 +2680,58 @@ def test_dpp_pkex_hostapd_errors(dev, apdev):
         raise Exception("Failed to flush PKEX responders")
     hapd.request("DPP_PKEX_REMOVE *")
 
+def test_dpp_pkex_nak_curve_change(dev, apdev):
+    """DPP PKEX with netAccessKey curve change"""
+    try:
+        run_dpp_pkex_nak_curve_change(dev, apdev)
+    finally:
+        dev[1].set("dpp_config_processing", "0", allow_fail=True)
+
+def test_dpp_pkex_nak_curve_change2(dev, apdev):
+    """DPP PKEX with netAccessKey curve change (2)"""
+    try:
+        run_dpp_pkex_nak_curve_change(dev, apdev, failure=True)
+    finally:
+        dev[1].set("dpp_config_processing", "0", allow_fail=True)
+
+def run_dpp_pkex_nak_curve_change(dev, apdev, failure=False):
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "6"})
+    check_dpp_capab(hapd, min_ver=3)
+    hapd.dpp_pkex_resp(2437, identifier="test-1", code="secret-1",
+                       curve="secp384r1")
+    conf_id = dev[0].dpp_configurator_add()
+    dev[0].dpp_pkex_init(identifier="test-1", code="secret-1",
+                         curve="secp384r1",
+                         extra="conf=ap-dpp configurator=%d" % conf_id)
+    wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
+                      stop_initiator=True)
+    update_hapd_config(hapd)
+    dev[0].dump_monitor()
+    hapd.dump_monitor()
+
+    dev[1].set("dpp_config_processing", "2")
+    dev[1].dpp_pkex_resp(2437, identifier="test-2", code="secret-2")
+    if failure:
+        dev[0].dpp_configurator_set(conf_id, net_access_key_curve="prime256v1")
+    dev[0].dpp_pkex_init(identifier="test-2", code="secret-2",
+                         extra="conf=sta-dpp configurator=%d" % conf_id)
+    wait_auth_success(dev[1], dev[0], configurator=dev[0], enrollee=dev[1],
+                      stop_initiator=True)
+    if failure:
+        ev = dev[1].wait_event(["DPP-INTRO"], timeout=10)
+        if ev is None:
+            raise Exception("No DPP-INTRO message seen")
+        if "status=7" not in ev:
+            raise Exception("Unexpected DPP-INTRO contents: " + ev)
+    else:
+        dev[1].wait_connected()
+    dev[0].dump_monitor()
+    dev[1].dump_monitor()
+    hapd.dump_monitor()
+
 def test_dpp_hostapd_configurator(dev, apdev):
     """DPP with hostapd as configurator/initiator"""
     run_dpp_hostapd_configurator(dev, apdev)
