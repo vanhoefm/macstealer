@@ -687,7 +687,7 @@ static struct wpabuf * dpp_build_conf_req_attr(struct dpp_authentication *auth,
 
 		if (dpp_derive_auth_i(auth, auth_i) < 0)
 			goto fail;
-		clear_len += 4 + auth->new_curve->hash_len;
+		clear_len += 4 + auth->curve->hash_len;
 	}
 #endif /* CONFIG_DPP3 */
 	clear = wpabuf_alloc(clear_len);
@@ -738,11 +738,11 @@ skip_e_nonce:
 		wpabuf_put_le16(clear, wpabuf_len(pe));
 		wpabuf_put_buf(clear, pe);
 	}
-	if (auth->waiting_new_key && auth->new_curve) {
+	if (auth->waiting_new_key) {
 		wpa_printf(MSG_DEBUG, "DPP: Initiator Authentication Tag");
 		wpabuf_put_le16(clear, DPP_ATTR_I_AUTH_TAG);
-		wpabuf_put_le16(clear, auth->new_curve->hash_len);
-		wpabuf_put_data(clear, auth_i, auth->new_curve->hash_len);
+		wpabuf_put_le16(clear, auth->curve->hash_len);
+		wpabuf_put_data(clear, auth_i, auth->curve->hash_len);
 	}
 #endif /* CONFIG_DPP3 */
 
@@ -2139,15 +2139,14 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
 				      "Missing Initiator Authentication Tag");
 			goto fail;
 		}
-		if (rx_auth_i_len != auth->new_curve->hash_len ||
-		    os_memcmp(rx_auth_i, auth_i,
-			      auth->new_curve->hash_len) != 0) {
+		if (rx_auth_i_len != auth->curve->hash_len ||
+		    os_memcmp(rx_auth_i, auth_i, auth->curve->hash_len) != 0) {
 			dpp_auth_fail(auth,
 				      "Mismatch in Initiator Authenticating Tag");
 			wpa_hexdump(MSG_DEBUG, "DPP: Received Auth-I",
 				    rx_auth_i, rx_auth_i_len);
 			wpa_hexdump(MSG_DEBUG, "DPP: Derived Auth-I'",
-				    auth_i, auth->new_curve->hash_len);
+				    auth_i, auth->curve->hash_len);
 			goto fail;
 		}
 	}

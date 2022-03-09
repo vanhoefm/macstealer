@@ -2363,15 +2363,12 @@ int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i)
 	size_t Sx_len;
 	unsigned int hash_len;
 	const char *info = "New DPP Protocol Key";
-	const u8 *addr[4];
-	size_t len[4];
+	const u8 *addr[3];
+	size_t len[3];
 	u8 tmp[DPP_MAX_HASH_LEN], k[DPP_MAX_HASH_LEN];
 	struct wpabuf *pcx = NULL, *pex = NULL;
 
-	if (!auth->new_curve)
-		return -1;
-
-	hash_len = auth->new_curve->hash_len;
+	hash_len = auth->curve->hash_len;
 
 	/*
 	 * Configurator: S = pc * Pe
@@ -2379,11 +2376,13 @@ int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i)
 	 * k = HKDF(bk, "New DPP Protocol Key", S.x)
 	 *   = HKDF-Expand(HKDF-Extract(bk, S.X), "New DPP Protocol Key",
 	 *                 len(new-curve-hash-out))
-	 * Auth-I = H(k, E-nonce | Pc.x | Pe.x)
-	 * Note: Assume this H(k, ..) is actually H(k | ..)
+	 * Auth-I = HMAC(k, E-nonce | Pc.x | Pe.x)
 	 *
-	 * auth->own_protocol_key, auth->peer_protocol_key, and auth->curve have
-	 * already been updated to use the new keys and curve.
+	 * auth->own_protocol_key and auth->peer_protocol_key have already been
+	 * updated to use the new keys. The new curve determines the size of
+	 * the (new) protocol keys and S.x. The other parameters (bk, hash
+	 * algorithm, k) are determined based on the initially determined curve
+	 * during the (re)authentication exchange.
 	 */
 
 	if (dpp_ecdh(auth->own_protocol_key, auth->peer_protocol_key,
@@ -2395,13 +2394,12 @@ int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i)
 	/* tmp = HKDF-Extract(bk, S.x) */
 	addr[0] = Sx;
 	len[0] = Sx_len;
-	res = dpp_hmac_vector(hash_len, auth->bk, auth->new_curve->hash_len,
-			      1, addr, len, tmp);
+	res = dpp_hmac_vector(hash_len, auth->bk, hash_len, 1, addr, len, tmp);
 	if (res < 0)
 		goto fail;
 	wpa_hexdump_key(MSG_DEBUG, "DPP: HKDF-Extract(bk, S.x)",
 			tmp, hash_len);
-	/* k = HKDF-Expand(tmp, "New DPP Protocol Key", len(new-curve-hash-out))
+	/* k = HKDF-Expand(tmp, "New DPP Protocol Key", len(hash-output))
 	 */
 	res = dpp_hkdf_expand(hash_len, tmp, hash_len, info, k, hash_len);
 	if (res < 0)
@@ -2411,11 +2409,9 @@ int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i)
 			"DPP: k = HKDF-Expand(\"New DPP Protocol Key\")",
 			k, hash_len);
 
-	/* Auth-I = H(k | E-nonce | Pc.x | Pe.x) */
-	addr[0] = k;
-	len[0] = hash_len;
-	addr[1] = auth->e_nonce;
-	len[1] = auth->new_curve->nonce_len;
+	/* Auth-I = HMAC(k, E-nonce | Pc.x | Pe.x) */
+	addr[0] = auth->e_nonce;
+	len[0] = auth->curve->nonce_len;
 
 	if (auth->configurator) {
 		pcx = crypto_ec_key_get_pubkey_point(auth->own_protocol_key, 0);
@@ -2428,14 +2424,15 @@ int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i)
 	}
 	if (!pcx || !pex)
 		goto fail;
-	addr[2] = wpabuf_head(pcx);
-	len[2] = wpabuf_len(pcx) / 2;
-	addr[3] = wpabuf_head(pex);
-	len[3] = wpabuf_len(pex) / 2;
+	addr[1] = wpabuf_head(pcx);
+	len[1] = wpabuf_len(pcx) / 2;
+	addr[2] = wpabuf_head(pex);
+	len[2] = wpabuf_len(pex) / 2;
 
-	if (dpp_hash_vector(auth->new_curve, 4, addr, len, auth_i) < 0)
+	if (dpp_hmac_vector(hash_len, k, hash_len, 3, addr, len, auth_i) < 0)
 		goto fail;
-	wpa_hexdump_key(MSG_DEBUG, "DPP: Auth-I = H(k | E-nonce | Pc.x | Pe.x)",
+	wpa_hexdump_key(MSG_DEBUG,
+			"DPP: Auth-I = HMAC(k, E-nonce | Pc.x | Pe.x)",
 			auth_i, hash_len);
 	ret = 0;
 fail:
