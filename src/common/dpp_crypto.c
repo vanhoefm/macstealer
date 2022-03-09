@@ -2059,7 +2059,7 @@ struct wpabuf * dpp_build_csr(struct dpp_authentication *auth, const char *name)
 	struct wpabuf *priv_key;
 	u8 cp[DPP_CP_LEN];
 	char *password = NULL;
-	size_t password_len;
+	size_t password_len = 0;
 	int hash_sign_algo;
 
 	/* TODO: use auth->csrattrs */
