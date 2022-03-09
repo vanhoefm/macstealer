@@ -376,10 +376,11 @@ def run_dpp_qr_code_auth_unicast(dev, apdev, curve, netrole=None, key=None,
                                  configurator=False, conf_curve=None,
                                  net_access_key_curve=None,
                                  conf=None, qr=None, stop_responder=True):
+    min_ver = 3 if net_access_key_curve else 1
     brainpool = (curve and "brainpool" in curve) or \
         (conf_curve and "brainpool" in conf_curve)
-    check_dpp_capab(dev[0], brainpool)
-    check_dpp_capab(dev[1], brainpool)
+    check_dpp_capab(dev[0], brainpool, min_ver=min_ver)
+    check_dpp_capab(dev[1], brainpool, min_ver=min_ver)
     if configurator:
         conf_id = dev[1].dpp_configurator_add(curve=conf_curve,
                                               net_access_key_curve=net_access_key_curve)

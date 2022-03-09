@@ -1552,8 +1552,9 @@ def run_sigma_dut_dpp_qr_resp(dev, apdev, conf_idx, chan_list=None,
                               listen_chan=None, status_query=False,
                               enrollee_role="STA", cert_path=None,
                               net_access_key_curve=None):
-    check_dpp_capab(dev[0])
-    check_dpp_capab(dev[1])
+    min_ver = 3 if net_access_key_curve else 1
+    check_dpp_capab(dev[0], min_ver=min_ver)
+    check_dpp_capab(dev[1], min_ver=min_ver)
     sigma = start_sigma_dut(dev[0].ifname, cert_path=cert_path)
     try:
         cmd = "dev_exec_action,program,DPP,DPPActionType,GetLocalBootstrap,DPPCryptoIdentifier,P-256,DPPBS,QR"
