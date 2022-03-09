@@ -1663,6 +1663,20 @@ skip_groups:
 	wpa_hexdump_ascii_key(MSG_DEBUG, "DPP: Configuration Object",
 			      wpabuf_head(buf), wpabuf_len(buf));
 
+#ifdef CONFIG_DPP3
+	if (!auth->conf->net_access_key_curve) {
+		/* All netAccessKey values used in the network will have to be
+		 * from the same curve for network introduction to work, so
+		 * hardcode the first used netAccessKey curve for consecutive
+		 * operations if there was no explicit configuration of which
+		 * curve to use. */
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Update Configurator to require netAccessKey curve %s based on first provisioning",
+			   nak_curve->name);
+		auth->conf->net_access_key_curve = nak_curve;
+	}
+#endif /* CONFIG_DPP3 */
+
 out:
 	os_free(signed_conn);
 	wpabuf_free(dppcon);
