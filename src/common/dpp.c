@@ -4512,6 +4512,32 @@ fail:
 }
 
 
+int dpp_configurator_set(struct dpp_global *dpp, const char *cmd)
+{
+	unsigned int id;
+	struct dpp_configurator *conf;
+	char *curve;
+
+	id = atoi(cmd);
+	conf = dpp_configurator_get_id(dpp, id);
+	if (!conf)
+		return -1;
+
+	curve = get_param(cmd, " net_access_key_curve=");
+	if (curve) {
+		const struct dpp_curve_params *net_access_key_curve;
+
+		net_access_key_curve = dpp_get_curve_name(curve);
+		os_free(curve);
+		if (!net_access_key_curve)
+			return -1;
+		conf->net_access_key_curve = net_access_key_curve;
+	}
+
+	return 0;
+}
+
+
 static int dpp_configurator_del(struct dpp_global *dpp, unsigned int id)
 {
 	struct dpp_configurator *conf, *tmp;
