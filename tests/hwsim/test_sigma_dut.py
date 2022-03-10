@@ -2009,11 +2009,19 @@ def test_sigma_dut_dpp_qr_init_configurator_mud_url(dev, apdev):
     run_sigma_dut_dpp_qr_init_configurator(dev, apdev, 1,
                                            mud_url="https://example.com/mud")
 
+def test_sigma_dut_dpp_qr_init_configurator_mud_url_nak_change(dev, apdev):
+    """sigma_dut DPP/QR initiator as Configurator (MUD URL, NAK change)"""
+    run_sigma_dut_dpp_qr_init_configurator(dev, apdev, 1,
+                                           mud_url="https://example.com/mud",
+                                           net_access_key_curve="P-384")
+
 def run_sigma_dut_dpp_qr_init_configurator(dev, apdev, conf_idx,
                                            prov_role="Configurator",
-                                           extra=None, mud_url=None):
-    check_dpp_capab(dev[0])
-    check_dpp_capab(dev[1])
+                                           extra=None, mud_url=None,
+                                           net_access_key_curve=None):
+    min_ver = 3 if net_access_key_curve else 1
+    check_dpp_capab(dev[0], min_ver=min_ver)
+    check_dpp_capab(dev[1], min_ver=min_ver)
     sigma = start_sigma_dut(dev[0].ifname)
     try:
         id0 = dev[1].dpp_bootstrap_gen(chan="81/6", mac=True)
@@ -2030,6 +2038,8 @@ def run_sigma_dut_dpp_qr_init_configurator(dev, apdev, conf_idx,
             raise Exception("dev_exec_action did not succeed: " + res)
 
         cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,%s,DPPConfIndex,%d,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPTimeout,6" % (prov_role, conf_idx)
+        if net_access_key_curve:
+            cmd += ",DPPNAKECC," + net_access_key_curve
         if extra:
             cmd += "," + extra
         res = sigma_dut_cmd(cmd)
