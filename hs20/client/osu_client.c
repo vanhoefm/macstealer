@@ -2911,10 +2911,14 @@ static int osu_cert_cb(void *_ctx, struct http_cert *cert)
 	int found;
 	char *host = NULL;
 
-	wpa_printf(MSG_INFO, "osu_cert_cb(osu_cert_validation=%d, url=%s)",
-		   !ctx->no_osu_cert_validation, ctx->server_url);
+	wpa_printf(MSG_INFO, "osu_cert_cb(osu_cert_validation=%d, url=%s server_url=%s)",
+		   !ctx->no_osu_cert_validation, cert->url ? cert->url : "N/A",
+		   ctx->server_url);
 
-	host = get_hostname(ctx->server_url);
+	if (ctx->no_osu_cert_validation && cert->url)
+		host = get_hostname(cert->url);
+	else
+		host = get_hostname(ctx->server_url);
 
 	for (i = 0; i < ctx->server_dnsname_count; i++)
 		os_free(ctx->server_dnsname[i]);
