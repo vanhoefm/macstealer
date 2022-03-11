@@ -1385,8 +1385,11 @@ static xml_node_t * hs20_subscription_registration(struct hs20_svc *ctx,
 			   SUBSCRIPTION_REGISTRATION, mac_addr) < 0)
 		return NULL;
 	val = db_get_osu_config_val(ctx, realm, "signup_url");
-	if (val == NULL)
+	if (!val) {
+		hs20_eventlog(ctx, NULL, realm, session_id,
+			      "signup_url not configured in osu_config", NULL);
 		return NULL;
+	}
 
 	spp_node = build_post_dev_data_response(ctx, &ns, session_id, "OK",
 						NULL);
