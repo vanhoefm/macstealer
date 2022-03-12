@@ -121,6 +121,15 @@ static const unsigned char * ASN1_STRING_get0_data(const ASN1_STRING *x)
 #endif /* OpenSSL version < 1.1.0 */
 
 
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
+static int EC_GROUP_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,
+			      BIGNUM *b, BN_CTX *ctx)
+{
+	return EC_GROUP_get_curve_GFp(group, p, a, b, ctx);
+}
+#endif /* OpenSSL version < 1.1.1 */
+
+
 void openssl_load_legacy_provider(void)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -1752,7 +1761,7 @@ struct crypto_ec * crypto_ec_init(int group)
 	e->b = BN_new();
 	if (e->group == NULL || e->bnctx == NULL || e->prime == NULL ||
 	    e->order == NULL || e->a == NULL || e->b == NULL ||
-	    !EC_GROUP_get_curve_GFp(e->group, e->prime, e->a, e->b, e->bnctx) ||
+	    !EC_GROUP_get_curve(e->group, e->prime, e->a, e->b, e->bnctx) ||
 	    !EC_GROUP_get_order(e->group, e->order, e->bnctx)) {
 		crypto_ec_deinit(e);
 		e = NULL;
@@ -2801,7 +2810,7 @@ struct wpabuf * crypto_ec_key_sign_r_s(struct crypto_ec_key *key,
 	group = EC_KEY_get0_group(eckey);
 	prime = BN_new();
 	if (!prime || !group ||
-	    !EC_GROUP_get_curve_GFp(group, prime, NULL, NULL, NULL))
+	    !EC_GROUP_get_curve(group, prime, NULL, NULL, NULL))
 		goto fail;
 	prime_len = BN_num_bytes(prime);
 
