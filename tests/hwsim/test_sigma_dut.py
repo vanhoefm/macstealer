@@ -73,12 +73,12 @@ def sigma_dut_cmd(cmd, port=9000, timeout=2):
         for line in res.splitlines():
             if line.startswith("status,RUNNING"):
                 running = True
-            elif line.startswith("status,INVALID"):
+            elif line.startswith("status,INVALID") or \
+                 line.startswith("status,ERROR") or \
+                 line.startswith("status,COMPLETE"):
                 done = True
-            elif line.startswith("status,ERROR"):
-                done = True
-            elif line.startswith("status,COMPLETE"):
-                done = True
+                res = line
+                break
         if running and not done:
             # Read the actual response
             res = sock.recv(1000).decode()
