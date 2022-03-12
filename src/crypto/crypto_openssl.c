@@ -2893,6 +2893,15 @@ fail:
 
 int crypto_ec_key_group(struct crypto_ec_key *key)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	char gname[50];
+	int nid;
+
+	if (EVP_PKEY_get_group_name((EVP_PKEY *) key, gname, sizeof(gname),
+				    NULL) != 1)
+		return -1;
+	nid = OBJ_txt2nid(gname);
+#else
 	const EC_KEY *eckey;
 	const EC_GROUP *group;
 	int nid;
@@ -2904,6 +2913,7 @@ int crypto_ec_key_group(struct crypto_ec_key *key)
 	if (!group)
 		return -1;
 	nid = EC_GROUP_get_curve_name(group);
+#endif
 	switch (nid) {
 	case NID_X9_62_prime256v1:
 		return 19;
