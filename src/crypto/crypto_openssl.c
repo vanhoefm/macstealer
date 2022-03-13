@@ -2786,24 +2786,34 @@ struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
 }
 
 
-struct wpabuf * crypto_ec_key_sign_r_s(struct crypto_ec_key *key,
-				       const u8 *data, size_t len)
+static int openssl_evp_pkey_ec_prime_len(struct crypto_ec_key *key)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	char gname[50];
+	int nid;
+	EC_GROUP *group;
+	BIGNUM *prime = NULL;
+	int prime_len = -1;
+
+	if (EVP_PKEY_get_group_name((EVP_PKEY *) key, gname, sizeof(gname),
+				    NULL) != 1)
+		return -1;
+	nid = OBJ_txt2nid(gname);
+	group = EC_GROUP_new_by_curve_name(nid);
+	prime = BN_new();
+	if (!group || !prime)
+		return -1;
+	if (EC_GROUP_get_curve(group, prime, NULL, NULL, NULL) == 1)
+		prime_len = BN_num_bytes(prime);
+	EC_GROUP_free(group);
+	BN_free(prime);
+	return prime_len;
+#else
 	const EC_GROUP *group;
 	const EC_KEY *eckey;
 	BIGNUM *prime = NULL;
-	ECDSA_SIG *sig = NULL;
-	const BIGNUM *r, *s;
-	u8 *r_buf, *s_buf;
-	struct wpabuf *buf;
-	const unsigned char *p;
-	int prime_len;
+	int prime_len = -1;
 
-	buf = crypto_ec_key_sign(key, data, len);
-	if (!buf)
-		return NULL;
-
-	/* Extract (r,s) from Ecdsa-Sig-Value */
 	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
 	if (!eckey)
 		goto fail;
@@ -2813,6 +2823,32 @@ struct wpabuf * crypto_ec_key_sign_r_s(struct crypto_ec_key *key,
 	    !EC_GROUP_get_curve(group, prime, NULL, NULL, NULL))
 		goto fail;
 	prime_len = BN_num_bytes(prime);
+fail:
+	BN_free(prime);
+	return prime_len;
+#endif
+}
+
+
+struct wpabuf * crypto_ec_key_sign_r_s(struct crypto_ec_key *key,
+				       const u8 *data, size_t len)
+{
+	ECDSA_SIG *sig = NULL;
+	const BIGNUM *r, *s;
+	u8 *r_buf, *s_buf;
+	struct wpabuf *buf;
+	const unsigned char *p;
+	int prime_len;
+
+	prime_len = openssl_evp_pkey_ec_prime_len(key);
+	if (prime_len < 0)
+		return NULL;
+
+	buf = crypto_ec_key_sign(key, data, len);
+	if (!buf)
+		return NULL;
+
+	/* Extract (r,s) from Ecdsa-Sig-Value */
 
 	p = wpabuf_head(buf);
 	sig = d2i_ECDSA_SIG(NULL, &p, wpabuf_len(buf));
@@ -2831,7 +2867,6 @@ struct wpabuf * crypto_ec_key_sign_r_s(struct crypto_ec_key *key,
 		goto fail;
 
 out:
-	BN_free(prime);
 	ECDSA_SIG_free(sig);
 	return buf;
 fail:
