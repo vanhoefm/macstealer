@@ -1407,8 +1407,6 @@ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
 			       int ht_enabled, int chan_offset, int chan_width,
 			       int cf1, int cf2)
 {
-	int res;
-
 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_RADAR_DETECTED
 		"freq=%d ht_enabled=%d chan_offset=%d chan_width=%d cf1=%d cf2=%d",
 		freq, ht_enabled, chan_offset, chan_width, cf1, cf2);
@@ -1421,9 +1419,8 @@ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
 		return 0;
 
 	/* mark radar frequency as invalid */
-	res = set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
-			    cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE);
-	if (!res)
+	if (!set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
+			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE))
 		return 0;
 
 	if (!hostapd_dfs_is_background_event(iface, freq)) {
