@@ -2529,16 +2529,11 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 #ifdef CONFIG_SUITEB
 	if (conn->flags & TLS_CONN_SUITEB) {
 		EVP_PKEY *pk;
-		RSA *rsa;
 		int len = -1;
 
 		pk = X509_get_pubkey(err_cert);
 		if (pk) {
-			rsa = EVP_PKEY_get1_RSA(pk);
-			if (rsa) {
-				len = RSA_bits(rsa);
-				RSA_free(rsa);
-			}
+			len = EVP_PKEY_bits(pk);
 			EVP_PKEY_free(pk);
 		}
 
