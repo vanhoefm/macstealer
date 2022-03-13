@@ -835,6 +835,7 @@ def test_wpas_ap_async_fail(dev):
             dev[0].select_network(id)
             dev[0].wait_disconnected()
     finally:
+        dev[0].set("country", "00")
         clear_regdom_dev(dev)
 
 def test_wpas_ap_sae(dev):
