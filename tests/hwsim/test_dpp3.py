@@ -260,6 +260,8 @@ def run_dpp_controller_relay_pkex(dev, apdev, params):
     if "FAIL" in res:
         raise Exception("Failed to set PKEX data (Controller)")
 
+    dev[0].flush_scan_cache()
+
     # Initiate PKEX from Enrollee
     dev[0].set("dpp_config_processing", "2")
     dev[0].dpp_pkex_init(identifier=None, code=code, role="enrollee")

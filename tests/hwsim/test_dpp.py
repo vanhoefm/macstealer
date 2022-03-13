@@ -5406,6 +5406,8 @@ def run_dpp_controller_relay(dev, apdev, params, chirp=False):
     wait_auth_success(relay, dev[1], configurator=dev[1], enrollee=relay)
     update_hapd_config(relay)
 
+    dev[0].flush_scan_cache()
+
     # Initiate from Enrollee with broadcast DPP Authentication Request or
     # using chirping
     dev[0].set("dpp_config_processing", "2")
