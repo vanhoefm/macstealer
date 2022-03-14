@@ -2920,15 +2920,18 @@ static int osu_cert_cb(void *_ctx, struct http_cert *cert)
 	else
 		host = get_hostname(ctx->server_url);
 
-	for (i = 0; i < ctx->server_dnsname_count; i++)
-		os_free(ctx->server_dnsname[i]);
-	os_free(ctx->server_dnsname);
-	ctx->server_dnsname = os_calloc(cert->num_dnsname, sizeof(char *));
-	ctx->server_dnsname_count = 0;
+	if (!ctx->no_osu_cert_validation) {
+		for (i = 0; i < ctx->server_dnsname_count; i++)
+			os_free(ctx->server_dnsname[i]);
+		os_free(ctx->server_dnsname);
+		ctx->server_dnsname = os_calloc(cert->num_dnsname,
+						sizeof(char *));
+		ctx->server_dnsname_count = 0;
+	}
 
 	found = 0;
 	for (i = 0; i < cert->num_dnsname; i++) {
-		if (ctx->server_dnsname) {
+		if (!ctx->no_osu_cert_validation && ctx->server_dnsname) {
 			ctx->server_dnsname[ctx->server_dnsname_count] =
 				os_strdup(cert->dnsname[i]);
 			if (ctx->server_dnsname[ctx->server_dnsname_count])
