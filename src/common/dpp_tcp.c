@@ -1013,7 +1013,7 @@ static int dpp_controller_rx_pkex_exchange_req(struct dpp_connection *conn,
 		return 0;
 	}
 
-	conn->pkex = dpp_pkex_rx_exchange_req(conn->ctrl->global, ctrl->pkex_bi,
+	conn->pkex = dpp_pkex_rx_exchange_req(conn->msg_ctx, ctrl->pkex_bi,
 					      NULL, NULL,
 					      ctrl->pkex_identifier,
 					      ctrl->pkex_code,
