@@ -2084,6 +2084,29 @@ fail:
 }
 
 
+int dpp_controller_set_params(struct dpp_global *dpp,
+			      const char *configurator_params)
+{
+
+	if (!dpp || !dpp->controller)
+		return -1;
+
+	if (configurator_params) {
+		char *val = os_strdup(configurator_params);
+
+		if (!val)
+			return -1;
+		os_free(dpp->controller->configurator_params);
+		dpp->controller->configurator_params = val;
+	} else {
+		os_free(dpp->controller->configurator_params);
+		dpp->controller->configurator_params = NULL;
+	}
+
+	return 0;
+}
+
+
 void dpp_controller_stop(struct dpp_global *dpp)
 {
 	if (dpp) {

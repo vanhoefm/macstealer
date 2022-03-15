@@ -709,6 +709,8 @@ int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
 			 size_t data_len);
 int dpp_controller_start(struct dpp_global *dpp,
 			 struct dpp_controller_config *config);
+int dpp_controller_set_params(struct dpp_global *dpp,
+			      const char *configurator_params);
 void dpp_controller_stop(struct dpp_global *dpp);
 void dpp_controller_stop_for_ctx(struct dpp_global *dpp, void *cb_ctx);
 struct dpp_authentication * dpp_controller_get_auth(struct dpp_global *dpp,
