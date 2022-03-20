@@ -1551,11 +1551,12 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 #endif /* CONFIG_OCV */
 
 	_conf.secure_ltf =
-		!!(hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF);
+		!!(hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_AP);
 	_conf.secure_rtt =
-		!!(hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT);
+		!!(hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT_AP);
 	_conf.prot_range_neg =
-		!!(hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG);
+		!!(hapd->iface->drv_flags2 &
+		   WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_AP);
 
 	hapd->wpa_auth = wpa_init(hapd->own_addr, &_conf, &cb, hapd);
 	if (hapd->wpa_auth == NULL) {

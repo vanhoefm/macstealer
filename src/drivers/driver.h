@@ -2060,15 +2060,15 @@ struct wpa_driver_capa {
 #define WPA_DRIVER_FLAGS2_CONTROL_PORT_RX	0x0000000000000001ULL
 /** Driver supports TX status reports for EAPOL frames through control port */
 #define WPA_DRIVER_FLAGS2_CONTROL_PORT_TX_STATUS 0x0000000000000002ULL
-/** Driver supports secure LTF */
-#define WPA_DRIVER_FLAGS2_SEC_LTF		0x0000000000000004ULL
-/** Driver supports secure RTT measurement exchange */
-#define WPA_DRIVER_FLAGS2_SEC_RTT		0x0000000000000008ULL
+/** Driver supports secure LTF in AP mode */
+#define WPA_DRIVER_FLAGS2_SEC_LTF_AP		0x0000000000000004ULL
+/** Driver supports secure RTT measurement exchange in AP mode */
+#define WPA_DRIVER_FLAGS2_SEC_RTT_AP		0x0000000000000008ULL
 /**
  * Driver supports protection of range negotiation and measurement management
- * frames
+ * frames in AP mode
  */
-#define WPA_DRIVER_FLAGS2_PROT_RANGE_NEG	0x0000000000000010ULL
+#define WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_AP	0x0000000000000010ULL
 /** Driver supports Beacon frame TX rate configuration (HE rates) */
 #define WPA_DRIVER_FLAGS2_BEACON_RATE_HE	0x0000000000000020ULL
 /** Driver supports Beacon protection only in client mode */
@@ -2081,6 +2081,15 @@ struct wpa_driver_capa {
 #define WPA_DRIVER_FLAGS2_SA_QUERY_OFFLOAD_AP	0x0000000000000200ULL
 /** Driver supports background radar/CAC detection */
 #define WPA_DRIVER_RADAR_BACKGROUND		0x0000000000000400ULL
+/** Driver supports secure LTF in STA mode */
+#define WPA_DRIVER_FLAGS2_SEC_LTF_STA		0x0000000000000800ULL
+/** Driver supports secure RTT measurement exchange in STA mode */
+#define WPA_DRIVER_FLAGS2_SEC_RTT_STA		0x0000000000001000ULL
+/**
+ * Driver supports protection of range negotiation and measurement management
+ * frames in STA mode
+ */
+#define WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA	0x0000000000002000ULL
 	u64 flags2;
 
 #define FULL_AP_CLIENT_STATE_SUPP(drv_flags) \

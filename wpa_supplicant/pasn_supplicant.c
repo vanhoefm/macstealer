@@ -732,11 +732,11 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 	/* Add own RNSXE */
 	capab = 0;
 	capab |= BIT(WLAN_RSNX_CAPAB_SAE_H2E);
-	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF)
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA)
 		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF);
-	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT)
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT_STA)
 		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_RTT);
-	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG)
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA)
 		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
 	wpa_pasn_add_rsnxe(buf, capab);
 
@@ -1080,7 +1080,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	pasn->group = group;
 	pasn->freq = freq;
 
-	derive_kdk = (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF) &&
+	derive_kdk = (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA) &&
 		ieee802_11_rsnx_capab(beacon_rsnxe,
 				      WLAN_RSNX_CAPAB_SECURE_LTF);
 #ifdef CONFIG_TESTING_OPTIONS

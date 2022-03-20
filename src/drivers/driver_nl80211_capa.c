@@ -675,6 +675,25 @@ static void wiphy_info_ext_feature_flags(struct wiphy_info_data *info,
 	if (ext_feature_isset(ext_features, len,
 			      NL80211_EXT_FEATURE_RADAR_BACKGROUND))
 		capa->flags2 |= WPA_DRIVER_RADAR_BACKGROUND;
+
+	if (ext_feature_isset(ext_features, len,
+			      NL80211_EXT_FEATURE_SECURE_LTF)) {
+		capa->flags2 |= WPA_DRIVER_FLAGS2_SEC_LTF_STA;
+		capa->flags2 |= WPA_DRIVER_FLAGS2_SEC_LTF_AP;
+	}
+
+	if (ext_feature_isset(ext_features, len,
+			      NL80211_EXT_FEATURE_SECURE_RTT)) {
+		capa->flags2 |= WPA_DRIVER_FLAGS2_SEC_RTT_STA;
+		capa->flags2 |= WPA_DRIVER_FLAGS2_SEC_RTT_AP;
+	}
+
+	if (ext_feature_isset(
+		    ext_features, len,
+		    NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE)) {
+		capa->flags2 |= WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA;
+		capa->flags2 |= WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_AP;
+	}
 }
 
 
@@ -1334,6 +1353,22 @@ static void qca_nl80211_get_features(struct wpa_driver_nl80211_data *drv)
 		drv->capa.flags |= WPA_DRIVER_FLAGS_OCE_AP;
 	if (check_feature(QCA_WLAN_VENDOR_FEATURE_OCE_STA_CFON, &info))
 		drv->capa.flags |= WPA_DRIVER_FLAGS_OCE_STA_CFON;
+	if (check_feature(QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_STA, &info))
+		drv->capa.flags2 |= WPA_DRIVER_FLAGS2_SEC_LTF_STA;
+	if (check_feature(QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_AP, &info))
+		drv->capa.flags2 |= WPA_DRIVER_FLAGS2_SEC_LTF_AP;
+	if (check_feature(QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_STA, &info))
+		drv->capa.flags2 |= WPA_DRIVER_FLAGS2_SEC_RTT_STA;
+	if (check_feature(QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_AP, &info))
+		drv->capa.flags2 |= WPA_DRIVER_FLAGS2_SEC_RTT_AP;
+	if (check_feature(
+		    QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_STA,
+		    &info))
+		drv->capa.flags2 |= WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA;
+	if (check_feature(
+		    QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_AP,
+		    &info))
+		drv->capa.flags2 |= WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_AP;
 	os_free(info.flags);
 }
 
