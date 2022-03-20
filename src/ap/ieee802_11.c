@@ -3502,8 +3502,8 @@ static void handle_auth_pasn_3(struct hostapd_data *hapd, struct sta_info *sta,
 	wpa_printf(MSG_INFO,
 		   "PASN: Success handling transaction == 3. Store PTK");
 
-	ptksa_cache_add(hapd->ptksa, sta->addr, sta->pasn->cipher, 43200,
-			&sta->pasn->ptk);
+	ptksa_cache_add(hapd->ptksa, hapd->own_addr, sta->addr,
+			sta->pasn->cipher, 43200, &sta->pasn->ptk);
 fail:
 	ap_free_sta(hapd, sta);
 }

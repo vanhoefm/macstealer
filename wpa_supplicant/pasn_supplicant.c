@@ -1567,8 +1567,8 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 
 	wpa_printf(MSG_DEBUG, "PASN: Success sending last frame. Store PTK");
 
-	ptksa_cache_add(wpa_s->ptksa, pasn->bssid, pasn->cipher,
-			dot11RSNAConfigPMKLifetime, &pasn->ptk);
+	ptksa_cache_add(wpa_s->ptksa, wpa_s->own_addr, pasn->bssid,
+			pasn->cipher, dot11RSNAConfigPMKLifetime, &pasn->ptk);
 
 	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
 

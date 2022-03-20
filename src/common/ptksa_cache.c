@@ -254,6 +254,7 @@ void ptksa_cache_flush(struct ptksa_cache *ptksa, const u8 *addr, u32 cipher)
 /*
  * ptksa_cache_add - Add a PTKSA cache entry
  * @ptksa: Pointer to PTKSA cache data from ptksa_cache_init()
+ * @own_addr: Own MAC address
  * @addr: Peer address
  * @cipher: The cipher used
  * @life_time: The PTK life time in seconds
@@ -265,6 +266,7 @@ void ptksa_cache_flush(struct ptksa_cache *ptksa, const u8 *addr, u32 cipher)
  * this entry will be replaced with the new entry.
  */
 struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
+					   const u8 *own_addr,
 					   const u8 *addr, u32 cipher,
 					   u32 life_time,
 					   const struct wpa_ptk *ptk)
@@ -289,6 +291,8 @@ struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
 	dl_list_init(&entry->list);
 	os_memcpy(entry->addr, addr, ETH_ALEN);
 	entry->cipher = cipher;
+	if (own_addr)
+		os_memcpy(entry->own_addr, own_addr, ETH_ALEN);
 
 	os_memcpy(&entry->ptk, ptk, sizeof(entry->ptk));
 

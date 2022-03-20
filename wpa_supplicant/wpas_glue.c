@@ -1378,7 +1378,8 @@ static void wpa_supplicant_store_ptk(void *ctx, u8 *addr, int cipher,
 {
 	struct wpa_supplicant *wpa_s = ctx;
 
-	ptksa_cache_add(wpa_s->ptksa, addr, cipher, life_time, ptk);
+	ptksa_cache_add(wpa_s->ptksa, wpa_s->own_addr, addr, cipher, life_time,
+			ptk);
 }
 
 #endif /* CONFIG_NO_WPA */
