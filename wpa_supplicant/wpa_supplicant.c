@@ -6900,6 +6900,9 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
 		    wpa_s->extended_capa[2] & 0x40)
 			wpa_s->multi_bss_support = 1;
 	}
+#ifdef CONFIG_PASN
+	wpa_pasn_sm_set_caps(wpa_s->wpa, wpa_s->drv_flags2);
+#endif /* CONFIG_PASN */
 	if (wpa_s->max_remain_on_chan == 0)
 		wpa_s->max_remain_on_chan = 1000;
 

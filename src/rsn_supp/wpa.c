@@ -5281,6 +5281,7 @@ void wpa_sm_set_dpp_z(struct wpa_sm *sm, const struct wpabuf *z)
 
 
 #ifdef CONFIG_PASN
+
 void wpa_pasn_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
 			      const u8 *pmkid, const u8 *bssid, int key_mgmt)
 {
@@ -5288,6 +5289,18 @@ void wpa_pasn_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
 					bssid, sm->own_addr, NULL,
 					key_mgmt, 0);
 }
+
+
+void wpa_pasn_sm_set_caps(struct wpa_sm *sm, unsigned int flags2)
+{
+	if (flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA)
+		sm->secure_ltf = 1;
+	if (flags2 & WPA_DRIVER_FLAGS2_SEC_RTT_STA)
+		sm->secure_rtt = 1;
+	if (flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA)
+		sm->prot_range_neg = 1;
+}
+
 #endif /* CONFIG_PASN */
 
 
