@@ -28,6 +28,7 @@
 static const int dot11RSNAConfigPMKLifetime = 43200;
 
 struct wpa_pasn_auth_work {
+	u8 own_addr[ETH_ALEN];
 	u8 bssid[ETH_ALEN];
 	int akmp;
 	int cipher;
@@ -111,7 +112,7 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpa_supplicant *wpa_s)
 	}
 
 	ret = sae_prepare_commit_pt(&pasn->sae, pasn->ssid->pt,
-				    wpa_s->own_addr, pasn->bssid,
+				    pasn->own_addr, pasn->bssid,
 				    NULL, NULL);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
@@ -685,7 +686,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 	wrapped_data = wpas_pasn_get_wrapped_data_format(pasn);
 
 	wpa_pasn_build_auth_header(buf, pasn->bssid,
-				   wpa_s->own_addr, pasn->bssid,
+				   pasn->own_addr, pasn->bssid,
 				   pasn->trans_seq + 1, WLAN_STATUS_SUCCESS);
 
 	pmkid = NULL;
@@ -788,7 +789,7 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
 	wrapped_data = wpas_pasn_get_wrapped_data_format(pasn);
 
 	wpa_pasn_build_auth_header(buf, pasn->bssid,
-				   wpa_s->own_addr, pasn->bssid,
+				   pasn->own_addr, pasn->bssid,
 				   pasn->trans_seq + 1, WLAN_STATUS_SUCCESS);
 
 	wrapped_data_buf = wpas_pasn_get_wrapped_data(wpa_s);
@@ -816,7 +817,7 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
 	data_len = wpabuf_len(buf) - IEEE80211_HDRLEN;
 
 	ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
-		       wpa_s->own_addr, pasn->bssid,
+		       pasn->own_addr, pasn->bssid,
 		       pasn->hash, mic_len * 2, data, data_len, mic);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: frame 3: Failed MIC calculation");
@@ -990,9 +991,9 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 }
 
 
-static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
-			   int akmp, int cipher, u16 group, int freq,
-			   const u8 *beacon_rsne, u8 beacon_rsne_len,
+static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
+			   const u8 *bssid, int akmp, int cipher, u16 group,
+			   int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 			   const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 			   int network_id, struct wpabuf *comeback)
 {
@@ -1093,6 +1094,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 		pasn->kdk_len = 0;
 	wpa_printf(MSG_DEBUG, "PASN: kdk_len=%zu", pasn->kdk_len);
 
+	os_memcpy(pasn->own_addr, own_addr, ETH_ALEN);
 	os_memcpy(pasn->bssid, bssid, ETH_ALEN);
 
 	wpa_printf(MSG_DEBUG,
@@ -1207,8 +1209,9 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 
 	rsnxe = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
 
-	ret = wpas_pasn_start(wpa_s, awork->bssid, awork->akmp, awork->cipher,
-			      awork->group, bss->freq, rsne, *(rsne + 1) + 2,
+	ret = wpas_pasn_start(wpa_s, awork->own_addr, awork->bssid, awork->akmp,
+			      awork->cipher, awork->group, bss->freq,
+			      rsne, *(rsne + 1) + 2,
 			      rsnxe, rsnxe ? *(rsnxe + 1) + 2 : 0,
 			      awork->network_id, awork->comeback);
 	if (ret) {
@@ -1230,7 +1233,8 @@ fail:
 }
 
 
-int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
+int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
+			 const u8 *own_addr, const u8 *bssid,
 			 int akmp, int cipher, u16 group, int network_id,
 			 const u8 *comeback, size_t comeback_len)
 {
@@ -1272,6 +1276,7 @@ int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	if (!awork)
 		return -1;
 
+	os_memcpy(awork->own_addr, own_addr, ETH_ALEN);
 	os_memcpy(awork->bssid, bssid, ETH_ALEN);
 	awork->akmp = akmp;
 	awork->cipher = cipher;
@@ -1321,14 +1326,16 @@ static int wpas_pasn_immediate_retry(struct wpa_supplicant *wpa_s,
 	int akmp = pasn->akmp;
 	int cipher = pasn->cipher;
 	u16 group = pasn->group;
+	u8 own_addr[ETH_ALEN];
 	u8 bssid[ETH_ALEN];
 	int network_id = pasn->ssid ? pasn->ssid->id : 0;
 
 	wpa_printf(MSG_DEBUG, "PASN: Immediate retry");
+	os_memcpy(own_addr, pasn->own_addr, ETH_ALEN);
 	os_memcpy(bssid, pasn->bssid, ETH_ALEN);
 	wpas_pasn_reset(wpa_s);
 
-	return wpas_pasn_auth_start(wpa_s, bssid, akmp, cipher, group,
+	return wpas_pasn_auth_start(wpa_s, own_addr, bssid, akmp, cipher, group,
 				    network_id,
 				    params->comeback, params->comeback_len);
 }
@@ -1358,7 +1365,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		return -2;
 
 	/* Not our frame; do nothing */
-	if (os_memcmp(mgmt->da, wpa_s->own_addr, ETH_ALEN) != 0 ||
+	if (os_memcmp(mgmt->da, pasn->own_addr, ETH_ALEN) != 0 ||
 	    os_memcmp(mgmt->sa, pasn->bssid, ETH_ALEN) != 0 ||
 	    os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN) != 0)
 		return -2;
@@ -1518,7 +1525,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 	}
 
 	ret = pasn_pmk_to_ptk(pasn->pmk, pasn->pmk_len,
-			      wpa_s->own_addr, pasn->bssid,
+			      pasn->own_addr, pasn->bssid,
 			      wpabuf_head(secret), wpabuf_len(secret),
 			      &pasn->ptk, pasn->akmp, pasn->cipher,
 			      pasn->kdk_len);
@@ -1534,7 +1541,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 
 	/* Verify the MIC */
 	ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
-		       pasn->bssid, wpa_s->own_addr,
+		       pasn->bssid, pasn->own_addr,
 		       wpabuf_head(pasn->beacon_rsne_rsnxe),
 		       wpabuf_len(pasn->beacon_rsne_rsnxe),
 		       (u8 *) &mgmt->u.auth,
@@ -1567,7 +1574,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 
 	wpa_printf(MSG_DEBUG, "PASN: Success sending last frame. Store PTK");
 
-	ptksa_cache_add(wpa_s->ptksa, wpa_s->own_addr, pasn->bssid,
+	ptksa_cache_add(wpa_s->ptksa, pasn->own_addr, pasn->bssid,
 			pasn->cipher, dot11RSNAConfigPMKLifetime, &pasn->ptk);
 
 	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
@@ -1621,7 +1628,7 @@ int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 
 	/* Not our frame; do nothing */
 	if (os_memcmp(mgmt->da, pasn->bssid, ETH_ALEN) ||
-	    os_memcmp(mgmt->sa, wpa_s->own_addr, ETH_ALEN) ||
+	    os_memcmp(mgmt->sa, pasn->own_addr, ETH_ALEN) ||
 	    os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN))
 		return -1;
 
@@ -1660,7 +1667,8 @@ int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 }
 
 
-int wpas_pasn_deauthenticate(struct wpa_supplicant *wpa_s, const u8 *bssid)
+int wpas_pasn_deauthenticate(struct wpa_supplicant *wpa_s, const u8 *own_addr,
+			     const u8 *bssid)
 {
 	struct wpa_bss *bss;
 	struct wpabuf *buf;
@@ -1696,7 +1704,7 @@ int wpas_pasn_deauthenticate(struct wpa_supplicant *wpa_s, const u8 *bssid)
 					     (WLAN_FC_STYPE_DEAUTH << 4));
 
 	os_memcpy(deauth->da, bssid, ETH_ALEN);
-	os_memcpy(deauth->sa, wpa_s->own_addr, ETH_ALEN);
+	os_memcpy(deauth->sa, own_addr, ETH_ALEN);
 	os_memcpy(deauth->bssid, bssid, ETH_ALEN);
 	deauth->u.deauth.reason_code =
 		host_to_le16(WLAN_REASON_PREV_AUTH_NOT_VALID);
