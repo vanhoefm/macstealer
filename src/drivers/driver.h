@@ -2406,6 +2406,27 @@ struct csa_settings {
 	u16 counter_offset_presp[2];
 };
 
+/**
+ * struct cca_settings - Settings for color switch command
+ * @cca_count: Count in Beacon frames (TBTT) to perform the switch
+ * @cca_color: The new color that we are switching to
+ * @beacon_cca: Beacon/Probe Response/(Re)Association Response frame info for
+ * color switch period
+ * @beacon_after: Next Beacon/Probe Response/(Re)Association Response frame info
+ * @counter_offset_beacon: Offset to the count field in Beacon frame tail
+ * @counter_offset_presp: Offset to the count field in Probe Response frame
+ */
+struct cca_settings {
+	u8 cca_count;
+	u8 cca_color;
+
+	struct beacon_data beacon_cca;
+	struct beacon_data beacon_after;
+
+	u16 counter_offset_beacon;
+	u16 counter_offset_presp;
+};
+
 /* TDLS peer capabilities for send_tdls_mgmt() */
 enum tdls_peer_capability {
 	TDLS_PEER_HT = BIT(0),
@@ -3987,6 +4008,17 @@ struct wpa_driver_ops {
 	 * avoid frequency conflict in single channel concurrency.
 	 */
 	int (*switch_channel)(void *priv, struct csa_settings *settings);
+
+	/**
+	 * switch_color - Announce color switch and migrate the BSS to the
+	 * given color
+	 * @priv: Private driver interface data
+	 * @settings: Settings for CCA period and new color
+	 * Returns: 0 on success, -1 on failure
+	 *
+	 * This function is used to move the BSS to its new color.
+	 */
+	int (*switch_color)(void *priv, struct cca_settings *settings);
 
 	/**
 	 * add_tx_ts - Add traffic stream

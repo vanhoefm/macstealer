@@ -2332,6 +2332,7 @@ struct ieee80211_spatial_reuse {
 #define HE_OPERATION_BSS_COLOR_PARTIAL		((u32) BIT(30))
 #define HE_OPERATION_BSS_COLOR_DISABLED		((u32) BIT(31))
 #define HE_OPERATION_BSS_COLOR_OFFSET		24
+#define HE_OPERATION_BSS_COLOR_MAX		64
 
 /**
  * enum he_6ghz_ap_type - Allowed Access Point types for 6 GHz Band
@@ -2507,6 +2508,12 @@ enum mscs_description_subelem {
  * IEEE Std 802.11ax-2021, 26.17.2.3.2, AP behavior for fast passive scanning
  */
 #define FD_MAX_INTERVAL_6GHZ                  20 /* TUs */
+
+/* IEEE Std 802.11ax-2021, 26.17.3.5.1: AP needs to wait and see the collision
+ * persists for at least the minimum default timeout
+ * dot11BSSColorCollisionAPPeriod (50 seconds)
+ */
+#define DOT11BSS_COLOR_COLLISION_AP_PERIOD	50
 
 /* Protected Vendor-specific QoS Management Action frame identifiers - WFA */
 #define QM_ACTION_VENDOR_TYPE 0x506f9a1a

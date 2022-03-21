@@ -295,6 +295,17 @@ struct hostapd_data {
 	unsigned int cs_c_off_ecsa_beacon;
 	unsigned int cs_c_off_ecsa_proberesp;
 
+#ifdef CONFIG_IEEE80211AX
+	bool cca_in_progress;
+	u8 cca_count;
+	u8 cca_color;
+	unsigned int cca_c_off_beacon;
+	unsigned int cca_c_off_proberesp;
+	struct os_reltime first_color_collision;
+	struct os_reltime last_color_collision;
+	u64 color_collision_bitmap;
+#endif /* CONFIG_IEEE80211AX */
+
 #ifdef CONFIG_P2P
 	struct p2p_data *p2p;
 	struct p2p_group *p2p_group;
@@ -663,6 +674,9 @@ void hostapd_cleanup_cs_params(struct hostapd_data *hapd);
 void hostapd_periodic_iface(struct hostapd_iface *iface);
 int hostapd_owe_trans_get_info(struct hostapd_data *hapd);
 void hostapd_ocv_check_csa_sa_query(void *eloop_ctx, void *timeout_ctx);
+
+void hostapd_switch_color(struct hostapd_data *hapd, u64 bitmap);
+void hostapd_cleanup_cca_params(struct hostapd_data *hapd);
 
 /* utils.c */
 int hostapd_register_probereq_cb(struct hostapd_data *hapd,
