@@ -538,3 +538,19 @@ int hostapd_get_he_twt_responder(struct hostapd_data *hapd,
 	return !!(mac_cap[HE_MAC_CAPAB_0] & HE_MACCAP_TWT_RESPONDER) &&
 		hapd->iface->conf->he_op.he_twt_responder;
 }
+
+
+u8 * hostapd_eid_cca(struct hostapd_data *hapd, u8 *eid)
+{
+	if (!hapd->cca_in_progress)
+		return eid;
+
+	/* BSS Color Change Announcement element */
+	*eid++ = WLAN_EID_EXTENSION;
+	*eid++ = 3;
+	*eid++ = WLAN_EID_EXT_COLOR_CHANGE_ANNOUNCEMENT;
+	*eid++ = hapd->cca_count; /* Color Switch Countdown */
+	*eid++ = hapd->cca_color; /* New BSS Color Information */
+
+	return eid;
+}

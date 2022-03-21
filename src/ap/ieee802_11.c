@@ -5152,6 +5152,7 @@ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
 	if (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax) {
 		p = hostapd_eid_he_capab(hapd, p, IEEE80211_MODE_AP);
 		p = hostapd_eid_he_operation(hapd, p);
+		p = hostapd_eid_cca(hapd, p);
 		p = hostapd_eid_spatial_reuse(hapd, p);
 		p = hostapd_eid_he_mu_edca_parameter_set(hapd, p);
 		p = hostapd_eid_he_6ghz_band_cap(hapd, p);

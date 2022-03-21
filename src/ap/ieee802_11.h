@@ -100,6 +100,7 @@ u16 copy_sta_he_6ghz_capab(struct hostapd_data *hapd, struct sta_info *sta,
 			   const u8 *he_6ghz_capab);
 int hostapd_get_he_twt_responder(struct hostapd_data *hapd,
 				 enum ieee80211_op_mode mode);
+u8 * hostapd_eid_cca(struct hostapd_data *hapd, u8 *eid);
 void hostapd_tx_status(struct hostapd_data *hapd, const u8 *addr,
 		       const u8 *buf, size_t len, int ack);
 void hostapd_eapol_tx_status(struct hostapd_data *hapd, const u8 *dst,
