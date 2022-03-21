@@ -2078,6 +2078,32 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			data->wds_sta_interface.ifname,
 			data->wds_sta_interface.sta_addr);
 		break;
+#ifdef CONFIG_IEEE80211AX
+	case EVENT_BSS_COLOR_COLLISION:
+		/* The BSS color is shared amongst all BBSs on a specific phy.
+		 * Therefore we always start the color change on the primary
+		 * BSS. */
+		wpa_printf(MSG_DEBUG, "BSS color collision on %s",
+			   hapd->conf->iface);
+		hostapd_switch_color(hapd->iface->bss[0],
+				     data->bss_color_collision.bitmap);
+		break;
+	case EVENT_CCA_STARTED_NOTIFY:
+		wpa_printf(MSG_DEBUG, "CCA started on on %s",
+			   hapd->conf->iface);
+		break;
+	case EVENT_CCA_ABORTED_NOTIFY:
+		wpa_printf(MSG_DEBUG, "CCA aborted on on %s",
+			   hapd->conf->iface);
+		hostapd_cleanup_cca_params(hapd);
+		break;
+	case EVENT_CCA_NOTIFY:
+		wpa_printf(MSG_DEBUG, "CCA finished on on %s",
+			   hapd->conf->iface);
+		hapd->iface->conf->he_op.he_bss_color = hapd->cca_color;
+		hostapd_cleanup_cca_params(hapd);
+		break;
+#endif /* CONFIG_IEEE80211AX */
 	default:
 		wpa_printf(MSG_DEBUG, "Unknown event %d", event);
 		break;
