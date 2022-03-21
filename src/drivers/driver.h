@@ -5179,6 +5179,26 @@ enum wpa_event_type {
 	 * non-zero wait time and that has not been explicitly cancelled.
 	 */
 	EVENT_TX_WAIT_EXPIRE,
+
+	/**
+	  * EVENT_BSS_COLOR_COLLISION - Notification of a BSS color collision
+	  */
+	EVENT_BSS_COLOR_COLLISION,
+
+	/**
+	 * EVENT_CCA_STARTED_NOTIFY - Notification that CCA has started
+	 */
+	EVENT_CCA_STARTED_NOTIFY,
+
+	/**
+	 * EVENT_CCA_ABORTED_NOTIFY - Notification that CCA has aborted
+	 */
+	EVENT_CCA_ABORTED_NOTIFY,
+
+	/**
+	 * EVENT_CCA_NOTIFY - Notification that CCA has completed
+	 */
+	EVENT_CCA_NOTIFY,
 };
 
 
@@ -6071,6 +6091,13 @@ union wpa_event_data {
 	struct unprot_beacon {
 		const u8 *sa;
 	} unprot_beacon;
+
+	/**
+	 * struct bss_color_collision - Data for EVENT_BSS_COLOR_COLLISION
+	 */
+	struct bss_color_collision {
+		u64 bitmap;
+	} bss_color_collision;
 };
 
 /**

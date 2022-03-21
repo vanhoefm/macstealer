@@ -2911,6 +2911,58 @@ static void nl80211_assoc_comeback(struct wpa_driver_nl80211_data *drv,
 }
 
 
+#ifdef CONFIG_IEEE80211AX
+
+static void nl80211_obss_color_collision(struct wpa_driver_nl80211_data *drv,
+					 struct nlattr *tb[])
+{
+	union wpa_event_data data;
+
+	if (!tb[NL80211_ATTR_OBSS_COLOR_BITMAP])
+		return;
+
+	os_memset(&data, 0, sizeof(data));
+	data.bss_color_collision.bitmap =
+		nla_get_u64(tb[NL80211_ATTR_OBSS_COLOR_BITMAP]);
+
+	wpa_printf(MSG_DEBUG, "nl80211: BSS color collision - bitmap %08lx",
+		   data.bss_color_collision.bitmap);
+	wpa_supplicant_event(drv->ctx, EVENT_BSS_COLOR_COLLISION, &data);
+}
+
+
+static void
+nl80211_color_change_announcement_started(struct wpa_driver_nl80211_data *drv)
+{
+	union wpa_event_data data = {};
+
+	wpa_printf(MSG_DEBUG, "nl80211: CCA started");
+	wpa_supplicant_event(drv->ctx, EVENT_CCA_STARTED_NOTIFY, &data);
+}
+
+
+static void
+nl80211_color_change_announcement_aborted(struct wpa_driver_nl80211_data *drv)
+{
+	union wpa_event_data data = {};
+
+	wpa_printf(MSG_DEBUG, "nl80211: CCA aborted");
+	wpa_supplicant_event(drv->ctx, EVENT_CCA_ABORTED_NOTIFY, &data);
+}
+
+
+static void
+nl80211_color_change_announcement_completed(struct wpa_driver_nl80211_data *drv)
+{
+	union wpa_event_data data = {};
+
+	wpa_printf(MSG_DEBUG, "nl80211: CCA completed");
+	wpa_supplicant_event(drv->ctx, EVENT_CCA_NOTIFY, &data);
+}
+
+#endif /* CONFIG_IEEE80211AX */
+
+
 static void do_process_drv_event(struct i802_bss *bss, int cmd,
 				 struct nlattr **tb)
 {
@@ -3164,6 +3216,20 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 		nl80211_assoc_comeback(drv, tb[NL80211_ATTR_MAC],
 				       tb[NL80211_ATTR_TIMEOUT]);
 		break;
+#ifdef CONFIG_IEEE80211AX
+	case NL80211_CMD_OBSS_COLOR_COLLISION:
+		nl80211_obss_color_collision(drv, tb);
+		break;
+	case NL80211_CMD_COLOR_CHANGE_STARTED:
+		nl80211_color_change_announcement_started(drv);
+		break;
+	case NL80211_CMD_COLOR_CHANGE_ABORTED:
+		nl80211_color_change_announcement_aborted(drv);
+		break;
+	case NL80211_CMD_COLOR_CHANGE_COMPLETED:
+		nl80211_color_change_announcement_completed(drv);
+		break;
+#endif /* CONFIG_IEEE80211AX */
 	default:
 		wpa_dbg(drv->ctx, MSG_DEBUG, "nl80211: Ignored unknown event "
 			"(cmd=%d)", cmd);
