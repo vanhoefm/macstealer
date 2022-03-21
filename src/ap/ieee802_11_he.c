@@ -200,7 +200,8 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
 	if (hapd->iface->conf->he_op.he_er_su_disable)
 		params |= HE_OPERATION_ER_SU_DISABLE;
 
-	if (hapd->iface->conf->he_op.he_bss_color_disabled)
+	if (hapd->iface->conf->he_op.he_bss_color_disabled ||
+	    hapd->cca_in_progress)
 		params |= HE_OPERATION_BSS_COLOR_DISABLED;
 	if (hapd->iface->conf->he_op.he_bss_color_partial)
 		params |= HE_OPERATION_BSS_COLOR_PARTIAL;
