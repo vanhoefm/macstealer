@@ -1105,6 +1105,11 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 		hapd_iface->bss[i]->ext_eapol_frame_io =
 			wpa_s->ext_eapol_frame_io;
 #endif /* CONFIG_TESTING_OPTIONS */
+
+#ifdef CONFIG_WNM_AP
+		if (ssid->mode == WPAS_MODE_AP)
+			hapd_iface->bss[i]->conf->bss_transition = 1;
+#endif /* CONFIG_WNM_AP */
 	}
 
 	os_memcpy(hapd_iface->bss[0]->own_addr, wpa_s->own_addr, ETH_ALEN);
