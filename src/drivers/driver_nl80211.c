@@ -9955,6 +9955,87 @@ error:
 }
 
 
+#ifdef CONFIG_IEEE80211AX
+static int nl80211_switch_color(void *priv, struct cca_settings *settings)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	struct nlattr *beacon_cca;
+	struct nl_msg *msg;
+	int ret = -ENOBUFS;
+
+	wpa_printf(MSG_DEBUG,
+		   "nl80211: Color change request (cca_count=%u color=%d)",
+		   settings->cca_count, settings->cca_color);
+
+	if (drv->nlmode != NL80211_IFTYPE_AP)
+		return -EOPNOTSUPP;
+
+	if (!settings->beacon_cca.tail)
+		return -EINVAL;
+
+	if (settings->beacon_cca.tail_len <= settings->counter_offset_beacon ||
+	    settings->beacon_cca.tail[settings->counter_offset_beacon] !=
+	    settings->cca_count)
+		return -EINVAL;
+
+	if (settings->beacon_cca.probe_resp &&
+	    (settings->beacon_cca.probe_resp_len <=
+	     settings->counter_offset_presp ||
+	     settings->beacon_cca.probe_resp[settings->counter_offset_presp] !=
+	     settings->cca_count))
+		return -EINVAL;
+
+	msg = nl80211_bss_msg(bss, 0, NL80211_CMD_COLOR_CHANGE_REQUEST);
+	if (!msg ||
+	    nla_put_u8(msg, NL80211_ATTR_COLOR_CHANGE_COUNT,
+		       settings->cca_count) ||
+	    nla_put_u8(msg, NL80211_ATTR_COLOR_CHANGE_COLOR,
+		       settings->cca_color))
+		goto error;
+
+	/* beacon_after params */
+	ret = set_beacon_data(msg, &settings->beacon_after);
+	if (ret)
+		goto error;
+
+	/* beacon_csa params */
+	beacon_cca = nla_nest_start(msg, NL80211_ATTR_COLOR_CHANGE_ELEMS);
+	if (!beacon_cca) {
+		ret = -ENOBUFS;
+		goto error;
+	}
+
+	ret = set_beacon_data(msg, &settings->beacon_cca);
+	if (ret)
+		goto error;
+
+	if (nla_put_u16(msg, NL80211_ATTR_CNTDWN_OFFS_BEACON,
+			settings->counter_offset_beacon) ||
+	    (settings->beacon_cca.probe_resp &&
+	     nla_put_u16(msg, NL80211_ATTR_CNTDWN_OFFS_PRESP,
+			 settings->counter_offset_presp))) {
+		ret = -ENOBUFS;
+		goto error;
+	}
+
+	nla_nest_end(msg, beacon_cca);
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
+	if (ret) {
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: switch_color failed err=%d (%s)",
+			   ret, strerror(-ret));
+	}
+	return ret;
+
+error:
+	nlmsg_free(msg);
+	wpa_printf(MSG_DEBUG, "nl80211: Could not build color switch request");
+	return ret;
+}
+#endif /* CONFIG_IEEE80211AX */
+
+
 static int nl80211_add_ts(void *priv, u8 tsid, const u8 *addr,
 			  u8 user_priority, u16 admitted_time)
 {
@@ -12249,6 +12330,9 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.get_survey = wpa_driver_nl80211_get_survey,
 	.status = wpa_driver_nl80211_status,
 	.switch_channel = nl80211_switch_channel,
+#ifdef CONFIG_IEEE80211AX
+	.switch_color = nl80211_switch_color,
+#endif /* CONFIG_IEEE80211AX */
 #ifdef ANDROID_P2P
 	.set_noa = wpa_driver_set_p2p_noa,
 	.get_noa = wpa_driver_get_p2p_noa,
