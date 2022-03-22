@@ -1569,6 +1569,47 @@ int ap_ctrl_iface_wpa_get_status(struct wpa_supplicant *wpa_s, char *buf,
 	return pos - buf;
 }
 
+
+#ifdef CONFIG_WNM_AP
+
+int ap_ctrl_iface_disassoc_imminent(struct wpa_supplicant *wpa_s,
+				    const char *buf)
+{
+	struct hostapd_data *hapd;
+
+	if (wpa_s->ap_iface)
+		hapd = wpa_s->ap_iface->bss[0];
+	else
+		return -1;
+	return hostapd_ctrl_iface_disassoc_imminent(hapd, buf);
+}
+
+
+int ap_ctrl_iface_ess_disassoc(struct wpa_supplicant *wpa_s, const char *buf)
+{
+	struct hostapd_data *hapd;
+
+	if (wpa_s->ap_iface)
+		hapd = wpa_s->ap_iface->bss[0];
+	else
+		return -1;
+	return hostapd_ctrl_iface_ess_disassoc(hapd, buf);
+}
+
+
+int ap_ctrl_iface_bss_tm_req(struct wpa_supplicant *wpa_s, const char *buf)
+{
+	struct hostapd_data *hapd;
+
+	if (wpa_s->ap_iface)
+		hapd = wpa_s->ap_iface->bss[0];
+	else
+		return -1;
+	return hostapd_ctrl_iface_bss_tm_req(hapd, buf);
+}
+
+#endif /* CONFIG_WNM_AP */
+
 #endif /* CONFIG_CTRL_IFACE */
 
 
