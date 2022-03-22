@@ -363,6 +363,9 @@ extern "C" {
 #define P2P_EVENT_LISTEN_OFFLOAD_STOP "P2P-LISTEN-OFFLOAD-STOPPED "
 #define P2P_LISTEN_OFFLOAD_STOP_REASON "P2P-LISTEN-OFFLOAD-STOP-REASON "
 
+/* BSS Transition Management Query frame received */
+#define BSS_TM_QUERY "BSS-TM-QUERY "
+
 /* BSS Transition Management Response frame received */
 #define BSS_TM_RESP "BSS-TM-RESP "
 
