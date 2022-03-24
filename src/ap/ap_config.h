@@ -1202,5 +1202,10 @@ int hostapd_sae_pw_id_in_use(struct hostapd_bss_config *conf);
 bool hostapd_sae_pk_in_use(struct hostapd_bss_config *conf);
 bool hostapd_sae_pk_exclusively(struct hostapd_bss_config *conf);
 int hostapd_setup_sae_pt(struct hostapd_bss_config *conf);
+int hostapd_acl_comp(const void *a, const void *b);
+int hostapd_add_acl_maclist(struct mac_acl_entry **acl, int *num,
+			    int vlan_id, const u8 *addr);
+void hostapd_remove_acl_mac(struct mac_acl_entry **acl, int *num,
+			    const u8 *addr);
 
 #endif /* HOSTAPD_CONFIG_H */

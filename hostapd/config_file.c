@@ -118,52 +118,6 @@ static int hostapd_config_read_vlan_file(struct hostapd_bss_config *bss,
 #endif /* CONFIG_NO_VLAN */
 
 
-int hostapd_acl_comp(const void *a, const void *b)
-{
-	const struct mac_acl_entry *aa = a;
-	const struct mac_acl_entry *bb = b;
-	return os_memcmp(aa->addr, bb->addr, sizeof(macaddr));
-}
-
-
-int hostapd_add_acl_maclist(struct mac_acl_entry **acl, int *num,
-			    int vlan_id, const u8 *addr)
-{
-	struct mac_acl_entry *newacl;
-
-	newacl = os_realloc_array(*acl, *num + 1, sizeof(**acl));
-	if (!newacl) {
-		wpa_printf(MSG_ERROR, "MAC list reallocation failed");
-		return -1;
-	}
-
-	*acl = newacl;
-	os_memcpy((*acl)[*num].addr, addr, ETH_ALEN);
-	os_memset(&(*acl)[*num].vlan_id, 0, sizeof((*acl)[*num].vlan_id));
-	(*acl)[*num].vlan_id.untagged = vlan_id;
-	(*acl)[*num].vlan_id.notempty = !!vlan_id;
-	(*num)++;
-
-	return 0;
-}
-
-
-void hostapd_remove_acl_mac(struct mac_acl_entry **acl, int *num,
-			    const u8 *addr)
-{
-	int i = 0;
-
-	while (i < *num) {
-		if (os_memcmp((*acl)[i].addr, addr, ETH_ALEN) == 0) {
-			os_remove_in_array(*acl, *num, sizeof(**acl), i);
-			(*num)--;
-		} else {
-			i++;
-		}
-	}
-}
-
-
 static int hostapd_config_read_maclist(const char *fname,
 				       struct mac_acl_entry **acl, int *num)
 {
