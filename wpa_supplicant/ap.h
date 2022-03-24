@@ -55,6 +55,7 @@ void ap_ctrl_iface_acl_clear_list(struct wpa_supplicant *wpa_s,
 				  enum macaddr_acl acl_type);
 int ap_ctrl_iface_disassoc_deny_mac(struct wpa_supplicant *wpa_s);
 int ap_ctrl_iface_disassoc_accept_mac(struct wpa_supplicant *wpa_s);
+int ap_ctrl_iface_set_acl(struct wpa_supplicant *wpa_s);
 void ap_tx_status(void *ctx, const u8 *addr,
 		  const u8 *buf, size_t len, int ack);
 void ap_eapol_tx_status(void *ctx, const u8 *dst,

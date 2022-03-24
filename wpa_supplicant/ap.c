@@ -1734,6 +1734,19 @@ int ap_ctrl_iface_disassoc_accept_mac(struct wpa_supplicant *wpa_s)
 	return hostapd_disassoc_accept_mac(hapd);
 }
 
+
+int ap_ctrl_iface_set_acl(struct wpa_supplicant *wpa_s)
+{
+	struct hostapd_data *hapd;
+
+	if (wpa_s->ap_iface)
+		hapd = wpa_s->ap_iface->bss[0];
+	else
+		return -1;
+
+	return hostapd_set_acl(hapd);
+}
+
 #endif /* CONFIG_CTRL_IFACE */
 
 

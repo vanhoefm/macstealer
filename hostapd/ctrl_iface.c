@@ -3491,14 +3491,15 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 		if (os_strncmp(buf + 11, "ADD_MAC ", 8) == 0) {
 			if (hostapd_ctrl_iface_acl_add_mac(
 				    &hapd->conf->accept_mac,
-				    &hapd->conf->num_accept_mac, buf + 19))
+				    &hapd->conf->num_accept_mac, buf + 19) ||
+			    hostapd_set_acl(hapd))
 				reply_len = -1;
 		} else if (os_strncmp((buf + 11), "DEL_MAC ", 8) == 0) {
-			if (!hostapd_ctrl_iface_acl_del_mac(
+			if (hostapd_ctrl_iface_acl_del_mac(
 				    &hapd->conf->accept_mac,
-				    &hapd->conf->num_accept_mac, buf + 19))
-				hostapd_disassoc_accept_mac(hapd);
-			else
+				    &hapd->conf->num_accept_mac, buf + 19) ||
+			    hostapd_set_acl(hapd) ||
+			    hostapd_disassoc_accept_mac(hapd))
 				reply_len = -1;
 		} else if (os_strcmp(buf + 11, "SHOW") == 0) {
 			reply_len = hostapd_ctrl_iface_acl_show_mac(
@@ -3508,20 +3509,23 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 			hostapd_ctrl_iface_acl_clear_list(
 				&hapd->conf->accept_mac,
 				&hapd->conf->num_accept_mac);
-			hostapd_disassoc_accept_mac(hapd);
+			if (hostapd_set_acl(hapd) ||
+			    hostapd_disassoc_accept_mac(hapd))
+				reply_len = -1;
 		}
 	} else if (os_strncmp(buf, "DENY_ACL ", 9) == 0) {
 		if (os_strncmp(buf + 9, "ADD_MAC ", 8) == 0) {
-			if (!hostapd_ctrl_iface_acl_add_mac(
+			if (hostapd_ctrl_iface_acl_add_mac(
 				    &hapd->conf->deny_mac,
-				    &hapd->conf->num_deny_mac, buf + 17))
-				hostapd_disassoc_deny_mac(hapd);
-			else
+				    &hapd->conf->num_deny_mac, buf + 17) ||
+			    hostapd_set_acl(hapd) ||
+			    hostapd_disassoc_deny_mac(hapd))
 				reply_len = -1;
 		} else if (os_strncmp(buf + 9, "DEL_MAC ", 8) == 0) {
 			if (hostapd_ctrl_iface_acl_del_mac(
 				    &hapd->conf->deny_mac,
-				    &hapd->conf->num_deny_mac, buf + 17))
+				    &hapd->conf->num_deny_mac, buf + 17) ||
+			    hostapd_set_acl(hapd))
 				reply_len = -1;
 		} else if (os_strcmp(buf + 9, "SHOW") == 0) {
 			reply_len = hostapd_ctrl_iface_acl_show_mac(
@@ -3531,6 +3535,8 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 			hostapd_ctrl_iface_acl_clear_list(
 				&hapd->conf->deny_mac,
 				&hapd->conf->num_deny_mac);
+			if (hostapd_set_acl(hapd))
+				reply_len = -1;
 		}
 #ifdef CONFIG_DPP
 	} else if (os_strncmp(buf, "DPP_QR_CODE ", 12) == 0) {

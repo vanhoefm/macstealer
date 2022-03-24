@@ -12026,12 +12026,14 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		if (os_strncmp(buf + 11, "ADD_MAC ", 8) == 0) {
 			if (ap_ctrl_iface_acl_add_mac(wpa_s,
 						      DENY_UNLESS_ACCEPTED,
-						      buf + 19))
+						      buf + 19) ||
+			    ap_ctrl_iface_set_acl(wpa_s))
 				reply_len = -1;
 		} else if (os_strncmp((buf + 11), "DEL_MAC ", 8) == 0) {
 			if (ap_ctrl_iface_acl_del_mac(wpa_s,
 						      DENY_UNLESS_ACCEPTED,
 						      buf + 19) ||
+			    ap_ctrl_iface_set_acl(wpa_s) ||
 			    ap_ctrl_iface_disassoc_accept_mac(wpa_s))
 				reply_len = -1;
 		} else if (os_strcmp(buf + 11, "SHOW") == 0) {
@@ -12041,7 +12043,8 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		} else if (os_strcmp(buf + 11, "CLEAR") == 0) {
 			ap_ctrl_iface_acl_clear_list(wpa_s,
 						     DENY_UNLESS_ACCEPTED);
-			if (ap_ctrl_iface_disassoc_accept_mac(wpa_s))
+			if (ap_ctrl_iface_set_acl(wpa_s) ||
+			    ap_ctrl_iface_disassoc_accept_mac(wpa_s))
 				reply_len = -1;
 		} else {
 			reply_len = -1;
@@ -12051,12 +12054,14 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 			if (ap_ctrl_iface_acl_add_mac(wpa_s,
 						      ACCEPT_UNLESS_DENIED,
 						      buf + 17) ||
+			    ap_ctrl_iface_set_acl(wpa_s) ||
 			    ap_ctrl_iface_disassoc_deny_mac(wpa_s))
 				reply_len = -1;
 		} else if (os_strncmp(buf + 9, "DEL_MAC ", 8) == 0) {
 			if (ap_ctrl_iface_acl_del_mac(wpa_s,
 						      ACCEPT_UNLESS_DENIED,
-						      buf + 17))
+						      buf + 17) ||
+			    ap_ctrl_iface_set_acl(wpa_s))
 				reply_len = -1;
 		} else if (os_strcmp(buf + 9, "SHOW") == 0) {
 			reply_len = ap_ctrl_iface_acl_show_mac(
@@ -12064,6 +12069,8 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		} else if (os_strcmp(buf + 9, "CLEAR") == 0) {
 			ap_ctrl_iface_acl_clear_list(wpa_s,
 						     ACCEPT_UNLESS_DENIED);
+			if (ap_ctrl_iface_set_acl(wpa_s))
+				reply_len = -1;
 		} else {
 			reply_len = -1;
 		}
