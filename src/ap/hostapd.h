@@ -709,4 +709,6 @@ void fst_hostapd_fill_iface_obj(struct hostapd_data *hapd,
 				struct fst_wpa_obj *iface_obj);
 #endif /* CONFIG_FST */
 
+int hostapd_set_acl(struct hostapd_data *hapd);
+
 #endif /* HOSTAPD_H */

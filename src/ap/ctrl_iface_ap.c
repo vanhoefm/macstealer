@@ -1357,13 +1357,13 @@ int hostapd_ctrl_iface_acl_add_mac(struct mac_acl_entry **acl, int *num,
 }
 
 
-void hostapd_disassoc_accept_mac(struct hostapd_data *hapd)
+int hostapd_disassoc_accept_mac(struct hostapd_data *hapd)
 {
 	struct sta_info *sta;
 	struct vlan_description vlan_id;
 
 	if (hapd->conf->macaddr_acl != DENY_UNLESS_ACCEPTED)
-		return;
+		return 0;
 
 	for (sta = hapd->sta_list; sta; sta = sta->next) {
 		if (!hostapd_maclist_found(hapd->conf->accept_mac,
@@ -1374,10 +1374,12 @@ void hostapd_disassoc_accept_mac(struct hostapd_data *hapd)
 			ap_sta_disconnect(hapd, sta, sta->addr,
 					  WLAN_REASON_UNSPECIFIED);
 	}
+
+	return 0;
 }
 
 
-void hostapd_disassoc_deny_mac(struct hostapd_data *hapd)
+int hostapd_disassoc_deny_mac(struct hostapd_data *hapd)
 {
 	struct sta_info *sta;
 	struct vlan_description vlan_id;
@@ -1391,4 +1393,6 @@ void hostapd_disassoc_deny_mac(struct hostapd_data *hapd)
 			ap_sta_disconnect(hapd, sta, sta->addr,
 					  WLAN_REASON_UNSPECIFIED);
 	}
+
+	return 0;
 }

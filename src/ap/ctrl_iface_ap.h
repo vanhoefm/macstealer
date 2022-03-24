@@ -51,7 +51,7 @@ void hostapd_ctrl_iface_acl_clear_list(struct mac_acl_entry **acl,
 				       int *num);
 int hostapd_ctrl_iface_acl_show_mac(struct mac_acl_entry *acl, int num,
 				    char *buf, size_t buflen);
-void hostapd_disassoc_accept_mac(struct hostapd_data *hapd);
-void hostapd_disassoc_deny_mac(struct hostapd_data *hapd);
+int hostapd_disassoc_accept_mac(struct hostapd_data *hapd);
+int hostapd_disassoc_deny_mac(struct hostapd_data *hapd);
 
 #endif /* CTRL_IFACE_AP_H */
