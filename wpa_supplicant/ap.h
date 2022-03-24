@@ -10,6 +10,8 @@
 #ifndef AP_H
 #define AP_H
 
+enum macaddr_acl;
+
 int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 			     struct wpa_ssid *ssid);
 void wpa_supplicant_ap_deinit(struct wpa_supplicant *wpa_s);
@@ -42,6 +44,17 @@ int ap_ctrl_iface_disassoc_imminent(struct wpa_supplicant *wpa_s,
 				    const char *buf);
 int ap_ctrl_iface_ess_disassoc(struct wpa_supplicant *wpa_s, const char *buf);
 int ap_ctrl_iface_bss_tm_req(struct wpa_supplicant *wpa_s, const char *buf);
+int ap_ctrl_iface_acl_add_mac(struct wpa_supplicant *wpa_s,
+			      enum macaddr_acl acl_type, const char *buf);
+int ap_ctrl_iface_acl_del_mac(struct wpa_supplicant *wpa_s,
+			      enum macaddr_acl acl_type, const char *buf);
+int ap_ctrl_iface_acl_show_mac(struct wpa_supplicant *wpa_s,
+			       enum macaddr_acl acl_type, char *buf,
+			       size_t buflen);
+void ap_ctrl_iface_acl_clear_list(struct wpa_supplicant *wpa_s,
+				  enum macaddr_acl acl_type);
+int ap_ctrl_iface_disassoc_deny_mac(struct wpa_supplicant *wpa_s);
+int ap_ctrl_iface_disassoc_accept_mac(struct wpa_supplicant *wpa_s);
 void ap_tx_status(void *ctx, const u8 *addr,
 		  const u8 *buf, size_t len, int ack);
 void ap_eapol_tx_status(void *ctx, const u8 *dst,
