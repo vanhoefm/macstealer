@@ -540,6 +540,10 @@ static void acs_survey_mode_interference_factor(
 		if (!acs_usable_chan(chan))
 			continue;
 
+		if ((chan->flag & HOSTAPD_CHAN_RADAR) &&
+		    iface->conf->acs_exclude_dfs)
+			continue;
+
 		if (!is_in_chanlist(iface, chan))
 			continue;
 
@@ -668,6 +672,10 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 		 * primary until more sophisticated channel selection is
 		 * implemented. */
 		if (!chan_pri_allowed(chan))
+			continue;
+
+		if ((chan->flag & HOSTAPD_CHAN_RADAR) &&
+		    iface->conf->acs_exclude_dfs)
 			continue;
 
 		if (!is_in_chanlist(iface, chan))
@@ -1044,7 +1052,9 @@ static int * acs_request_scan_add_freqs(struct hostapd_iface *iface,
 
 	for (i = 0; i < mode->num_channels; i++) {
 		chan = &mode->channels[i];
-		if (chan->flag & HOSTAPD_CHAN_DISABLED)
+		if ((chan->flag & HOSTAPD_CHAN_DISABLED) ||
+		    ((chan->flag & HOSTAPD_CHAN_RADAR) &&
+		     iface->conf->acs_exclude_dfs))
 			continue;
 
 		if (!is_in_chanlist(iface, chan))
