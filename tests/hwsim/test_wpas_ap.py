@@ -1100,3 +1100,53 @@ def run_wpas_ap_lifetime_in_memory(dev, apdev, params, raw):
     verify_not_present(buf3, tk, fname, "TK")
     get_key_locations(buf3, gtk, "GTK")
     verify_not_present(buf3, gtk, fname, "GTK")
+
+def check_acl(dev, num_accept, num_deny):
+    accept = dev.request("ACCEPT_ACL SHOW").splitlines()
+    logger.info("accept entries: " + str(accept))
+    if len(accept) != num_accept:
+        raise Exception("Unexpected number of accept entries")
+    deny = dev.request("DENY_ACL SHOW").splitlines()
+    logger.info("deny entries: " + str(deny))
+    if len(deny) != num_deny:
+        raise Exception("Unexpected number of deny entries")
+
+def test_wpas_ap_acl_mgmt(dev):
+    """wpa_supplicant AP mode - ACL management"""
+    id = dev[0].add_network()
+    dev[0].set_network(id, "mode", "2")
+    dev[0].set_network_quoted(id, "ssid", "wpas-ap-open")
+    dev[0].set_network(id, "key_mgmt", "NONE")
+    dev[0].set_network(id, "frequency", "2412")
+    dev[0].set_network(id, "scan_freq", "2412")
+    dev[0].select_network(id)
+    wait_ap_ready(dev[0])
+
+    addr1 = dev[1].own_addr()
+    addr2 = dev[2].own_addr()
+
+    check_acl(dev[0], 0, 0)
+    if "OK" not in dev[0].request("ACCEPT_ACL ADD_MAC " + addr1):
+        raise Exception("ACCEPT_ACL ADD_MAC failed")
+    check_acl(dev[0], 1, 0)
+
+    dev[2].connect("wpas-ap-open", key_mgmt="NONE", scan_freq="2412",
+                   wait_connect=False)
+    dev[1].connect("wpas-ap-open", key_mgmt="NONE", scan_freq="2412")
+    ev = dev[2].wait_event(["CTRL-EVENT-CONNECTED"], timeout=2)
+    if ev:
+        raise Exception("Unexpected connection")
+    dev[2].request("DISCONNECT")
+
+    if "OK" not in dev[0].request("DENY_ACL ADD_MAC " + addr1):
+        raise Exception("DENY_ACL ADD_MAC failed")
+    dev[1].wait_disconnected()
+    dev[1].request("DISCONNECT")
+
+    check_acl(dev[0], 1, 1)
+    if "OK" not in dev[0].request("ACCEPT_ACL CLEAR"):
+        raise Exception("Failed to clear accept ACL")
+    check_acl(dev[0], 0, 1)
+    if "OK" not in dev[0].request("DENY_ACL CLEAR"):
+        raise Exception("Failed to clear deny ACL")
+    check_acl(dev[0], 0, 0)
