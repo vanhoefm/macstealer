@@ -161,6 +161,9 @@ CONFIG_IPV6=y
 # final IEEE 802.11ax version.
 #CONFIG_IEEE80211AX=y
 
+# Simultaneous Authentication of Equals (SAE), WPA3-Personal
+#CONFIG_SAE=y
+
 # Remove debugging code that is printing out debug messages to stdout.
 # This can be used to reduce the size of the hostapd considerably if debugging
 # code is not needed.
