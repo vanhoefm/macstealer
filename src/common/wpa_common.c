@@ -1599,6 +1599,13 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 				   "%s: invalid group cipher 0x%x (%08x)",
 				   __func__, data->group_cipher,
 				   WPA_GET_BE32(pos));
+#ifdef CONFIG_NO_TKIP
+			if (RSN_SELECTOR_GET(pos) == RSN_CIPHER_SUITE_TKIP) {
+				wpa_printf(MSG_DEBUG,
+					   "%s: TKIP as group cipher not supported in CONFIG_NO_TKIP=y build",
+					   __func__);
+			}
+#endif /* CONFIG_NO_TKIP */
 			return -1;
 		}
 		pos += RSN_SELECTOR_LEN;
