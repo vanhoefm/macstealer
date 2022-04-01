@@ -2243,6 +2243,9 @@ bool dpp_tcp_conn_status_requested(struct dpp_global *dpp)
 {
 	struct dpp_connection *conn;
 
+	if (!dpp)
+		return false;
+
 	dl_list_for_each(conn, &dpp->tcp_init, struct dpp_connection, list) {
 		if (conn->auth && conn->auth->conn_status_requested)
 			return true;
