@@ -1,6 +1,6 @@
 /*
  * hostapd / WPA authenticator glue code
- * Copyright (c) 2002-2012, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2002-2022, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -29,6 +29,7 @@
 #include "ap_drv_ops.h"
 #include "ap_config.h"
 #include "ieee802_11.h"
+#include "ieee802_11_auth.h"
 #include "pmksa_cache_auth.h"
 #include "wpa_auth.h"
 #include "wpa_auth_glue.h"
@@ -214,6 +215,8 @@ static void hostapd_wpa_auth_conf(struct hostapd_bss_config *conf,
 	wconf->force_kdk_derivation = conf->force_kdk_derivation;
 #endif /* CONFIG_TESTING_OPTIONS */
 #endif /* CONFIG_PASN */
+
+	wconf->radius_psk = conf->wpa_psk_radius == PSK_RADIUS_DURING_4WAY_HS;
 }
 
 
@@ -1443,6 +1446,23 @@ static void hostapd_wpa_unregister_ft_oui(struct hostapd_data *hapd)
 #endif /* CONFIG_IEEE80211R_AP */
 
 
+#ifndef CONFIG_NO_RADIUS
+static void hostapd_request_radius_psk(void *ctx, const u8 *addr, int key_mgmt,
+				       const u8 *anonce,
+				       const u8 *eapol, size_t eapol_len)
+{
+	struct hostapd_data *hapd = ctx;
+
+	wpa_printf(MSG_DEBUG, "RADIUS PSK request for " MACSTR " key_mgmt=0x%x",
+		   MAC2STR(addr), key_mgmt);
+	wpa_hexdump(MSG_DEBUG, "ANonce", anonce, WPA_NONCE_LEN);
+	wpa_hexdump(MSG_DEBUG, "EAPOL", eapol, eapol_len);
+	hostapd_acl_req_radius_psk(hapd, addr, key_mgmt, anonce, eapol,
+				   eapol_len);
+}
+#endif /* CONFIG_NO_RADIUS */
+
+
 int hostapd_setup_wpa(struct hostapd_data *hapd)
 {
 	struct wpa_auth_config _conf;
@@ -1486,6 +1506,9 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 		.set_session_timeout = hostapd_wpa_auth_set_session_timeout,
 		.get_session_timeout = hostapd_wpa_auth_get_session_timeout,
 #endif /* CONFIG_IEEE80211R_AP */
+#ifndef CONFIG_NO_RADIUS
+		.request_radius_psk = hostapd_request_radius_psk,
+#endif /* CONFIG_NO_RADIUS */
 	};
 	const u8 *wpa_ie;
 	size_t wpa_ie_len;

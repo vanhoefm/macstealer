@@ -1,6 +1,6 @@
 /*
  * hostapd - IEEE 802.11i-2004 / WPA Authenticator
- * Copyright (c) 2004-2017, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2004-2022, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -273,6 +273,8 @@ struct wpa_auth_config {
 	 * PTK derivation regardless of advertised capabilities.
 	 */
 	bool force_kdk_derivation;
+
+	bool radius_psk;
 };
 
 typedef enum {
@@ -320,6 +322,9 @@ struct wpa_auth_callbacks {
 	void (*store_ptksa)(void *ctx, const u8 *addr, int cipher,
 			    u32 life_time, const struct wpa_ptk *ptk);
 	void (*clear_ptksa)(void *ctx, const u8 *addr, int cipher);
+	void (*request_radius_psk)(void *ctx, const u8 *addr, int key_mgmt,
+				   const u8 *anonce,
+				   const u8 *eapol, size_t eapol_len);
 #ifdef CONFIG_IEEE80211R_AP
 	struct wpa_state_machine * (*add_sta)(void *ctx, const u8 *sta_addr);
 	int (*add_sta_ft)(void *ctx, const u8 *sta_addr);
@@ -571,5 +576,7 @@ enum wpa_auth_ocv_override_frame {
 void wpa_auth_set_ocv_override_freq(struct wpa_authenticator *wpa_auth,
 				    enum wpa_auth_ocv_override_frame frame,
 				    unsigned int freq);
+
+void wpa_auth_sta_radius_psk_resp(struct wpa_state_machine *sm, bool success);
 
 #endif /* WPA_AUTH_H */

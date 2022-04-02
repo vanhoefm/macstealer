@@ -198,5 +198,7 @@ u16 check_ext_capab(struct hostapd_data *hapd, struct sta_info *sta,
 		    const u8 *ext_capab_ie, size_t ext_capab_ie_len);
 size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type);
 u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type);
+int ieee802_11_set_radius_info(struct hostapd_data *hapd, struct sta_info *sta,
+			       int res, struct radius_sta *info);
 
 #endif /* IEEE802_11_H */

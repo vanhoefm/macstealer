@@ -1,6 +1,6 @@
 /*
  * hostapd / IEEE 802.11 authentication (ACL)
- * Copyright (c) 2003-2012, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2003-2022, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -20,6 +20,8 @@
 #include "hostapd.h"
 #include "ap_config.h"
 #include "ap_drv_ops.h"
+#include "sta_info.h"
+#include "wpa_auth.h"
 #include "ieee802_11.h"
 #include "ieee802_1x.h"
 #include "ieee802_11_auth.h"
@@ -43,6 +45,8 @@ struct hostapd_acl_query_data {
 	u8 *auth_msg; /* IEEE 802.11 authentication frame from station */
 	size_t auth_msg_len;
 	struct hostapd_acl_query_data *next;
+	bool radius_psk;
+	int akm;
 };
 
 
@@ -150,6 +154,13 @@ static int hostapd_radius_acl_query(struct hostapd_data *hapd, const u8 *addr,
 	if (!radius_msg_add_attr(msg, RADIUS_ATTR_CONNECT_INFO,
 				 (u8 *) buf, os_strlen(buf))) {
 		wpa_printf(MSG_DEBUG, "Could not add Connect-Info");
+		goto fail;
+	}
+
+	if (query->akm &&
+	    !radius_msg_add_attr_int32(msg, RADIUS_ATTR_WLAN_AKM_SUITE,
+				       wpa_akm_to_suite(query->akm))) {
+		wpa_printf(MSG_DEBUG, "Could not add WLAN-AKM-Suite");
 		goto fail;
 	}
 
@@ -557,17 +568,40 @@ hostapd_acl_recv_radius(struct radius_msg *msg, struct radius_msg *req,
 	cache->next = hapd->acl_cache;
 	hapd->acl_cache = cache;
 
+	if (query->radius_psk) {
+		struct sta_info *sta;
+		bool success = cache->accepted == HOSTAPD_ACL_ACCEPT;
+
+		sta = ap_get_sta(hapd, query->addr);
+		if (!sta || !sta->wpa_sm) {
+			wpa_printf(MSG_DEBUG,
+				   "No STA/SM entry found for the RADIUS PSK response");
+			goto done;
+		}
+#ifdef NEED_AP_MLME
+		if (success &&
+		    (ieee802_11_set_radius_info(hapd, sta, cache->accepted,
+						info) < 0 ||
+		     ap_sta_bind_vlan(hapd, sta) < 0))
+			success = false;
+#endif /* NEED_AP_MLME */
+		wpa_auth_sta_radius_psk_resp(sta->wpa_sm, success);
+	} else {
 #ifdef CONFIG_DRIVER_RADIUS_ACL
-	hostapd_drv_set_radius_acl_auth(hapd, query->addr, cache->accepted,
-					info->session_timeout);
+		hostapd_drv_set_radius_acl_auth(hapd, query->addr,
+						cache->accepted,
+						info->session_timeout);
 #else /* CONFIG_DRIVER_RADIUS_ACL */
 #ifdef NEED_AP_MLME
-	/* Re-send original authentication frame for 802.11 processing */
-	wpa_printf(MSG_DEBUG, "Re-sending authentication frame after "
-		   "successful RADIUS ACL query");
-	ieee802_11_mgmt(hapd, query->auth_msg, query->auth_msg_len, NULL);
+		/* Re-send original authentication frame for 802.11 processing
+		 */
+		wpa_printf(MSG_DEBUG,
+			   "Re-sending authentication frame after successful RADIUS ACL query");
+		ieee802_11_mgmt(hapd, query->auth_msg, query->auth_msg_len,
+				NULL);
 #endif /* NEED_AP_MLME */
 #endif /* CONFIG_DRIVER_RADIUS_ACL */
+	}
 
  done:
 	if (prev == NULL)
@@ -649,3 +683,31 @@ void hostapd_free_psk_list(struct hostapd_sta_wpa_psk_short *psk)
 		bin_clear_free(prev, sizeof(*prev));
 	}
 }
+
+
+#ifndef CONFIG_NO_RADIUS
+void hostapd_acl_req_radius_psk(struct hostapd_data *hapd, const u8 *addr,
+				int key_mgmt, const u8 *anonce,
+				const u8 *eapol, size_t eapol_len)
+{
+	struct hostapd_acl_query_data *query;
+
+	query = os_zalloc(sizeof(*query));
+	if (!query)
+		return;
+
+	query->radius_psk = true;
+	query->akm = key_mgmt;
+	os_get_reltime(&query->timestamp);
+	os_memcpy(query->addr, addr, ETH_ALEN);
+	if (hostapd_radius_acl_query(hapd, addr, query)) {
+		wpa_printf(MSG_DEBUG,
+			   "Failed to send Access-Request for RADIUS PSK/ACL query");
+		hostapd_acl_query_free(query);
+		return;
+	}
+
+	query->next = hapd->acl_queries;
+	hapd->acl_queries = query;
+}
+#endif /* CONFIG_NO_RADIUS */

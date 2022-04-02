@@ -2325,9 +2325,8 @@ static int ieee802_11_allowed_address(struct hostapd_data *hapd, const u8 *addr,
 }
 
 
-static int
-ieee802_11_set_radius_info(struct hostapd_data *hapd, struct sta_info *sta,
-			   int res, struct radius_sta *info)
+int ieee802_11_set_radius_info(struct hostapd_data *hapd, struct sta_info *sta,
+			       int res, struct radius_sta *info)
 {
 	u32 session_timeout = info->session_timeout;
 	u32 acct_interim_interval = info->acct_interim_interval;

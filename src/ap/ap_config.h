@@ -1,6 +1,6 @@
 /*
  * hostapd / Configuration definitions and helpers functions
- * Copyright (c) 2003-2015, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2003-2022, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -364,7 +364,8 @@ struct hostapd_bss_config {
 	enum {
 		PSK_RADIUS_IGNORED = 0,
 		PSK_RADIUS_ACCEPTED = 1,
-		PSK_RADIUS_REQUIRED = 2
+		PSK_RADIUS_REQUIRED = 2,
+		PSK_RADIUS_DURING_4WAY_HS = 3,
 	} wpa_psk_radius;
 	int wpa_pairwise;
 	int group_cipher; /* wpa_group value override from configuation */

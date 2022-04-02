@@ -1,6 +1,6 @@
 /*
  * IEEE 802.11 RSN / WPA Authenticator
- * Copyright (c) 2004-2019, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2004-2022, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -1480,6 +1480,12 @@ static void wpa_send_eapol_timeout(void *eloop_ctx, void *timeout_ctx)
 {
 	struct wpa_authenticator *wpa_auth = eloop_ctx;
 	struct wpa_state_machine *sm = timeout_ctx;
+
+	if (sm->waiting_radius_psk) {
+		wpa_auth_logger(wpa_auth, sm->addr, LOGGER_DEBUG,
+				"Ignore EAPOL-Key timeout while waiting for RADIUS PSK");
+		return;
+	}
 
 	sm->pending_1_of_4_timeout = 0;
 	wpa_auth_logger(wpa_auth, sm->addr, LOGGER_DEBUG, "EAPOL-Key timeout");
@@ -3017,6 +3023,19 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 			break;
 	}
 
+	if (!ok && wpa_key_mgmt_wpa_psk_no_sae(sm->wpa_key_mgmt) &&
+	    wpa_auth->conf.radius_psk && wpa_auth->cb->request_radius_psk &&
+	    !sm->waiting_radius_psk) {
+		wpa_printf(MSG_DEBUG, "No PSK available - ask RADIUS server");
+		wpa_auth->cb->request_radius_psk(wpa_auth->cb_ctx, sm->addr,
+						 sm->wpa_key_mgmt,
+						 sm->ANonce,
+						 sm->last_rx_eapol_key,
+						 sm->last_rx_eapol_key_len);
+		sm->waiting_radius_psk = 1;
+		return;
+	}
+
 	if (!ok) {
 		wpa_auth_logger(sm->wpa_auth, sm->addr, LOGGER_DEBUG,
 				"invalid MIC in msg 2/4 of 4-Way Handshake");
@@ -3776,6 +3795,11 @@ SM_STEP(WPA_PTK)
 		} else if (wpa_auth_uses_sae(sm) && sm->pmksa) {
 			SM_ENTER(WPA_PTK, PTKSTART);
 #endif /* CONFIG_SAE */
+		} else if (wpa_key_mgmt_wpa_psk_no_sae(sm->wpa_key_mgmt) &&
+			   wpa_auth->conf.radius_psk) {
+			wpa_printf(MSG_DEBUG,
+				   "INITPSK: No PSK yet available for STA - use RADIUS later");
+			SM_ENTER(WPA_PTK, PTKSTART);
 		} else {
 			wpa_auth_logger(wpa_auth, sm->addr, LOGGER_INFO,
 					"no PSK configured for the STA");
@@ -5689,3 +5713,28 @@ void wpa_auth_set_ocv_override_freq(struct wpa_authenticator *wpa_auth,
 }
 
 #endif /* CONFIG_TESTING_OPTIONS */
+
+
+void wpa_auth_sta_radius_psk_resp(struct wpa_state_machine *sm, bool success)
+{
+	if (!sm->waiting_radius_psk) {
+		wpa_printf(MSG_DEBUG,
+			   "Ignore RADIUS PSK response for " MACSTR
+			   " that did not wait one",
+			   MAC2STR(sm->addr));
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "RADIUS PSK response for " MACSTR " (%s)",
+		   MAC2STR(sm->addr), success ? "success" : "fail");
+	sm->waiting_radius_psk = 0;
+
+	if (success) {
+		/* Try to process the EAPOL-Key msg 2/4 again */
+		sm->EAPOLKeyReceived = true;
+	} else {
+		sm->Disconnect = true;
+	}
+
+	eloop_register_timeout(0, 0, wpa_sm_call_step, sm, NULL);
+}
