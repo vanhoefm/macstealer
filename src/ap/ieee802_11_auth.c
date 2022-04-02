@@ -278,16 +278,16 @@ int hostapd_allowed_address(struct hostapd_data *hapd, const u8 *addr,
 		os_get_reltime(&query->timestamp);
 		os_memcpy(query->addr, addr, ETH_ALEN);
 		if (hostapd_radius_acl_query(hapd, addr, query)) {
-			wpa_printf(MSG_DEBUG, "Failed to send Access-Request "
-				   "for ACL query.");
+			wpa_printf(MSG_DEBUG,
+				   "Failed to send Access-Request for ACL query.");
 			hostapd_acl_query_free(query);
 			return HOSTAPD_ACL_REJECT;
 		}
 
 		query->auth_msg = os_memdup(msg, len);
 		if (query->auth_msg == NULL) {
-			wpa_printf(MSG_ERROR, "Failed to allocate memory for "
-				   "auth frame.");
+			wpa_printf(MSG_ERROR,
+				   "Failed to allocate memory for auth frame.");
 			hostapd_acl_query_free(query);
 			return HOSTAPD_ACL_REJECT;
 		}
@@ -478,19 +478,21 @@ hostapd_acl_recv_radius(struct radius_msg *msg, struct radius_msg *req,
 	if (query == NULL)
 		return RADIUS_RX_UNKNOWN;
 
-	wpa_printf(MSG_DEBUG, "Found matching Access-Request for RADIUS "
-		   "message (id=%d)", query->radius_id);
+	wpa_printf(MSG_DEBUG,
+		   "Found matching Access-Request for RADIUS message (id=%d)",
+		   query->radius_id);
 
 	if (radius_msg_verify(msg, shared_secret, shared_secret_len, req, 0)) {
-		wpa_printf(MSG_INFO, "Incoming RADIUS packet did not have "
-			   "correct authenticator - dropped\n");
+		wpa_printf(MSG_INFO,
+			   "Incoming RADIUS packet did not have correct authenticator - dropped");
 		return RADIUS_RX_INVALID_AUTHENTICATOR;
 	}
 
 	if (hdr->code != RADIUS_CODE_ACCESS_ACCEPT &&
 	    hdr->code != RADIUS_CODE_ACCESS_REJECT) {
-		wpa_printf(MSG_DEBUG, "Unknown RADIUS message code %d to ACL "
-			   "query", hdr->code);
+		wpa_printf(MSG_DEBUG,
+			   "Unknown RADIUS message code %d to ACL query",
+			   hdr->code);
 		return RADIUS_RX_UNKNOWN;
 	}
 
@@ -517,8 +519,9 @@ hostapd_acl_recv_radius(struct radius_msg *msg, struct radius_msg *req,
 			    msg, RADIUS_ATTR_ACCT_INTERIM_INTERVAL,
 			    &info->acct_interim_interval) == 0 &&
 		    info->acct_interim_interval < 60) {
-			wpa_printf(MSG_DEBUG, "Ignored too small "
-				   "Acct-Interim-Interval %d for STA " MACSTR,
+			wpa_printf(MSG_DEBUG,
+				   "Ignored too small Acct-Interim-Interval %d for STA "
+				   MACSTR,
 				   info->acct_interim_interval,
 				   MAC2STR(query->addr));
 			info->acct_interim_interval = 0;
