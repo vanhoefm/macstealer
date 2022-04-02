@@ -4186,8 +4186,21 @@ static u16 owe_process_assoc_req(struct hostapd_data *hapd,
 	else
 		return WLAN_STATUS_FINITE_CYCLIC_GROUP_NOT_SUPPORTED;
 
-	crypto_ecdh_deinit(sta->owe_ecdh);
-	sta->owe_ecdh = crypto_ecdh_init(group);
+	if (sta->owe_group == group && sta->owe_ecdh) {
+		/* This is a workaround for mac80211 behavior of retransmitting
+		 * the Association Request frames multiple times if the link
+		 * layer retries (i.e., seq# remains same) fail. The mac80211
+		 * initiated retransmission will use a different seq# and as
+		 * such, will go through duplicate detection. If we were to
+		 * change our DH key for that attempt, there would be two
+		 * different DH shared secrets and the STA would likely select
+		 * the wrong one. */
+		wpa_printf(MSG_DEBUG,
+			   "OWE: Try to reuse own previous DH key since the STA tried to go through OWE association again");
+	} else {
+		crypto_ecdh_deinit(sta->owe_ecdh);
+		sta->owe_ecdh = crypto_ecdh_init(group);
+	}
 	if (!sta->owe_ecdh)
 		return WLAN_STATUS_FINITE_CYCLIC_GROUP_NOT_SUPPORTED;
 	sta->owe_group = group;
