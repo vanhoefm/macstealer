@@ -1249,7 +1249,8 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 		return -1;
 	}
 
-	if (full_config && bss->wpa && (bss->wpa_key_mgmt & WPA_KEY_MGMT_PSK) &&
+	if (full_config && bss->wpa &&
+	    wpa_key_mgmt_wpa_psk_no_sae(bss->wpa_key_mgmt) &&
 	    bss->ssid.wpa_psk == NULL && bss->ssid.wpa_passphrase == NULL &&
 	    bss->ssid.wpa_psk_file == NULL &&
 	    (bss->wpa_psk_radius != PSK_RADIUS_REQUIRED ||
