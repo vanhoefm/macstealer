@@ -99,7 +99,7 @@ static int hostapd_acl_cache_get(struct hostapd_data *hapd, const u8 *addr,
 
 static void hostapd_acl_query_free(struct hostapd_acl_query_data *query)
 {
-	if (query == NULL)
+	if (!query)
 		return;
 	os_free(query->auth_msg);
 	os_free(query);
@@ -115,7 +115,7 @@ static int hostapd_radius_acl_query(struct hostapd_data *hapd, const u8 *addr,
 
 	query->radius_id = radius_client_get_id(hapd->radius);
 	msg = radius_msg_new(RADIUS_CODE_ACCESS_REQUEST, query->radius_id);
-	if (msg == NULL)
+	if (!msg)
 		return -1;
 
 	if (radius_msg_make_authenticator(msg) < 0) {
@@ -271,7 +271,7 @@ int hostapd_allowed_address(struct hostapd_data *hapd, const u8 *addr,
 
 		/* No entry in the cache - query external RADIUS server */
 		query = os_zalloc(sizeof(*query));
-		if (query == NULL) {
+		if (!query) {
 			wpa_printf(MSG_ERROR, "malloc for query data failed");
 			return HOSTAPD_ACL_REJECT;
 		}
@@ -285,7 +285,7 @@ int hostapd_allowed_address(struct hostapd_data *hapd, const u8 *addr,
 		}
 
 		query->auth_msg = os_memdup(msg, len);
-		if (query->auth_msg == NULL) {
+		if (!query->auth_msg) {
 			wpa_printf(MSG_ERROR,
 				   "Failed to allocate memory for auth frame.");
 			hostapd_acl_query_free(query);
@@ -403,7 +403,7 @@ static void decode_tunnel_passwords(struct hostapd_data *hapd,
 		 * Passphrase is NULL iff there is no i-th Tunnel-Password
 		 * attribute in msg.
 		 */
-		if (passphrase == NULL)
+		if (!passphrase)
 			break;
 
 		/*
@@ -475,7 +475,7 @@ hostapd_acl_recv_radius(struct radius_msg *msg, struct radius_msg *req,
 		prev = query;
 		query = query->next;
 	}
-	if (query == NULL)
+	if (!query)
 		return RADIUS_RX_UNKNOWN;
 
 	wpa_printf(MSG_DEBUG,
@@ -498,7 +498,7 @@ hostapd_acl_recv_radius(struct radius_msg *msg, struct radius_msg *req,
 
 	/* Insert Accept/Reject info into ACL cache */
 	cache = os_zalloc(sizeof(*cache));
-	if (cache == NULL) {
+	if (!cache) {
 		wpa_printf(MSG_DEBUG, "Failed to add ACL cache entry");
 		goto done;
 	}
@@ -607,7 +607,7 @@ hostapd_acl_recv_radius(struct radius_msg *msg, struct radius_msg *req,
 	}
 
  done:
-	if (prev == NULL)
+	if (!prev)
 		hapd->acl_queries = query->next;
 	else
 		prev->next = query->next;
