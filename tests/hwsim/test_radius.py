@@ -1262,6 +1262,23 @@ def test_radius_psk(dev, apdev):
         t_events['stop'].set()
         t.join()
 
+def test_radius_psk_during_4way_hs(dev, apdev):
+    """WPA2 with PSK from RADIUS during 4-way handshake"""
+    t, t_events = start_radius_psk_server("12345678")
+
+    try:
+        params = hostapd_radius_psk_test_params()
+        params['macaddr_acl'] = '0'
+        params['wpa_psk_radius'] = '3'
+        hapd = hostapd.add_ap(apdev[0], params)
+        dev[0].connect("test-wpa2-psk", psk="12345678", scan_freq="2412")
+        t_events['psk'] = "0123456789abcdef"
+        dev[1].connect("test-wpa2-psk", psk="0123456789abcdef",
+                       scan_freq="2412")
+    finally:
+        t_events['stop'].set()
+        t.join()
+
 def test_radius_psk_invalid(dev, apdev):
     """WPA2 with invalid PSK from RADIUS"""
     t, t_events = start_radius_psk_server("1234567")
@@ -1329,6 +1346,23 @@ def test_radius_psk_reject(dev, apdev):
         ev = dev[0].wait_event(["CTRL-EVENT-AUTH-REJECT"], timeout=10)
         if ev is None:
             raise Exception("No CTRL-EVENT-AUTH-REJECT event")
+        dev[0].request("DISCONNECT")
+    finally:
+        t_events['stop'].set()
+        t.join()
+
+def test_radius_psk_reject_during_4way_hs(dev, apdev):
+    """WPA2 with PSK from RADIUS and reject"""
+    t, t_events = start_radius_psk_server("12345678", reject=True)
+
+    try:
+        params = hostapd_radius_psk_test_params()
+        params['macaddr_acl'] = '0'
+        params['wpa_psk_radius'] = '3'
+        hapd = hostapd.add_ap(apdev[0], params)
+        dev[0].connect("test-wpa2-psk", psk="12345678", scan_freq="2412",
+                       wait_connect=False)
+        dev[0].wait_disconnected()
         dev[0].request("DISCONNECT")
     finally:
         t_events['stop'].set()
