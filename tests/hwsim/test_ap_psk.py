@@ -536,6 +536,49 @@ def test_ap_wpa2_gtk_rekey_request(dev, apdev):
     for i in range(3):
         hwsim_utils.test_connectivity(dev[i], hapd)
 
+def test_ap_wpa2_gtk_rekey_fail_1_sta(dev, apdev):
+    """WPA2-PSK AP and GTK rekey failing with one STA"""
+    ssid = "test-wpa2-psk"
+    passphrase = 'qwertyuiop'
+    params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
+    params['wpa_group_rekey'] = '5'
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[1].set("disable_eapol_g2_tx", "1")
+    dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
+    dev[1].connect(ssid, psk=passphrase, scan_freq="2412")
+    dev[2].connect(ssid, psk=passphrase, scan_freq="2412")
+
+    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=7)
+    if ev is None:
+        raise Exception("GTK rekey timed out [0]")
+    ev = dev[2].wait_event(["WPA: Group rekeying completed"], timeout=1)
+    if ev is None:
+        raise Exception("GTK rekey timed out [2]")
+
+    disconnected = False
+    for i in range(10):
+        ev = dev[1].wait_event(["WPA: Group rekeying completed",
+                                "CTRL-EVENT-DISCONNECTED"], timeout=10)
+        if ev is None:
+            raise Exception("GTK rekey timed out [1]")
+        if "CTRL-EVENT-DISCONNECTED" in ev:
+            if "reason=16" not in ev:
+                raise Exception("Unexpected reason for disconnection: " + ev)
+            disconnected = True
+            break
+    if not disconnected:
+        raise Exception("STA that did not send group msg 2/2 was not disconnected")
+
+    for i in [0, 2]:
+        ev = dev[i].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1)
+        if ev is not None:
+            raise Exception("Unexpected disconnection [%d]" % i)
+        hwsim_utils.test_connectivity(dev[i], hapd)
+
+    dev[1].wait_connected()
+    hwsim_utils.test_connectivity(dev[1], hapd)
+
 @remote_compatible
 def test_ap_wpa_gtk_rekey(dev, apdev):
     """WPA-PSK/TKIP AP and GTK rekey enforced by AP"""
