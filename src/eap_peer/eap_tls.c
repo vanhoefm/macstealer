@@ -1,5 +1,5 @@
 /*
- * EAP peer method: EAP-TLS (RFC 2716)
+ * EAP peer method: EAP-TLS (RFC 5216, RFC 9190)
  * Copyright (c) 2004-2008, 2012-2019, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
@@ -302,7 +302,7 @@ static struct wpabuf * eap_tls_process(struct eap_sm *sm, void *priv,
 		return NULL;
 	}
 
-	/* draft-ietf-emu-eap-tls13-13 Section 2.5 */
+	/* RFC 9190 Section 2.5 */
 	if (res == 2 && data->ssl.tls_v13 && wpabuf_len(resp) == 1 &&
 	    *wpabuf_head_u8(resp) == 0) {
 		wpa_printf(MSG_DEBUG, "EAP-TLS: ACKing Commitment Message");

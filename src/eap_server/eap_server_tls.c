@@ -1,5 +1,5 @@
 /*
- * hostapd / EAP-TLS (RFC 2716)
+ * hostapd / EAP-TLS (RFC 5216, RFC 9190)
  * Copyright (c) 2004-2008, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.

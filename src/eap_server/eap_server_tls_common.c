@@ -367,14 +367,14 @@ int eap_server_tls_phase1(struct eap_sm *sm, struct eap_ssl_data *data)
 			sm->cfg->ssl_ctx, data->conn);
 
 	/*
-	 * https://tools.ietf.org/html/draft-ietf-emu-eap-tls13#section-2.5
+	 * RFC 9190 Section 2.5
 	 *
 	 * We need to signal the other end that TLS negotiation is done. We
 	 * can't send a zero-length application data message, so we send
 	 * application data which is one byte of zero.
 	 *
 	 * Note this is only done for when there is no application data to be
-	 * sent. So this is done always for EAP-TLS but notibly not for PEAP
+	 * sent. So this is done always for EAP-TLS but notably not for PEAP
 	 * even on resumption.
 	 */
 	if (data->tls_v13 &&
