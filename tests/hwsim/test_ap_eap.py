@@ -206,7 +206,7 @@ def eap_check_auth(dev, method, initial, rsn=True, sha256=False,
             return
         if not local_error_report:
             if "reason=23" not in ev:
-                raise Exception("Proper reason code for disconnection not reported")
+                raise Exception("Proper reason code for disconnection not reported: " + ev)
         return
     if report_failure:
         ev = dev.wait_event(["CTRL-EVENT-EAP-SUCCESS",
@@ -5958,6 +5958,21 @@ def test_ap_wpa2_eap_tls_13(dev, apdev):
     dev[0].request("PMKSA_FLUSH")
     dev[0].request("RECONNECT")
     dev[0].wait_connected()
+
+def test_ap_wpa2_eap_tls_13_missing_prot_success(dev, apdev):
+    """EAP-TLSv1.3 and missing protected success indication"""
+    params = int_eap_server_params()
+    params['tls_flags'] = '[ENABLE-TLSv1.3]'
+    params['eap_skip_prot_success'] = '1'
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    check_tls13_support(dev[0])
+    id = eap_connect(dev[0], hapd, "TLS", "tls user",
+                     ca_cert="auth_serv/ca.pem",
+                     client_cert="auth_serv/user.pem",
+                     private_key="auth_serv/user.key",
+                     phase1="tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0",
+                     expect_failure=True, local_error_report=True)
 
 def test_ap_wpa2_eap_ttls_13(dev, apdev):
     """EAP-TTLS and TLS 1.3"""
