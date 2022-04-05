@@ -258,6 +258,10 @@ struct eap_config {
 
 	unsigned int max_auth_rounds;
 	unsigned int max_auth_rounds_short;
+
+#ifdef CONFIG_TESTING_OPTIONS
+	bool skip_prot_success;
+#endif /* CONFIG_TESTING_OPTIONS */
 };
 
 struct eap_session_data {

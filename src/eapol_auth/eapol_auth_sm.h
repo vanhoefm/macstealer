@@ -23,6 +23,7 @@ struct eapol_auth_config {
 	size_t eap_req_id_text_len;
 	int erp_send_reauth_start;
 	char *erp_domain; /* a copy of this will be allocated */
+	bool eap_skip_prot_success;
 
 	/* Opaque context pointer to owner data for callback functions */
 	void *ctx;

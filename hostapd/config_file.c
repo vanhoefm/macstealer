@@ -4252,6 +4252,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		bss->oci_freq_override_fils_assoc = atoi(pos);
 	} else if (os_strcmp(buf, "oci_freq_override_wnm_sleep") == 0) {
 		bss->oci_freq_override_wnm_sleep = atoi(pos);
+	} else if (os_strcmp(buf, "eap_skip_prot_success") == 0) {
+		bss->eap_skip_prot_success = atoi(pos);
 #endif /* CONFIG_TESTING_OPTIONS */
 #ifdef CONFIG_SAE
 	} else if (os_strcmp(buf, "sae_password") == 0) {

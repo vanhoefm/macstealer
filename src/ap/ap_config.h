@@ -331,6 +331,9 @@ struct hostapd_bss_config {
 	int eap_reauth_period;
 	int erp_send_reauth_start;
 	char *erp_domain;
+#ifdef CONFIG_TESTING_OPTIONS
+	bool eap_skip_prot_success;
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	enum macaddr_acl {
 		ACCEPT_UNLESS_DENIED = 0,

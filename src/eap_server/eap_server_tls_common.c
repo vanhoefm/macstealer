@@ -94,6 +94,11 @@ int eap_server_tls_ssl_init(struct eap_sm *sm, struct eap_ssl_data *data,
 		if (data->tls_out_limit > 100)
 			data->tls_out_limit -= 100;
 	}
+
+#ifdef CONFIG_TESTING_OPTIONS
+	data->skip_prot_success = sm->cfg->skip_prot_success;
+#endif /* CONFIG_TESTING_OPTIONS */
+
 	return 0;
 }
 
@@ -390,6 +395,13 @@ int eap_server_tls_phase1(struct eap_sm *sm, struct eap_ssl_data *data)
 				break;
 			/* fallthrough */
 		case EAP_TYPE_TLS:
+#ifdef CONFIG_TESTING_OPTIONS
+			if (data->skip_prot_success) {
+				wpa_printf(MSG_INFO,
+					   "TESTING: Do not send protected success indication");
+				break;
+			}
+#endif /* CONFIG_TESTING_OPTIONS */
 			wpa_printf(MSG_DEBUG,
 				   "EAP-TLS: Send protected success indication (appl data 0x00)");
 

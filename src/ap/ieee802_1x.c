@@ -2448,6 +2448,9 @@ int ieee802_1x_init(struct hostapd_data *hapd)
 	conf.eap_req_id_text_len = hapd->conf->eap_req_id_text_len;
 	conf.erp_send_reauth_start = hapd->conf->erp_send_reauth_start;
 	conf.erp_domain = hapd->conf->erp_domain;
+#ifdef CONFIG_TESTING_OPTIONS
+	conf.eap_skip_prot_success = hapd->conf->eap_skip_prot_success;
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	os_memset(&cb, 0, sizeof(cb));
 	cb.eapol_send = ieee802_1x_eapol_send;

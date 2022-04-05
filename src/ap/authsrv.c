@@ -222,6 +222,9 @@ static struct eap_config * authsrv_eap_config(struct hostapd_data *hapd)
 		cfg->server_id_len = 7;
 	}
 	cfg->erp = hapd->conf->eap_server_erp;
+#ifdef CONFIG_TESTING_OPTIONS
+	cfg->skip_prot_success = hapd->conf->eap_skip_prot_success;
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	return cfg;
 }
