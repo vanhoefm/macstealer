@@ -391,7 +391,7 @@ int eap_server_tls_phase1(struct eap_sm *sm, struct eap_ssl_data *data)
 			/* fallthrough */
 		case EAP_TYPE_TLS:
 			wpa_printf(MSG_DEBUG,
-				   "EAP-TLS: Send Commitment Message");
+				   "EAP-TLS: Send protected success indication (appl data 0x00)");
 
 			plain = wpabuf_alloc(1);
 			if (!plain)
