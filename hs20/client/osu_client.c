@@ -10,7 +10,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #ifdef ANDROID
-#include "cutils/android_filesystem_config.h"
+#include "private/android_filesystem_config.h"
 #endif /* ANDROID */
 
 #include "common.h"
