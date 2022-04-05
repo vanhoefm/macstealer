@@ -53,6 +53,13 @@ static int wpa_config_validate_network(struct wpa_ssid *ssid, int line)
 		ssid->group_cipher &= ~WPA_CIPHER_CCMP;
 	}
 
+	if (is_6ghz_freq(ssid->frequency) && ssid->mode == WPAS_MODE_MESH &&
+	    ssid->key_mgmt == WPA_KEY_MGMT_NONE) {
+		wpa_printf(MSG_ERROR,
+			   "Line %d: key_mgmt for mesh network in 6 GHz should be SAE",
+			   line);
+		errors++;
+	}
 	if (ssid->mode == WPAS_MODE_MESH &&
 	    (ssid->key_mgmt != WPA_KEY_MGMT_NONE &&
 	    ssid->key_mgmt != WPA_KEY_MGMT_SAE)) {
