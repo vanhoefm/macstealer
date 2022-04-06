@@ -1000,6 +1000,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	struct wpa_ssid *ssid = NULL;
 	struct wpabuf *frame;
 	int ret;
+	bool derive_kdk;
 
 	/* TODO: Currently support only ECC groups */
 	if (!dragonfly_suitable_group(group, 1)) {
@@ -1079,9 +1080,14 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	pasn->group = group;
 	pasn->freq = freq;
 
-	if (wpa_s->conf->force_kdk_derivation ||
-	    (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF &&
-	     ieee802_11_rsnx_capab(beacon_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF)))
+	derive_kdk = (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF) &&
+		ieee802_11_rsnx_capab(beacon_rsnxe,
+				      WLAN_RSNX_CAPAB_SECURE_LTF);
+#ifdef CONFIG_TESTING_OPTIONS
+	if (!derive_kdk)
+		derive_kdk = wpa_s->conf->force_kdk_derivation;
+#endif /* CONFIG_TESTING_OPTIONS */
+	if (derive_kdk)
 		pasn->kdk_len = WPA_KDK_MAX_LEN;
 	else
 		pasn->kdk_len = 0;

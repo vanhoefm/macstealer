@@ -3121,6 +3121,7 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 	int ret, inc_y;
 	bool derive_keys;
 	u32 i;
+	bool derive_kdk;
 
 	if (!groups)
 		groups = default_groups;
@@ -3160,10 +3161,14 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 	sta->pasn->akmp = rsn_data.key_mgmt;
 	sta->pasn->cipher = rsn_data.pairwise_cipher;
 
-	if (hapd->conf->force_kdk_derivation ||
-	    ((hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF) &&
-	     ieee802_11_rsnx_capab_len(elems.rsnxe, elems.rsnxe_len,
-				       WLAN_RSNX_CAPAB_SECURE_LTF)))
+	derive_kdk = (hapd->iface->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF) &&
+		ieee802_11_rsnx_capab_len(elems.rsnxe, elems.rsnxe_len,
+					  WLAN_RSNX_CAPAB_SECURE_LTF);
+#ifdef CONFIG_TESTING_OPTIONS
+	if (!derive_kdk)
+		derive_kdk = hapd->conf->force_kdk_derivation;
+#endif /* CONFIG_TESTING_OPTIONS */
+	if (derive_kdk)
 		sta->pasn->kdk_len = WPA_KDK_MAX_LEN;
 	else
 		sta->pasn->kdk_len = 0;
