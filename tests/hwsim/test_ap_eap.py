@@ -5974,6 +5974,21 @@ def test_ap_wpa2_eap_tls_13_missing_prot_success(dev, apdev):
                      phase1="tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0",
                      expect_failure=True, local_error_report=True)
 
+def test_ap_wpa2_eap_tls_13_fragmentation(dev, apdev):
+    """EAP-TLSv1.3 and fragmentation"""
+    params = int_eap_server_params()
+    params['tls_flags'] = '[ENABLE-TLSv1.3]'
+    params['fragment_size'] = '100'
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    check_tls13_support(dev[0])
+    id = eap_connect(dev[0], hapd, "TLS", "tls user",
+                     ca_cert="auth_serv/ca.pem",
+                     client_cert="auth_serv/user.pem",
+                     private_key="auth_serv/user.key",
+                     phase1="tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0",
+                     fragment_size="100")
+
 def test_ap_wpa2_eap_ttls_13(dev, apdev):
     """EAP-TTLS and TLS 1.3"""
     params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
