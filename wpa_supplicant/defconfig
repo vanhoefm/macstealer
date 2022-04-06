@@ -101,6 +101,9 @@ CONFIG_EAP_MSCHAPV2=y
 
 # EAP-TLS
 CONFIG_EAP_TLS=y
+# Enable EAP-TLSv1.3 support by default (currently disabled unless explicitly
+# enabled in network configuration)
+#CONFIG_EAP_TLSV1_3=y
 
 # EAL-PEAP
 CONFIG_EAP_PEAP=y
