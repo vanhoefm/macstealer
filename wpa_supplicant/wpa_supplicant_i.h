@@ -949,6 +949,7 @@ struct wpa_supplicant {
 	struct os_reltime pending_eapol_rx_time;
 	u8 pending_eapol_rx_src[ETH_ALEN];
 	unsigned int last_eapol_matches_bssid:1;
+	unsigned int eapol_failed:1;
 	unsigned int eap_expected_failure:1;
 	unsigned int reattach:1; /* reassociation to the same BSS requested */
 	unsigned int mac_addr_changed:1;
