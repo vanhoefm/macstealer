@@ -1850,6 +1850,14 @@ int wpa_auth_sm_event(struct wpa_state_machine *sm, enum wpa_event event)
 			break;
 		}
 
+		if (sm->ptkstart_without_success > 3) {
+			wpa_printf(MSG_INFO,
+				   "WPA: Multiple EAP reauth attempts without 4-way handshake completion, disconnect "
+				   MACSTR, MAC2STR(sm->addr));
+			sm->Disconnect = true;
+			break;
+		}
+
 		if (!sm->use_ext_key_id &&
 		    sm->wpa_auth->conf.wpa_deny_ptk0_rekey) {
 			wpa_printf(MSG_INFO,
@@ -2192,6 +2200,7 @@ SM_STATE(WPA_PTK, PTKSTART)
 	sm->PTKRequest = false;
 	sm->TimeoutEvt = false;
 	sm->alt_snonce_valid = false;
+	sm->ptkstart_without_success++;
 
 	sm->TimeoutCtr++;
 	if (sm->TimeoutCtr > sm->wpa_auth->conf.wpa_pairwise_update_count) {
@@ -3721,6 +3730,8 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 #ifdef CONFIG_IEEE80211R_AP
 	wpa_ft_push_pmk_r1(sm->wpa_auth, sm->addr);
 #endif /* CONFIG_IEEE80211R_AP */
+
+	sm->ptkstart_without_success = 0;
 }
 
 
