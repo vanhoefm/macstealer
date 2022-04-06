@@ -5939,15 +5939,25 @@ def test_ap_wpa2_eap_tls_versions_server(dev, apdev):
 
 def test_ap_wpa2_eap_tls_13(dev, apdev):
     """EAP-TLS and TLS 1.3"""
+    run_ap_wpa2_eap_tls_13(dev, apdev)
+
+def test_ap_wpa2_eap_tls_13_ocsp(dev, apdev):
+    """EAP-TLS and TLS 1.3 with OCSP stapling"""
+    run_ap_wpa2_eap_tls_13(dev, apdev, ocsp=True)
+
+def run_ap_wpa2_eap_tls_13(dev, apdev, ocsp=False):
     params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
     hapd = hostapd.add_ap(apdev[0], params)
 
     check_tls13_support(dev[0])
+    if ocsp:
+        check_ocsp_support(dev[0])
     id = eap_connect(dev[0], hapd, "TLS", "tls user",
                      ca_cert="auth_serv/ca.pem",
                      client_cert="auth_serv/user.pem",
                      private_key="auth_serv/user.key",
-                     phase1="tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0")
+                     phase1="tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=0",
+                     ocsp=2 if ocsp else 0)
     ver = dev[0].get_status_field("eap_tls_version")
     if ver != "TLSv1.3":
         raise Exception("Unexpected TLS version")
