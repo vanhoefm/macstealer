@@ -3597,6 +3597,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 				   line, pos);
 			return 1;
 		}
+	} else if (os_strcmp(buf, "he_6ghz_reg_pwr_type") == 0) {
+		conf->he_6ghz_reg_pwr_type = atoi(pos);
 	} else if (os_strcmp(buf, "he_oper_chwidth") == 0) {
 		conf->he_oper_chwidth = atoi(pos);
 	} else if (os_strcmp(buf, "he_oper_centr_freq_seg0_idx") == 0) {
