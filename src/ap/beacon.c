@@ -186,7 +186,8 @@ static u8 * hostapd_eid_pwr_constraint(struct hostapd_data *hapd, u8 *eid)
 }
 
 
-static u8 * hostapd_eid_country_add(u8 *pos, u8 *end, int chan_spacing,
+static u8 * hostapd_eid_country_add(struct hostapd_data *hapd, u8 *pos,
+				    u8 *end, int chan_spacing,
 				    struct hostapd_channel_data *start,
 				    struct hostapd_channel_data *prev)
 {
@@ -198,30 +199,22 @@ static u8 * hostapd_eid_country_add(u8 *pos, u8 *end, int chan_spacing,
 	/* number of channels */
 	*pos++ = (prev->chan - start->chan) / chan_spacing + 1;
 	/* maximum transmit power level */
-	*pos++ = start->max_tx_power;
+	if (!is_6ghz_op_class(hapd->iconf->op_class))
+		*pos++ = start->max_tx_power;
+	else
+		*pos++ = 0; /* Reserved when operating on the 6 GHz band */
 
 	return pos;
 }
 
 
-static u8 * hostapd_eid_country(struct hostapd_data *hapd, u8 *eid,
-				int max_len)
+static u8 * hostapd_fill_subband_triplets(struct hostapd_data *hapd, u8 *pos,
+					    u8 *end)
 {
-	u8 *pos = eid;
-	u8 *end = eid + max_len;
 	int i;
 	struct hostapd_hw_modes *mode;
 	struct hostapd_channel_data *start, *prev;
 	int chan_spacing = 1;
-
-	if (!hapd->iconf->ieee80211d || max_len < 6 ||
-	    hapd->iface->current_mode == NULL)
-		return eid;
-
-	*pos++ = WLAN_EID_COUNTRY;
-	pos++; /* length will be set later */
-	os_memcpy(pos, hapd->iconf->country, 3); /* e.g., 'US ' */
-	pos += 3;
 
 	mode = hapd->iface->current_mode;
 	if (mode->mode == HOSTAPD_MODE_IEEE80211A)
@@ -240,7 +233,8 @@ static u8 * hostapd_eid_country(struct hostapd_data *hapd, u8 *eid,
 		}
 
 		if (start && prev) {
-			pos = hostapd_eid_country_add(pos, end, chan_spacing,
+			pos = hostapd_eid_country_add(hapd, pos, end,
+						      chan_spacing,
 						      start, prev);
 			start = NULL;
 		}
@@ -250,8 +244,48 @@ static u8 * hostapd_eid_country(struct hostapd_data *hapd, u8 *eid,
 	}
 
 	if (start) {
-		pos = hostapd_eid_country_add(pos, end, chan_spacing,
+		pos = hostapd_eid_country_add(hapd, pos, end, chan_spacing,
 					      start, prev);
+	}
+
+	return pos;
+}
+
+
+static u8 * hostapd_eid_country(struct hostapd_data *hapd, u8 *eid,
+				int max_len)
+{
+	u8 *pos = eid;
+	u8 *end = eid + max_len;
+
+	if (!hapd->iconf->ieee80211d || max_len < 6 ||
+	    hapd->iface->current_mode == NULL)
+		return eid;
+
+	*pos++ = WLAN_EID_COUNTRY;
+	pos++; /* length will be set later */
+	os_memcpy(pos, hapd->iconf->country, 3); /* e.g., 'US ' */
+	pos += 3;
+
+	if (is_6ghz_op_class(hapd->iconf->op_class)) {
+		/* Force the third octet of the country string to indicate
+		 * Global Operating Class (Table E-4) */
+		eid[4] = 0x04;
+
+		/* Operating Triplet field */
+		/* Operating Extension Identifier (>= 201 to indicate this is
+		 * not a Subband Triplet field) */
+		*pos++ = 201;
+		/* Operating Class */
+		*pos++ = hapd->iconf->op_class;
+		/* Coverage Class */
+		*pos++ = 0;
+		/* Subband Triplets are required only for the 20 MHz case */
+		if (hapd->iconf->op_class == 131 ||
+		    hapd->iconf->op_class == 136)
+			pos = hostapd_fill_subband_triplets(hapd, pos, end);
+	} else {
+		pos = hostapd_fill_subband_triplets(hapd, pos, end);
 	}
 
 	if ((pos - eid) & 1) {
