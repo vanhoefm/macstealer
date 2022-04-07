@@ -218,6 +218,7 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
 	if (is_6ghz_op_class(hapd->iconf->op_class)) {
 		u8 seg0 = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
 		u8 seg1 = hostapd_get_oper_centr_freq_seg1_idx(hapd->iconf);
+		u8 control;
 
 		if (!seg0)
 			seg0 = hapd->iconf->channel;
@@ -230,11 +231,23 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
 		 */
 		*pos++ = hapd->iconf->channel; /* Primary Channel */
 
-		/* Control: Channel Width */
+		/* Control:
+		 *	bits 0-1: Channel Width
+		 *	bit 2: Duplicate Beacon
+		 *	bits 3-5: Regulatory Info
+		 */
+		/* Channel Width */
 		if (seg1)
-			*pos++ = 3;
+			control = 3;
 		else
-			*pos++ = center_idx_to_bw_6ghz(seg0);
+			control = center_idx_to_bw_6ghz(seg0);
+		if (hapd->iconf->he_6ghz_reg_pwr_type == 1)
+			control |= HE_6GHZ_STANDARD_POWER_AP <<
+				HE_6GHZ_OPER_INFO_CTRL_REG_INFO_SHIFT;
+		else
+			control |= HE_6GHZ_INDOOR_AP <<
+				HE_6GHZ_OPER_INFO_CTRL_REG_INFO_SHIFT;
+		*pos++ = control;
 
 		/* Channel Center Freq Seg0/Seg1 */
 		if (hapd->iconf->he_oper_chwidth == 2) {

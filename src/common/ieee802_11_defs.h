@@ -2199,7 +2199,7 @@ struct ieee80211_he_operation {
 	 * Operation Information subfield (5 octets). */
 } STRUCT_PACKED;
 
-/* IEEE P802.11ax/D6.0, Figure 9-787k - 6 GHz Operation Information field */
+/* IEEE Std 802.11ax-2021, Figure 9-788k - 6 GHz Operation Information field */
 struct ieee80211_he_6ghz_oper_info {
 	u8 primary_chan;
 	u8 control;
@@ -2208,8 +2208,11 @@ struct ieee80211_he_6ghz_oper_info {
 	u8 min_rate;
 } STRUCT_PACKED;
 
+/* IEEE Std 802.11ax-2021, Figure 9-788l - Control field format */
 #define HE_6GHZ_OPER_INFO_CTRL_CHAN_WIDTH_MASK	(BIT(0) | BIT(1))
 #define HE_6GHZ_OPER_INFO_CTRL_DUP_BEACON	BIT(2)
+#define HE_6GHZ_OPER_INFO_CTRL_REG_INFO_MASK	(BIT(3) | BIT(4) | BIT(5))
+#define HE_6GHZ_OPER_INFO_CTRL_REG_INFO_SHIFT	3
 
 /* IEEE P802.11ax/D6.0, 9.4.2.261 HE 6 GHz Band Capabilities element */
 struct ieee80211_he_6ghz_band_cap {
@@ -2305,6 +2308,17 @@ struct ieee80211_spatial_reuse {
 #define HE_OPERATION_BSS_COLOR_PARTIAL		((u32) BIT(30))
 #define HE_OPERATION_BSS_COLOR_DISABLED		((u32) BIT(31))
 #define HE_OPERATION_BSS_COLOR_OFFSET		24
+
+/**
+ * enum he_6ghz_ap_type - Allowed Access Point types for 6 GHz Band
+ *
+ * IEEE Std 802.11ax-2021, Table E-12 (Regulatory Info subfield encoding in the
+ * United States)
+ */
+enum he_6ghz_ap_type {
+	HE_6GHZ_INDOOR_AP		= 0,
+	HE_6GHZ_STANDARD_POWER_AP	= 1,
+};
 
 /* Spatial Reuse defines */
 #define SPATIAL_REUSE_SRP_DISALLOWED		BIT(0)
