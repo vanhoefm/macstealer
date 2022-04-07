@@ -497,9 +497,15 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 			3 + sizeof(struct ieee80211_he_operation) +
 			3 + sizeof(struct ieee80211_he_mu_edca_parameter_set) +
 			3 + sizeof(struct ieee80211_spatial_reuse);
-		if (is_6ghz_op_class(hapd->iconf->op_class))
+		if (is_6ghz_op_class(hapd->iconf->op_class)) {
 			buflen += sizeof(struct ieee80211_he_6ghz_oper_info) +
 				3 + sizeof(struct ieee80211_he_6ghz_band_cap);
+			 /* An additional Transmit Power Envelope element for
+			  * subordinate client */
+			if (hapd->iconf->he_6ghz_reg_pwr_type ==
+			    HE_6GHZ_INDOOR_AP)
+				buflen += 4;
+		}
 	}
 #endif /* CONFIG_IEEE80211AX */
 
@@ -1353,6 +1359,15 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
 	buf_len = pos - buf;
 	total_len += buf_len;
 
+#ifdef CONFIG_IEEE80211AX
+	/* Transmit Power Envelope element(s) */
+	if (is_6ghz_op_class(hapd->iconf->op_class)) {
+		total_len += 4;
+		if (hapd->iconf->he_6ghz_reg_pwr_type == HE_6GHZ_INDOOR_AP)
+			total_len += 4;
+	}
+#endif /* CONFIG_IEEE80211AX */
+
 	head = os_zalloc(total_len);
 	if (!head)
 		return NULL;
@@ -1424,6 +1439,9 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
 		os_memcpy(pos, buf, buf_len);
 		pos += buf_len;
 	}
+
+	if (is_6ghz_op_class(hapd->iconf->op_class))
+		pos = hostapd_eid_txpower_envelope(hapd, pos);
 
 	*len = pos - (u8 *) head;
 	wpa_hexdump(MSG_DEBUG, "FILS Discovery frame template",
@@ -1499,9 +1517,15 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 			3 + sizeof(struct ieee80211_he_operation) +
 			3 + sizeof(struct ieee80211_he_mu_edca_parameter_set) +
 			3 + sizeof(struct ieee80211_spatial_reuse);
-		if (is_6ghz_op_class(hapd->iconf->op_class))
+		if (is_6ghz_op_class(hapd->iconf->op_class)) {
 			tail_len += sizeof(struct ieee80211_he_6ghz_oper_info) +
 				3 + sizeof(struct ieee80211_he_6ghz_band_cap);
+			 /* An additional Transmit Power Envelope element for
+			  * subordinate client */
+			if (hapd->iconf->he_6ghz_reg_pwr_type ==
+			    HE_6GHZ_INDOOR_AP)
+				tail_len += 4;
+		}
 	}
 #endif /* CONFIG_IEEE80211AX */
 

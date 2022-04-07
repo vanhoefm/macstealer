@@ -1947,6 +1947,26 @@ struct tpc_report {
 	u8 link_margin;
 } STRUCT_PACKED;
 
+/*
+ * IEEE Std 802.11ax-2021, Table 9-275a - Maximum Transmit Power
+ * Interpretation subfield encoding
+ */
+enum max_tx_pwr_interpretation {
+	LOCAL_EIRP = 0,
+	LOCAL_EIRP_PSD = 1,
+	REGULATORY_CLIENT_EIRP = 2,
+	REGULATORY_CLIENT_EIRP_PSD = 3,
+};
+
+/*
+ * IEEE Std 802.11ax-2021, Table E-13 - Maximum Transmit Power
+ * Category subfield encoding in the United States
+ */
+enum reg_6g_client_type {
+	REG_DEFAULT_CLIENT = 0,
+	REG_SUBORDINATE_CLIENT = 1,
+};
+
 #define RRM_CAPABILITIES_IE_LEN 5
 
 /* IEEE Std 802.11-2012, 8.5.7.4 - Link Measurement Request frame format */

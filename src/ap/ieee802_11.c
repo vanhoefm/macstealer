@@ -6904,6 +6904,38 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
 }
 
 
+static u8 * hostapd_add_tpe_info(u8 *eid, u8 tx_pwr_count,
+				 enum max_tx_pwr_interpretation tx_pwr_intrpn,
+				 u8 tx_pwr_cat, u8 tx_pwr)
+{
+	int i;
+
+	*eid++ = WLAN_EID_TRANSMIT_POWER_ENVELOPE; /* Element ID */
+	*eid++ = 2 + tx_pwr_count; /* Length */
+
+	/*
+	 * Transmit Power Information field
+	 *	bits 0-2 : Maximum Transmit Power Count
+	 *	bits 3-5 : Maximum Transmit Power Interpretation
+	 *	bits 6-7 : Maximum Transmit Power Category
+	 */
+	*eid++ = tx_pwr_count | (tx_pwr_intrpn << 3) | (tx_pwr_cat << 6);
+
+	/* Maximum Transmit Power field */
+	for (i = 0; i <= tx_pwr_count; i++)
+		*eid++ = tx_pwr;
+
+	return eid;
+}
+
+
+/*
+ * TODO: Extract power limits from channel data after 6G regulatory
+ *	support.
+ */
+#define REG_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT      (-1) /* dBm/MHz */
+#define REG_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT  5    /* dBm/MHz */
+
 u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
 {
 	struct hostapd_iface *iface = hapd->iface;
@@ -6927,6 +6959,43 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
 	}
 	if (i == mode->num_channels)
 		return eid;
+
+#ifdef CONFIG_IEEE80211AX
+	/* IEEE Std 802.11ax-2021, Annex E.2.7 (6 GHz band in the United
+	 * States): An AP that is an Indoor Access Point per regulatory rules
+	 * shall send at least two Transmit Power Envelope elements in Beacon
+	 * and Probe Response frames as follows:
+	 *  - Maximum Transmit Power Category subfield = Default;
+	 *	Unit interpretation = Regulatory client EIRP PSD
+	 *  - Maximum Transmit Power Category subfield = Subordinate Device;
+	 *	Unit interpretation = Regulatory client EIRP PSD
+	 */
+	if (is_6ghz_op_class(iconf->op_class)) {
+		enum max_tx_pwr_interpretation tx_pwr_intrpn;
+
+		/* Same Maximum Transmit Power for all 20 MHz bands */
+		tx_pwr_count = 0;
+		tx_pwr_intrpn = REGULATORY_CLIENT_EIRP_PSD;
+
+		/* Default Transmit Power Envelope for Global Operating Class */
+		tx_pwr = REG_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT * 2;
+		eid = hostapd_add_tpe_info(eid, tx_pwr_count, tx_pwr_intrpn,
+					   REG_DEFAULT_CLIENT, tx_pwr);
+
+		/* Indoor Access Point must include an additional TPE for
+		 * subordinate devices */
+		if (iconf->he_6ghz_reg_pwr_type == HE_6GHZ_INDOOR_AP) {
+			/* TODO: Extract PSD limits from channel data */
+			tx_pwr = REG_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT * 2;
+			eid = hostapd_add_tpe_info(eid, tx_pwr_count,
+						   tx_pwr_intrpn,
+						   REG_SUBORDINATE_CLIENT,
+						   tx_pwr);
+		}
+
+		return eid;
+	}
+#endif /* CONFIG_IEEE80211AX */
 
 	switch (hostapd_get_oper_chwidth(iconf)) {
 	case CHANWIDTH_USE_HT:
@@ -7000,19 +7069,9 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
 	else
 		tx_pwr = max_tx_power;
 
-	*eid++ = WLAN_EID_TRANSMIT_POWER_ENVELOPE;
-	*eid++ = 2 + tx_pwr_count;
-
-	/*
-	 * Max Transmit Power count and
-	 * Max Transmit Power units = 0 (EIRP)
-	 */
-	*eid++ = tx_pwr_count;
-
-	for (i = 0; i <= tx_pwr_count; i++)
-		*eid++ = tx_pwr;
-
-	return eid;
+	return hostapd_add_tpe_info(eid, tx_pwr_count, LOCAL_EIRP,
+				    0 /* Reserved for bands other than 6 GHz */,
+				    tx_pwr);
 }
 
 
