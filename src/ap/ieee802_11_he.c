@@ -226,7 +226,7 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
 		params |= HE_OPERATION_6GHZ_OPER_INFO;
 
 		/* 6 GHz Operation Information field
-		 * IEEE P802.11ax/D8.0, 9.4.2.249 HE Operation element,
+		 * IEEE Std 802.11ax-2021, 9.4.2.249 HE Operation element,
 		 * Figure 9-788k
 		 */
 		*pos++ = hapd->iconf->channel; /* Primary Channel */

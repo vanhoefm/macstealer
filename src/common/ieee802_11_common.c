@@ -1895,7 +1895,7 @@ const struct oper_class_map global_op_class[] = {
 	{ HOSTAPD_MODE_IEEE80211A, 127, 153, 177, 8, BW40MINUS, P2P_SUPP },
 
 	/*
-	 * IEEE P802.11ax/D8.0 Table E-4 actually talks about channel center
+	 * IEEE Std 802.11ax-2021, Table E-4 actually talks about channel center
 	 * frequency index 42, 58, 106, 122, 138, 155, 171 with channel spacing
 	 * of 80 MHz, but currently use the following definition for simplicity
 	 * (these center frequencies are not actual channels, which makes

@@ -2234,12 +2234,16 @@ struct ieee80211_he_6ghz_oper_info {
 #define HE_6GHZ_OPER_INFO_CTRL_REG_INFO_MASK	(BIT(3) | BIT(4) | BIT(5))
 #define HE_6GHZ_OPER_INFO_CTRL_REG_INFO_SHIFT	3
 
-/* IEEE P802.11ax/D6.0, 9.4.2.261 HE 6 GHz Band Capabilities element */
+/* IEEE Std 802.11ax-2021, 9.4.2.263 HE 6 GHz Band Capabilities element */
 struct ieee80211_he_6ghz_band_cap {
 	 /* Minimum MPDU Start Spacing B0..B2
 	  * Maximum A-MPDU Length Exponent B3..B5
-	  * Maximum MPDU Length B6..B7 */
-	le16 capab;
+	  * Maximum MPDU Length B6..B7
+	  * SM Power Save B9..B10
+	  * RD Responder B11
+	  * Rx Antenna Pattern Consistency B12
+	  * Tx Antenna Consistency B13 */
+	le16 capab; /* Capabilities Information field */
 } STRUCT_PACKED;
 
 #define HE_6GHZ_BAND_CAP_MIN_MPDU_START              (BIT(0) | BIT(1) | BIT(2))
@@ -2265,7 +2269,7 @@ struct ieee80211_he_6ghz_band_cap {
 #define HE_6GHZ_BAND_CAP_TX_ANTPAT_CONS              BIT(13)
 
 /*
- * IEEE P802.11ax/D4.0, 9.4.2.246 Spatial Reuse Parameter Set element
+ * IEEE Std 802.11ax-2021, 9.4.2.252 Spatial Reuse Parameter Set element
  */
 struct ieee80211_spatial_reuse {
 	u8 sr_ctrl; /* SR Control */
@@ -2500,7 +2504,7 @@ enum mscs_description_subelem {
 #define FD_CAP_PHY_INDEX_SHIFT				10
 
 /*
- * IEEE P802.11ax/D8.0 26.17.2.3.2, AP behavior for fast passive scanning
+ * IEEE Std 802.11ax-2021, 26.17.2.3.2, AP behavior for fast passive scanning
  */
 #define FD_MAX_INTERVAL_6GHZ                  20 /* TUs */
 
