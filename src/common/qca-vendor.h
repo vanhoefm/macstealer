@@ -1600,17 +1600,17 @@ enum qca_wlan_vendor_acs_hw_mode {
  *	operation is specifically mentioned (against its respective
  *	documentation) to support either of these or both modes.
  * @QCA_WLAN_VENDOR_FEATURE_USE_ADD_DEL_VIRTUAL_INTF_FOR_NDI: Flag indicates
- * 	that the driver requires add/del virtual interface path using the
+ *	that the driver requires add/del virtual interface path using the
  *	generic nl80211 commands for NDP interface create/delete and to
  *	register/unregister the netdev instead of creating/deleting the NDP
  *	interface using the vendor commands
  *	QCA_WLAN_VENDOR_ATTR_NDP_INTERFACE_CREATE and
  *	QCA_WLAN_VENDOR_ATTR_NDP_INTERFACE_DELETE. With the latest kernel
- * 	(5.12 version onward), interface creation/deletion is not allowed using
- * 	vendor commands as it leads to a deadlock while acquiring the RTNL_LOCK
- * 	during the register/unregister of netdev. Create and delete NDP
- * 	interface using NL80211_CMD_NEW_INTERFACE and NL80211_CMD_DEL_INTERFACE
- * 	commands respectively if the driver advertises this capability set.
+ *	(5.12 version onward), interface creation/deletion is not allowed using
+ *	vendor commands as it leads to a deadlock while acquiring the RTNL_LOCK
+ *	during the register/unregister of netdev. Create and delete NDP
+ *	interface using NL80211_CMD_NEW_INTERFACE and NL80211_CMD_DEL_INTERFACE
+ *	commands respectively if the driver advertises this capability set.
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits
  */
 enum qca_wlan_vendor_features {
@@ -1622,7 +1622,7 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_OCE_AP                  = 5,
 	QCA_WLAN_VENDOR_FEATURE_OCE_STA_CFON            = 6,
 	QCA_WLAN_VENDOR_FEATURE_SELF_MANAGED_REGULATORY = 7,
-	QCA_WLAN_VENDOR_FEATURE_TWT 			= 8,
+	QCA_WLAN_VENDOR_FEATURE_TWT			= 8,
 	QCA_WLAN_VENDOR_FEATURE_11AX			= 9,
 	QCA_WLAN_VENDOR_FEATURE_6GHZ_SUPPORT		= 10,
 	QCA_WLAN_VENDOR_FEATURE_THERMAL_CONFIG		= 11,
@@ -4683,7 +4683,7 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
 
 /**
  * enum qca_vendor_attr_roam_control - Attributes to carry roam configuration
- * 	The following attributes are used to set/get/clear the respective
+ *	The following attributes are used to set/get/clear the respective
  *	configurations to/from the driver.
  *	For the get, the attribute for the configuration to be queried shall
  *	carry any of its acceptable values to the driver. In return, the driver
