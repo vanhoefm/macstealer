@@ -1145,13 +1145,72 @@ void dh5_free(void *ctx)
 
 
 struct crypto_hash {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_MAC_CTX *ctx;
+#else /* OpenSSL version >= 3.0 */
 	HMAC_CTX *ctx;
+#endif /* OpenSSL version >= 3.0 */
 };
 
 
 struct crypto_hash * crypto_hash_init(enum crypto_hash_alg alg, const u8 *key,
 				      size_t key_len)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	struct crypto_hash *ctx;
+	EVP_MAC *mac;
+	OSSL_PARAM params[2];
+	char *a = NULL;
+
+	switch (alg) {
+#ifndef OPENSSL_NO_MD5
+	case CRYPTO_HASH_ALG_HMAC_MD5:
+		a = "MD5";
+		break;
+#endif /* OPENSSL_NO_MD5 */
+#ifndef OPENSSL_NO_SHA
+	case CRYPTO_HASH_ALG_HMAC_SHA1:
+		a = "SHA1";
+		break;
+#endif /* OPENSSL_NO_SHA */
+#ifndef OPENSSL_NO_SHA256
+#ifdef CONFIG_SHA256
+	case CRYPTO_HASH_ALG_HMAC_SHA256:
+		a = "SHA256";
+		break;
+#endif /* CONFIG_SHA256 */
+#endif /* OPENSSL_NO_SHA256 */
+	default:
+		return NULL;
+	}
+
+	mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
+	if (!mac)
+		return NULL;
+
+	params[0] = OSSL_PARAM_construct_utf8_string("digest", a, 0);
+	params[1] = OSSL_PARAM_construct_end();
+
+	ctx = os_zalloc(sizeof(*ctx));
+	if (!ctx)
+		return NULL;
+	ctx->ctx = EVP_MAC_CTX_new(mac);
+	if (!ctx->ctx) {
+		EVP_MAC_free(mac);
+		os_free(ctx);
+		return NULL;
+	}
+
+	if (EVP_MAC_init(ctx->ctx, key, key_len, params) != 1) {
+		EVP_MAC_CTX_free(ctx->ctx);
+		bin_clear_free(ctx, sizeof(*ctx));
+		EVP_MAC_free(mac);
+		return NULL;
+	}
+
+	EVP_MAC_free(mac);
+	return ctx;
+#else /* OpenSSL version >= 3.0 */
 	struct crypto_hash *ctx;
 	const EVP_MD *md;
 
@@ -1193,6 +1252,7 @@ struct crypto_hash * crypto_hash_init(enum crypto_hash_alg alg, const u8 *key,
 	}
 
 	return ctx;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
@@ -1200,12 +1260,49 @@ void crypto_hash_update(struct crypto_hash *ctx, const u8 *data, size_t len)
 {
 	if (ctx == NULL)
 		return;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_MAC_update(ctx->ctx, data, len);
+#else /* OpenSSL version >= 3.0 */
 	HMAC_Update(ctx->ctx, data, len);
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 int crypto_hash_finish(struct crypto_hash *ctx, u8 *mac, size_t *len)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	size_t mdlen;
+	int res;
+
+	if (!ctx)
+		return -2;
+
+	if (!mac || !len) {
+		EVP_MAC_CTX_free(ctx->ctx);
+		bin_clear_free(ctx, sizeof(*ctx));
+		return 0;
+	}
+
+	res = EVP_MAC_final(ctx->ctx, NULL, &mdlen, 0);
+	if (res != 1) {
+		EVP_MAC_CTX_free(ctx->ctx);
+		bin_clear_free(ctx, sizeof(*ctx));
+		return -1;
+	}
+	res = EVP_MAC_final(ctx->ctx, mac, &mdlen, mdlen);
+	EVP_MAC_CTX_free(ctx->ctx);
+	bin_clear_free(ctx, sizeof(*ctx));
+
+	if (TEST_FAIL())
+		return -1;
+
+	if (res == 1) {
+		*len = mdlen;
+		return 0;
+	}
+
+	return -1;
+#else /* OpenSSL version >= 3.0 */
 	unsigned int mdlen;
 	int res;
 
@@ -1232,8 +1329,147 @@ int crypto_hash_finish(struct crypto_hash *ctx, u8 *mac, size_t *len)
 	}
 
 	return -1;
+#endif /* OpenSSL version >= 3.0 */
 }
 
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+
+static int openssl_hmac_vector(char *digest, const u8 *key,
+			       size_t key_len, size_t num_elem,
+			       const u8 *addr[], const size_t *len, u8 *mac,
+			       unsigned int mdlen)
+{
+	EVP_MAC *hmac;
+	OSSL_PARAM params[2];
+	EVP_MAC_CTX *ctx;
+	size_t i, mlen;
+	int res;
+
+	if (TEST_FAIL())
+		return -1;
+
+	hmac = EVP_MAC_fetch(NULL, "HMAC", NULL);
+	if (!hmac)
+		return -1;
+
+	params[0] = OSSL_PARAM_construct_utf8_string("digest", digest, 0);
+	params[1] = OSSL_PARAM_construct_end();
+
+	ctx = EVP_MAC_CTX_new(hmac);
+	EVP_MAC_free(hmac);
+	if (!ctx)
+		return -1;
+
+	if (EVP_MAC_init(ctx, key, key_len, params) != 1)
+		goto fail;
+
+	for (i = 0; i < num_elem; i++) {
+		if (EVP_MAC_update(ctx, addr[i], len[i]) != 1)
+			goto fail;
+	}
+
+	res = EVP_MAC_final(ctx, mac, &mlen, mdlen);
+	EVP_MAC_CTX_free(ctx);
+
+	return res == 1 ? 0 : -1;
+fail:
+	EVP_MAC_CTX_free(ctx);
+	return -1;
+}
+
+
+#ifndef CONFIG_FIPS
+
+int hmac_md5_vector(const u8 *key, size_t key_len, size_t num_elem,
+		    const u8 *addr[], const size_t *len, u8 *mac)
+{
+	return openssl_hmac_vector("MD5", key ,key_len, num_elem, addr, len,
+				   mac, 16);
+}
+
+
+int hmac_md5(const u8 *key, size_t key_len, const u8 *data, size_t data_len,
+	     u8 *mac)
+{
+	return hmac_md5_vector(key, key_len, 1, &data, &data_len, mac);
+}
+
+#endif /* CONFIG_FIPS */
+
+
+int hmac_sha1_vector(const u8 *key, size_t key_len, size_t num_elem,
+		     const u8 *addr[], const size_t *len, u8 *mac)
+{
+	return openssl_hmac_vector("SHA1", key, key_len, num_elem, addr,
+				   len, mac, 20);
+}
+
+
+int hmac_sha1(const u8 *key, size_t key_len, const u8 *data, size_t data_len,
+	       u8 *mac)
+{
+	return hmac_sha1_vector(key, key_len, 1, &data, &data_len, mac);
+}
+
+
+#ifdef CONFIG_SHA256
+
+int hmac_sha256_vector(const u8 *key, size_t key_len, size_t num_elem,
+		       const u8 *addr[], const size_t *len, u8 *mac)
+{
+	return openssl_hmac_vector("SHA256", key, key_len, num_elem, addr,
+				   len, mac, 32);
+}
+
+
+int hmac_sha256(const u8 *key, size_t key_len, const u8 *data,
+		size_t data_len, u8 *mac)
+{
+	return hmac_sha256_vector(key, key_len, 1, &data, &data_len, mac);
+}
+
+#endif /* CONFIG_SHA256 */
+
+
+#ifdef CONFIG_SHA384
+
+int hmac_sha384_vector(const u8 *key, size_t key_len, size_t num_elem,
+		       const u8 *addr[], const size_t *len, u8 *mac)
+{
+	return openssl_hmac_vector("SHA384", key, key_len, num_elem, addr,
+				   len, mac, 48);
+}
+
+
+int hmac_sha384(const u8 *key, size_t key_len, const u8 *data,
+		size_t data_len, u8 *mac)
+{
+	return hmac_sha384_vector(key, key_len, 1, &data, &data_len, mac);
+}
+
+#endif /* CONFIG_SHA384 */
+
+
+#ifdef CONFIG_SHA512
+
+int hmac_sha512_vector(const u8 *key, size_t key_len, size_t num_elem,
+		       const u8 *addr[], const size_t *len, u8 *mac)
+{
+	return openssl_hmac_vector("SHA512", key, key_len, num_elem, addr,
+				   len, mac, 64);
+}
+
+
+int hmac_sha512(const u8 *key, size_t key_len, const u8 *data,
+		size_t data_len, u8 *mac)
+{
+	return hmac_sha512_vector(key, key_len, 1, &data, &data_len, mac);
+}
+
+#endif /* CONFIG_SHA512 */
+
+#else /* OpenSSL version >= 3.0 */
 
 static int openssl_hmac_vector(const EVP_MD *type, const u8 *key,
 			       size_t key_len, size_t num_elem,
@@ -1282,16 +1518,6 @@ int hmac_md5(const u8 *key, size_t key_len, const u8 *data, size_t data_len,
 }
 
 #endif /* CONFIG_FIPS */
-
-
-int pbkdf2_sha1(const char *passphrase, const u8 *ssid, size_t ssid_len,
-		int iterations, u8 *buf, size_t buflen)
-{
-	if (PKCS5_PBKDF2_HMAC_SHA1(passphrase, os_strlen(passphrase), ssid,
-				   ssid_len, iterations, buflen, buf) != 1)
-		return -1;
-	return 0;
-}
 
 
 int hmac_sha1_vector(const u8 *key, size_t key_len, size_t num_elem,
@@ -1364,6 +1590,18 @@ int hmac_sha512(const u8 *key, size_t key_len, const u8 *data,
 }
 
 #endif /* CONFIG_SHA512 */
+
+#endif /* OpenSSL version >= 3.0 */
+
+
+int pbkdf2_sha1(const char *passphrase, const u8 *ssid, size_t ssid_len,
+		int iterations, u8 *buf, size_t buflen)
+{
+	if (PKCS5_PBKDF2_HMAC_SHA1(passphrase, os_strlen(passphrase), ssid,
+				   ssid_len, iterations, buflen, buf) != 1)
+		return -1;
+	return 0;
+}
 
 
 int crypto_get_random(void *buf, size_t len)
