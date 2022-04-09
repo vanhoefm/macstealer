@@ -733,16 +733,27 @@ static char *eap_type_text(u8 type)
 	case EAP_TYPE_IDENTITY: return "Identity";
 	case EAP_TYPE_NOTIFICATION: return "Notification";
 	case EAP_TYPE_NAK: return "Nak";
-	case EAP_TYPE_TLS: return "TLS";
-	case EAP_TYPE_TTLS: return "TTLS";
-	case EAP_TYPE_PEAP: return "PEAP";
-	case EAP_TYPE_SIM: return "SIM";
-	case EAP_TYPE_GTC: return "GTC";
+
 	case EAP_TYPE_MD5: return "MD5";
 	case EAP_TYPE_OTP: return "OTP";
+	case EAP_TYPE_GTC: return "GTC";
+	case EAP_TYPE_TLS: return "TLS";
+	case EAP_TYPE_LEAP: return "LEAP";
+	case EAP_TYPE_SIM: return "SIM";
+	case EAP_TYPE_TTLS: return "TTLS";
+	case EAP_TYPE_AKA: return "AKA";
+	case EAP_TYPE_PEAP: return "PEAP";
+	case EAP_TYPE_MSCHAPV2: return "MSCHAPv2";
 	case EAP_TYPE_FAST: return "FAST";
-	case EAP_TYPE_SAKE: return "SAKE";
+	case EAP_TYPE_PAX: return "PAX";
 	case EAP_TYPE_PSK: return "PSK";
+	case EAP_TYPE_SAKE: return "SAKE";
+	case EAP_TYPE_IKEV2: return "IKEv2";
+	case EAP_TYPE_AKA_PRIME: return "AKA-PRIME";
+	case EAP_TYPE_GPSK: return "GPSK";
+	case EAP_TYPE_PWD: return "PWD";
+	case EAP_TYPE_EKE: return "EKE";
+	case EAP_TYPE_TEAP: return "TEAP";
 	default: return "Unknown";
 	}
 }
