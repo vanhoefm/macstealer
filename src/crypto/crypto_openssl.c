@@ -130,20 +130,34 @@ static int EC_GROUP_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,
 #endif /* OpenSSL version < 1.1.1 */
 
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static OSSL_PROVIDER *openssl_default_provider = NULL;
+static OSSL_PROVIDER *openssl_legacy_provider = NULL;
+#endif /* OpenSSL version >= 3.0 */
+
 void openssl_load_legacy_provider(void)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	static bool loaded = false;
-	OSSL_PROVIDER *legacy;
-
-	if (loaded)
+	if (openssl_legacy_provider)
 		return;
 
-	legacy = OSSL_PROVIDER_load(NULL, "legacy");
+	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (openssl_legacy_provider && !openssl_default_provider)
+		openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
+#endif /* OpenSSL version >= 3.0 */
+}
 
-	if (legacy) {
-		OSSL_PROVIDER_load(NULL, "default");
-		loaded = true;
+
+void openssl_unload_legacy_provider(void)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (openssl_legacy_provider) {
+		OSSL_PROVIDER_unload(openssl_legacy_provider);
+		openssl_legacy_provider = NULL;
+	}
+	if (openssl_default_provider) {
+		OSSL_PROVIDER_unload(openssl_default_provider);
+		openssl_default_provider = NULL;
 	}
 #endif /* OpenSSL version >= 3.0 */
 }
