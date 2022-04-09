@@ -412,7 +412,7 @@ void * aes_encrypt_init(const u8 *key, size_t len)
 	if (ctx == NULL)
 		return NULL;
 	if (EVP_EncryptInit_ex(ctx, type, NULL, key, NULL) != 1) {
-		os_free(ctx);
+		EVP_CIPHER_CTX_free(ctx);
 		return NULL;
 	}
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
