@@ -815,6 +815,11 @@ class BeaconReport:
 
         return txt
 
+def build_beacon_request(opclass=81, chan=0, rand_int=0, duration=0, mode=0,
+                         bssid="FF:FF:FF:FF:FF:FF"):
+    req = struct.pack("<BBHHB", opclass, chan, rand_int, duration, mode)
+    return binascii.hexlify(req).decode() + bssid.replace(':', '')
+
 def run_req_beacon(hapd, addr, request):
     token = hapd.request("REQ_BEACON " + addr + " " + request)
     if "FAIL" in token:
@@ -1470,6 +1475,29 @@ def test_rrm_beacon_req_active_ap_channels(dev, apdev):
         elif report.bssid_str == apdev[1]['bssid']:
             if report.opclass != 81 or report.channel != 11:
                 raise Exception("Incorrect opclass/channel for AP1")
+
+@remote_compatible
+def test_rrm_beacon_req_active_no_ir(dev, apdev):
+    """Beacon request - active scan mode and NO_IR channel"""
+    params = {"ssid": "rrm", "rrm_beacon_report": "1"}
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
+    addr = dev[0].own_addr()
+
+    req = build_beacon_request(opclass=118, chan=52, duration=100, mode=1)
+    token = run_req_beacon(hapd, addr, req)
+    ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
+    if ev is None:
+        raise Exception("Beacon report response not received")
+    fields = ev.split(' ')
+    if fields[2] != token:
+        raise Exception("Unexpected token value in response (expected %s): %s" % (token, fields[2]))
+    mode = int(fields[3], base=16)
+    if mode & 0x04:
+        raise Exception("Beacon request refused")
+    report = BeaconReport(binascii.unhexlify(fields[4]))
+    logger.info("Beacon report: " + str(report))
 
 @remote_compatible
 def test_rrm_beacon_req_passive_ap_channels(dev, apdev):
