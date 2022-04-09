@@ -860,7 +860,8 @@ def test_rrm_beacon_req_table(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req)
 
     for i in range(1, 3):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -899,7 +900,8 @@ def test_rrm_beacon_req_frame_body_fragmentation(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req)
 
     # 2 beacon reports elements are expected because of fragmentation
     for i in range(0, 2):
@@ -941,7 +943,8 @@ def test_rrm_beacon_req_last_frame_indication(dev, apdev):
     addr = dev[0].own_addr()
 
     # The request contains the last beacon report indication subelement
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffffa40101")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "a40101")
 
     for i in range(1, 3):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -966,7 +969,8 @@ def test_rrm_beacon_req_last_frame_indication(dev, apdev):
             raise Exception("last beacon report indication is not set on last frame")
 
     # The request does not contain the last beacon report indication subelement
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req)
 
     for i in range(1, 3):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -996,7 +1000,8 @@ def test_rrm_beacon_req_table_detail(dev, apdev):
     addr = dev[0].own_addr()
 
     logger.info("Reporting Detail 0")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020100")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "020100")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1008,7 +1013,7 @@ def test_rrm_beacon_req_table_detail(dev, apdev):
     hapd.dump_monitor()
 
     logger.info("Reporting Detail 1")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101")
+    token = run_req_beacon(hapd, addr, req + "020101")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1022,7 +1027,7 @@ def test_rrm_beacon_req_table_detail(dev, apdev):
     hapd.dump_monitor()
 
     logger.info("Reporting Detail 2")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020102")
+    token = run_req_beacon(hapd, addr, req + "020102")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1036,14 +1041,14 @@ def test_rrm_beacon_req_table_detail(dev, apdev):
     hapd.dump_monitor()
 
     logger.info("Reporting Detail 3 (invalid)")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020103")
+    token = run_req_beacon(hapd, addr, req + "020103")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response to invalid reporting detail 3")
     hapd.dump_monitor()
 
     logger.info("Reporting Detail (too short)")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "0200")
+    token = run_req_beacon(hapd, addr, req + "0200")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response to invalid reporting detail")
@@ -1059,7 +1064,8 @@ def test_rrm_beacon_req_table_request(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a03000106")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "020101" + "0a03000106")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1073,21 +1079,21 @@ def test_rrm_beacon_req_table_request(dev, apdev):
     hapd.dump_monitor()
 
     logger.info("Incorrect reporting detail with request subelement")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020102" + "0a03000106")
+    token = run_req_beacon(hapd, addr, req + "020102" + "0a03000106")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response (invalid reporting detail)")
     hapd.dump_monitor()
 
     logger.info("Invalid request subelement length")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a00")
+    token = run_req_beacon(hapd, addr, req + "020101" + "0a00")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response (invalid request subelement length)")
     hapd.dump_monitor()
 
     logger.info("Multiple request subelements")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a0100" + "0a0101")
+    token = run_req_beacon(hapd, addr, req + "020101" + "0a0100" + "0a0101")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response (multiple request subelements)")
@@ -1102,9 +1108,10 @@ def test_rrm_beacon_req_table_request_oom(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
+    req = build_beacon_request(mode=2)
     with alloc_fail(dev[0], 1,
                     "bitfield_alloc;wpas_rm_handle_beacon_req_subelem"):
-        token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a03000106")
+        token = run_req_beacon(hapd, addr, req + "020101" + "0a03000106")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.1)
         if ev is not None:
@@ -1112,7 +1119,7 @@ def test_rrm_beacon_req_table_request_oom(dev, apdev):
 
     with alloc_fail(dev[0], 1,
                     "wpabuf_alloc;wpas_rrm_send_msr_report_mpdu"):
-        token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a03000106")
+        token = run_req_beacon(hapd, addr, req + "020101" + "0a03000106")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.1)
         if ev is not None:
@@ -1120,7 +1127,7 @@ def test_rrm_beacon_req_table_request_oom(dev, apdev):
 
     with fail_test(dev[0], 1,
                     "wpa_driver_nl80211_send_action;wpas_rrm_send_msr_report_mpdu"):
-        token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a03000106")
+        token = run_req_beacon(hapd, addr, req + "020101" + "0a03000106")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.1)
         if ev is not None:
@@ -1128,7 +1135,7 @@ def test_rrm_beacon_req_table_request_oom(dev, apdev):
 
     with alloc_fail(dev[0], 1,
                     "wpabuf_resize;wpas_add_beacon_rep"):
-        token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a03000106")
+        token = run_req_beacon(hapd, addr, req + "020101" + "0a03000106")
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         if ev is None:
             raise Exception("Beacon report response not received (OOM -> empty report)")
@@ -1147,7 +1154,8 @@ def test_rrm_beacon_req_table_bssid(dev, apdev):
     addr = dev[0].own_addr()
 
     bssid2 = hapd2.own_addr()
-    token = run_req_beacon(hapd, addr, "51000000000002" + bssid2.replace(':', ''))
+    req = build_beacon_request(mode=2, bssid=bssid2)
+    token = run_req_beacon(hapd, addr, req)
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1171,7 +1179,8 @@ def test_rrm_beacon_req_table_ssid(dev, apdev):
     addr = dev[0].own_addr()
 
     bssid2 = hapd2.own_addr()
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "0007" + binascii.hexlify(b"another").decode())
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "0007" + binascii.hexlify(b"another").decode())
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1186,7 +1195,7 @@ def test_rrm_beacon_req_table_ssid(dev, apdev):
     hapd.dump_monitor()
 
     logger.info("Wildcard SSID")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "0000")
+    token = run_req_beacon(hapd, addr, req + "0000")
     for i in range(2):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         if ev is None:
@@ -1197,7 +1206,7 @@ def test_rrm_beacon_req_table_ssid(dev, apdev):
     hapd.dump_monitor()
 
     logger.info("Too long SSID")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "0021" + 33*"00")
+    token = run_req_beacon(hapd, addr, req + "0021" + 33*"00")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response (invalid SSID subelement in request)")
@@ -1213,7 +1222,8 @@ def test_rrm_beacon_req_table_info(dev, apdev):
     addr = dev[0].own_addr()
 
     logger.info("Unsupported reporting information 1")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "01020100")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "01020100")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response (incapable) is not received")
@@ -1224,7 +1234,7 @@ def test_rrm_beacon_req_table_info(dev, apdev):
     hapd.dump_monitor()
 
     logger.info("Invalid reporting information length")
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "010100")
+    token = run_req_beacon(hapd, addr, req + "010100")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response (invalid reporting information length)")
@@ -1239,7 +1249,8 @@ def test_rrm_beacon_req_table_unknown_subelem(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "330101" + "fe00")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "330101" + "fe00")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1256,7 +1267,8 @@ def test_rrm_beacon_req_table_truncated_subelem(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "0001")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "0001")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected beacon report response (truncated subelement)")
@@ -1272,7 +1284,8 @@ def test_rrm_beacon_req_table_rsne(dev, apdev):
     dev[0].connect("rrm-rsn", psk="12345678", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000000002ffffffffffff" + "020101" + "0a0130")
+    req = build_beacon_request(mode=2)
+    token = run_req_beacon(hapd, addr, req + "020101" + "0a0130")
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report response not received")
@@ -1321,7 +1334,8 @@ def test_rrm_beacon_req_table_vht(dev, apdev):
 
         addr = dev[0].own_addr()
 
-        token = run_req_beacon(hapd, addr, "f0000000000002ffffffffffff")
+        req = build_beacon_request(opclass=240, mode=2)
+        token = run_req_beacon(hapd, addr, req)
         for i in range(2):
             ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
             if ev is None:
@@ -1356,7 +1370,8 @@ def test_rrm_beacon_req_active(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000640001ffffffffffff")
+    req = build_beacon_request(duration=100, mode=1)
+    token = run_req_beacon(hapd, addr, req)
 
     for i in range(1, 3):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -1385,7 +1400,8 @@ def test_rrm_beacon_req_active_ignore_old_result(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51010000640001ffffffffffff")
+    req = build_beacon_request(chan=1, duration=100, mode=1)
+    token = run_req_beacon(hapd, addr, req)
 
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
@@ -1434,7 +1450,8 @@ def test_rrm_beacon_req_active_many(dev, apdev):
 
     ok = False
     for j in range(3):
-        token = run_req_beacon(hapd, addr, "51010000640001ffffffffffff")
+        req = build_beacon_request(chan=1, duration=100, mode=1)
+        token = run_req_beacon(hapd, addr, req)
 
         for i in range(10):
             ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -1460,7 +1477,8 @@ def test_rrm_beacon_req_active_ap_channels(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51ff0000640001ffffffffffff" + "dd0111" + "330351010b" + "dd0111")
+    req = build_beacon_request(chan=255, duration=100, mode=1)
+    token = run_req_beacon(hapd, addr, req + "dd0111" + "330351010b" + "dd0111")
 
     for i in range(1, 3):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -1509,7 +1527,8 @@ def test_rrm_beacon_req_passive_ap_channels(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51ff0000640000ffffffffffff" + "330351010b" + "3300" + "dd00")
+    req = build_beacon_request(chan=255, duration=100)
+    token = run_req_beacon(hapd, addr, req + "330351010b" + "3300" + "dd00")
 
     for i in range(1, 3):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -1535,7 +1554,8 @@ def test_rrm_beacon_req_active_single_channel(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "510b0000640001ffffffffffff")
+    req = build_beacon_request(chan=11, duration=100, mode=1)
+    token = run_req_beacon(hapd, addr, req)
 
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
@@ -1554,7 +1574,8 @@ def test_rrm_beacon_req_active_ap_channels_unknown_opclass(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51ff0000640001ffffffffffff" + "3303ff010b")
+    req = build_beacon_request(chan=255, duration=100, mode=1)
+    token = run_req_beacon(hapd, addr, req + "3303ff010b")
 
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
@@ -1575,7 +1596,8 @@ def test_rrm_beacon_req_active_ap_channel_oom(dev, apdev):
     addr = dev[0].own_addr()
 
     with alloc_fail(dev[0], 1, "wpas_add_channels"):
-        token = run_req_beacon(hapd, addr, "51ff0000640001ffffffffffff" + "330351010b")
+        req = build_beacon_request(chan=255, duration=100, mode=1)
+        token = run_req_beacon(hapd, addr, req + "330351010b")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         # allow either not to respond or send refused response
@@ -1594,7 +1616,8 @@ def test_rrm_beacon_req_active_scan_fail(dev, apdev):
     addr = dev[0].own_addr()
 
     with alloc_fail(dev[0], 1, "wpa_supplicant_trigger_scan"):
-        token = run_req_beacon(hapd, addr, "51ff0000640001ffffffffffff" + "330351010b")
+        req = build_beacon_request(chan=255, duration=100, mode=1)
+        token = run_req_beacon(hapd, addr, req + "330351010b")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         if ev is None:
@@ -1613,7 +1636,8 @@ def test_rrm_beacon_req_active_zero_duration(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000000001ffffffffffff")
+    req = build_beacon_request(mode=1)
+    token = run_req_beacon(hapd, addr, req)
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
     if ev is not None:
         raise Exception("Unexpected Beacon report")
@@ -1627,7 +1651,8 @@ def test_rrm_beacon_req_active_fail_random(dev, apdev):
     addr = dev[0].own_addr()
 
     with fail_test(dev[0], 1, "os_get_random;wpas_rm_handle_beacon_req"):
-        token = run_req_beacon(hapd, addr, "51000000640001ffffffffffff")
+        req = build_beacon_request(duration=100, mode=1)
+        token = run_req_beacon(hapd, addr, req)
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         if ev is None:
             raise Exception("Beacon report response not received")
@@ -1645,7 +1670,8 @@ def test_rrm_beacon_req_passive(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51000000640000ffffffffffff")
+    req = build_beacon_request(duration=100)
+    token = run_req_beacon(hapd, addr, req)
 
     for i in range(1, 3):
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
@@ -1670,7 +1696,8 @@ def test_rrm_beacon_req_passive_no_match(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "51010000640000021122334455")
+    req = build_beacon_request(chan=1, duration=100, bssid="02:11:22:33:44:55")
+    token = run_req_beacon(hapd, addr, req)
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report %d response not received" % i)
@@ -1687,15 +1714,16 @@ def test_rrm_beacon_req_passive_no_match_oom(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
+    req = build_beacon_request(chan=1, duration=100, bssid="02:11:22:33:44:55")
     with alloc_fail(dev[0], 1, "wpabuf_resize;wpas_beacon_rep_scan_process"):
-        token = run_req_beacon(hapd, addr, "51010000640000021122334455")
+        token = run_req_beacon(hapd, addr, req)
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=0.2)
         if ev is not None:
             raise Exception("Unexpected Beacon report response during OOM")
 
     # verify reporting is still functional
-    token = run_req_beacon(hapd, addr, "51010000640000021122334455")
+    token = run_req_beacon(hapd, addr, req)
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("Beacon report %d response not received" % i)
@@ -1712,7 +1740,8 @@ def test_rrm_beacon_req_active_duration_mandatory(dev, apdev):
     dev[0].connect("rrm", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    token = run_req_beacon(hapd, addr, "req_mode=10 51000000640001ffffffffffff")
+    req = build_beacon_request(duration=100, mode=1)
+    token = run_req_beacon(hapd, addr, "req_mode=10 " + req)
     ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
     if ev is None:
         raise Exception("No Beacon report response")
@@ -1753,7 +1782,8 @@ def test_rrm_beacon_req_passive_scan_vht(dev, apdev):
 
         addr = dev[0].own_addr()
 
-        token = run_req_beacon(hapd, addr, "80000000640000ffffffffffff")
+        req = build_beacon_request(opclass=128, duration=100)
+        token = run_req_beacon(hapd, addr, req)
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         if ev is None:
             raise Exception("Beacon report response not received")
@@ -1763,7 +1793,8 @@ def test_rrm_beacon_req_passive_scan_vht(dev, apdev):
         if report.opclass != 128 or report.channel != 36:
             raise Exception("Incorrect opclass/channel for AP")
 
-        token = run_req_beacon(hapd, addr, "82000000640000ffffffffffff")
+        req = build_beacon_request(opclass=130, duration=100)
+        token = run_req_beacon(hapd, addr, req)
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         if ev is None:
             raise Exception("Beacon report response not received")
@@ -1807,7 +1838,8 @@ def test_rrm_beacon_req_passive_scan_vht160(dev, apdev):
 
         addr = dev[0].own_addr()
 
-        token = run_req_beacon(hapd, addr, "81000000640000ffffffffffff")
+        req = build_beacon_request(opclass=129, duration=100)
+        token = run_req_beacon(hapd, addr, req)
         ev = hapd.wait_event(["BEACON-RESP-RX"], timeout=10)
         if ev is None:
             raise Exception("Beacon report response not received")
@@ -1847,7 +1879,8 @@ def run_rrm_beacon_req_ap_errors(dev, apdev):
         raise Exception("Invalid REQ_BEACON accepted")
 
     # Beacon request: 02:00:00:00:01:00 does not support table beacon report
-    if "FAIL" not in hapd.request("REQ_BEACON " + addr1 + " 51000000000002ffffffffffff"):
+    req = build_beacon_request(mode=2)
+    if "FAIL" not in hapd.request("REQ_BEACON " + addr1 + " " + req):
         raise Exception("Invalid REQ_BEACON accepted")
 
     # Beacon request: 02:00:00:00:01:00 does not support active beacon report
@@ -2142,7 +2175,8 @@ def test_rrm_unexpected(dev, apdev):
             raise Exception("MGMT_RX_PROCESS failed for " + t)
 
 def check_beacon_req(hapd, addr, idx):
-    request = "51000000000002ffffffffffff" + "020100"
+    req = build_beacon_request(mode=2)
+    request = req + "020100"
     token = hapd.request("REQ_BEACON " + addr + " " + request)
     if "FAIL" in token:
         raise Exception("REQ_BEACON failed (%d)" % idx)
