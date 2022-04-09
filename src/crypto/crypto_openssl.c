@@ -510,8 +510,52 @@ void aes_decrypt_deinit(void *ctx)
 #ifndef CONFIG_FIPS
 #ifndef CONFIG_OPENSSL_INTERNAL_AES_WRAP
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static const EVP_CIPHER * aes_get_evp_wrap_cipher(size_t keylen)
+{
+	switch (keylen) {
+	case 16:
+		return EVP_aes_128_wrap();
+	case 24:
+		return EVP_aes_192_wrap();
+	case 32:
+		return EVP_aes_256_wrap();
+	default:
+		return NULL;
+	}
+}
+#endif /* OpenSSL version >= 3.0 */
+
+
 int aes_wrap(const u8 *kek, size_t kek_len, int n, const u8 *plain, u8 *cipher)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_CIPHER_CTX *ctx;
+	const EVP_CIPHER *type;
+	int ret = -1, len;
+	u8 buf[16];
+
+	if (TEST_FAIL())
+		return -1;
+
+	type = aes_get_evp_wrap_cipher(kek_len);
+	if (!type)
+		return -1;
+
+	ctx = EVP_CIPHER_CTX_new();
+	if (!ctx)
+		return -1;
+
+	if (EVP_EncryptInit_ex(ctx, type, NULL, kek, NULL) == 1 &&
+	    EVP_CIPHER_CTX_set_padding(ctx, 0) == 1 &&
+	    EVP_EncryptUpdate(ctx, cipher, &len, plain, n * 8) == 1 &&
+	    len == (n + 1) * 8 &&
+	    EVP_EncryptFinal_ex(ctx, buf, &len) == 1)
+		ret = 0;
+
+	EVP_CIPHER_CTX_free(ctx);
+	return ret;
+#else /* OpenSSL version >= 3.0 */
 	AES_KEY actx;
 	int res;
 
@@ -522,12 +566,40 @@ int aes_wrap(const u8 *kek, size_t kek_len, int n, const u8 *plain, u8 *cipher)
 	res = AES_wrap_key(&actx, NULL, cipher, plain, n * 8);
 	OPENSSL_cleanse(&actx, sizeof(actx));
 	return res <= 0 ? -1 : 0;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 int aes_unwrap(const u8 *kek, size_t kek_len, int n, const u8 *cipher,
 	       u8 *plain)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_CIPHER_CTX *ctx;
+	const EVP_CIPHER *type;
+	int ret = -1, len;
+	u8 buf[16];
+
+	if (TEST_FAIL())
+		return -1;
+
+	type = aes_get_evp_wrap_cipher(kek_len);
+	if (!type)
+		return -1;
+
+	ctx = EVP_CIPHER_CTX_new();
+	if (!ctx)
+		return -1;
+
+	if (EVP_DecryptInit_ex(ctx, type, NULL, kek, NULL) == 1 &&
+	    EVP_CIPHER_CTX_set_padding(ctx, 0) == 1 &&
+	    EVP_DecryptUpdate(ctx, plain, &len, cipher, (n + 1) * 8) == 1 &&
+	    len == n * 8 &&
+	    EVP_DecryptFinal_ex(ctx, buf, &len) == 1)
+		ret = 0;
+
+	EVP_CIPHER_CTX_free(ctx);
+	return ret;
+#else /* OpenSSL version >= 3.0 */
 	AES_KEY actx;
 	int res;
 
@@ -538,6 +610,7 @@ int aes_unwrap(const u8 *kek, size_t kek_len, int n, const u8 *cipher,
 	res = AES_unwrap_key(&actx, NULL, plain, cipher, (n + 1) * 8);
 	OPENSSL_cleanse(&actx, sizeof(actx));
 	return res <= 0 ? -1 : 0;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 #endif /* CONFIG_OPENSSL_INTERNAL_AES_WRAP */
