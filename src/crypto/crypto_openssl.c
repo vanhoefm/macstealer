@@ -1,6 +1,6 @@
 /*
  * Wrapper functions for OpenSSL libcrypto
- * Copyright (c) 2004-2017, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2004-2022, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -26,6 +26,8 @@
 #endif /* CONFIG_ECC */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/provider.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 #endif /* OpenSSL version >= 3.0 */
 
 #include "common.h"
@@ -163,6 +165,8 @@ void openssl_unload_legacy_provider(void)
 }
 
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+
 static BIGNUM * get_group5_prime(void)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
@@ -217,6 +221,8 @@ static BIGNUM * get_group5_order(void)
 	};
 	return BN_bin2bn(RFC3526_ORDER_1536, sizeof(RFC3526_ORDER_1536), NULL);
 }
+
+#endif /* OpenSSL version < 3.0 */
 
 
 #ifdef OPENSSL_NO_SHA256
@@ -966,6 +972,57 @@ err:
 	wpabuf_clear_free(privkey);
 	DH_free(dh);
 	return NULL;
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *pkey = NULL;
+	OSSL_PARAM params[2];
+	size_t pub_len = OSSL_PARAM_UNMODIFIED;
+	size_t priv_len;
+	struct wpabuf *pubkey = NULL, *privkey = NULL;
+	BIGNUM *priv_bn = NULL;
+	EVP_PKEY_CTX *gctx;
+
+	*priv = NULL;
+	wpabuf_free(*publ);
+	*publ = NULL;
+
+	params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME,
+						     "modp_1536", 0);
+	params[1] = OSSL_PARAM_construct_end();
+
+	gctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+	if (!gctx ||
+	    EVP_PKEY_keygen_init(gctx) != 1 ||
+	    EVP_PKEY_CTX_set_params(gctx, params) != 1 ||
+	    EVP_PKEY_generate(gctx, &pkey) != 1 ||
+	    EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY,
+				  &priv_bn) != 1 ||
+	    EVP_PKEY_get_octet_string_param(pkey,
+					    OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+					    NULL, 0, &pub_len) < 0 ||
+	    pub_len == OSSL_PARAM_UNMODIFIED ||
+	    (priv_len = BN_num_bytes(priv_bn)) == 0 ||
+	    !(pubkey = wpabuf_alloc(pub_len)) ||
+	    !(privkey = wpabuf_alloc(priv_len)) ||
+	    EVP_PKEY_get_octet_string_param(pkey,
+					    OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+					    wpabuf_put(pubkey, pub_len),
+					    pub_len, NULL) != 1) {
+		wpa_printf(MSG_INFO, "OpenSSL: failed: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		wpabuf_free(pubkey);
+		wpabuf_clear_free(privkey);
+		EVP_PKEY_free(pkey);
+		pkey = NULL;
+	} else {
+		BN_bn2bin(priv_bn, wpabuf_put(privkey, priv_len));
+
+		*priv = privkey;
+		*publ = pubkey;
+	}
+
+	BN_clear_free(priv_bn);
+	EVP_PKEY_CTX_free(gctx);
+	return pkey;
 #else
 	DH *dh;
 	struct wpabuf *pubkey = NULL, *privkey = NULL;
@@ -1058,6 +1115,39 @@ void * dh5_init_fixed(const struct wpabuf *priv, const struct wpabuf *publ)
 err:
 	DH_free(dh);
 	return NULL;
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *pkey = NULL;
+	OSSL_PARAM_BLD *bld;
+	OSSL_PARAM *params = NULL;
+	BIGNUM *priv_key, *pub_key;
+	EVP_PKEY_CTX *fctx;
+
+	fctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+	priv_key = BN_bin2bn(wpabuf_head(priv), wpabuf_len(priv), NULL);
+	pub_key = BN_bin2bn(wpabuf_head(publ), wpabuf_len(publ), NULL);
+	bld = OSSL_PARAM_BLD_new();
+	if (!fctx || !priv_key || !pub_key || !bld ||
+	    OSSL_PARAM_BLD_push_utf8_string(bld, OSSL_PKEY_PARAM_GROUP_NAME,
+					    "modp_1536", 0) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PRIV_KEY,
+				   priv_key) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PUB_KEY,
+				   pub_key) != 1 ||
+	    !(params = OSSL_PARAM_BLD_to_param(bld)) ||
+	    EVP_PKEY_fromdata_init(fctx) != 1 ||
+	    EVP_PKEY_fromdata(fctx, &pkey, EVP_PKEY_KEYPAIR, params) != 1) {
+		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_fromdata failed: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		EVP_PKEY_free(pkey);
+		pkey = NULL;
+	}
+
+	BN_clear_free(priv_key);
+	BN_free(pub_key);
+	EVP_PKEY_CTX_free(fctx);
+	OSSL_PARAM_BLD_free(bld);
+	OSSL_PARAM_free(params);
+	return pkey;
 #else
 	DH *dh;
 	BIGNUM *p = NULL, *g, *priv_key = NULL, *pub_key = NULL;
@@ -1100,6 +1190,36 @@ err:
 struct wpabuf * dh5_derive_shared(void *ctx, const struct wpabuf *peer_public,
 				  const struct wpabuf *own_private)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *pkey = ctx;
+	EVP_PKEY *peer_pub;
+	size_t len;
+	struct wpabuf *res = NULL;
+	EVP_PKEY_CTX *dctx = NULL;
+
+	peer_pub = EVP_PKEY_new();
+	if (!pkey || !peer_pub ||
+	    EVP_PKEY_copy_parameters(peer_pub, pkey) != 1 ||
+	    EVP_PKEY_set1_encoded_public_key(peer_pub, wpabuf_head(peer_public),
+					     wpabuf_len(peer_public)) != 1 ||
+	    !(dctx = EVP_PKEY_CTX_new(pkey, NULL)) ||
+	    EVP_PKEY_derive_init(dctx) != 1 ||
+	    EVP_PKEY_derive_set_peer(dctx, peer_pub) != 1 ||
+	    EVP_PKEY_derive(dctx, NULL, &len) != 1 ||
+	    !(res = wpabuf_alloc(len)) ||
+	    EVP_PKEY_derive(dctx, wpabuf_mhead(res), &len) != 1) {
+		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_derive failed: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		wpabuf_free(res);
+		res = NULL;
+	} else {
+		wpabuf_put(res, len);
+	}
+
+	EVP_PKEY_free(peer_pub);
+	EVP_PKEY_CTX_free(dctx);
+	return res;
+#else /* OpenSSL version >= 3.0 */
 	BIGNUM *pub_key;
 	struct wpabuf *res = NULL;
 	size_t rlen;
@@ -1131,16 +1251,23 @@ err:
 	BN_clear_free(pub_key);
 	wpabuf_clear_free(res);
 	return NULL;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 void dh5_free(void *ctx)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *pkey = ctx;
+
+	EVP_PKEY_free(pkey);
+#else /* OpenSSL version >= 3.0 */
 	DH *dh;
 	if (ctx == NULL)
 		return;
 	dh = ctx;
 	DH_free(dh);
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
