@@ -58,6 +58,11 @@ ln -s /proc/self/fd/0 /dev/stdin
 ln -s /proc/self/fd/1 /dev/stdout
 ln -s /proc/self/fd/2 /dev/stderr
 
+# pretend we've initialized the RNG, we don't care here
+# about the actual quality of the randomness. The ioctl
+# is RNDADDTOENTCNT (at least on x86).
+PYTHONHASHSEED=0 python3 -c 'import fcntl; fd=open("/dev/random", "w"); fcntl.ioctl(fd.fileno(), 0x40045201, b"\x00\x01\x00\x00")'
+
 echo "VM has started up" > /dev/ttyS0
 
 # create stub sudo - everything runs as uid 0
