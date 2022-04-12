@@ -206,6 +206,9 @@ CONFIG_SMARTCARD=y
 # Support VHT overrides (disable VHT, mask MCS rates, etc.)
 #CONFIG_VHT_OVERRIDES=y
 
+# Support HE overrides
+#CONFIG_HE_OVERRIDES=y
+
 # Development testing
 #CONFIG_EAPOL_TEST=y
 
