@@ -2084,6 +2084,22 @@ def test_sigma_dut_dpp_incompatible_roles_init(dev, apdev):
     finally:
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_curves_list(dev, apdev):
+    """sigma_dut DPP URI curves list override"""
+    check_dpp_capab(dev[0], min_ver=3)
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,GetLocalBootstrap,DPPCryptoIdentifier,P-256,DPPBS,QR,DPPURICurves,P-256:P-384:BP-384")
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+        hex = res.split(',')[3]
+        uri = from_hex(hex)
+        logger.info("URI from sigma_dut: " + uri)
+        if ";B:31" not in uri:
+            raise Exception("Supported curves override did not work correctly")
+    finally:
+        stop_sigma_dut(sigma)
+
 def dpp_init_enrollee_mutual(dev, id1, own_id):
     logger.info("Starting DPP initiator/enrollee in a thread")
     time.sleep(1)
