@@ -146,6 +146,15 @@ enum dpp_bootstrap_type {
 	DPP_BOOTSTRAP_NFC_URI,
 };
 
+enum dpp_bootstrap_supported_curves {
+	DPP_BOOTSTRAP_CURVE_P_256 = 0,
+	DPP_BOOTSTRAP_CURVE_P_384 = 1,
+	DPP_BOOTSTRAP_CURVE_P_521 = 2,
+	DPP_BOOTSTRAP_CURVE_BP_256 = 3,
+	DPP_BOOTSTRAP_CURVE_BP_384 = 4,
+	DPP_BOOTSTRAP_CURVE_BP_512 = 5,
+};
+
 struct dpp_bootstrap_info {
 	struct dl_list list;
 	unsigned int id;
@@ -159,6 +168,7 @@ struct dpp_bootstrap_info {
 	unsigned int num_freq;
 	bool channels_listed;
 	u8 version;
+	u8 supported_curves; /* enum dpp_bootstrap_supported_curves bitmap */
 	int own;
 	struct crypto_ec_key *pubkey;
 	u8 pubkey_hash[SHA256_MAC_LEN];

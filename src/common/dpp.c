@@ -345,12 +345,36 @@ static int dpp_parse_uri_pk(struct dpp_bootstrap_info *bi, const char *info)
 }
 
 
+static int dpp_parse_uri_supported_curves(struct dpp_bootstrap_info *bi,
+					  const char *txt)
+{
+	int val;
+
+	if (!txt)
+		return 0;
+
+	val = hex2num(txt[0]);
+	if (val < 0)
+		return -1;
+	bi->supported_curves = val;
+
+	val = hex2num(txt[1]);
+	if (val > 0)
+		bi->supported_curves |= val << 4;
+
+	wpa_printf(MSG_DEBUG, "DPP: URI supported curves: 0x%x",
+		   bi->supported_curves);
+
+	return 0;
+}
+
+
 static struct dpp_bootstrap_info * dpp_parse_uri(const char *uri)
 {
 	const char *pos = uri;
 	const char *end;
 	const char *chan_list = NULL, *mac = NULL, *info = NULL, *pk = NULL;
-	const char *version = NULL;
+	const char *version = NULL, *supported_curves = NULL;
 	struct dpp_bootstrap_info *bi;
 
 	wpa_hexdump_ascii(MSG_DEBUG, "DPP: URI", uri, os_strlen(uri));
@@ -383,6 +407,8 @@ static struct dpp_bootstrap_info * dpp_parse_uri(const char *uri)
 			pk = pos + 2;
 		else if (pos[0] == 'V' && pos[1] == ':' && !version)
 			version = pos + 2;
+		else if (pos[0] == 'B' && pos[1] == ':' && !supported_curves)
+			supported_curves = pos + 2;
 		else
 			wpa_hexdump_ascii(MSG_DEBUG,
 					  "DPP: Ignore unrecognized URI parameter",
@@ -404,6 +430,7 @@ static struct dpp_bootstrap_info * dpp_parse_uri(const char *uri)
 	    dpp_parse_uri_mac(bi, mac) < 0 ||
 	    dpp_parse_uri_info(bi, info) < 0 ||
 	    dpp_parse_uri_version(bi, version) < 0 ||
+	    dpp_parse_uri_supported_curves(bi, supported_curves) < 0 ||
 	    dpp_parse_uri_pk(bi, pk) < 0) {
 		dpp_bootstrap_info_free(bi);
 		bi = NULL;
@@ -604,6 +631,7 @@ int dpp_gen_uri(struct dpp_bootstrap_info *bi)
 {
 	char macstr[ETH_ALEN * 2 + 10];
 	size_t len;
+	char supp_curves[10];
 
 	len = 4; /* "DPP:" */
 	if (bi->chan)
@@ -621,11 +649,26 @@ int dpp_gen_uri(struct dpp_bootstrap_info *bi)
 #endif /* CONFIG_DPP2 */
 	len += 4 + os_strlen(bi->pk); /* K:...;; */
 
+	if (bi->supported_curves) {
+		u8 val = bi->supported_curves;
+
+		if (val & 0xf0) {
+			val = ((val & 0xf0) >> 4) | ((val & 0x0f) << 4);
+			len += os_snprintf(supp_curves, sizeof(supp_curves),
+					   "B:%02x;", val);
+		} else {
+			len += os_snprintf(supp_curves, sizeof(supp_curves),
+					   "B:%x;", val);
+		}
+	} else {
+		supp_curves[0] = '\0';
+	}
+
 	os_free(bi->uri);
 	bi->uri = os_malloc(len + 1);
 	if (!bi->uri)
 		return -1;
-	os_snprintf(bi->uri, len + 1, "DPP:%s%s%s%s%s%s%s%sK:%s;;",
+	os_snprintf(bi->uri, len + 1, "DPP:%s%s%s%s%s%s%s%s%sK:%s;;",
 		    bi->chan ? "C:" : "", bi->chan ? bi->chan : "",
 		    bi->chan ? ";" : "",
 		    macstr,
@@ -633,6 +676,7 @@ int dpp_gen_uri(struct dpp_bootstrap_info *bi)
 		    bi->info ? ";" : "",
 		    DPP_VERSION == 3 ? "V:3;" :
 		    (DPP_VERSION == 2 ? "V:2;" : ""),
+		    supp_curves,
 		    bi->pk);
 	return 0;
 }
@@ -4144,10 +4188,47 @@ struct dpp_bootstrap_info * dpp_add_nfc_uri(struct dpp_global *dpp,
 }
 
 
+static int dpp_parse_supported_curves_list(struct dpp_bootstrap_info *bi,
+					   char *txt)
+{
+	char *token, *context = NULL;
+	u8 curves = 0;
+
+	if (!txt)
+		return 0;
+
+	while ((token = str_token(txt, ":", &context))) {
+		if (os_strcmp(token, "P-256") == 0) {
+			curves |= BIT(DPP_BOOTSTRAP_CURVE_P_256);
+		} else if (os_strcmp(token, "P-384") == 0) {
+			curves |= BIT(DPP_BOOTSTRAP_CURVE_P_384);
+		} else if (os_strcmp(token, "P-521") == 0) {
+			curves |= BIT(DPP_BOOTSTRAP_CURVE_P_521);
+		} else if (os_strcmp(token, "BP-256") == 0) {
+			curves |= BIT(DPP_BOOTSTRAP_CURVE_BP_256);
+		} else if (os_strcmp(token, "BP-384") == 0) {
+			curves |= BIT(DPP_BOOTSTRAP_CURVE_BP_384);
+		} else if (os_strcmp(token, "BP-512") == 0) {
+			curves |= BIT(DPP_BOOTSTRAP_CURVE_BP_512);
+		} else {
+			wpa_printf(MSG_DEBUG, "DPP: Unsupported curve '%s'",
+				   token);
+			return -1;
+		}
+	}
+	bi->supported_curves = curves;
+
+	wpa_printf(MSG_DEBUG, "DPP: URI supported curves: 0x%x",
+		   bi->supported_curves);
+
+	return 0;
+}
+
+
 int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd)
 {
 	char *mac = NULL, *info = NULL, *curve = NULL;
-	char *key = NULL;
+	char *key = NULL, *supported_curves = NULL;
 	u8 *privkey = NULL;
 	size_t privkey_len = 0;
 	int ret = -1;
@@ -4174,6 +4255,7 @@ int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd)
 	info = get_param(cmd, " info=");
 	curve = get_param(cmd, " curve=");
 	key = get_param(cmd, " key=");
+	supported_curves = get_param(cmd, " supported_curves=");
 
 	if (key) {
 		privkey_len = os_strlen(key) / 2;
@@ -4187,6 +4269,7 @@ int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd)
 	    dpp_parse_uri_chan_list(bi, bi->chan) < 0 ||
 	    dpp_parse_uri_mac(bi, mac) < 0 ||
 	    dpp_parse_uri_info(bi, info) < 0 ||
+	    dpp_parse_supported_curves_list(bi, supported_curves) < 0 ||
 	    dpp_gen_uri(bi) < 0)
 		goto fail;
 
@@ -4199,6 +4282,7 @@ fail:
 	os_free(mac);
 	os_free(info);
 	str_clear_free(key);
+	os_free(supported_curves);
 	bin_clear_free(privkey, privkey_len);
 	dpp_bootstrap_info_free(bi);
 	return ret;
@@ -4253,12 +4337,43 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 {
 	struct dpp_bootstrap_info *bi;
 	char pkhash[2 * SHA256_MAC_LEN + 1];
+	char supp_curves[100];
 
 	bi = dpp_bootstrap_get_id(dpp, id);
 	if (!bi)
 		return -1;
 	wpa_snprintf_hex(pkhash, sizeof(pkhash), bi->pubkey_hash,
 			 SHA256_MAC_LEN);
+
+	supp_curves[0] = '\0';
+	if (bi->supported_curves) {
+		int ret;
+		size_t i;
+		char *pos = supp_curves;
+		char *end = &supp_curves[sizeof(supp_curves)];
+		const char *curve[6] = { "P-256", "P-384", "P-521",
+					 "BP-256", "BP-384", "BP-512" };
+
+		ret = os_snprintf(pos, end - pos, "supp_curves=");
+		if (os_snprintf_error(end - pos, ret))
+			return -1;
+		pos += ret;
+
+		for (i = 0; i < ARRAY_SIZE(curve); i++) {
+			if (!(bi->supported_curves & BIT(i)))
+				continue;
+			ret = os_snprintf(pos, end - pos, "%s:", curve[i]);
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
+		}
+
+		if (pos[-1] == ':')
+			pos[-1] = '\n';
+		else
+			supp_curves[0] = '\0';
+	}
+
 	return os_snprintf(reply, reply_size, "type=%s\n"
 			   "mac_addr=" MACSTR "\n"
 			   "info=%s\n"
@@ -4266,7 +4381,7 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 			   "use_freq=%u\n"
 			   "curve=%s\n"
 			   "pkhash=%s\n"
-			   "version=%d\n",
+			   "version=%d\n%s",
 			   dpp_bootstrap_type_txt(bi->type),
 			   MAC2STR(bi->mac_addr),
 			   bi->info ? bi->info : "",
@@ -4274,7 +4389,8 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 			   bi->num_freq == 1 ? bi->freq[0] : 0,
 			   bi->curve->name,
 			   pkhash,
-			   bi->version);
+			   bi->version,
+			   supp_curves);
 }
 
 
