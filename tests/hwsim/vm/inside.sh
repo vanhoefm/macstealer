@@ -37,6 +37,11 @@ EPATH=$(sed 's/.*EPATH=\([^ ]*\) .*/\1/' /proc/cmdline)
 TELNET=$(sed 's/.*TELNET=\([^ ]*\) .*/\1/' /proc/cmdline)
 ARGS=$(sed 's/.*ARGS=\([^ ]*\)\( \|$\).*/\1/' /proc/cmdline)
 LOGDIR=$(sed 's/.*LOGDIR=\([^ ]*\)\( \|$\).*/\1/' /proc/cmdline)
+if grep -q "commitid=" /proc/cmdline; then
+    COMMITID=$(sed 's/.*commitid=\([^ ]*\)\( \|$\).*/\1/' /proc/cmdline)
+else
+    COMMITID=
+fi
 
 mount --bind "$TESTDIR/vm/regdb/" /lib/firmware
 
@@ -146,6 +151,7 @@ else
 	export LOGDIR=/tmp/logs
 	export DBFILE=$LOGDIR/results.db
 	export PREFILL_DB=y
+	export COMMITID
 
 	# some tests need CRDA, install a simple uevent helper
 	# and preload the 00 domain it will have asked for already

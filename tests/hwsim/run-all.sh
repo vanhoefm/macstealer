@@ -16,7 +16,9 @@ if [ -z "$DBFILE" ]; then
     DB=""
 else
     DB="-S $DBFILE"
-    COMMITID="$(git rev-parse HEAD)"
+    if [ -z "$COMMITID" ]; then
+	COMMITID="$(git rev-parse HEAD)"
+    fi
     if [ -n "$COMMITID" ]; then
 	DB="$DB --commit $COMMITID"
     fi

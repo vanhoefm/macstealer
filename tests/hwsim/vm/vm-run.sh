@@ -154,6 +154,10 @@ A+="TELNET=$TELNET_ARG "
 A+="EPATH=$EPATH "
 A+="ARGS=$argsfile "
 A+="console=$KVMOUT "
+COMMITID="$(git rev-parse HEAD)"
+if [ -n "$COMMITID" ]; then
+    A+="commitid=$COMMITID "
+fi
 A+="ro"
 
 if [ -z $KVM ]; then
