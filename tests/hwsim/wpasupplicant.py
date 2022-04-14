@@ -1482,7 +1482,7 @@ class WpaSupplicant:
         return int(res)
 
     def dpp_bootstrap_gen(self, type="qrcode", chan=None, mac=None, info=None,
-                          curve=None, key=None):
+                          curve=None, key=None, supported_curves=None):
         cmd = "DPP_BOOTSTRAP_GEN type=" + type
         if chan:
             cmd += " chan=" + chan
@@ -1496,6 +1496,8 @@ class WpaSupplicant:
             cmd += " curve=" + curve
         if key:
             cmd += " key=" + key
+        if supported_curves:
+            cmd += " supported_curves=" + supported_curves
         res = self.request(cmd)
         if "FAIL" in res:
             raise Exception("Failed to generate bootstrapping info")

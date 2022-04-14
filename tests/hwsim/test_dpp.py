@@ -146,6 +146,35 @@ def test_dpp_uri_version(dev, apdev):
     if "version=0" not in info.splitlines():
         raise Exception("Unexpected version information (without indication)")
 
+def test_dpp_uri_supported_curves(dev, apdev):
+    """DPP URI supported curves"""
+    check_dpp_capab(dev[0], min_ver=3)
+
+    tests = [("P-256", "1"),
+             ("P-384", "2"),
+             ("P-521", "4"),
+             ("BP-256", "8"),
+             ("BP-384", "01"),
+             ("BP-512", "02"),
+             ("P-256:P-384:P-521", "7"),
+             ("P-256:BP-512", "12"),
+             ("P-256:P-384:BP-384", "31"),
+             ("P-256:P-384:P-521:BP-256:BP-384:BP-512", "f3")]
+    for t in tests:
+        logger.info("Supported list: " + t[0])
+        id0 = dev[0].dpp_bootstrap_gen(supported_curves=t[0])
+        uri = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+        logger.info("Generated URI: " + uri)
+        if ";B:%s;" % t[1] not in uri:
+            raise Exception("Supported curves(1) not indicated correctly: " + uri)
+
+        id1 = dev[0].dpp_qr_code(uri)
+        uri = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id1)
+        info = dev[0].request("DPP_BOOTSTRAP_INFO %d" % id1)
+        logger.info("Parsed URI info:\n" + info)
+        if "supp_curves=" + t[0] not in info.splitlines():
+            raise Exception("supp_curves not indicated correctly in info")
+
 def test_dpp_qr_code_parsing_fail(dev, apdev):
     """DPP QR Code parsing local failure"""
     check_dpp_capab(dev[0])
