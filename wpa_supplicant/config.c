@@ -2451,7 +2451,6 @@ static const struct parse_data ssid_fields[] = {
 	{ STRe(client_cert, cert.client_cert) },
 	{ STRe(private_key, cert.private_key) },
 	{ STR_KEYe(private_key_passwd, cert.private_key_passwd) },
-	{ STRe(dh_file, cert.dh_file) },
 	{ STRe(subject_match, cert.subject_match) },
 	{ STRe(check_cert_subject, cert.check_cert_subject) },
 	{ STRe(altsubject_match, cert.altsubject_match) },
@@ -2462,7 +2461,6 @@ static const struct parse_data ssid_fields[] = {
 	{ STRe(client_cert2, phase2_cert.client_cert) },
 	{ STRe(private_key2, phase2_cert.private_key) },
 	{ STR_KEYe(private_key2_passwd, phase2_cert.private_key_passwd) },
-	{ STRe(dh_file2, phase2_cert.dh_file) },
 	{ STRe(subject_match2, phase2_cert.subject_match) },
 	{ STRe(check_cert_subject2, phase2_cert.check_cert_subject) },
 	{ STRe(altsubject_match2, phase2_cert.altsubject_match) },
@@ -2490,7 +2488,6 @@ static const struct parse_data ssid_fields[] = {
 	{ STRe(machine_private_key, machine_cert.private_key) },
 	{ STR_KEYe(machine_private_key_passwd,
 		   machine_cert.private_key_passwd) },
-	{ STRe(machine_dh_file, machine_cert.dh_file) },
 	{ STRe(machine_subject_match, machine_cert.subject_match) },
 	{ STRe(machine_check_cert_subject, machine_cert.check_cert_subject) },
 	{ STRe(machine_altsubject_match, machine_cert.altsubject_match) },
@@ -2754,7 +2751,6 @@ static void eap_peer_config_free_cert(struct eap_peer_cert_config *cert)
 	os_free(cert->client_cert);
 	os_free(cert->private_key);
 	str_clear_free(cert->private_key_passwd);
-	os_free(cert->dh_file);
 	os_free(cert->subject_match);
 	os_free(cert->check_cert_subject);
 	os_free(cert->altsubject_match);
@@ -3156,6 +3152,26 @@ void wpa_config_set_network_defaults(struct wpa_ssid *ssid)
 }
 
 
+static const char *removed_fields[] = {
+	"dh_file",
+	"dh_file2",
+	"machine_dh_file",
+	NULL
+};
+
+static bool removed_field(const char *field)
+{
+	int i;
+
+	for (i = 0; removed_fields[i]; i++) {
+		if (os_strcmp(field, removed_fields[i]) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+
 /**
  * wpa_config_set - Set a variable in network configuration
  * @ssid: Pointer to network configuration data
@@ -3204,6 +3220,12 @@ int wpa_config_set(struct wpa_ssid *ssid, const char *var, const char *value,
 		break;
 	}
 	if (i == NUM_SSID_FIELDS) {
+		if (removed_field(var)) {
+			wpa_printf(MSG_INFO,
+				   "Line %d: Ignore removed configuration field '%s'",
+				   line, var);
+			return ret;
+		}
 		if (line) {
 			wpa_printf(MSG_ERROR, "Line %d: unknown network field "
 				   "'%s'.", line, var);

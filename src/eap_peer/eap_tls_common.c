@@ -113,7 +113,6 @@ static void eap_tls_cert_params_from_conf(struct tls_connection_params *params,
 	params->client_cert = config->client_cert;
 	params->private_key = config->private_key;
 	params->private_key_passwd = config->private_key_passwd;
-	params->dh_file = config->dh_file;
 	params->subject_match = config->subject_match;
 	params->altsubject_match = config->altsubject_match;
 	params->check_cert_subject = config->check_cert_subject;
@@ -230,9 +229,7 @@ static int eap_tls_params_from_conf(struct eap_sm *sm,
 			       &params->client_cert_blob_len) ||
 	    eap_tls_check_blob(sm, &params->private_key,
 			       &params->private_key_blob,
-			       &params->private_key_blob_len) ||
-	    eap_tls_check_blob(sm, &params->dh_file, &params->dh_blob,
-			       &params->dh_blob_len)) {
+			       &params->private_key_blob_len)) {
 		wpa_printf(MSG_INFO, "SSL: Failed to get configuration blobs");
 		return -1;
 	}

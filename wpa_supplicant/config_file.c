@@ -699,7 +699,6 @@ static void wpa_config_write_network(FILE *f, struct wpa_ssid *ssid)
 	STR(client_cert);
 	STR(private_key);
 	STR(private_key_passwd);
-	STR(dh_file);
 	STR(subject_match);
 	STR(check_cert_subject);
 	STR(altsubject_match);
@@ -710,7 +709,6 @@ static void wpa_config_write_network(FILE *f, struct wpa_ssid *ssid)
 	STR(client_cert2);
 	STR(private_key2);
 	STR(private_key2_passwd);
-	STR(dh_file2);
 	STR(subject_match2);
 	STR(check_cert_subject2);
 	STR(altsubject_match2);
@@ -721,7 +719,6 @@ static void wpa_config_write_network(FILE *f, struct wpa_ssid *ssid)
 	STR(machine_client_cert);
 	STR(machine_private_key);
 	STR(machine_private_key_passwd);
-	STR(machine_dh_file);
 	STR(machine_subject_match);
 	STR(machine_check_cert_subject);
 	STR(machine_altsubject_match);

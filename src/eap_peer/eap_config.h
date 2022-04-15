@@ -104,24 +104,6 @@ struct eap_peer_cert_config {
 	char *private_key_passwd;
 
 	/**
-	 * dh_file - File path to DH/DSA parameters file (in PEM format)
-	 *
-	 * This is an optional configuration file for setting parameters for an
-	 * ephemeral DH key exchange. In most cases, the default RSA
-	 * authentication does not use this configuration. However, it is
-	 * possible setup RSA to use ephemeral DH key exchange. In addition,
-	 * ciphers with DSA keys always use ephemeral DH keys. This can be used
-	 * to achieve forward secrecy. If the file is in DSA parameters format,
-	 * it will be automatically converted into DH params. Full path to the
-	 * file should be used since working directory may change when
-	 * wpa_supplicant is run in the background.
-	 *
-	 * Alternatively, a named configuration blob can be used by setting
-	 * this to blob://blob_name.
-	 */
-	char *dh_file;
-
-	/**
 	 * subject_match - Constraint for server certificate subject
 	 *
 	 * This substring is matched against the subject of the authentication
