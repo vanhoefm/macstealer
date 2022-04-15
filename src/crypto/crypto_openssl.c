@@ -1757,6 +1757,9 @@ int omac1_aes_vector(const u8 *key, size_t key_len, size_t num_elem,
 	if (key_len == 32) {
 		if (!CMAC_Init(ctx, key, 32, EVP_aes_256_cbc(), NULL))
 			goto fail;
+	} else if (key_len == 24) {
+		if (!CMAC_Init(ctx, key, 24, EVP_aes_192_cbc(), NULL))
+			goto fail;
 	} else if (key_len == 16) {
 		if (!CMAC_Init(ctx, key, 16, EVP_aes_128_cbc(), NULL))
 			goto fail;
