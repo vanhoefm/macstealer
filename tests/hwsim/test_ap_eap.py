@@ -4115,6 +4115,7 @@ def test_ap_wpa2_eap_fast_prov(dev, apdev):
 
 def test_ap_wpa2_eap_fast_eap_vendor(dev, apdev):
     """WPA2-Enterprise connection using EAP-FAST/EAP-vendor"""
+    check_eap_capa(dev[0], "FAST")
     params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
     hapd = hostapd.add_ap(apdev[0], params)
     eap_connect(dev[0], hapd, "FAST", "vendor-test-2",
