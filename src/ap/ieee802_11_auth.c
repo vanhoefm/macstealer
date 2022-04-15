@@ -47,6 +47,9 @@ struct hostapd_acl_query_data {
 	struct hostapd_acl_query_data *next;
 	bool radius_psk;
 	int akm;
+	u8 *anonce;
+	u8 *eapol;
+	size_t eapol_len;
 };
 
 
@@ -102,6 +105,8 @@ static void hostapd_acl_query_free(struct hostapd_acl_query_data *query)
 	if (!query)
 		return;
 	os_free(query->auth_msg);
+	os_free(query->anonce);
+	os_free(query->eapol);
 	os_free(query);
 }
 
@@ -161,6 +166,24 @@ static int hostapd_radius_acl_query(struct hostapd_data *hapd, const u8 *addr,
 	    !radius_msg_add_attr_int32(msg, RADIUS_ATTR_WLAN_AKM_SUITE,
 				       wpa_akm_to_suite(query->akm))) {
 		wpa_printf(MSG_DEBUG, "Could not add WLAN-AKM-Suite");
+		goto fail;
+	}
+
+	if (query->anonce &&
+	    !radius_msg_add_ext_vs(msg, RADIUS_ATTR_EXT_VENDOR_SPECIFIC_5,
+				   RADIUS_VENDOR_ID_FREERADIUS,
+				   RADIUS_VENDOR_ATTR_FREERADIUS_802_1X_ANONCE,
+				   query->anonce, WPA_NONCE_LEN)) {
+		wpa_printf(MSG_DEBUG, "Could not add FreeRADIUS-802.1X-Anonce");
+		goto fail;
+	}
+
+	if (query->eapol &&
+	    !radius_msg_add_ext_vs(msg, RADIUS_ATTR_EXT_VENDOR_SPECIFIC_5,
+				   RADIUS_VENDOR_ID_FREERADIUS,
+				   RADIUS_VENDOR_ATTR_FREERADIUS_802_1X_EAPOL_KEY_MSG,
+				   query->eapol, query->eapol_len)) {
+		wpa_printf(MSG_DEBUG, "Could not add FreeRADIUS-802.1X-EAPoL-Key-Msg");
 		goto fail;
 	}
 
@@ -703,6 +726,12 @@ void hostapd_acl_req_radius_psk(struct hostapd_data *hapd, const u8 *addr,
 	query->akm = key_mgmt;
 	os_get_reltime(&query->timestamp);
 	os_memcpy(query->addr, addr, ETH_ALEN);
+	if (anonce)
+		query->anonce = os_memdup(anonce, WPA_NONCE_LEN);
+	if (eapol) {
+		query->eapol = os_memdup(eapol, eapol_len);
+		query->eapol_len = eapol_len;
+	}
 	if (hostapd_radius_acl_query(hapd, addr, query)) {
 		wpa_printf(MSG_DEBUG,
 			   "Failed to send Access-Request for RADIUS PSK/ACL query");

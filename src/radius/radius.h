@@ -208,6 +208,13 @@ enum { RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY = 16,
        RADIUS_VENDOR_ATTR_MS_MPPE_RECV_KEY = 17
 };
 
+/* FreeRADIUS vendor-specific attributes */
+#define RADIUS_VENDOR_ID_FREERADIUS 11344
+/* Extended-Vendor-Specific-5 (245.26; long extended header) */
+enum {
+	RADIUS_VENDOR_ATTR_FREERADIUS_802_1X_ANONCE = 1,
+	RADIUS_VENDOR_ATTR_FREERADIUS_802_1X_EAPOL_KEY_MSG = 2,
+};
 
 /* Hotspot 2.0 - WFA Vendor-specific RADIUS Attributes */
 #define RADIUS_VENDOR_ID_WFA 40808
