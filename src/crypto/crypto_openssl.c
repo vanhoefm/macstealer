@@ -1743,6 +1743,46 @@ int crypto_get_random(void *buf, size_t len)
 int omac1_aes_vector(const u8 *key, size_t key_len, size_t num_elem,
 		     const u8 *addr[], const size_t *len, u8 *mac)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_MAC_CTX *ctx = NULL;
+	EVP_MAC *emac;
+	int ret = -1;
+	size_t outlen, i;
+	OSSL_PARAM params[2];
+	char *cipher = NULL;
+
+	if (TEST_FAIL())
+		return -1;
+
+	emac = EVP_MAC_fetch(NULL, "CMAC", NULL);
+
+	if (key_len == 32)
+		cipher = "aes-256-cbc";
+	else if (key_len == 24)
+		cipher = "aes-192-cbc";
+	else if (key_len == 16)
+		cipher = "aes-128-cbc";
+
+	params[0] = OSSL_PARAM_construct_utf8_string("cipher", cipher, 0);
+	params[1] = OSSL_PARAM_construct_end();
+
+	if (!emac || !cipher ||
+	    !(ctx = EVP_MAC_CTX_new(emac)) ||
+	    EVP_MAC_init(ctx, key, key_len, params) != 1)
+		goto fail;
+
+	for (i = 0; i < num_elem; i++) {
+		if (!EVP_MAC_update(ctx, addr[i], len[i]))
+			goto fail;
+	}
+	if (EVP_MAC_final(ctx, mac, &outlen, 16) != 1 || outlen != 16)
+		goto fail;
+
+	ret = 0;
+fail:
+	EVP_MAC_CTX_free(ctx);
+	return ret;
+#else /* OpenSSL version >= 3.0 */
 	CMAC_CTX *ctx;
 	int ret = -1;
 	size_t outlen, i;
@@ -1777,6 +1817,7 @@ int omac1_aes_vector(const u8 *key, size_t key_len, size_t num_elem,
 fail:
 	CMAC_CTX_free(ctx);
 	return ret;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
