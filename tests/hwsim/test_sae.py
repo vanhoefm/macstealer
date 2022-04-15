@@ -2114,6 +2114,8 @@ def start_sae_pwe_ap(apdev, group, sae_pwe):
 def run_sae_pwe_group(dev, apdev, group):
     check_sae_capab(dev[0])
     tls = dev[0].request("GET tls_library")
+    if group == 25 and "run=BoringSSL" in tls:
+        raise HwsimSkip("Group 15 not supported")
     if group in [27, 28, 29, 30]:
         if tls.startswith("OpenSSL") and ("run=OpenSSL 1." in tls or "run=OpenSSL 3." in tls):
             logger.info("Add Brainpool EC groups since OpenSSL is new enough")
