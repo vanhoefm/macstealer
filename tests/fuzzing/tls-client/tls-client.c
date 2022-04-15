@@ -77,7 +77,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	params.ca_cert = CERTDIR "ca.pem";
 	params.client_cert = CERTDIR "server.pem";
 	params.private_key = CERTDIR "server.key";
-	params.dh_file = CERTDIR "dh.conf";
 
 	conn_client = tls_connection_init(tls_client);
 	if (!conn_client)
