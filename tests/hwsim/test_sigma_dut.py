@@ -807,8 +807,10 @@ def test_sigma_dut_suite_b_rsa(dev, apdev, params):
 
     try:
         tests = ["",
-                 ",TLSCipher,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-                 ",TLSCipher,TLS_DHE_RSA_WITH_AES_256_GCM_SHA384"]
+                 ",TLSCipher,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"]
+        tls = dev[0].request("GET tls_library")
+        if "run=BoringSSL" not in tls:
+            tests += [",TLSCipher,TLS_DHE_RSA_WITH_AES_256_GCM_SHA384"]
         for extra in tests:
             sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,PMF" % ifname)
             sigma_dut_cmd_check("sta_set_ip_config,interface,%s,dhcp,0,ip,127.0.0.11,mask,255.255.255.0" % ifname)
