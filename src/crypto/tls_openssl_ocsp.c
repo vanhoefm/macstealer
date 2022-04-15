@@ -663,8 +663,8 @@ enum ocsp_result check_ocsp_resp(SSL_CTX *ssl_ctx, SSL *ssl, X509 *cert,
 
 	if (!signer_trusted) {
 		X509_check_purpose(signer, -1, 0);
-		if ((signer->ex_flags & EXFLAG_XKUSAGE) &&
-		    (signer->ex_xkusage & XKU_OCSP_SIGN)) {
+		if ((X509_get_extension_flags(signer) & EXFLAG_XKUSAGE) &&
+		    (X509_get_extended_key_usage(signer) & XKU_OCSP_SIGN)) {
 			wpa_printf(MSG_DEBUG,
 				   "OpenSSL: OCSP signer certificate delegation OK");
 		} else {
