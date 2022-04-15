@@ -5043,69 +5043,6 @@ def test_ap_wpa2_eap_ttls_server_pkcs12_extra(dev, apdev):
                    ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAP",
                    scan_freq="2412")
 
-def test_ap_wpa2_eap_ttls_dh_params(dev, apdev):
-    """WPA2-Enterprise connection using EAP-TTLS/CHAP and setting DH params"""
-    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
-    hapd = hostapd.add_ap(apdev[0], params)
-    eap_connect(dev[0], hapd, "TTLS", "pap user",
-                anonymous_identity="ttls", password="password",
-                ca_cert="auth_serv/ca.der", phase2="auth=PAP",
-                dh_file="auth_serv/dh.conf")
-
-def test_ap_wpa2_eap_ttls_dh_params_dsa(dev, apdev):
-    """WPA2-Enterprise connection using EAP-TTLS and setting DH params (DSA)"""
-    check_dh_dsa_support(dev[0])
-    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
-    hapd = hostapd.add_ap(apdev[0], params)
-    eap_connect(dev[0], hapd, "TTLS", "pap user",
-                anonymous_identity="ttls", password="password",
-                ca_cert="auth_serv/ca.der", phase2="auth=PAP",
-                dh_file="auth_serv/dsaparam.pem")
-
-def test_ap_wpa2_eap_ttls_dh_params_not_found(dev, apdev):
-    """EAP-TTLS and DH params file not found"""
-    skip_with_fips(dev[0])
-    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
-    hostapd.add_ap(apdev[0], params)
-    dev[0].connect("test-wpa2-eap", key_mgmt="WPA-EAP", eap="TTLS",
-                   identity="mschap user", password="password",
-                   ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAP",
-                   dh_file="auth_serv/dh-no-such-file.conf",
-                   scan_freq="2412", wait_connect=False)
-    ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"])
-    if ev is None:
-        raise Exception("EAP failure timed out")
-    dev[0].request("REMOVE_NETWORK all")
-    dev[0].wait_disconnected()
-
-def test_ap_wpa2_eap_ttls_dh_params_invalid(dev, apdev):
-    """EAP-TTLS and invalid DH params file"""
-    skip_with_fips(dev[0])
-    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
-    hostapd.add_ap(apdev[0], params)
-    dev[0].connect("test-wpa2-eap", key_mgmt="WPA-EAP", eap="TTLS",
-                   identity="mschap user", password="password",
-                   ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAP",
-                   dh_file="auth_serv/ca.pem",
-                   scan_freq="2412", wait_connect=False)
-    ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"])
-    if ev is None:
-        raise Exception("EAP failure timed out")
-    dev[0].request("REMOVE_NETWORK all")
-    dev[0].wait_disconnected()
-
-def test_ap_wpa2_eap_ttls_dh_params_blob(dev, apdev):
-    """WPA2-Enterprise connection using EAP-TTLS/CHAP and setting DH params from blob"""
-    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
-    hapd = hostapd.add_ap(apdev[0], params)
-    dh = read_pem("auth_serv/dh2.conf")
-    if "OK" not in dev[0].request("SET blob dhparams " + binascii.hexlify(dh).decode()):
-        raise Exception("Could not set dhparams blob")
-    eap_connect(dev[0], hapd, "TTLS", "pap user",
-                anonymous_identity="ttls", password="password",
-                ca_cert="auth_serv/ca.der", phase2="auth=PAP",
-                dh_file="blob://dhparams")
-
 def test_ap_wpa2_eap_ttls_dh_params_server(dev, apdev):
     """WPA2-Enterprise using EAP-TTLS and alternative server dhparams"""
     params = int_eap_server_params()
