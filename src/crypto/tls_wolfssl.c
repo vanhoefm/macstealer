@@ -420,44 +420,6 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
 }
 
 
-static int tls_connection_dh(struct tls_connection *conn, const char *dh_file,
-			     const u8 *dh_blob, size_t blob_len)
-{
-	if (!dh_file && !dh_blob)
-		return 0;
-
-	wolfSSL_set_accept_state(conn->ssl);
-
-	if (dh_blob) {
-		if (wolfSSL_SetTmpDH_buffer(conn->ssl, dh_blob, blob_len,
-					    SSL_FILETYPE_ASN1) < 0) {
-			wpa_printf(MSG_INFO, "SSL: use DH DER blob failed");
-			return -1;
-		}
-		wpa_printf(MSG_DEBUG, "SSL: use DH blob OK");
-		return 0;
-	}
-
-	if (dh_file) {
-		wpa_printf(MSG_INFO, "SSL: use DH PEM file: %s", dh_file);
-		if (wolfSSL_SetTmpDH_file(conn->ssl, dh_file,
-					  SSL_FILETYPE_PEM) < 0) {
-			wpa_printf(MSG_INFO, "SSL: use DH PEM file failed");
-			if (wolfSSL_SetTmpDH_file(conn->ssl, dh_file,
-						  SSL_FILETYPE_ASN1) < 0) {
-				wpa_printf(MSG_INFO,
-					   "SSL: use DH DER file failed");
-				return -1;
-			}
-		}
-		wpa_printf(MSG_DEBUG, "SSL: use DH file OK");
-		return 0;
-	}
-
-	return 0;
-}
-
-
 static int tls_connection_client_cert(struct tls_connection *conn,
 				      const char *client_cert,
 				      const u8 *client_cert_blob,
@@ -1286,12 +1248,6 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 				       params->private_key_blob,
 				       params->private_key_blob_len) < 0) {
 		wpa_printf(MSG_INFO, "Error setting private key");
-		return -1;
-	}
-
-	if (tls_connection_dh(conn, params->dh_file, params->dh_blob,
-			      params->dh_blob_len) < 0) {
-		wpa_printf(MSG_INFO, "Error setting DH");
 		return -1;
 	}
 
