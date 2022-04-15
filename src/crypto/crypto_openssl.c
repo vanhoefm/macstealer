@@ -16,9 +16,6 @@
 #include <openssl/dh.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
-#ifdef CONFIG_OPENSSL_CMAC
-#include <openssl/cmac.h>
-#endif /* CONFIG_OPENSSL_CMAC */
 #ifdef CONFIG_ECC
 #include <openssl/ec.h>
 #include <openssl/x509.h>
@@ -28,6 +25,8 @@
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
+#else /* OpenSSL version >= 3.0 */
+#include <openssl/cmac.h>
 #endif /* OpenSSL version >= 3.0 */
 
 #include "common.h"
@@ -1739,7 +1738,6 @@ int crypto_get_random(void *buf, size_t len)
 }
 
 
-#ifdef CONFIG_OPENSSL_CMAC
 int omac1_aes_vector(const u8 *key, size_t key_len, size_t num_elem,
 		     const u8 *addr[], const size_t *len, u8 *mac)
 {
@@ -1838,7 +1836,6 @@ int omac1_aes_256(const u8 *key, const u8 *data, size_t data_len, u8 *mac)
 {
 	return omac1_aes_vector(key, 32, 1, &data, &data_len, mac);
 }
-#endif /* CONFIG_OPENSSL_CMAC */
 
 
 struct crypto_bignum * crypto_bignum_init(void)
