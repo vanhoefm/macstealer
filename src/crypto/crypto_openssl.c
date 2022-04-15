@@ -122,7 +122,10 @@ static const unsigned char * ASN1_STRING_get0_data(const ASN1_STRING *x)
 #endif /* OpenSSL version < 1.1.0 */
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10101000L
+#if OPENSSL_VERSION_NUMBER < 0x10101000L || \
+	defined(OPENSSL_IS_BORINGSSL) || \
+	(defined(LIBRESSL_VERSION_NUMBER) && \
+	 LIBRESSL_VERSION_NUMBER < 0x30400000L)
 static int EC_GROUP_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,
 			      BIGNUM *b, BN_CTX *ctx)
 {
