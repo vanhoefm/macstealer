@@ -24,12 +24,18 @@
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif /* OPENSSL_NO_ENGINE */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/core_names.h>
+#include <openssl/decoder.h>
+#include <openssl/param_build.h>
+#else /* OpenSSL version >= 3.0 */
 #ifndef OPENSSL_NO_DSA
 #include <openssl/dsa.h>
 #endif
 #ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
 #endif
+#endif /* OpenSSL version >= 3.0 */
 
 #include "common.h"
 #include "crypto.h"
@@ -3940,6 +3946,45 @@ static int tls_global_private_key(struct tls_data *data,
 }
 
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#ifndef OPENSSL_NO_DH
+#ifndef OPENSSL_NO_DSA
+/* This is needed to replace the deprecated DSA_dup_DH() function */
+static EVP_PKEY * openssl_dsa_to_dh(EVP_PKEY *dsa)
+{
+	OSSL_PARAM_BLD *bld = NULL;
+	OSSL_PARAM *params = NULL;
+	BIGNUM *p = NULL, *q = NULL, *g = NULL;
+	EVP_PKEY_CTX *ctx = NULL;
+	EVP_PKEY *pkey = NULL;
+
+	if (!EVP_PKEY_get_bn_param(dsa, OSSL_PKEY_PARAM_FFC_P, &p) ||
+	    !EVP_PKEY_get_bn_param(dsa, OSSL_PKEY_PARAM_FFC_Q, &q) ||
+	    !EVP_PKEY_get_bn_param(dsa, OSSL_PKEY_PARAM_FFC_G, &g) ||
+	    !(bld = OSSL_PARAM_BLD_new()) ||
+	    !OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_FFC_P, p) ||
+	    !OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_FFC_Q, q) ||
+	    !OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_FFC_G, g) ||
+	    !(params = OSSL_PARAM_BLD_to_param(bld)) ||
+	    !(ctx = EVP_PKEY_CTX_new_from_name(NULL, "DHX", NULL)) ||
+	    EVP_PKEY_fromdata_init(ctx) != 1 ||
+	    EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_KEY_PARAMETERS,
+			      params) != 1)
+		wpa_printf(MSG_INFO,
+			   "TLS: Failed to convert DSA parameters to DH parameters");
+
+	EVP_PKEY_CTX_free(ctx);
+	OSSL_PARAM_free(params);
+	OSSL_PARAM_BLD_free(bld);
+	BN_free(p);
+	BN_free(q);
+	BN_free(g);
+	return pkey;
+}
+#endif /* !OPENSSL_NO_DSA */
+#endif /* OPENSSL_NO_DH */
+#endif /* OpenSSL version >= 3.0 */
+
 static int tls_global_dh(struct tls_data *data, const char *dh_file)
 {
 #ifdef OPENSSL_NO_DH
@@ -3949,6 +3994,74 @@ static int tls_global_dh(struct tls_data *data, const char *dh_file)
 		   "dh_file specified");
 	return -1;
 #else /* OPENSSL_NO_DH */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	SSL_CTX *ssl_ctx = data->ssl;
+	BIO *bio;
+	OSSL_DECODER_CTX *ctx = NULL;
+	EVP_PKEY *pkey = NULL, *tmpkey = NULL;
+	bool dsa = false;
+
+	if (!dh_file)
+		return 0;
+	if (!ssl_ctx)
+		return -1;
+
+	bio = BIO_new_file(dh_file, "r");
+	if (!bio) {
+		wpa_printf(MSG_INFO, "TLS: Failed to open DH file '%s': %s",
+			   dh_file, ERR_error_string(ERR_get_error(), NULL));
+		return -1;
+	}
+	ctx = OSSL_DECODER_CTX_new_for_pkey(
+		&tmpkey, "PEM", NULL, NULL,
+		OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS, NULL, NULL);
+	if (!ctx ||
+	    OSSL_DECODER_from_bio(ctx, bio) != 1) {
+		wpa_printf(MSG_INFO,
+			   "TLS: Failed to decode domain parameters from '%s': %s",
+			   dh_file, ERR_error_string(ERR_get_error(), NULL));
+		BIO_free(bio);
+		return -1;
+	}
+	BIO_free(bio);
+
+	if (!tmpkey) {
+		wpa_printf(MSG_INFO, "TLS: Failed to load domain parameters");
+		return -1;
+	}
+
+#ifndef OPENSSL_NO_DSA
+	if (EVP_PKEY_is_a(tmpkey, "DSA")) {
+		pkey = openssl_dsa_to_dh(tmpkey);
+		EVP_PKEY_free(tmpkey);
+		if (!pkey)
+			return -1;
+		dsa = true;
+	}
+#endif /* !OPENSSL_NO_DSA */
+	if (!dsa) {
+		if (EVP_PKEY_is_a(tmpkey, "DH") ||
+		    EVP_PKEY_is_a(tmpkey, "DHX")) {
+		} else {
+			wpa_printf(MSG_INFO,
+				   "TLS: No DH parameters found in %s",
+				   dh_file);
+			EVP_PKEY_free(tmpkey);
+			return -1;
+		}
+		pkey = tmpkey;
+		tmpkey = NULL;
+	}
+
+	if (SSL_CTX_set0_tmp_dh_pkey(ssl_ctx, pkey) != 1) {
+		wpa_printf(MSG_INFO,
+			   "TLS: Failed to set DH params from '%s': %s",
+			   dh_file, ERR_error_string(ERR_get_error(), NULL));
+		EVP_PKEY_free(pkey);
+		return -1;
+	}
+	return 0;
+#else /* OpenSSL version >= 3.0 */
 	SSL_CTX *ssl_ctx = data->ssl;
 	DH *dh;
 	BIO *bio;
@@ -4010,6 +4123,7 @@ static int tls_global_dh(struct tls_data *data, const char *dh_file)
 	}
 	DH_free(dh);
 	return 0;
+#endif /* OpenSSL version >= 3.0 */
 #endif /* OPENSSL_NO_DH */
 }
 
