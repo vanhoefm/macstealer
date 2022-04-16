@@ -4001,10 +4001,12 @@ static int tls_global_dh(struct tls_data *data, const char *dh_file)
 	EVP_PKEY *pkey = NULL, *tmpkey = NULL;
 	bool dsa = false;
 
-	if (!dh_file)
-		return 0;
 	if (!ssl_ctx)
 		return -1;
+	if (!dh_file) {
+		SSL_CTX_set_dh_auto(ssl_ctx, 1);
+		return 0;
+	}
 
 	bio = BIO_new_file(dh_file, "r");
 	if (!bio) {
@@ -4066,10 +4068,14 @@ static int tls_global_dh(struct tls_data *data, const char *dh_file)
 	DH *dh;
 	BIO *bio;
 
-	if (dh_file == NULL)
-		return 0;
-	if (ssl_ctx == NULL)
+	if (!ssl_ctx)
 		return -1;
+	if (!dh_file) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		SSL_CTX_set_dh_auto(ssl_ctx, 1);
+#endif
+		return 0;
+	}
 
 	bio = BIO_new_file(dh_file, "r");
 	if (bio == NULL) {
