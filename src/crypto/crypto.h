@@ -1275,4 +1275,12 @@ struct wpabuf * crypto_csr_sign(struct crypto_csr *csr,
 				struct crypto_ec_key *key,
 				enum crypto_hash_alg algo);
 
+/**
+ * crypto_unload - Unload crypto resources
+ *
+ * This function is called just before the process exits to allow dynamic
+ * resource allocations to be freed.
+ */
+void crypto_unload(void);
+
 #endif /* CRYPTO_H */

@@ -1128,8 +1128,6 @@ void tls_deinit(void *ssl_ctx)
 
 	tls_openssl_ref_count--;
 	if (tls_openssl_ref_count == 0) {
-		void openssl_unload_legacy_provider(void);
-
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
 	(defined(LIBRESSL_VERSION_NUMBER) && \
 	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
@@ -1145,7 +1143,6 @@ void tls_deinit(void *ssl_ctx)
 		tls_global->ocsp_stapling_response = NULL;
 		os_free(tls_global);
 		tls_global = NULL;
-		openssl_unload_legacy_provider();
 	}
 
 	os_free(data->check_cert_subject);

@@ -15,6 +15,7 @@
 #include "common.h"
 #include "utils/ext_password.h"
 #include "common/version.h"
+#include "crypto/crypto.h"
 #include "crypto/tls.h"
 #include "config.h"
 #include "eapol_supp/eapol_supp_sm.h"
@@ -1549,6 +1550,7 @@ int main(int argc, char *argv[])
 	else
 		printf("SUCCESS\n");
 
+	crypto_unload();
 	os_program_deinit();
 
 	return ret;

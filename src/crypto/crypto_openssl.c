@@ -152,7 +152,7 @@ void openssl_load_legacy_provider(void)
 }
 
 
-void openssl_unload_legacy_provider(void)
+static void openssl_unload_legacy_provider(void)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (openssl_legacy_provider) {
@@ -3797,3 +3797,9 @@ struct wpabuf * crypto_csr_sign(struct crypto_csr *csr,
 }
 
 #endif /* CONFIG_ECC */
+
+
+void crypto_unload(void)
+{
+	openssl_unload_legacy_provider();
+}

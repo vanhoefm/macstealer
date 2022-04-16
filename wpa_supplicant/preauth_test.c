@@ -13,6 +13,7 @@
 #include <assert.h>
 
 #include "common.h"
+#include "crypto/crypto.h"
 #include "config.h"
 #include "eapol_supp/eapol_supp_sm.h"
 #include "eloop.h"
@@ -365,6 +366,7 @@ int main(int argc, char *argv[])
 
 	eloop_destroy();
 
+	crypto_unload();
 	os_program_deinit();
 
 	return ret;

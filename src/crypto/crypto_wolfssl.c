@@ -1823,3 +1823,8 @@ size_t crypto_ecdh_prime_len(struct crypto_ecdh *ecdh)
 }
 
 #endif /* CONFIG_ECC */
+
+
+void crypto_unload(void)
+{
+}
