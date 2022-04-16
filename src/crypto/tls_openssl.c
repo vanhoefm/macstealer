@@ -3831,6 +3831,7 @@ static int tls_connection_private_key(struct tls_data *data,
 		}
 #endif /* OPENSSL_NO_EC */
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if (SSL_use_RSAPrivateKey_ASN1(conn->ssl,
 					       (u8 *) private_key_blob,
 					       private_key_blob_len) == 1) {
@@ -3839,6 +3840,7 @@ static int tls_connection_private_key(struct tls_data *data,
 			ok = 1;
 			break;
 		}
+#endif
 
 		bio = BIO_new_mem_buf((u8 *) private_key_blob,
 				      private_key_blob_len);
