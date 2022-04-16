@@ -335,8 +335,7 @@ int tls_global_set_params(void *tls_ctx,
 		return -1;
 	}
 
-	if (tlsv1_set_dhparams(cred, params->dh_file, params->dh_blob,
-			       params->dh_blob_len)) {
+	if (tlsv1_set_dhparams(cred, params->dh_file, NULL, 0)) {
 		wpa_printf(MSG_INFO, "TLS: Failed to load DH parameters");
 		return -1;
 	}

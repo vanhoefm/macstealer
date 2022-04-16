@@ -3953,7 +3953,6 @@ static int tls_global_dh(struct tls_data *data, const char *dh_file)
 	DH *dh;
 	BIO *bio;
 
-	/* TODO: add support for dh_blob */
 	if (dh_file == NULL)
 		return 0;
 	if (ssl_ctx == NULL)

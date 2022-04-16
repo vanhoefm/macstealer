@@ -1383,24 +1383,9 @@ static int tls_global_private_key(void *ssl_ctx, const char *private_key,
 }
 
 
-static int tls_global_dh(void *ssl_ctx, const char *dh_file,
-			 const u8 *dh_blob, size_t blob_len)
+static int tls_global_dh(void *ssl_ctx, const char *dh_file)
 {
 	WOLFSSL_CTX *ctx = ssl_ctx;
-
-	if (!dh_file && !dh_blob)
-		return 0;
-
-	if (dh_blob) {
-		if (wolfSSL_CTX_SetTmpDH_buffer(ctx, dh_blob, blob_len,
-						SSL_FILETYPE_ASN1) < 0) {
-			wpa_printf(MSG_INFO,
-				   "SSL: global use DH DER blob failed");
-			return -1;
-		}
-		wpa_printf(MSG_DEBUG, "SSL: global use DH blob OK");
-		return 0;
-	}
 
 	if (dh_file) {
 		if (wolfSSL_CTX_SetTmpDH_file(ctx, dh_file, SSL_FILETYPE_PEM) <
@@ -1488,8 +1473,7 @@ int tls_global_set_params(void *tls_ctx,
 		return -1;
 	}
 
-	if (tls_global_dh(tls_ctx, params->dh_file, params->dh_blob,
-			  params->dh_blob_len) < 0) {
+	if (tls_global_dh(tls_ctx, params->dh_file) < 0) {
 		wpa_printf(MSG_INFO, "SSL: Failed to load DH file '%s'",
 			   params->dh_file);
 		return -1;

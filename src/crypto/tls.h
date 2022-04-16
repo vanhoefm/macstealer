@@ -148,8 +148,6 @@ struct tls_config {
  * @private_key_passwd: Passphrase for decrypted private key, %NULL if no
  * passphrase is used.
  * @dh_file: File name for DH/DSA data in PEM format, or %NULL if not used
- * @dh_blob: dh_file as inlined data or %NULL if not used
- * @dh_blob_len: dh_blob length
  * @engine: 1 = use engine (e.g., a smartcard) for private key operations
  * (this is OpenSSL specific for now)
  * @engine_id: engine id string (this is OpenSSL specific for now)
@@ -198,8 +196,6 @@ struct tls_connection_params {
 	const char *private_key_passwd;
 	const char *private_key_passwd2;
 	const char *dh_file;
-	const u8 *dh_blob;
-	size_t dh_blob_len;
 
 	/* OpenSSL specific variables */
 	int engine;
