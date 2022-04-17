@@ -1706,33 +1706,37 @@ int crypto_ec_point_cmp(const struct crypto_ec *e,
 
 struct crypto_ecdh {
 	struct crypto_ec *ec;
+	WC_RNG rng;
 };
 
 struct crypto_ecdh * crypto_ecdh_init(int group)
 {
 	struct crypto_ecdh *ecdh = NULL;
-	WC_RNG rng;
 	int ret;
-
-	if (wc_InitRng(&rng) != 0)
-		goto fail;
 
 	ecdh = os_zalloc(sizeof(*ecdh));
 	if (!ecdh)
+		goto fail;
+
+	if (wc_InitRng(&ecdh->rng) != 0)
 		goto fail;
 
 	ecdh->ec = crypto_ec_init(group);
 	if (!ecdh->ec)
 		goto fail;
 
-	ret = wc_ecc_make_key_ex(&rng, ecdh->ec->key.dp->size, &ecdh->ec->key,
-				 ecdh->ec->key.dp->id);
+	ret = wc_ecc_make_key_ex(&ecdh->rng, ecdh->ec->key.dp->size,
+				 &ecdh->ec->key, ecdh->ec->key.dp->id);
 	if (ret < 0)
 		goto fail;
 
-done:
-	wc_FreeRng(&rng);
+#ifdef ECC_TIMING_RESISTANT
+	ret = wc_ecc_set_rng(&ecdh->ec->key, &ecdh->rng);
+	if (ret < 0)
+		goto fail;
+#endif /* ECC_TIMING_RESISTANT */
 
+done:
 	return ecdh;
 fail:
 	crypto_ecdh_deinit(ecdh);
@@ -1745,6 +1749,7 @@ void crypto_ecdh_deinit(struct crypto_ecdh *ecdh)
 {
 	if (ecdh) {
 		crypto_ec_deinit(ecdh->ec);
+		wc_FreeRng(&ecdh->rng);
 		os_free(ecdh);
 	}
 }
