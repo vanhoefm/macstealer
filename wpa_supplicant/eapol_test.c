@@ -773,20 +773,20 @@ static void ieee802_1x_decapsulate_radius(struct eapol_test_data *e)
 	msg = e->last_recv_radius;
 
 	eap = radius_msg_get_eap(msg);
-	if (eap == NULL) {
-		/* draft-aboba-radius-rfc2869bis-20.txt, Chap. 2.6.3:
+	if (!eap) {
+		/* RFC 3579, Chap. 2.6.3:
 		 * RADIUS server SHOULD NOT send Access-Reject/no EAP-Message
 		 * attribute */
-		wpa_printf(MSG_DEBUG, "could not extract "
-			       "EAP-Message from RADIUS message");
+		wpa_printf(MSG_DEBUG,
+			   "could not extract EAP-Message from RADIUS message");
 		wpabuf_free(e->last_eap_radius);
 		e->last_eap_radius = NULL;
 		return;
 	}
 
 	if (wpabuf_len(eap) < sizeof(*hdr)) {
-		wpa_printf(MSG_DEBUG, "too short EAP packet "
-			       "received from authentication server");
+		wpa_printf(MSG_DEBUG,
+			   "too short EAP packet received from authentication server");
 		wpabuf_free(eap);
 		return;
 	}
@@ -822,11 +822,11 @@ static void ieee802_1x_decapsulate_radius(struct eapol_test_data *e)
 		wpa_hexdump_buf(MSG_DEBUG, "Decapsulated EAP packet", eap);
 		break;
 	}
-	wpa_printf(MSG_DEBUG, "decapsulated EAP packet (code=%d "
-		       "id=%d len=%d) from RADIUS server: %s",
-		      hdr->code, hdr->identifier, ntohs(hdr->length), buf);
-
-	/* sta->eapol_sm->be_auth.idFromServer = hdr->identifier; */
+	buf[sizeof(buf) - 1] = '\0';
+	wpa_printf(MSG_DEBUG,
+		   "decapsulated EAP packet (code=%d id=%d len=%d) from RADIUS server: %s",
+		   hdr->code, hdr->identifier, be_to_host16(hdr->length),
+		   buf);
 
 	wpabuf_free(e->last_eap_radius);
 	e->last_eap_radius = eap;
@@ -859,7 +859,7 @@ static void ieee802_1x_get_keys(struct eapol_test_data *e,
 
 	keys = radius_msg_get_ms_keys(msg, req, shared_secret,
 				      shared_secret_len);
-	if (keys && keys->send == NULL && keys->recv == NULL) {
+	if (keys && !keys->send && !keys->recv) {
 		os_free(keys);
 		keys = radius_msg_get_cisco_keys(msg, req, shared_secret,
 						 shared_secret_len);
@@ -920,20 +920,19 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 	    radius_msg_get_attr(msg, RADIUS_ATTR_MESSAGE_AUTHENTICATOR, NULL,
 				0) < 0 &&
 	    radius_msg_get_attr(msg, RADIUS_ATTR_EAP_MESSAGE, NULL, 0) < 0) {
-		wpa_printf(MSG_DEBUG, "Allowing RADIUS "
-			      "Access-Reject without Message-Authenticator "
-			      "since it does not include EAP-Message\n");
+		wpa_printf(MSG_DEBUG,
+			   "Allowing RADIUS Access-Reject without Message-Authenticator since it does not include EAP-Message");
 	} else if (radius_msg_verify(msg, shared_secret, shared_secret_len,
 				     req, 1)) {
-		printf("Incoming RADIUS packet did not have correct "
-		       "Message-Authenticator - dropped\n");
-		return RADIUS_RX_UNKNOWN;
+		wpa_printf(MSG_INFO,
+			   "Incoming RADIUS packet did not have correct Message-Authenticator - dropped");
+		return RADIUS_RX_INVALID_AUTHENTICATOR;
 	}
 
 	if (hdr->code != RADIUS_CODE_ACCESS_ACCEPT &&
 	    hdr->code != RADIUS_CODE_ACCESS_REJECT &&
 	    hdr->code != RADIUS_CODE_ACCESS_CHALLENGE) {
-		printf("Unknown RADIUS message code\n");
+		wpa_printf(MSG_INFO, "Unknown RADIUS message code");
 		return RADIUS_RX_UNKNOWN;
 	}
 
