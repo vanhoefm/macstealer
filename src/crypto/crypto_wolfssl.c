@@ -682,6 +682,7 @@ void * dh5_init(struct wpabuf **priv, struct wpabuf **publ)
 	    != 0)
 		goto done;
 
+	priv_sz = pub_sz = RFC3526_LEN;
 	if (wc_DhGenerateKeyPair(dh, &rng, wpabuf_mhead(privkey), &priv_sz,
 				 wpabuf_mhead(pubkey), &pub_sz) != 0)
 		goto done;
@@ -815,6 +816,7 @@ int crypto_dh_init(u8 generator, const u8 *prime, size_t prime_len, u8 *privkey,
 	if (wc_DhSetKey(dh, prime, prime_len, &generator, 1) != 0)
 		goto done;
 
+	priv_sz = pub_sz = prime_len;
 	if (wc_DhGenerateKeyPair(dh, &rng, privkey, &priv_sz, pubkey, &pub_sz)
 	    != 0)
 		goto done;
