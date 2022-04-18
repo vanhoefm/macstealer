@@ -701,8 +701,7 @@ static int tls_match_suffix_helper(WOLFSSL_X509 *cert, const char *match,
 		WOLFSSL_X509_NAME_ENTRY *e;
 		WOLFSSL_ASN1_STRING *cn;
 
-		i = wolfSSL_X509_NAME_get_index_by_NID(name, ASN_COMMON_NAME,
-						       i);
+		i = wolfSSL_X509_NAME_get_index_by_NID(name, NID_commonName, i);
 		if (i == -1)
 			break;
 		e = wolfSSL_X509_NAME_get_entry(name, i);
