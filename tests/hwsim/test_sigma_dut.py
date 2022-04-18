@@ -5208,7 +5208,7 @@ def test_sigma_dut_ap_gtk_rekey(dev, apdev, params):
 
 def test_sigma_dut_sae_pk(dev, apdev):
     """sigma_dut controlled STA using SAE-PK"""
-    check_sae_capab(dev[0])
+    check_sae_pk_capab(dev[0])
 
     ifname = dev[0].ifname
     sigma = start_sigma_dut(ifname)
@@ -5294,7 +5294,7 @@ def test_sigma_dut_ap_sae_pk(dev, apdev, params):
     """sigma_dut controlled AP using SAE-PK"""
     logdir = params['prefix'] + ".sigma-hostapd"
     conffile = params['prefix'] + ".sigma-conf"
-    check_sae_capab(dev[0])
+    check_sae_pk_capab(dev[0])
     tests = [("SAEPK-4.7.1.1", "ya3o-zvm2-r4so", "saepk1.pem",
               "faa1ef5094bdb4cb2836332ca2c09839", False),
              ("SAEPK-4.7.1.2", "xcc2-qwru-yg23", "saepk1.pem",
@@ -5353,7 +5353,7 @@ def test_sigma_dut_ap_sae_pk_misbehavior(dev, apdev, params):
     """sigma_dut controlled AP using SAE-PK misbehavior"""
     logdir = params['prefix'] + ".sigma-hostapd"
     conffile = params['prefix'] + ".sigma-conf"
-    check_sae_capab(dev[0])
+    check_sae_pk_capab(dev[0])
     ssid = "SAEPK-4.7.1.1"
     pw = "rmj3-ya7b-42k4"
     keypair = "saepk1.pem"
