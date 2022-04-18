@@ -2767,6 +2767,7 @@ def test_dpp_hostapd_configurator(dev, apdev):
 
 def test_dpp_hostapd_configurator_enrollee_v1(dev, apdev):
     """DPP with hostapd as configurator/initiator with v1 enrollee"""
+    check_dpp_capab(dev[0])
     dev[0].set("dpp_version_override", "1")
     run_dpp_hostapd_configurator(dev, apdev)
 
