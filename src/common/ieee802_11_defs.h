@@ -490,6 +490,11 @@
 #define WLAN_EID_EXT_REJECTED_GROUPS 92
 #define WLAN_EID_EXT_ANTI_CLOGGING_TOKEN 93
 #define WLAN_EID_EXT_PASN_PARAMS 100
+#define WLAN_EID_EXT_EHT_OPERATION 106
+#define WLAN_EID_EXT_MULTI_LINK 107
+#define WLAN_EID_EXT_EHT_CAPABILITIES 108
+#define WLAN_EID_EXT_TID_TO_LINK_MAPPING 109
+#define WLAN_EID_EXT_MULTI_LINK_TRAFFIC_INDICATION 110
 
 /* Extended Capabilities field */
 #define WLAN_EXT_CAPAB_20_40_COEX 0
@@ -2405,6 +2410,105 @@ struct ieee80211_he_mu_edca_parameter_set {
 #define RNR_BSS_PARAM_UNSOLIC_PROBE_RESP_ACTIVE     BIT(5)
 #define RNR_BSS_PARAM_CO_LOCATED                    BIT(6)
 #define RNR_20_MHZ_PSD_MAX_TXPOWER                  255 /* dBm */
+
+/* IEEE P802.11be/D1.5, 9.4.2.311 - EHT Operation element */
+
+/* Figure 9-1002b: EHT Operation Parameters field subfields */
+#define EHT_OPER_INFO_PRESENT                          BIT(0)
+#define EHT_OPER_DISABLED_SUBCHAN_BITMAP_PRESENT       BIT(1)
+
+/* Control subfield: Channel Width subfield; see Table 9-401b */
+#define EHT_OPER_CHANNEL_WIDTH_20MHZ                   0
+#define EHT_OPER_CHANNEL_WIDTH_40MHZ                   1
+#define EHT_OPER_CHANNEL_WIDTH_80MHZ                   2
+#define EHT_OPER_CHANNEL_WIDTH_160MHZ                  3
+#define EHT_OPER_CHANNEL_WIDTH_320MHZ                  4
+
+/* Figure 9-1002c: EHT Operation Information field format */
+struct ieee80211_eht_oper_info {
+	u8 control; /* B0..B2: Channel Width */
+	u8 ccfs0;
+	u8 ccfs1;
+	le16 disabled_chan_bitmap; /* 0 or 2 octets */
+} STRUCT_PACKED;
+
+/* Figure 9-1002a: EHT Operation element format */
+struct ieee80211_eht_operation {
+	u8 oper_params; /* EHT Operation Parameters: EHT_OPER_* bits */
+	struct ieee80211_eht_oper_info oper_info; /* 0 or 3 or 5 octets */
+} STRUCT_PACKED;
+
+/* IEEE P802.11be/D1.5, 9.4.2.313 - EHT Capabilities element */
+
+/* Figure 9-1002af: EHT MAC Capabilities Information field */
+#define EHT_MACCAP_EPCS_PRIO			BIT(0)
+#define EHT_MACCAP_OM_CONTROL			BIT(1)
+#define EHT_MACCAP_TRIGGERED_TXOP_MODE1		BIT(2)
+#define EHT_MACCAP_TRIGGERED_TXOP_MODE2		BIT(3)
+#define EHT_MACCAP_RESTRICTED_TWT		BIT(4)
+#define EHT_MACCAP_SCS_TRAFFIC_DESC		BIT(5)
+#define EHT_MACCAP_MAX_MPDU_LEN_MASK		(BIT(6) | BIT(7))
+#define EHT_MACCAP_MAX_MPDU_LEN_3895		0
+#define EHT_MACCAP_MAX_MPDU_LEN_7991		BIT(6)
+#define EHT_MACCAP_MAX_MPDU_LEN_11454		BIT(7)
+#define EHT_MACCAP_MAX_AMPDU_LEN_EXP_EXT	BIT(8)
+
+/* Figure 9-1002ag: EHT PHY Capabilities Information field format
+ * _IDX indicates the octet index within the field */
+#define EHT_PHY_CAPAB_LEN			9
+
+#define EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX	0
+#define EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK	((u8) BIT(1))
+
+#define EHT_PHYCAP_SU_BEAMFORMER_IDX		0
+#define EHT_PHYCAP_SU_BEAMFORMER		((u8) BIT(5))
+#define EHT_PHYCAP_SU_BEAMFORMEE_IDX		0
+#define EHT_PHYCAP_SU_BEAMFORMEE		((u8) BIT(6))
+
+#define EHT_PHYCAP_PPE_THRESHOLD_PRESENT_IDX	5
+#define EHT_PHYCAP_PPE_THRESHOLD_PRESENT	((u8) BIT(3))
+
+#define EHT_PHYCAP_MU_BEAMFORMER_IDX		7
+#define EHT_PHYCAP_MU_BEAMFORMER_80MHZ		((u8) BIT(4))
+#define EHT_PHYCAP_MU_BEAMFORMER_160MHZ		((u8) BIT(5))
+#define EHT_PHYCAP_MU_BEAMFORMER_320MHZ		((u8) BIT(6))
+#define EHT_PHYCAP_MU_BEAMFORMER_MASK	(EHT_PHYCAP_MU_BEAMFORMER_80MHZ | \
+					 EHT_PHYCAP_MU_BEAMFORMER_160MHZ | \
+					 EHT_PHYCAP_MU_BEAMFORMER_320MHZ)
+
+/* Figure 9-1002ah: Supported EHT-MCS and NSS Set field format */
+#define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY	4
+#define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS	3
+
+#define EHT_MCS_NSS_CAPAB_LEN			9
+/*
+ * Figure 9-1002ak: EHT PPE Thresholds field format
+ * Maximum PPE threshold length: 62 octets
+ * NSS: 4 bits (maximum NSS: 16), RU index: 5 bits, each pair: 6 bits
+ * 4 + 5 + 5 * 16 * 6 = 489 bits, Padding: 7 bits
+ */
+#define EHT_PPE_THRESH_CAPAB_LEN		62
+
+/* 9.4.2.313.5: EHT PPE Thresholds field */
+#define EHT_PPE_THRES_NSS_SHIFT			0
+#define EHT_PPE_THRES_NSS_MASK			((u8) (BIT(0) | BIT(1) | \
+						       BIT(2) | BIT(3)))
+#define EHT_PPE_THRES_RU_INDEX_SHIFT		4
+#define EHT_PPE_THRES_RU_INDEX_MASK		((u8) (BIT(4) | BIT(5) | \
+						       BIT(6) | BIT(7) | \
+						       BIT(8)))
+
+#define EHT_NSS_MAX_STREAMS			8
+
+/* Figure 9-1002ae: EHT Capabilities element format */
+struct ieee80211_eht_capabilities {
+	/* EHT MAC Capabilities Information */
+	le16 mac_cap;
+	/* EHT PHY Capabilities Information */
+	u8 phy_cap[EHT_PHY_CAPAB_LEN];
+	/* Supported EHT-MCS And NSS Set and EHT PPE thresholds (Optional) */
+	u8 optional[EHT_MCS_NSS_CAPAB_LEN + EHT_PPE_THRESH_CAPAB_LEN];
+} STRUCT_PACKED;
 
 /* IEEE P802.11ay/D4.0, 9.4.2.251 - EDMG Operation element */
 #define EDMG_BSS_OPERATING_CHANNELS_OFFSET	6
