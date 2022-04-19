@@ -158,6 +158,13 @@ CONFIG_IPV6=y
 # IEEE 802.11ax HE support
 #CONFIG_IEEE80211AX=y
 
+# IEEE 802.11be EHT support
+# CONFIG_IEEE80211AX is mandatory for setting CONFIG_IEEE80211BE.
+# Note: This is experimental and work in progress. The definitions are still
+# subject to change and this should not be expected to interoperate with the
+# final IEEE 802.11be version.
+#CONFIG_IEEE80211BE=y
+
 # Simultaneous Authentication of Equals (SAE), WPA3-Personal
 #CONFIG_SAE=y
 

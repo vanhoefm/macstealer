@@ -541,6 +541,7 @@ struct hostapd_bss_config {
 	bool disable_11n;
 	bool disable_11ac;
 	bool disable_11ax;
+	bool disable_11be;
 
 	/* IEEE 802.11v */
 	int time_advertisement;
@@ -1114,6 +1115,8 @@ struct hostapd_config {
 	unsigned int airtime_update_interval;
 #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
 #endif /* CONFIG_AIRTIME_POLICY */
+
+	int ieee80211be;
 };
 
 

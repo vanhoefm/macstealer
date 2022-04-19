@@ -1435,6 +1435,14 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 	}
 #endif /* CONFIG_FILS */
 
+#ifdef CONFIG_IEEE80211BE
+	if (full_config && !bss->disable_11be && bss->disable_11ax) {
+		bss->disable_11be = true;
+		wpa_printf(MSG_INFO,
+			   "Disabling IEEE 802.11be as IEEE 802.11ax is disabled for this BSS");
+	}
+#endif /* CONFIG_IEEE80211BE */
+
 	return 0;
 }
 
@@ -1509,6 +1517,14 @@ int hostapd_config_check(struct hostapd_config *conf, int full_config)
 		if (hostapd_config_check_cw(conf, i))
 			return -1;
 	}
+
+#ifdef CONFIG_IEEE80211BE
+	if (full_config && conf->ieee80211be && !conf->ieee80211ax) {
+		wpa_printf(MSG_ERROR,
+			   "Cannot set ieee80211be without ieee80211ax");
+		return -1;
+	}
+#endif /* CONFIG_IEEE80211BE */
 
 	for (i = 0; i < conf->num_bss; i++) {
 		if (hostapd_config_check_bss(conf->bss[i], conf, full_config))
