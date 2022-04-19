@@ -4936,6 +4936,7 @@ static int add_associated_sta(struct hostapd_data *hapd,
 	struct ieee80211_ht_capabilities ht_cap;
 	struct ieee80211_vht_capabilities vht_cap;
 	struct ieee80211_he_capabilities he_cap;
+	struct ieee80211_eht_capabilities eht_cap;
 	int set = 1;
 
 	/*
@@ -4992,6 +4993,11 @@ static int add_associated_sta(struct hostapd_data *hapd,
 				     sta->he_capab_len);
 	}
 #endif /* CONFIG_IEEE80211AX */
+#ifdef CONFIG_IEEE80211BE
+	if (sta->flags & WLAN_STA_EHT)
+		hostapd_get_eht_capab(hapd, sta->eht_capab, &eht_cap,
+				      sta->eht_capab_len);
+#endif /* CONFIG_IEEE80211BE */
 
 	/*
 	 * Add the station with forced WLAN_STA_ASSOC flag. The sta->flags
@@ -5005,6 +5011,8 @@ static int add_associated_sta(struct hostapd_data *hapd,
 			    sta->flags & WLAN_STA_VHT ? &vht_cap : NULL,
 			    sta->flags & WLAN_STA_HE ? &he_cap : NULL,
 			    sta->flags & WLAN_STA_HE ? sta->he_capab_len : 0,
+			    sta->flags & WLAN_STA_EHT ? &eht_cap : NULL,
+			    sta->flags & WLAN_STA_EHT ? sta->eht_capab_len : 0,
 			    sta->he_6ghz_capab,
 			    sta->flags | WLAN_STA_ASSOC, sta->qosinfo,
 			    sta->vht_opmode, sta->p2p_ie ? 1 : 0,

@@ -78,6 +78,10 @@ void hostapd_get_he_capab(struct hostapd_data *hapd,
 			  const struct ieee80211_he_capabilities *he_cap,
 			  struct ieee80211_he_capabilities *neg_he_cap,
 			  size_t he_capab_len);
+void hostapd_get_eht_capab(struct hostapd_data *hapd,
+			   const struct ieee80211_eht_capabilities *src,
+			   struct ieee80211_eht_capabilities *dest,
+			   size_t len);
 int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta);
 u16 copy_sta_ht_capab(struct hostapd_data *hapd, struct sta_info *sta,
 		      const u8 *ht_capab);

@@ -1553,7 +1553,7 @@ int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta)
 	if (hostapd_sta_add(hapd, sta->addr, 0, 0,
 			    sta->supported_rates,
 			    sta->supported_rates_len,
-			    0, NULL, NULL, NULL, 0, NULL,
+			    0, NULL, NULL, NULL, 0, NULL, 0, NULL,
 			    sta->flags, 0, 0, 0, 0)) {
 		hostapd_logger(hapd, sta->addr,
 			       HOSTAPD_MODULE_IEEE80211,

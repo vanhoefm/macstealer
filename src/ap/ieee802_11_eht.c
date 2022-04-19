@@ -336,3 +336,20 @@ u16 copy_sta_eht_capab(struct hostapd_data *hapd, struct sta_info *sta,
 
 	return WLAN_STATUS_SUCCESS;
 }
+
+
+void hostapd_get_eht_capab(struct hostapd_data *hapd,
+			   const struct ieee80211_eht_capabilities *src,
+			   struct ieee80211_eht_capabilities *dest,
+			   size_t len)
+{
+	if (!src || !dest)
+		return;
+
+	if (len > sizeof(*dest))
+		len = sizeof(*dest);
+	/* TODO: mask out unsupported features */
+
+	os_memset(dest, 0, sizeof(*dest));
+	os_memcpy(dest, src, len);
+}
