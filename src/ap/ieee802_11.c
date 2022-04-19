@@ -4554,6 +4554,17 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 		}
 	}
 #endif /* CONFIG_IEEE80211AX */
+#ifdef CONFIG_IEEE80211BE
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
+		resp = copy_sta_eht_capab(hapd, sta, IEEE80211_MODE_AP,
+					  elems.he_capabilities,
+					  elems.he_capabilities_len,
+					  elems.eht_capabilities,
+					  elems.eht_capabilities_len);
+		if (resp != WLAN_STATUS_SUCCESS)
+			return resp;
+	}
+#endif /* CONFIG_IEEE80211BE */
 
 #ifdef CONFIG_P2P
 	if (elems.p2p) {

@@ -9,6 +9,7 @@
 #include "utils/includes.h"
 #include "utils/common.h"
 #include "hostapd.h"
+#include "sta_info.h"
 #include "ieee802_11.h"
 
 
@@ -215,4 +216,123 @@ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
 	oper->oper_info.ccfs1 = seg1;
 
 	return pos + 4;
+}
+
+
+static bool check_valid_eht_mcs_nss(struct hostapd_data *hapd, const u8 *ap_mcs,
+				    const u8 *sta_mcs, u8 mcs_count, u8 map_len)
+{
+	unsigned int i, j;
+
+	for (i = 0; i < mcs_count; i++) {
+		ap_mcs += i * 3;
+		sta_mcs += i * 3;
+
+		for (j = 0; j < map_len; j++) {
+			if (((ap_mcs[j] >> 4) & 0xFF) == 0)
+				continue;
+
+			if ((sta_mcs[j] & 0xFF) == 0)
+				continue;
+
+			return true;
+		}
+	}
+
+	wpa_printf(MSG_DEBUG,
+		   "No matching EHT MCS found between AP TX and STA RX");
+	return false;
+}
+
+
+static bool check_valid_eht_mcs(struct hostapd_data *hapd,
+				const u8 *sta_eht_capab,
+				enum ieee80211_op_mode opmode)
+{
+	struct hostapd_hw_modes *mode;
+	const struct ieee80211_eht_capabilities *capab;
+	const u8 *ap_mcs, *sta_mcs;
+	u8 mcs_count = 1;
+
+	mode = hapd->iface->current_mode;
+	if (!mode)
+		return true;
+
+	ap_mcs = mode->eht_capab[opmode].mcs;
+	capab = (const struct ieee80211_eht_capabilities *) sta_eht_capab;
+	sta_mcs = capab->optional;
+
+	if (ieee80211_eht_mcs_set_size(mode->he_capab[opmode].phy_cap,
+				       mode->eht_capab[opmode].phy_cap) ==
+	    EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY)
+		return check_valid_eht_mcs_nss(
+			hapd, ap_mcs, sta_mcs, 1,
+			EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
+
+	switch (hapd->iface->conf->eht_oper_chwidth) {
+	/* TODO: CHANWIDTH_320MHZ */
+	case CHANWIDTH_80P80MHZ:
+	case CHANWIDTH_160MHZ:
+		mcs_count = 2;
+		break;
+	}
+
+	return check_valid_eht_mcs_nss(hapd, ap_mcs, sta_mcs, mcs_count,
+				       EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS);
+}
+
+
+static bool ieee80211_invalid_eht_cap_size(const u8 *he_cap, const u8 *eht_cap,
+					   size_t len)
+{
+	const struct ieee80211_he_capabilities *he_capab;
+	struct ieee80211_eht_capabilities *cap;
+	const u8 *he_phy_cap;
+	size_t cap_len;
+
+	he_capab = (const struct ieee80211_he_capabilities *) he_cap;
+	he_phy_cap = he_capab->he_phy_capab_info;
+	cap = (struct ieee80211_eht_capabilities *) eht_cap;
+	cap_len = sizeof(*cap);
+	if (len < cap_len)
+		return true;
+
+	cap_len += ieee80211_eht_mcs_set_size(he_phy_cap, cap->phy_cap);
+	if (len < cap_len)
+		return true;
+
+	cap_len += ieee80211_eht_ppet_size(&eht_cap[cap_len], cap->phy_cap);
+
+	return len < cap_len;
+}
+
+
+u16 copy_sta_eht_capab(struct hostapd_data *hapd, struct sta_info *sta,
+		       enum ieee80211_op_mode opmode,
+		       const u8 *he_capab, size_t he_capab_len,
+		       const u8 *eht_capab, size_t eht_capab_len)
+{
+	if (!hapd->iconf->ieee80211be || hapd->conf->disable_11be ||
+	    !he_capab || he_capab_len < IEEE80211_HE_CAPAB_MIN_LEN ||
+	    !eht_capab ||
+	    ieee80211_invalid_eht_cap_size(he_capab, eht_capab,
+					   eht_capab_len) ||
+	    !check_valid_eht_mcs(hapd, eht_capab, opmode)) {
+		sta->flags &= ~WLAN_STA_EHT;
+		os_free(sta->eht_capab);
+		sta->eht_capab = NULL;
+		return WLAN_STATUS_SUCCESS;
+	}
+
+	os_free(sta->eht_capab);
+	sta->eht_capab = os_memdup(eht_capab, eht_capab_len);
+	if (!sta->eht_capab) {
+		sta->eht_capab_len = 0;
+		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+	}
+
+	sta->flags |= WLAN_STA_EHT;
+	sta->eht_capab_len = eht_capab_len;
+
+	return WLAN_STATUS_SUCCESS;
 }

@@ -358,6 +358,7 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
 	os_free(sta->vht_operation);
 	os_free(sta->he_capab);
 	os_free(sta->he_6ghz_capab);
+	os_free(sta->eht_capab);
 	hostapd_free_psk_list(sta->psk);
 	os_free(sta->identity);
 	os_free(sta->radius_cui);
