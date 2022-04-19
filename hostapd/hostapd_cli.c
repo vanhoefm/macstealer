@@ -1169,7 +1169,7 @@ static int hostapd_cli_cmd_chan_switch(struct wpa_ctrl *ctrl,
 		       "arguments (count and freq)\n"
 		       "usage: <cs_count> <freq> [sec_channel_offset=] "
 		       "[center_freq1=] [center_freq2=] [bandwidth=] "
-		       "[blocktx] [ht|vht]\n");
+		       "[blocktx] [ht|vht|he|eht]\n");
 		return -1;
 	}
 

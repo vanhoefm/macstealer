@@ -865,10 +865,11 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
 
 	hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
 		       HOSTAPD_LEVEL_INFO,
-		       "driver %s channel switch: freq=%d, ht=%d, vht_ch=0x%x, he_ch=0x%x, offset=%d, width=%d (%s), cf1=%d, cf2=%d",
+		       "driver %s channel switch: freq=%d, ht=%d, vht_ch=0x%x, he_ch=0x%x, eht_ch=0x%x, offset=%d, width=%d (%s), cf1=%d, cf2=%d",
 		       finished ? "had" : "starting",
 		       freq, ht, hapd->iconf->ch_switch_vht_config,
-		       hapd->iconf->ch_switch_he_config, offset,
+		       hapd->iconf->ch_switch_he_config,
+		       hapd->iconf->ch_switch_eht_config, offset,
 		       width, channel_width_to_string(width), cf1, cf2);
 
 	if (!hapd->iface->current_mode) {
@@ -948,9 +949,23 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
 		else if (hapd->iconf->ch_switch_he_config &
 			 CH_SWITCH_HE_DISABLED)
 			hapd->iconf->ieee80211ax = 0;
+#ifdef CONFIG_IEEE80211BE
+	} else if (hapd->iconf->ch_switch_eht_config) {
+		/* CHAN_SWITCH EHT config */
+		if (hapd->iconf->ch_switch_eht_config &
+		    CH_SWITCH_EHT_ENABLED) {
+			hapd->iconf->ieee80211be = 1;
+			hapd->iconf->ieee80211ax = 1;
+			if (!is_6ghz_freq(hapd->iface->freq))
+				hapd->iconf->ieee80211ac = 1;
+		} else if (hapd->iconf->ch_switch_eht_config &
+			   CH_SWITCH_EHT_DISABLED)
+			hapd->iconf->ieee80211be = 0;
+#endif /* CONFIG_IEEE80211BE */
 	}
 	hapd->iconf->ch_switch_vht_config = 0;
 	hapd->iconf->ch_switch_he_config = 0;
+	hapd->iconf->ch_switch_eht_config = 0;
 
 	if (width == CHAN_WIDTH_40 || width == CHAN_WIDTH_80 ||
 	    width == CHAN_WIDTH_80P80 || width == CHAN_WIDTH_160)

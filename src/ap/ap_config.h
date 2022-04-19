@@ -1131,6 +1131,11 @@ struct hostapd_config {
 	u8 eht_oper_centr_freq_seg0_idx;
 	struct eht_phy_capabilities_info eht_phy_capab;
 #endif /* CONFIG_IEEE80211BE */
+
+	/* EHT enable/disable config from CHAN_SWITCH */
+#define CH_SWITCH_EHT_ENABLED BIT(0)
+#define CH_SWITCH_EHT_DISABLED BIT(1)
+	unsigned int ch_switch_eht_config;
 };
 
 

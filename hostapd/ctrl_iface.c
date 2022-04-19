@@ -2571,7 +2571,7 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
 
 	for (i = 0; i < iface->num_bss; i++) {
 
-		/* Save CHAN_SWITCH VHT and HE config */
+		/* Save CHAN_SWITCH VHT, HE, and EHT config */
 		hostapd_chan_switch_config(iface->bss[i],
 					   &settings.freq_params);
 
