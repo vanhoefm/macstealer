@@ -2759,9 +2759,11 @@ skip_to_6ghz:
 				    freq->channel, ssid->enable_edmg,
 				    ssid->edmg_channel, freq->ht_enabled,
 				    vht_freq.vht_enabled, freq->he_enabled,
+				    false,
 				    freq->sec_channel_offset,
 				    chwidth, seg0, seg1, vht_caps,
-				    &mode->he_capab[ieee80211_mode]) != 0)
+				    &mode->he_capab[ieee80211_mode],
+				    NULL) != 0)
 		return;
 
 	*freq = vht_freq;

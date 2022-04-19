@@ -888,7 +888,7 @@ int hostapd_handle_dfs(struct hostapd_iface *iface)
 	res = hostapd_start_dfs_cac(
 		iface, iface->conf->hw_mode, iface->freq, iface->conf->channel,
 		iface->conf->ieee80211n, iface->conf->ieee80211ac,
-		iface->conf->ieee80211ax,
+		iface->conf->ieee80211ax, iface->conf->ieee80211be,
 		iface->conf->secondary_channel,
 		hostapd_get_oper_chwidth(iface->conf),
 		hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
@@ -981,12 +981,14 @@ static int hostapd_dfs_request_channel_switch(struct hostapd_iface *iface,
 				      iface->conf->ieee80211n,
 				      iface->conf->ieee80211ac,
 				      iface->conf->ieee80211ax,
+				      iface->conf->ieee80211be,
 				      secondary_channel,
 				      new_vht_oper_chwidth,
 				      oper_centr_freq_seg0_idx,
 				      oper_centr_freq_seg1_idx,
 				      cmode->vht_capab,
-				      &cmode->he_capab[ieee80211_mode]);
+				      &cmode->he_capab[ieee80211_mode],
+				      &cmode->eht_capab[ieee80211_mode]);
 
 	if (err) {
 		wpa_printf(MSG_ERROR,
@@ -1059,6 +1061,7 @@ static void hostpad_dfs_update_background_chain(struct hostapd_iface *iface)
 				  iface->conf->ieee80211n,
 				  iface->conf->ieee80211ac,
 				  iface->conf->ieee80211ax,
+				  iface->conf->ieee80211be,
 				  sec, hostapd_get_oper_chwidth(iface->conf),
 				  oper_centr_freq_seg0_idx,
 				  oper_centr_freq_seg1_idx, true)) {

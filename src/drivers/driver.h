@@ -803,6 +803,11 @@ struct hostapd_freq_params {
 	 * radar_background - Whether radar/CAC background is requested
 	 */
 	bool radar_background;
+
+	/**
+	 * eht_enabled - Whether EHT is enabled
+	 */
+	bool eht_enabled;
 };
 
 /**

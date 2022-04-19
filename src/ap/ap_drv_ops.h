@@ -66,8 +66,8 @@ int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 int hostapd_flush(struct hostapd_data *hapd);
 int hostapd_set_freq(struct hostapd_data *hapd, enum hostapd_hw_mode mode,
 		     int freq, int channel, int edmg, u8 edmg_channel,
-		     int ht_enabled, int vht_enabled,
-		     int he_enabled, int sec_channel_offset, int oper_chwidth,
+		     int ht_enabled, int vht_enabled, int he_enabled,
+		     bool eht_enabled, int sec_channel_offset, int oper_chwidth,
 		     int center_segment0, int center_segment1);
 int hostapd_set_rts(struct hostapd_data *hapd, int rts);
 int hostapd_set_frag(struct hostapd_data *hapd, int frag);
@@ -130,7 +130,7 @@ int hostapd_add_tspec(struct hostapd_data *hapd, const u8 *addr,
 int hostapd_start_dfs_cac(struct hostapd_iface *iface,
 			  enum hostapd_hw_mode mode, int freq,
 			  int channel, int ht_enabled, int vht_enabled,
-			  int he_enabled,
+			  int he_enabled, bool eht_enabled,
 			  int sec_channel_offset, int oper_chwidth,
 			  int center_segment0, int center_segment1,
 			  bool radar_background);

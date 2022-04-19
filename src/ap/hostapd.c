@@ -2076,6 +2076,7 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
 				     hapd->iconf->ieee80211n,
 				     hapd->iconf->ieee80211ac,
 				     hapd->iconf->ieee80211ax,
+				     hapd->iconf->ieee80211be,
 				     hapd->iconf->secondary_channel,
 				     hostapd_get_oper_chwidth(hapd->iconf),
 				     hostapd_get_oper_centr_freq_seg0_idx(
@@ -3461,12 +3462,14 @@ static int hostapd_change_config_freq(struct hostapd_data *hapd,
 				    conf->channel, conf->enable_edmg,
 				    conf->edmg_channel, conf->ieee80211n,
 				    conf->ieee80211ac, conf->ieee80211ax,
-				    conf->secondary_channel,
+				    conf->ieee80211be, conf->secondary_channel,
 				    hostapd_get_oper_chwidth(conf),
 				    hostapd_get_oper_centr_freq_seg0_idx(conf),
 				    hostapd_get_oper_centr_freq_seg1_idx(conf),
 				    conf->vht_capab,
 				    mode ? &mode->he_capab[IEEE80211_MODE_AP] :
+				    NULL,
+				    mode ? &mode->eht_capab[IEEE80211_MODE_AP] :
 				    NULL))
 		return -1;
 

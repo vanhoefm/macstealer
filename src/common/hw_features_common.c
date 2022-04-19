@@ -383,10 +383,11 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			    int freq, int channel, int enable_edmg,
 			    u8 edmg_channel, int ht_enabled,
 			    int vht_enabled, int he_enabled,
-			    int sec_channel_offset,
+			    bool eht_enabled, int sec_channel_offset,
 			    int oper_chwidth, int center_segment0,
 			    int center_segment1, u32 vht_caps,
-			    struct he_capabilities *he_cap)
+			    struct he_capabilities *he_cap,
+			    struct eht_capabilities *eht_cap)
 {
 	if (!he_cap || !he_cap->he_supported)
 		he_enabled = 0;
@@ -397,6 +398,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 	data->ht_enabled = ht_enabled;
 	data->vht_enabled = vht_enabled;
 	data->he_enabled = he_enabled;
+	data->eht_enabled = eht_enabled;
 	data->sec_channel_offset = sec_channel_offset;
 	data->center_freq1 = freq + sec_channel_offset * 10;
 	data->center_freq2 = 0;
@@ -415,9 +417,9 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 				 &data->edmg);
 
 	if (is_6ghz_freq(freq)) {
-		if (!data->he_enabled) {
+		if (!data->he_enabled && !data->eht_enabled) {
 			wpa_printf(MSG_ERROR,
-				   "Can't set 6 GHz mode - HE isn't enabled");
+				   "Can't set 6 GHz mode - HE or EHT aren't enabled");
 			return -1;
 		}
 
@@ -480,7 +482,20 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 		return 0;
 	}
 
-	if (data->he_enabled) switch (oper_chwidth) {
+#if 0 /* FIX: Figure out how to handle CHANWIDTH_320MHZ */
+	if (data->eht_enabled) switch (oper_chwidth) {
+	case CHANWIDTH_320MHZ:
+		if (!(eht_cap->phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
+		      EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK)) {
+			wpa_printf(MSG_ERROR,
+				   "320 MHz channel width is not supported in 5 or 6 GHz");
+			return -1;
+		}
+		break;
+	}
+#endif
+
+	if (data->he_enabled || data->eht_enabled) switch (oper_chwidth) {
 	case CHANWIDTH_USE_HT:
 		if (sec_channel_offset == 0)
 			break;
@@ -543,7 +558,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 		break;
 	}
 
-	if (data->he_enabled || data->vht_enabled) switch (oper_chwidth) {
+	if (data->eht_enabled || data->he_enabled ||
+	    data->vht_enabled) switch (oper_chwidth) {
 	case CHANWIDTH_USE_HT:
 		if (center_segment1 ||
 		    (center_segment0 != 0 &&

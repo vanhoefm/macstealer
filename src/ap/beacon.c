@@ -1950,12 +1950,14 @@ static int __ieee802_11_set_beacon(struct hostapd_data *hapd)
 				    iconf->channel, iconf->enable_edmg,
 				    iconf->edmg_channel, iconf->ieee80211n,
 				    iconf->ieee80211ac, iconf->ieee80211ax,
+				    iconf->ieee80211be,
 				    iconf->secondary_channel,
 				    hostapd_get_oper_chwidth(iconf),
 				    hostapd_get_oper_centr_freq_seg0_idx(iconf),
 				    hostapd_get_oper_centr_freq_seg1_idx(iconf),
 				    cmode->vht_capab,
-				    &cmode->he_capab[IEEE80211_MODE_AP]) == 0)
+				    &cmode->he_capab[IEEE80211_MODE_AP],
+				    &cmode->eht_capab[IEEE80211_MODE_AP]) == 0)
 		params.freq = &freq;
 
 	res = hostapd_drv_set_ap(hapd, &params);
