@@ -4705,6 +4705,12 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		conf->eht_oper_chwidth = atoi(pos);
 	} else if (os_strcmp(buf, "eht_oper_centr_freq_seg0_idx") == 0) {
 		conf->eht_oper_centr_freq_seg0_idx = atoi(pos);
+	} else if (os_strcmp(buf, "eht_su_beamformer") == 0) {
+		conf->eht_phy_capab.su_beamformer = atoi(pos);
+	} else if (os_strcmp(buf, "eht_su_beamformee") == 0) {
+		conf->eht_phy_capab.su_beamformee = atoi(pos);
+	} else if (os_strcmp(buf, "eht_mu_beamformer") == 0) {
+		conf->eht_phy_capab.mu_beamformer = atoi(pos);
 #endif /* CONFIG_IEEE80211BE */
 	} else {
 		wpa_printf(MSG_ERROR,

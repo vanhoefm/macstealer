@@ -949,6 +949,15 @@ struct spatial_reuse {
 };
 
 /**
+ * struct eht_phy_capabilities_info - EHT PHY capabilities
+ */
+struct eht_phy_capabilities_info {
+	bool su_beamformer;
+	bool su_beamformee;
+	bool mu_beamformer;
+};
+
+/**
  * struct hostapd_config - Per-radio interface configuration
  */
 struct hostapd_config {
@@ -1120,6 +1129,7 @@ struct hostapd_config {
 #ifdef CONFIG_IEEE80211BE
 	u8 eht_oper_chwidth;
 	u8 eht_oper_centr_freq_seg0_idx;
+	struct eht_phy_capabilities_info eht_phy_capab;
 #endif /* CONFIG_IEEE80211BE */
 };
 
