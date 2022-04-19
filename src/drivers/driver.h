@@ -200,6 +200,15 @@ struct he_capabilities {
 	u16 he_6ghz_capa;
 };
 
+/* struct eht_capabilities - IEEE 802.11be EHT capabilities */
+struct eht_capabilities {
+	bool eht_supported;
+	u16 mac_cap;
+	u8 phy_cap[EHT_PHY_CAPAB_LEN];
+	u8 mcs[EHT_MCS_NSS_CAPAB_LEN];
+	u8 ppet[EHT_PPE_THRESH_CAPAB_LEN];
+};
+
 #define HOSTAPD_MODE_FLAG_HT_INFO_KNOWN BIT(0)
 #define HOSTAPD_MODE_FLAG_VHT_INFO_KNOWN BIT(1)
 
@@ -298,6 +307,11 @@ struct hostapd_hw_modes {
 	 * for IEEE 802.11ay EDMG configuration.
 	 */
 	struct ieee80211_edmg_config edmg;
+
+	/**
+	 * eht_capab - EHT (IEEE 802.11be) capabilities
+	 */
+	struct eht_capabilities eht_capab[IEEE80211_MODE_NUM];
 };
 
 
