@@ -201,5 +201,9 @@ size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type);
 u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type);
 int ieee802_11_set_radius_info(struct hostapd_data *hapd, struct sta_info *sta,
 			       int res, struct radius_sta *info);
+size_t hostapd_eid_eht_capab_len(struct hostapd_data *hapd,
+				 enum ieee80211_op_mode opmode);
+u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
+			   enum ieee80211_op_mode opmode);
 
 #endif /* IEEE802_11_H */

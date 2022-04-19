@@ -5044,6 +5044,11 @@ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
 	if (sta && sta->dpp_pfs)
 		buflen += 5 + sta->dpp_pfs->curve->prime_len;
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_IEEE80211BE
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+		buflen += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
+#endif /* CONFIG_IEEE80211BE */
+
 	buf = os_zalloc(buflen);
 	if (!buf) {
 		res = WLAN_STATUS_UNSPECIFIED_FAILURE;
@@ -5189,6 +5194,11 @@ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
 #ifdef CONFIG_TESTING_OPTIONS
 rsnxe_done:
 #endif /* CONFIG_TESTING_OPTIONS */
+
+#ifdef CONFIG_IEEE80211BE
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+		p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
+#endif /* CONFIG_IEEE80211BE */
 
 #ifdef CONFIG_OWE
 	if ((hapd->conf->wpa_key_mgmt & WPA_KEY_MGMT_OWE) &&

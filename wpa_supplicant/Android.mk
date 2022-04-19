@@ -911,6 +911,9 @@ endif
 ifdef CONFIG_IEEE80211AX
 OBJS += src/ap/ieee802_11_he.c
 endif
+ifdef CONFIG_IEEE80211BE
+OBJS += src/ap/ieee802_11_eht.c
+endif
 ifdef CONFIG_WNM_AP
 L_CFLAGS += -DCONFIG_WNM_AP
 OBJS += src/ap/wnm_ap.c
