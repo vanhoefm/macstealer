@@ -5045,8 +5045,10 @@ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
 		buflen += 5 + sta->dpp_pfs->curve->prime_len;
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_IEEE80211BE
-	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
 		buflen += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
+		buflen += 3 + sizeof(struct ieee80211_eht_operation);
+	}
 #endif /* CONFIG_IEEE80211BE */
 
 	buf = os_zalloc(buflen);
@@ -5196,8 +5198,10 @@ rsnxe_done:
 #endif /* CONFIG_TESTING_OPTIONS */
 
 #ifdef CONFIG_IEEE80211BE
-	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
 		p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
+		p = hostapd_eid_eht_operation(hapd, p);
+	}
 #endif /* CONFIG_IEEE80211BE */
 
 #ifdef CONFIG_OWE

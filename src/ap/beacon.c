@@ -510,8 +510,10 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE
-	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
 		buflen += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
+		buflen += 3 + sizeof(struct ieee80211_eht_operation);
+	}
 #endif /* CONFIG_IEEE80211BE */
 
 	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
@@ -641,8 +643,10 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE
-	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
 		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
+		pos = hostapd_eid_eht_operation(hapd, pos);
+	}
 #endif /* CONFIG_IEEE80211BE */
 
 #ifdef CONFIG_IEEE80211AC
@@ -1549,8 +1553,10 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE
-	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
 		tail_len += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
+		tail_len += 3 + sizeof(struct ieee80211_eht_operation);
+	}
 #endif /* CONFIG_IEEE80211BE */
 
 	tail_len += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_BEACON);
@@ -1701,9 +1707,11 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE
-	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be)
+	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
 		tailpos = hostapd_eid_eht_capab(hapd, tailpos,
 						IEEE80211_MODE_AP);
+		tailpos = hostapd_eid_eht_operation(hapd, tailpos);
+	}
 #endif /* CONFIG_IEEE80211BE */
 
 #ifdef CONFIG_IEEE80211AC

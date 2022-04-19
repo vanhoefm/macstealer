@@ -205,5 +205,6 @@ size_t hostapd_eid_eht_capab_len(struct hostapd_data *hapd,
 				 enum ieee80211_op_mode opmode);
 u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
 			   enum ieee80211_op_mode opmode);
+u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid);
 
 #endif /* IEEE802_11_H */

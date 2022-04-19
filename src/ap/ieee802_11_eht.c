@@ -155,3 +155,64 @@ u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
 	*length_pos = pos - (eid + 2);
 	return pos;
 }
+
+
+u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
+{
+	struct hostapd_config *conf = hapd->iconf;
+	struct ieee80211_eht_operation *oper;
+	u8 *pos = eid, chwidth, seg0 = 0, seg1 = 0;
+
+	if (!hapd->iface->current_mode)
+		return eid;
+
+	*pos++ = WLAN_EID_EXTENSION;
+	*pos++ = 5;
+	*pos++ = WLAN_EID_EXT_EHT_OPERATION;
+
+	oper = (struct ieee80211_eht_operation *) pos;
+	oper->oper_params = EHT_OPER_INFO_PRESENT;
+
+	if (is_6ghz_op_class(conf->op_class))
+		chwidth = op_class_to_ch_width(conf->op_class);
+	else
+		chwidth = conf->eht_oper_chwidth;
+
+	seg0 = hostapd_get_oper_centr_freq_seg0_idx(conf);
+
+	switch (chwidth) {
+#if 0 /* FIX: Need to clean up CHANWIDTH_* use for protocol vs. internal
+       * needs to be able to define this. */
+	case CHANWIDTH_320MHZ:
+		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
+		seg1 = seg0;
+		if (hapd->iconf->channel < seg0)
+			seg0 -= 16;
+		else
+			seg0 += 16;
+		break;
+#endif
+	case CHANWIDTH_160MHZ:
+		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_160MHZ;
+		seg1 = seg0;
+		if (hapd->iconf->channel < seg0)
+			seg0 -= 8;
+		else
+			seg0 += 8;
+		break;
+	case CHANWIDTH_80MHZ:
+		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_80MHZ;
+		break;
+	case CHANWIDTH_USE_HT:
+		if (seg0)
+			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_40MHZ;
+		break;
+	default:
+		return eid;
+	}
+
+	oper->oper_info.ccfs0 = seg0 ? seg0 : hapd->iconf->channel;
+	oper->oper_info.ccfs1 = seg1;
+
+	return pos + 4;
+}
