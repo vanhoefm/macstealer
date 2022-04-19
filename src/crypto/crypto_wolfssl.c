@@ -1678,9 +1678,9 @@ done:
 			mp_clear(y2);
 			os_free(y2);
 		}
-		mp_clear(&t);
 	}
 
+	mp_clear(&t);
 	return (struct crypto_bignum *) y2;
 }
 
