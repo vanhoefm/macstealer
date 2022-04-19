@@ -225,6 +225,7 @@ void hostapd_neighbor_set_own_report(struct hostapd_data *hapd)
 	int ht = hapd->iconf->ieee80211n && !hapd->conf->disable_11n;
 	int vht = hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac;
 	int he = hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax;
+	bool eht = he && hapd->iconf->ieee80211be && !hapd->conf->disable_11be;
 	struct wpa_ssid_value ssid;
 	u8 channel, op_class;
 	u8 center_freq1_idx = 0, center_freq2_idx = 0;
@@ -260,10 +261,12 @@ void hostapd_neighbor_set_own_report(struct hostapd_data *hapd)
 		/* VHT bit added in IEEE P802.11-REVmc/D4.3 */
 		if (vht)
 			bssid_info |= NEI_REP_BSSID_INFO_VHT;
-		if (he)
-			bssid_info |= NEI_REP_BSSID_INFO_HE;
 	}
 
+	if (he)
+		bssid_info |= NEI_REP_BSSID_INFO_HE;
+	if (eht)
+		bssid_info |= NEI_REP_BSSID_INFO_EHT;
 	/* TODO: Set NEI_REP_BSSID_INFO_MOBILITY_DOMAIN if MDE is set */
 
 	if (ieee80211_freq_to_channel_ext(hapd->iface->freq,
