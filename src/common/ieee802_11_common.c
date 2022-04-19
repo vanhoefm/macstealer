@@ -307,6 +307,14 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
 		elems->pasn_params = pos;
 		elems->pasn_params_len = elen;
 		break;
+	case WLAN_EID_EXT_EHT_CAPABILITIES:
+		elems->eht_capabilities = pos;
+		elems->eht_capabilities_len = elen;
+		break;
+	case WLAN_EID_EXT_EHT_OPERATION:
+		elems->eht_operation = pos;
+		elems->eht_operation_len = elen;
+		break;
 	default:
 		if (show_errors) {
 			wpa_printf(MSG_MSGDUMP,
