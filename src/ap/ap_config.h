@@ -1117,11 +1117,19 @@ struct hostapd_config {
 #endif /* CONFIG_AIRTIME_POLICY */
 
 	int ieee80211be;
+#ifdef CONFIG_IEEE80211BE
+	u8 eht_oper_chwidth;
+	u8 eht_oper_centr_freq_seg0_idx;
+#endif /* CONFIG_IEEE80211BE */
 };
 
 
 static inline u8 hostapd_get_oper_chwidth(struct hostapd_config *conf)
 {
+#ifdef CONFIG_IEEE80211BE
+	if (conf->ieee80211be)
+		return conf->eht_oper_chwidth;
+#endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211AX
 	if (conf->ieee80211ax)
 		return conf->he_oper_chwidth;
@@ -1132,6 +1140,10 @@ static inline u8 hostapd_get_oper_chwidth(struct hostapd_config *conf)
 static inline void
 hostapd_set_oper_chwidth(struct hostapd_config *conf, u8 oper_chwidth)
 {
+#ifdef CONFIG_IEEE80211BE
+	if (conf->ieee80211be)
+		conf->eht_oper_chwidth = oper_chwidth;
+#endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211AX
 	if (conf->ieee80211ax)
 		conf->he_oper_chwidth = oper_chwidth;
@@ -1142,6 +1154,10 @@ hostapd_set_oper_chwidth(struct hostapd_config *conf, u8 oper_chwidth)
 static inline u8
 hostapd_get_oper_centr_freq_seg0_idx(struct hostapd_config *conf)
 {
+#ifdef CONFIG_IEEE80211BE
+	if (conf->ieee80211be)
+		return conf->eht_oper_centr_freq_seg0_idx;
+#endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211AX
 	if (conf->ieee80211ax)
 		return conf->he_oper_centr_freq_seg0_idx;
@@ -1153,6 +1169,10 @@ static inline void
 hostapd_set_oper_centr_freq_seg0_idx(struct hostapd_config *conf,
 				     u8 oper_centr_freq_seg0_idx)
 {
+#ifdef CONFIG_IEEE80211BE
+	if (conf->ieee80211be)
+		conf->eht_oper_centr_freq_seg0_idx = oper_centr_freq_seg0_idx;
+#endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211AX
 	if (conf->ieee80211ax)
 		conf->he_oper_centr_freq_seg0_idx = oper_centr_freq_seg0_idx;

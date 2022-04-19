@@ -765,6 +765,19 @@ int hostapd_ctrl_iface_status(struct hostapd_data *hapd, char *buf,
 		return len;
 	len += ret;
 
+#ifdef CONFIG_IEEE80211BE
+	if (iface->conf->ieee80211be && !hapd->conf->disable_11be) {
+		ret = os_snprintf(buf + len, buflen - len,
+				  "eht_oper_chwidth=%d\n"
+				  "eht_oper_centr_freq_seg0_idx=%d\n",
+				  iface->conf->eht_oper_chwidth,
+				  iface->conf->eht_oper_centr_freq_seg0_idx);
+		if (os_snprintf_error(buflen - len, ret))
+			return len;
+		len += ret;
+	}
+#endif /* CONFIG_IEEE80211BE */
+
 #ifdef CONFIG_IEEE80211AX
 	if (iface->conf->ieee80211ax && !hapd->conf->disable_11ax) {
 		ret = os_snprintf(buf + len, buflen - len,
