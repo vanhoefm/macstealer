@@ -73,6 +73,9 @@ $(DESTDIR)$(BINDIR)/%: %
 
 install: $(addprefix $(DESTDIR)$(BINDIR)/,$(BINALL))
 	$(MAKE) -C ../src install
+ifndef CONFIG_NO_WPA_PASSPHRASE
+	install -D wpa_passphrase $(DESTDIR)/$(BINDIR)/wpa_passphrase
+endif
 ifdef CONFIG_BUILD_WPA_CLIENT_SO
 	install -m 0644 -D libwpa_client.so $(DESTDIR)/$(LIBDIR)/libwpa_client.so
 	install -m 0644 -D ../src/common/wpa_ctrl.h $(DESTDIR)/$(INCDIR)/wpa_ctrl.h
