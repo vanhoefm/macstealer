@@ -34,7 +34,8 @@ dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
 
 static bool dfs_use_radar_background(struct hostapd_iface *iface)
 {
-	return iface->drv_flags2 & WPA_DRIVER_RADAR_BACKGROUND;
+	return (iface->drv_flags2 & WPA_DRIVER_RADAR_BACKGROUND) &&
+		iface->conf->enable_background_radar;
 }
 
 

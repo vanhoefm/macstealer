@@ -969,6 +969,7 @@ struct hostapd_config {
 	u8 min_tx_power;
 	enum hostapd_hw_mode hw_mode; /* HOSTAPD_MODE_IEEE80211A, .. */
 	int acs_exclude_6ghz_non_psc;
+	int enable_background_radar;
 	enum {
 		LONG_PREAMBLE = 0,
 		SHORT_PREAMBLE = 1
