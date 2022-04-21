@@ -788,6 +788,14 @@ enum qca_radiotap_vendor_ids {
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_mcc_quota.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_GET_RADIO_COMBINATION_MATRIX: Vendor command to
+ *	get the WLAN radio combinations matrix supported by the device which
+ *	provides the device simultaneous radio configurations such as
+ *	standalone, dual band simultaneous, and single band simultaneous.
+ *
+ *	The attributes used with this command are defined in
+ *	enum qca_wlan_vendor_attr_radio_combination_matrix.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -984,6 +992,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_RATEMASK_CONFIG = 204,
 	QCA_NL80211_VENDOR_SUBCMD_MCC_QUOTA = 205,
 	/* 206..212 - reserved for QCA */
+	QCA_NL80211_VENDOR_SUBCMD_GET_RADIO_COMBINATION_MATRIX = 213,
 };
 
 enum qca_wlan_vendor_attr {
@@ -11833,6 +11842,82 @@ enum qca_wlan_vendor_attr_mcc_quota {
 	QCA_WLAN_VENDOR_ATTR_MCC_QUOTA_LAST,
 	QCA_WLAN_VENDOR_ATTR_MCC_QUOTA_MAX =
 	QCA_WLAN_VENDOR_ATTR_MCC_QUOTA_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_supported_radio_cfg - Attributes for
+ * radio configurations present in each radio combination.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_BAND: u32 attribute indicates
+ * the band info in the radio configuration. Uses the enum qca_set_band values.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_ANTENNA: u8 attribute indicates
+ * the number of antennas info in the radio configuration.
+ */
+enum qca_wlan_vendor_attr_supported_radio_cfg {
+	QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_BAND = 1,
+	QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_ANTENNA = 2,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_LAST,
+	QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_MAX =
+	QCA_WLAN_VENDOR_ATTR_SUPPORTED_RADIO_CFG_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_radio_combination - Attributes for
+ * radio combinations supported by the device.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_RADIO_COMBINATIONS_CFGS: Nested attribute
+ * provides the radio configurations present in the radio combination.
+ * Uses the enum qca_wlan_vendor_attr_supported_radio_cfg attributes.
+ * This attribute provides the values for radio combination matrix.
+ * For standalone config, the number of config values is one and the config
+ * carries the band and antenna information for standalone configuration. For
+ * Dual Band Simultaneous (DBS)/Single Band Simultaneous (SBS) mode
+ * configuration the number of config values is two and the config carries the
+ * band and antenna information for each simultaneous radio.
+ */
+enum qca_wlan_vendor_attr_radio_combination {
+	QCA_WLAN_VENDOR_ATTR_RADIO_COMBINATIONS_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_RADIO_COMBINATIONS_CFGS = 1,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_RADIO_COMBINATIONS_LAST,
+	QCA_WLAN_VENDOR_ATTR_RADIO_COMBINATIONS_MAX =
+	QCA_WLAN_VENDOR_ATTR_RADIO_COMBINATIONS_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_radio_combination_matrix - Attributes used by
+ * %QCA_NL80211_VENDOR_SUBCMD_GET_RADIO_COMBINATION_MATRIX
+ *
+ * @QCA_WLAN_VENDOR_ATTR_RADIO_MATRIX_SUPPORTED_CFGS: Nested attribute
+ * provides the radio combinations supported by the device.
+ * Uses the enum qca_wlan_vendor_attr_radio_combination attributes.
+ * For example, in the radio combination matrix for a device which has two
+ * radios, where one radio is capable of 2.4 GHz 2X2 only and another radio is
+ * capable of either 5 GHz or 6 GHz 2X2, the possible number of radio
+ * combinations is 5 and the radio combinations are
+ * {{{2.4 GHz 2X2}}, //Standalone 2.4 GHz
+ * {{5 GHz 2X2}}, //Standalone 5 GHz
+ * {{6 GHz 2X2}}, //Standalone 6 GHz
+ * {{2.4 GHz 2X2}, {5 GHz 2X2}}, //2.4 GHz + 5 GHz DBS
+ * {{2.4 GHz 2X2}, {6 GHz 2X2}}} //2.4 GHz + 6 GHz DBS
+ * The band and antenna info together as nested data provides one radio config.
+ * Standalone configuration has one config with band and antenna nested data.
+ * Dual Band Simultaneous (DBS)/Single Band Simultaneous (SBS) configuration
+ * have two nested band and antenna info data.
+ */
+enum qca_wlan_vendor_attr_radio_combination_matrix {
+	QCA_WLAN_VENDOR_ATTR_RADIO_MATRIX_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_RADIO_MATRIX_SUPPORTED_CFGS = 1,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_RADIO_MATRIX_LAST,
+	QCA_WLAN_VENDOR_ATTR_RADIO_MATRIX_MAX =
+	QCA_WLAN_VENDOR_ATTR_RADIO_MATRIX_LAST - 1,
 };
 
 /**
