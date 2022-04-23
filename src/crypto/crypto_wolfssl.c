@@ -169,7 +169,8 @@ static int wolfssl_hmac_vector(int type, const u8 *key,
 	if (TEST_FAIL())
 		return -1;
 
-	if (wc_HmacSetKey(&hmac, type, key, (word32) key_len) != 0)
+	if (wc_HmacInit(&hmac, NULL, INVALID_DEVID) != 0 ||
+	    wc_HmacSetKey(&hmac, type, key, (word32) key_len) != 0)
 		return -1;
 	for (i = 0; i < num_elem; i++)
 		if (wc_HmacUpdate(&hmac, addr[i], len[i]) != 0)
@@ -933,7 +934,8 @@ struct crypto_hash * crypto_hash_init(enum crypto_hash_alg alg, const u8 *key,
 		goto done;
 	}
 
-	if (wc_HmacSetKey(&hash->hmac, type, key, key_len) != 0)
+	if (wc_HmacInit(&hash->hmac, NULL, INVALID_DEVID) != 0 ||
+	    wc_HmacSetKey(&hash->hmac, type, key, key_len) != 0)
 		goto done;
 
 	ret = hash;
