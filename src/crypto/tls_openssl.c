@@ -2911,7 +2911,6 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
 
 
 #ifdef CONFIG_SUITEB
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 static int suiteb_cert_cb(SSL *ssl, void *arg)
 {
 	struct tls_connection *conn = arg;
@@ -2938,7 +2937,6 @@ static int suiteb_cert_cb(SSL *ssl, void *arg)
 		   conn->server_dh_prime_len);
 	return 0;
 }
-#endif /* OPENSSL_VERSION_NUMBER */
 #endif /* CONFIG_SUITEB */
 
 
@@ -3033,7 +3031,6 @@ static int tls_set_conn_flags(struct tls_connection *conn, unsigned int flags,
 	/* Start with defaults from BoringSSL */
 	SSL_CTX_set_verify_algorithm_prefs(conn->ssl_ctx, NULL, 0);
 #endif /* OPENSSL_IS_BORINGSSL */
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	if (flags & TLS_CONN_SUITEB_NO_ECDH) {
 		const char *ciphers = "DHE-RSA-AES256-GCM-SHA384";
 
@@ -3115,13 +3112,6 @@ static int tls_set_conn_flags(struct tls_connection *conn, unsigned int flags,
 		SSL_set_options(ssl, SSL_OP_NO_TLSv1_1);
 		SSL_set_cert_cb(ssl, suiteb_cert_cb, conn);
 	}
-#else /* OPENSSL_VERSION_NUMBER < 0x10002000L */
-	if (flags & (TLS_CONN_SUITEB | TLS_CONN_SUITEB_NO_ECDH)) {
-		wpa_printf(MSG_ERROR,
-			   "OpenSSL: Suite B RSA case not supported with this OpenSSL version");
-		return -1;
-	}
-#endif /* OPENSSL_VERSION_NUMBER */
 
 #ifdef OPENSSL_IS_BORINGSSL
 	if (openssl_ciphers && os_strcmp(openssl_ciphers, "SUITEB192") == 0) {
@@ -3255,14 +3245,14 @@ static int tls_connection_client_cert(struct tls_connection *conn,
 		return 0;
 
 #ifdef PKCS12_FUNCS
-#if OPENSSL_VERSION_NUMBER < 0x10002000L || defined(LIBRESSL_VERSION_NUMBER)
+#ifdef LIBRESSL_VERSION_NUMBER
 	/*
 	 * Clear previously set extra chain certificates, if any, from PKCS#12
-	 * processing in tls_parse_pkcs12() to allow OpenSSL to build a new
+	 * processing in tls_parse_pkcs12() to allow LibreSSL to build a new
 	 * chain properly.
 	 */
 	SSL_CTX_clear_extra_chain_certs(conn->ssl_ctx);
-#endif /* OPENSSL_VERSION_NUMBER < 0x10002000L */
+#endif /* LIBRESSL_VERSION_NUMBER */
 #endif /* PKCS12_FUNCS */
 
 	if (client_cert_blob &&
@@ -3451,7 +3441,7 @@ static int tls_parse_pkcs12(struct tls_data *data, SSL *ssl, PKCS12 *p12,
 	}
 
 	if (certs) {
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
+#ifndef LIBRESSL_VERSION_NUMBER
 		if (ssl)
 			SSL_clear_chain_certs(ssl);
 		else
@@ -3500,7 +3490,7 @@ static int tls_parse_pkcs12(struct tls_data *data, SSL *ssl, PKCS12 *p12,
 		 * the extra certificates not to be required.
 		 */
 		res = 0;
-#else /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
+#else /* LIBRESSL_VERSION_NUMBER */
 		SSL_CTX_clear_extra_chain_certs(data->ssl);
 		while ((cert = sk_X509_pop(certs)) != NULL) {
 			X509_NAME_oneline(X509_get_subject_name(cert), buf,
@@ -3519,7 +3509,7 @@ static int tls_parse_pkcs12(struct tls_data *data, SSL *ssl, PKCS12 *p12,
 			}
 		}
 		sk_X509_pop_free(certs, X509_free);
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
+#endif /* LIBRSESSL_VERSION_NUMBER */
 	}
 
 	PKCS12_free(p12);
@@ -5280,22 +5270,21 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 	if (!params->openssl_ecdh_curves) {
 #ifndef OPENSSL_IS_BORINGSSL
 #ifndef OPENSSL_NO_EC
-#if (OPENSSL_VERSION_NUMBER >= 0x10002000L) && \
-	(OPENSSL_VERSION_NUMBER < 0x10100000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		if (SSL_set_ecdh_auto(conn->ssl, 1) != 1) {
 			wpa_printf(MSG_INFO,
 				   "OpenSSL: Failed to set ECDH curves to auto");
 			return -1;
 		}
-#endif /* >= 1.0.2 && < 1.1.0 */
+#endif /* < 1.1.0 */
 #endif /* OPENSSL_NO_EC */
 #endif /* OPENSSL_IS_BORINGSSL */
 	} else if (params->openssl_ecdh_curves[0]) {
-#if defined(OPENSSL_IS_BORINGSSL) || (OPENSSL_VERSION_NUMBER < 0x10002000L)
+#ifdef OPENSSL_IS_BORINGSSL
 		wpa_printf(MSG_INFO,
-			"OpenSSL: ECDH configuration nnot supported");
+			"OpenSSL: ECDH configuration not supported");
 		return -1;
-#else /* OPENSSL_IS_BORINGSSL || < 1.0.2 */
+#else /* !OPENSSL_IS_BORINGSSL */
 #ifndef OPENSSL_NO_EC
 		if (SSL_set1_curves_list(conn->ssl,
 					 params->openssl_ecdh_curves) != 1) {
@@ -5503,22 +5492,21 @@ int tls_global_set_params(void *tls_ctx,
 	if (!params->openssl_ecdh_curves) {
 #ifndef OPENSSL_IS_BORINGSSL
 #ifndef OPENSSL_NO_EC
-#if (OPENSSL_VERSION_NUMBER >= 0x10002000L) && \
-	(OPENSSL_VERSION_NUMBER < 0x10100000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		if (SSL_CTX_set_ecdh_auto(ssl_ctx, 1) != 1) {
 			wpa_printf(MSG_INFO,
 				   "OpenSSL: Failed to set ECDH curves to auto");
 			return -1;
 		}
-#endif /* >= 1.0.2 && < 1.1.0 */
+#endif /* < 1.1.0 */
 #endif /* OPENSSL_NO_EC */
 #endif /* OPENSSL_IS_BORINGSSL */
 	} else if (params->openssl_ecdh_curves[0]) {
-#if defined(OPENSSL_IS_BORINGSSL) || (OPENSSL_VERSION_NUMBER < 0x10002000L)
+#ifdef OPENSSL_IS_BORINGSSL
 		wpa_printf(MSG_INFO,
-			"OpenSSL: ECDH configuration nnot supported");
+			"OpenSSL: ECDH configuration not supported");
 		return -1;
-#else /* OPENSSL_IS_BORINGSSL || < 1.0.2 */
+#else /* !OPENSSL_IS_BORINGSSL */
 #ifndef OPENSSL_NO_EC
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 		SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
