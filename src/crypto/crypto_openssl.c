@@ -122,7 +122,9 @@ static const unsigned char * ASN1_STRING_get0_data(const ASN1_STRING *x)
 #endif /* OpenSSL version < 1.1.0 */
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10101000L
+#if OPENSSL_VERSION_NUMBER < 0x10101000L || \
+	(defined(LIBRESSL_VERSION_NUMBER) && \
+	 LIBRESSL_VERSION_NUMBER < 0x30400000L)
 
 static int EC_POINT_get_affine_coordinates(const EC_GROUP *group,
 					   const EC_POINT *point, BIGNUM *x,
@@ -2570,6 +2572,33 @@ struct crypto_ecdh {
 
 struct crypto_ecdh * crypto_ecdh_init(int group)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	struct crypto_ecdh *ecdh;
+	const char *name;
+
+	ecdh = os_zalloc(sizeof(*ecdh));
+	if (!ecdh)
+		goto fail;
+
+	ecdh->ec = crypto_ec_init(group);
+	if (!ecdh->ec)
+		goto fail;
+
+	name = OSSL_EC_curve_nid2name(ecdh->ec->nid);
+	if (!name)
+		goto fail;
+
+	ecdh->pkey = EVP_EC_gen(name);
+	if (!ecdh->pkey)
+		goto fail;
+
+done:
+	return ecdh;
+fail:
+	crypto_ecdh_deinit(ecdh);
+	ecdh = NULL;
+	goto done;
+#else /* OpenSSL version >= 3.0 */
 	struct crypto_ecdh *ecdh;
 	EVP_PKEY *params = NULL;
 	EC_KEY *ec_params = NULL;
@@ -2624,11 +2653,32 @@ fail:
 	crypto_ecdh_deinit(ecdh);
 	ecdh = NULL;
 	goto done;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 struct crypto_ecdh * crypto_ecdh_init2(int group, struct crypto_ec_key *own_key)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	struct crypto_ecdh *ecdh;
+
+	ecdh = os_zalloc(sizeof(*ecdh));
+	if (!ecdh)
+		goto fail;
+
+	ecdh->ec = crypto_ec_init(group);
+	if (!ecdh->ec)
+		goto fail;
+
+	ecdh->pkey = EVP_PKEY_dup((EVP_PKEY *) own_key);
+	if (!ecdh->pkey)
+		goto fail;
+
+	return ecdh;
+fail:
+	crypto_ecdh_deinit(ecdh);
+	return NULL;
+#else /* OpenSSL version >= 3.0 */
 	struct crypto_ecdh *ecdh;
 
 	ecdh = os_zalloc(sizeof(*ecdh));
@@ -2650,11 +2700,34 @@ struct crypto_ecdh * crypto_ecdh_init2(int group, struct crypto_ec_key *own_key)
 fail:
 	crypto_ecdh_deinit(ecdh);
 	return NULL;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 struct wpabuf * crypto_ecdh_get_pubkey(struct crypto_ecdh *ecdh, int inc_y)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	struct wpabuf *buf = NULL;
+	unsigned char *pub;
+	size_t len, exp_len;
+
+	len = EVP_PKEY_get1_encoded_public_key(ecdh->pkey, &pub);
+	if (len == 0)
+		return NULL;
+
+	/* Encoded using SECG SEC 1, Sec. 2.3.4 format */
+	exp_len = 1 + 2 * crypto_ec_prime_len(ecdh->ec);
+	if (len != exp_len) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL:%s: Unexpected encoded public key length %zu (expected %zu)",
+			   __func__, len, exp_len);
+		goto fail;
+	}
+	buf = wpabuf_alloc_copy(pub + 1, inc_y ? len - 1 : len / 2);
+fail:
+	OPENSSL_free(pub);
+	return buf;
+#else /* OpenSSL version >= 3.0 */
 	struct wpabuf *buf = NULL;
 	EC_KEY *eckey;
 	const EC_POINT *pubkey;
@@ -2710,12 +2783,57 @@ fail:
 	wpabuf_free(buf);
 	buf = NULL;
 	goto done;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 struct wpabuf * crypto_ecdh_set_peerkey(struct crypto_ecdh *ecdh, int inc_y,
 					const u8 *key, size_t len)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *peerkey = EVP_PKEY_new();
+	EVP_PKEY_CTX *ctx;
+	size_t res_len;
+	struct wpabuf *res = NULL;
+	u8 *peer;
+
+	/* Encode using SECG SEC 1, Sec. 2.3.4 format */
+	peer = os_malloc(1 + len);
+	if (!peer)
+		return NULL;
+	peer[0] = inc_y ? 0x04 : 0x02;
+	os_memcpy(peer + 1, key, len);
+
+	if (!peerkey ||
+	    EVP_PKEY_copy_parameters(peerkey, ecdh->pkey) != 1 ||
+	    EVP_PKEY_set1_encoded_public_key(peerkey, peer, 1 + len) != 1) {
+		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_set1_encoded_public_key failed: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		EVP_PKEY_free(peerkey);
+		os_free(peer);
+		return NULL;
+	}
+	os_free(peer);
+
+	ctx = EVP_PKEY_CTX_new(ecdh->pkey, NULL);
+	if (!ctx ||
+	    EVP_PKEY_derive_init(ctx) != 1 ||
+	    EVP_PKEY_derive_set_peer(ctx, peerkey) != 1 ||
+	    EVP_PKEY_derive(ctx, NULL, &res_len) != 1 ||
+	    !(res = wpabuf_alloc(res_len)) ||
+	    EVP_PKEY_derive(ctx, wpabuf_mhead(res), &res_len) != 1) {
+		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_derive failed: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		wpabuf_free(res);
+		res = NULL;
+	} else {
+		wpabuf_put(res, res_len);
+	}
+
+	EVP_PKEY_free(peerkey);
+	EVP_PKEY_CTX_free(ctx);
+	return res;
+#else /* OpenSSL version >= 3.0 */
 	BIGNUM *x, *y = NULL;
 	EVP_PKEY_CTX *ctx = NULL;
 	EVP_PKEY *peerkey = NULL;
@@ -2804,6 +2922,7 @@ fail:
 	wpabuf_free(secret);
 	secret = NULL;
 	goto done;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
