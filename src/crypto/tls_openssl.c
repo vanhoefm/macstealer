@@ -71,9 +71,7 @@ typedef int stack_index_t;
 #endif /* OPENSSL_NO_TLSEXT */
 #endif /* SSL_set_tlsext_status_type */
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L || \
-     (defined(LIBRESSL_VERSION_NUMBER) && \
-      LIBRESSL_VERSION_NUMBER < 0x20700000L)) && \
+#if OPENSSL_VERSION_NUMBER < 0x10100000L && \
     !defined(BORINGSSL_API_VERSION)
 /*
  * SSL_get_client_random() and SSL_get_server_random() were added in OpenSSL
@@ -117,9 +115,7 @@ static size_t SSL_SESSION_get_master_key(const SSL_SESSION *session,
 
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static const unsigned char * ASN1_STRING_get0_data(const ASN1_STRING *x)
 {
 	return ASN1_STRING_data((ASN1_STRING *) x);
@@ -990,9 +986,7 @@ void * tls_init(const struct tls_config *conf)
 		}
 #endif /* OPENSSL_FIPS */
 #endif /* CONFIG_FIPS */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		SSL_load_error_strings();
 		SSL_library_init();
 #ifndef OPENSSL_NO_SHA256
@@ -1128,9 +1122,7 @@ void tls_deinit(void *ssl_ctx)
 
 	tls_openssl_ref_count--;
 	if (tls_openssl_ref_count == 0) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #ifndef OPENSSL_NO_ENGINE
 		ENGINE_cleanup();
 #endif /* OPENSSL_NO_ENGINE */
@@ -4159,9 +4151,7 @@ int tls_connection_get_random(void *ssl_ctx, struct tls_connection *conn,
 #ifdef OPENSSL_NEED_EAP_FAST_PRF
 static int openssl_get_keyblock_size(SSL *ssl)
 {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
 	int md_size;
@@ -5590,9 +5580,7 @@ static int tls_sess_sec_cb(SSL *s, void *secret, int *secret_len,
 	struct tls_connection *conn = arg;
 	int ret;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	if (conn == NULL || conn->session_ticket_cb == NULL)
 		return 0;
 

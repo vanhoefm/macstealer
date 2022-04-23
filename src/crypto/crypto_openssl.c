@@ -41,9 +41,7 @@
 #include "aes_wrap.h"
 #include "crypto.h"
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 /* Compatibility wrappers for older versions. */
 
 static HMAC_CTX * HMAC_CTX_new(void)
@@ -204,9 +202,7 @@ static void openssl_unload_legacy_provider(void)
 
 static BIGNUM * get_group5_prime(void)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-	!(defined(LIBRESSL_VERSION_NUMBER) && \
-	  LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	return BN_get_rfc3526_prime_1536(NULL);
 #elif !defined(OPENSSL_IS_BORINGSSL)
 	return get_rfc3526_prime_1536(NULL);
@@ -956,9 +952,7 @@ void crypto_cipher_deinit(struct crypto_cipher *ctx)
 
 void * dh5_init(struct wpabuf **priv, struct wpabuf **publ)
 {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	DH *dh;
 	struct wpabuf *pubkey = NULL, *privkey = NULL;
 	size_t publen, privlen;
@@ -1117,9 +1111,7 @@ err:
 
 void * dh5_init_fixed(const struct wpabuf *priv, const struct wpabuf *publ)
 {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-	(defined(LIBRESSL_VERSION_NUMBER) && \
-	 LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	DH *dh;
 
 	dh = DH_new();
