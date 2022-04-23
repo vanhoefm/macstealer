@@ -1650,25 +1650,23 @@ struct crypto_bignum *
 crypto_ec_point_compute_y_sqr(struct crypto_ec *e,
 			      const struct crypto_bignum *x)
 {
-	mp_int *y2, t;
+	mp_int *y2;
 
 	if (TEST_FAIL())
 		return NULL;
 
+	/* y^2 = x^3 + ax + b = (x^2 + a)x + b */
 	y2 = (mp_int *) crypto_bignum_init();
 	if (!y2 ||
-	    mp_init(&t) != MP_OKAY ||
 	    mp_sqrmod((mp_int *) x, &e->prime, y2) != 0 ||
+	    mp_addmod(y2, &e->a, &e->prime, y2) != 0 ||
 	    mp_mulmod((mp_int *) x, y2, &e->prime, y2) != 0 ||
-	    mp_mulmod((mp_int *) x, &e->a, &e->prime, &t) != 0 ||
-	    mp_addmod(y2, &t, &e->prime, y2) != 0 ||
 	    mp_addmod(y2, &e->b, &e->prime, y2) != 0) {
 		mp_clear(y2);
 		os_free(y2);
 		y2 = NULL;
 	}
 
-	mp_clear(&t);
 	return (struct crypto_bignum *) y2;
 }
 
