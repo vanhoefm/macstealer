@@ -4052,7 +4052,7 @@ static int tls_global_dh(struct tls_data *data, const char *dh_file)
 	if (!ssl_ctx)
 		return -1;
 	if (!dh_file) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(OPENSSL_IS_BORINGSSL)
 		SSL_CTX_set_dh_auto(ssl_ctx, 1);
 #endif
 		return 0;
