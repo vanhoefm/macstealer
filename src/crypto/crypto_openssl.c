@@ -122,15 +122,46 @@ static const unsigned char * ASN1_STRING_get0_data(const ASN1_STRING *x)
 #endif /* OpenSSL version < 1.1.0 */
 
 
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
+
+static int EC_POINT_get_affine_coordinates(const EC_GROUP *group,
+					   const EC_POINT *point, BIGNUM *x,
+					   BIGNUM *y, BN_CTX *ctx)
+{
+	return EC_POINT_get_affine_coordinates_GFp(group, point, x, y, ctx);
+}
+
+
+static int EC_POINT_set_affine_coordinates(const EC_GROUP *group,
+					   EC_POINT *point, const BIGNUM *x,
+					   const BIGNUM *y, BN_CTX *ctx)
+{
+	return EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx);
+}
+
+#endif /* OpenSSL version < 1.1.1 */
+
+
 #if OPENSSL_VERSION_NUMBER < 0x10101000L || \
 	defined(OPENSSL_IS_BORINGSSL) || \
 	(defined(LIBRESSL_VERSION_NUMBER) && \
 	 LIBRESSL_VERSION_NUMBER < 0x30400000L)
+
+static int EC_POINT_set_compressed_coordinates(const EC_GROUP *group,
+					       EC_POINT *point, const BIGNUM *x,
+					       int y_bit, BN_CTX *ctx)
+{
+	return EC_POINT_set_compressed_coordinates_GFp(group, point, x, y_bit,
+						       ctx);
+}
+
+
 static int EC_GROUP_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,
 			      BIGNUM *b, BN_CTX *ctx)
 {
 	return EC_GROUP_get_curve_GFp(group, p, a, b, ctx);
 }
+
 #endif /* OpenSSL version < 1.1.1 */
 
 
@@ -2352,10 +2383,10 @@ void crypto_ec_point_deinit(struct crypto_ec_point *p, int clear)
 int crypto_ec_point_x(struct crypto_ec *e, const struct crypto_ec_point *p,
 		      struct crypto_bignum *x)
 {
-	return EC_POINT_get_affine_coordinates_GFp(e->group,
-						   (const EC_POINT *) p,
-						   (BIGNUM *) x, NULL,
-						   e->bnctx) == 1 ? 0 : -1;
+	return EC_POINT_get_affine_coordinates(e->group,
+					       (const EC_POINT *) p,
+					       (BIGNUM *) x, NULL,
+					       e->bnctx) == 1 ? 0 : -1;
 }
 
 
@@ -2373,8 +2404,8 @@ int crypto_ec_point_to_bin(struct crypto_ec *e,
 	y_bn = BN_new();
 
 	if (x_bn && y_bn &&
-	    EC_POINT_get_affine_coordinates_GFp(e->group, (EC_POINT *) point,
-						x_bn, y_bn, e->bnctx)) {
+	    EC_POINT_get_affine_coordinates(e->group, (EC_POINT *) point,
+					    x_bn, y_bn, e->bnctx)) {
 		if (x) {
 			crypto_bignum_to_bin((struct crypto_bignum *) x_bn,
 					     x, len, len);
@@ -2412,8 +2443,7 @@ struct crypto_ec_point * crypto_ec_point_from_bin(struct crypto_ec *e,
 		return NULL;
 	}
 
-	if (!EC_POINT_set_affine_coordinates_GFp(e->group, elem, x, y,
-						 e->bnctx)) {
+	if (!EC_POINT_set_affine_coordinates(e->group, elem, x, y, e->bnctx)) {
 		EC_POINT_clear_free(elem);
 		elem = NULL;
 	}
@@ -2514,8 +2544,8 @@ void crypto_ec_point_debug_print(const struct crypto_ec *e,
 	x = BN_new();
 	y = BN_new();
 	if (!x || !y ||
-	    EC_POINT_get_affine_coordinates_GFp(e->group, (const EC_POINT *) p,
-						x, y, e->bnctx) != 1)
+	    EC_POINT_get_affine_coordinates(e->group, (const EC_POINT *) p,
+					    x, y, e->bnctx) != 1)
 		goto fail;
 
 	x_str = BN_bn2hex(x);
@@ -2650,10 +2680,10 @@ struct wpabuf * crypto_ecdh_get_pubkey(struct crypto_ecdh *ecdh, int inc_y)
 	if (!x || !buf)
 		goto fail;
 
-	if (EC_POINT_get_affine_coordinates_GFp(ecdh->ec->group, pubkey,
-						x, y, ecdh->ec->bnctx) != 1) {
+	if (EC_POINT_get_affine_coordinates(ecdh->ec->group, pubkey,
+					    x, y, ecdh->ec->bnctx) != 1) {
 		wpa_printf(MSG_ERROR,
-			   "OpenSSL: EC_POINT_get_affine_coordinates_GFp failed: %s",
+			   "OpenSSL: EC_POINT_get_affine_coordinates failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
 	}
@@ -2703,19 +2733,18 @@ struct wpabuf * crypto_ecdh_set_peerkey(struct crypto_ecdh *ecdh, int inc_y,
 		y = BN_bin2bn(key + len / 2, len / 2, NULL);
 		if (!y)
 			goto fail;
-		if (!EC_POINT_set_affine_coordinates_GFp(ecdh->ec->group, pub,
-							 x, y,
-							 ecdh->ec->bnctx)) {
+		if (!EC_POINT_set_affine_coordinates(ecdh->ec->group, pub,
+						     x, y, ecdh->ec->bnctx)) {
 			wpa_printf(MSG_ERROR,
-				   "OpenSSL: EC_POINT_set_affine_coordinates_GFp failed: %s",
+				   "OpenSSL: EC_POINT_set_affine_coordinates failed: %s",
 				   ERR_error_string(ERR_get_error(), NULL));
 			goto fail;
 		}
-	} else if (!EC_POINT_set_compressed_coordinates_GFp(ecdh->ec->group,
-							    pub, x, 0,
-							    ecdh->ec->bnctx)) {
+	} else if (!EC_POINT_set_compressed_coordinates(ecdh->ec->group,
+							pub, x, 0,
+							ecdh->ec->bnctx)) {
 		wpa_printf(MSG_ERROR,
-			   "OpenSSL: EC_POINT_set_compressed_coordinates_GFp failed: %s",
+			   "OpenSSL: EC_POINT_set_compressed_coordinates failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
 	}
@@ -2875,9 +2904,9 @@ struct crypto_ec_key * crypto_ec_key_set_pub(int group, const u8 *buf_x,
 	if (!x || !y || !point)
 		goto fail;
 
-	if (!EC_POINT_set_affine_coordinates_GFp(ec_group, point, x, y, ctx)) {
+	if (!EC_POINT_set_affine_coordinates(ec_group, point, x, y, ctx)) {
 		wpa_printf(MSG_ERROR,
-			   "OpenSSL: EC_POINT_set_affine_coordinates_GFp failed: %s",
+			   "OpenSSL: EC_POINT_set_affine_coordinates failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
 	}
