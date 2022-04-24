@@ -1328,6 +1328,12 @@ ssid_list_set:
 		}
 	}
 
+	if (wpa_s->last_scan_req == MANUAL_SCAN_REQ &&
+	    wpa_s->manual_non_coloc_6ghz) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "Collocated 6 GHz logic is disabled");
+		params.non_coloc_6ghz = 1;
+	}
+
 	scan_params = &params;
 
 scan:

@@ -8838,6 +8838,7 @@ static void wpas_ctrl_scan(struct wpa_supplicant *wpa_s, char *params,
 	unsigned int manual_scan_only_new = 0;
 	unsigned int scan_only = 0;
 	unsigned int scan_id_count = 0;
+	unsigned int manual_non_coloc_6ghz = 0;
 	int scan_id[MAX_SCAN_ID];
 	void (*scan_res_handler)(struct wpa_supplicant *wpa_s,
 				 struct wpa_scan_results *scan_res);
@@ -8915,6 +8916,10 @@ static void wpas_ctrl_scan(struct wpa_supplicant *wpa_s, char *params,
 				os_strstr(params, "wildcard_ssid=1") != NULL;
 		}
 
+		pos = os_strstr(params, "non_coloc_6ghz=");
+		if (pos)
+			manual_non_coloc_6ghz = !!atoi(pos + 15);
+
 		pos = params;
 		while (pos && *pos != '\0') {
 			if (os_strncmp(pos, "ssid ", 5) == 0) {
@@ -8984,6 +8989,7 @@ static void wpas_ctrl_scan(struct wpa_supplicant *wpa_s, char *params,
 		wpa_s->manual_scan_use_id = manual_scan_use_id;
 		wpa_s->manual_scan_only_new = manual_scan_only_new;
 		wpa_s->scan_id_count = scan_id_count;
+		wpa_s->manual_non_coloc_6ghz = manual_non_coloc_6ghz;
 		os_memcpy(wpa_s->scan_id, scan_id, scan_id_count * sizeof(int));
 		wpa_s->scan_res_handler = scan_res_handler;
 		os_free(wpa_s->manual_scan_freqs);
@@ -9007,6 +9013,7 @@ static void wpas_ctrl_scan(struct wpa_supplicant *wpa_s, char *params,
 		wpa_s->manual_scan_use_id = manual_scan_use_id;
 		wpa_s->manual_scan_only_new = manual_scan_only_new;
 		wpa_s->scan_id_count = scan_id_count;
+		wpa_s->manual_non_coloc_6ghz = manual_non_coloc_6ghz;
 		os_memcpy(wpa_s->scan_id, scan_id, scan_id_count * sizeof(int));
 		wpa_s->scan_res_handler = scan_res_handler;
 		os_free(wpa_s->manual_scan_freqs);

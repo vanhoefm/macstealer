@@ -884,6 +884,7 @@ struct wpa_supplicant {
 	unsigned int own_scan_requested:1;
 	unsigned int own_scan_running:1;
 	unsigned int clear_driver_scan_cache:1;
+	unsigned int manual_non_coloc_6ghz:1;
 	unsigned int manual_scan_id;
 	int scan_interval; /* time in sec between scans to find suitable AP */
 	int normal_scans; /* normal scans run before sched_scan */
