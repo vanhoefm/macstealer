@@ -203,6 +203,21 @@ nl80211_scan_common(struct i802_bss *bss, u8 cmd,
 				goto fail;
 		}
 		nla_nest_end(msg, ssids);
+
+		/*
+		 * If allowed, scan for 6 GHz APs that are reported by other
+		 * APs. Note that if the flag is not set and 6 GHz channels are
+		 * to be scanned, it is highly likely that non-PSC channels
+		 * would be scanned passively (due to the Probe Request frame
+		 * transmission restrictions mandated in IEEE Std 802.11ax-2021,
+		 * 26.17.2.3 (Scanning in the 6 GHz band). Passive scanning of
+		 * all non-PSC channels would take a significant amount of time.
+		 */
+		if (!params->non_coloc_6ghz) {
+			wpa_printf(MSG_DEBUG,
+				   "nl80211: Scan co-located APs on 6 GHz");
+			scan_flags |= NL80211_SCAN_FLAG_COLOCATED_6GHZ;
+		}
 	} else {
 		wpa_printf(MSG_DEBUG, "nl80211: Passive scan requested");
 	}

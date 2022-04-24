@@ -667,6 +667,16 @@ struct wpa_driver_scan_params {
 	 */
 	unsigned int p2p_include_6ghz:1;
 
+	/**
+	 * non_coloc_6ghz - Force scanning of non-PSC 6 GHz channels
+	 *
+	 * If this is set, the driver should scan non-PSC channels from the
+	 * scan request even if neighbor reports from 2.4/5 GHz APs did not
+	 * report a co-located AP on these channels. The default is to scan
+	 * non-PSC channels only if a co-located AP was reported on the channel.
+	 */
+	unsigned int non_coloc_6ghz:1;
+
 	/*
 	 * NOTE: Whenever adding new parameters here, please make sure
 	 * wpa_scan_clone_params() and wpa_scan_free_params() get updated with
