@@ -275,6 +275,25 @@ def _test_mbo_assoc_disallow_ignore(dev, apdev):
         raise Exception("Failed to set mbo_assoc_disallow for AP1")
     dev[0].wait_connected()
 
+def test_mbo_assoc_disallow_change(dev, apdev):
+    """MBO and dynamic association disallowed change with passive scanning"""
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "MBO", "mbo": "1"})
+    id = dev[0].connect("MBO", key_mgmt="NONE", scan_freq="2412")
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    hapd.set("mbo_assoc_disallow", "1")
+    dev[0].scan_for_bss(hapd.own_addr(), 2412, force_scan=True, passive=True)
+    dev[0].request("RECONNECT")
+    ev = dev[0].wait_event(["CTRL-EVENT-NETWORK-NOT-FOUND",
+                            "CTRL-EVENT-ASSOC-REJECT",
+                            "CTRL-EVENT-CONNECTED"], timeout=20)
+    dev[0].request("DISCONNECT")
+    if ev is None:
+        raise Exception("CTRL-EVENT-NETWORK-NOT-FOUND not seen")
+    if "CTRL-EVENT-NETWORK-NOT-FOUND" not in ev:
+        raise Exception("Unexpected connection result: " + ev)
+
+
 @remote_compatible
 def test_mbo_cell_capa_update(dev, apdev):
     """MBO cellular data capability update"""
