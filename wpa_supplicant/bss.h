@@ -108,6 +108,8 @@ struct wpa_bss {
 	int level;
 	/** Timestamp of last Beacon/Probe Response frame */
 	u64 tsf;
+	/** Whether the Beacon frame data is known to be newer */
+	bool beacon_newer;
 	/** Time of the last update (i.e., Beacon or Probe Response RX) */
 	struct os_reltime last_update;
 	/** Estimated throughput in kbps */

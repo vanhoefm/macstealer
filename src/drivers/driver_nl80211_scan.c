@@ -713,6 +713,7 @@ nl80211_parse_bss_info(struct wpa_driver_nl80211_data *drv,
 		[NL80211_BSS_STATUS] = { .type = NLA_U32 },
 		[NL80211_BSS_SEEN_MS_AGO] = { .type = NLA_U32 },
 		[NL80211_BSS_BEACON_IES] = { .type = NLA_UNSPEC },
+		[NL80211_BSS_BEACON_TSF] = { .type = NLA_U64 },
 		[NL80211_BSS_PARENT_TSF] = { .type = NLA_U64 },
 		[NL80211_BSS_PARENT_BSSID] = { .type = NLA_UNSPEC },
 		[NL80211_BSS_LAST_SEEN_BOOTTIME] = { .type = NLA_U64 },
@@ -774,8 +775,10 @@ nl80211_parse_bss_info(struct wpa_driver_nl80211_data *drv,
 		r->tsf = nla_get_u64(bss[NL80211_BSS_TSF]);
 	if (bss[NL80211_BSS_BEACON_TSF]) {
 		u64 tsf = nla_get_u64(bss[NL80211_BSS_BEACON_TSF]);
-		if (tsf > r->tsf)
+		if (tsf > r->tsf) {
 			r->tsf = tsf;
+			r->beacon_newer = true;
+		}
 	}
 	if (bss[NL80211_BSS_SEEN_MS_AGO])
 		r->age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);

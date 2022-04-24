@@ -291,6 +291,7 @@ static void wpa_bss_copy_res(struct wpa_bss *dst, struct wpa_scan_res *src,
 	dst->noise = src->noise;
 	dst->level = src->level;
 	dst->tsf = src->tsf;
+	dst->beacon_newer = src->beacon_newer;
 	dst->est_throughput = src->est_throughput;
 	dst->snr = src->snr;
 
