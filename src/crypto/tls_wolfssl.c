@@ -1339,7 +1339,8 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 					    WOLFSSL_CSR_OCSP_USE_NONCE) !=
 		    SSL_SUCCESS)
 			return -1;
-		wolfSSL_CTX_EnableOCSP(tls_ctx, 0);
+		if (wolfSSL_EnableOCSPStapling(conn->ssl) != SSL_SUCCESS)
+			return -1;
 	}
 #endif /* HAVE_CERTIFICATE_STATUS_REQUEST */
 #ifdef HAVE_CERTIFICATE_STATUS_REQUEST_V2
@@ -1348,7 +1349,8 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 					      WOLFSSL_CSR2_OCSP_MULTI, 0) !=
 		    SSL_SUCCESS)
 			return -1;
-		wolfSSL_CTX_EnableOCSP(tls_ctx, 0);
+		if (wolfSSL_EnableOCSPStapling(conn->ssl) != SSL_SUCCESS)
+			return -1;
 	}
 #endif /* HAVE_CERTIFICATE_STATUS_REQUEST_V2 */
 #if !defined(HAVE_CERTIFICATE_STATUS_REQUEST) && \
