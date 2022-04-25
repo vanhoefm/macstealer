@@ -410,10 +410,13 @@ int tls_connection_shutdown(void *tls_ctx, struct tls_connection *conn)
 	wolfSSL_set_quiet_shutdown(conn->ssl, 1);
 	wolfSSL_shutdown(conn->ssl);
 
-	session = wolfSSL_get_session(conn->ssl);
-	if (wolfSSL_clear(conn->ssl) != 1)
+	session = wolfSSL_get1_session(conn->ssl);
+	if (wolfSSL_clear(conn->ssl) != 1) {
+		wolfSSL_SESSION_free(session);
 		return -1;
+	}
 	wolfSSL_set_session(conn->ssl, session);
+	wolfSSL_SESSION_free(session);
 
 	return 0;
 }
