@@ -1282,6 +1282,8 @@ static void tls_set_conn_flags(WOLFSSL *ssl, unsigned int flags)
 		wolfSSL_set_options(ssl, SSL_OP_NO_TLSv1_1);
 	if (flags & TLS_CONN_DISABLE_TLSv1_2)
 		wolfSSL_set_options(ssl, SSL_OP_NO_TLSv1_2);
+	if (flags & TLS_CONN_DISABLE_TLSv1_3)
+		wolfSSL_set_options(ssl, SSL_OP_NO_TLSv1_3);
 }
 
 
