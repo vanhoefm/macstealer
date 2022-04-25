@@ -89,8 +89,8 @@ def check_ocsp_support(dev):
     #    raise HwsimSkip("OCSP not supported with this TLS library: " + tls)
     #if "BoringSSL" in tls:
     #    raise HwsimSkip("OCSP not supported with this TLS library: " + tls)
-    if tls.startswith("wolfSSL"):
-        raise HwsimSkip("OCSP not supported with this TLS library: " + tls)
+    #if tls.startswith("wolfSSL"):
+    #    raise HwsimSkip("OCSP not supported with this TLS library: " + tls)
 
 def check_pkcs5_v15_support(dev):
     tls = dev.request("GET tls_library")
@@ -99,7 +99,7 @@ def check_pkcs5_v15_support(dev):
 
 def check_tls13_support(dev):
     tls = dev.request("GET tls_library")
-    if "run=OpenSSL 1.1.1" not in tls and "run=OpenSSL 3.0" not in tls:
+    if "run=OpenSSL 1.1.1" not in tls and "run=OpenSSL 3.0" not in tls and "wolfSSL" not in tls:
         raise HwsimSkip("TLS v1.3 not supported")
 
 def check_ocsp_multi_support(dev):
