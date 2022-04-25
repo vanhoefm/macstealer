@@ -26,6 +26,7 @@
 #include <wolfssl/wolfcrypt/dh.h>
 #include <wolfssl/wolfcrypt/cmac.h>
 #include <wolfssl/wolfcrypt/ecc.h>
+#include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/openssl/bn.h>
 
 
@@ -1833,6 +1834,263 @@ fail:
 size_t crypto_ecdh_prime_len(struct crypto_ecdh *ecdh)
 {
 	return crypto_ec_prime_len(ecdh->ec);
+}
+
+
+struct crypto_ec_key {
+	ecc_key *eckey;
+	WC_RNG *rng; /* Needs to be initialized before use.
+		      * *NOT* initialized in crypto_ec_key_init */
+};
+
+
+static struct crypto_ec_key * crypto_ec_key_init(void)
+{
+	struct crypto_ec_key *key;
+
+	key = os_zalloc(sizeof(struct crypto_ec_key));
+	if (key) {
+#ifdef CONFIG_FIPS
+		key->eckey = os_zalloc(sizeof(ecc_key));
+#else /* CONFIG_FIPS */
+		key->eckey = wc_ecc_key_new(NULL);
+#endif /* CONFIG_FIPS */
+		/* Omit key->rng initialization because it seeds itself and thus
+		 * consumes entropy that may never be used. Lazy initialize when
+		 * necessary. */
+		if (!key->eckey) {
+			wpa_printf(MSG_ERROR,
+				   "wolfSSL: crypto_ec_key_init() failed");
+			crypto_ec_key_deinit(key);
+			key = NULL;
+		}
+#ifdef CONFIG_FIPS
+		else if (wc_ecc_init_ex(key->eckey, NULL, INVALID_DEVID) != 0) {
+			wpa_printf(MSG_ERROR, "wolfSSL: wc_ecc_init_ex failed");
+			crypto_ec_key_deinit(key);
+			key = NULL;
+		}
+#endif /* CONFIG_FIPS */
+	}
+	return key;
+}
+
+
+void crypto_ec_key_deinit(struct crypto_ec_key *key)
+{
+	if (key) {
+#ifdef CONFIG_FIPS
+		os_free(key->rng);
+		os_free(key->eckey);
+#else /* CONFIG_FIPS */
+		wc_rng_free(key->rng);
+		wc_ecc_key_free(key->eckey);
+#endif /* CONFIG_FIPS */
+		os_free(key);
+	}
+}
+
+
+struct crypto_ec_key * crypto_ec_key_parse_priv(const u8 *der, size_t der_len)
+{
+	struct crypto_ec_key *ret;
+	word32 idx = 0;
+
+	ret = crypto_ec_key_init();
+	if (!ret) {
+		wpa_printf(MSG_ERROR, "wolfSSL: crypto_ec_key_init failed");
+		goto fail;
+	}
+
+	if (wc_EccPrivateKeyDecode(der, &idx, ret->eckey, (word32) der_len) !=
+	    0) {
+		wpa_printf(MSG_ERROR, "wolfSSL: wc_EccPrivateKeyDecode failed");
+		goto fail;
+	}
+
+	return ret;
+fail:
+	if (ret)
+		crypto_ec_key_deinit(ret);
+	return NULL;
+}
+
+
+int crypto_ec_key_group(struct crypto_ec_key *key)
+{
+
+	if (!key || !key->eckey || !key->eckey->dp) {
+		wpa_printf(MSG_ERROR, "wolfSSL: %s: invalid input parameters",
+			   __func__);
+		return -1;
+	}
+
+	switch (key->eckey->dp->id) {
+	case ECC_SECP256R1:
+		return 19;
+	case ECC_SECP384R1:
+		return 20;
+	case ECC_SECP521R1:
+		return 21;
+	case ECC_BRAINPOOLP256R1:
+		return 28;
+	case ECC_BRAINPOOLP384R1:
+		return 29;
+	case ECC_BRAINPOOLP512R1:
+		return 30;
+	}
+
+	wpa_printf(MSG_ERROR, "wolfSSL: Unsupported curve (id=%d) in EC key",
+		   key->eckey->dp->id);
+	return -1;
+}
+
+
+struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key)
+{
+	byte *der = NULL;
+	int der_len;
+	struct wpabuf *ret = NULL;
+
+	if (!key || !key->eckey) {
+		wpa_printf(MSG_ERROR, "wolfSSL: %s: invalid input parameters",
+			   __func__);
+		goto fail;
+	}
+
+	der_len = wc_EccPublicKeyDerSize(key->eckey, 1);
+	if (der_len <= 0) {
+		wpa_printf(MSG_ERROR, "wolfSSL: wc_EccPublicKeyDerSize failed");
+		goto fail;
+	}
+
+	der = os_malloc(der_len);
+	if (!der)
+		goto fail;
+
+	der_len = wc_EccPublicKeyToDer(key->eckey, der, der_len, 1);
+	if (der_len <= 0) {
+		wpa_printf(MSG_ERROR, "wolfSSL: wc_EccPublicKeyToDer failed");
+		goto fail;
+	}
+
+	ret = wpabuf_alloc_copy(der, der_len);
+	os_free(der);
+	return ret;
+
+fail:
+	os_free(der);
+	return NULL;
+}
+
+
+struct crypto_ec_key * crypto_ec_key_parse_pub(const u8 *der, size_t der_len)
+{
+	word32 idx = 0;
+	struct crypto_ec_key *ret = NULL;
+
+	ret = crypto_ec_key_init();
+	if (!ret) {
+		wpa_printf(MSG_ERROR, "wolfSSL: crypto_ec_key_init failed");
+		goto fail;
+	}
+
+	if (wc_EccPublicKeyDecode(der, &idx, ret->eckey, (word32) der_len) != 0)
+	{
+		wpa_printf(MSG_ERROR, "wolfSSL: wc_EccPublicKeyDecode failed");
+		goto fail;
+	}
+
+	return ret;
+fail:
+	crypto_ec_key_deinit(ret);
+	return NULL;
+}
+
+
+struct wpabuf * crypto_ec_key_sign(struct crypto_ec_key *key, const u8 *data,
+				   size_t len)
+{
+	byte *der = NULL;
+	int der_len;
+	word32 w32_der_len;
+	struct wpabuf *ret = NULL;
+
+	if (!key || !key->eckey || !data || len == 0) {
+		wpa_printf(MSG_ERROR, "wolfSSL: %s: invalid input parameters",
+			   __func__);
+		goto fail;
+	}
+
+	if (!key->rng) {
+		/* Lazy init key->rng */
+#ifdef CONFIG_FIPS
+		key->rng = os_zalloc(sizeof(WC_RNG));
+#else /* CONFIG_FIPS */
+		key->rng = wc_rng_new(NULL, 0, NULL);
+#endif /* CONFIG_FIPS */
+		if (!key->rng) {
+			wpa_printf(MSG_ERROR, "wolfSSL: wc_rng_new failed");
+			goto fail;
+		}
+#ifdef CONFIG_FIPS
+		if (wc_InitRng(key->rng) != 0) {
+			wpa_printf(MSG_ERROR, "wolfSSL: wc_InitRng failed");
+			goto fail;
+		}
+#endif /* CONFIG_FIPS */
+	}
+
+	der_len = wc_ecc_sig_size(key->eckey);
+	if (der_len <= 0) {
+		wpa_printf(MSG_ERROR, "wolfSSL: wc_ecc_sig_size failed");
+		goto fail;
+	}
+
+	der = os_malloc(der_len);
+	if (!der)
+		goto fail;
+
+	w32_der_len = (word32) der_len;
+	if (wc_ecc_sign_hash(data, len, der, &w32_der_len, key->rng, key->eckey)
+	    != 0) {
+		wpa_printf(MSG_ERROR, "wolfSSL: wc_ecc_sign_hash failed");
+		goto fail;
+	}
+
+	ret = wpabuf_alloc_copy(der, der_len);
+	os_free(der);
+	if (!ret)
+		wpa_printf(MSG_ERROR, "wolfSSL: wpabuf_alloc_copy failed");
+	return ret;
+fail:
+	os_free(der);
+	return NULL;
+}
+
+
+int crypto_ec_key_verify_signature(struct crypto_ec_key *key, const u8 *data,
+				   size_t len, const u8 *sig, size_t sig_len)
+{
+	int res = 0;
+
+	if (!key || !key->eckey || !data || len == 0 || !sig || sig_len == 0) {
+		wpa_printf(MSG_ERROR, "wolfSSL: %s: invalid input parameters",
+			   __func__);
+		return -1;
+	}
+
+	if (wc_ecc_verify_hash(sig, sig_len, data, len, &res, key->eckey) != 0)
+	{
+		wpa_printf(MSG_ERROR, "wolfSSL: wc_ecc_verify_hash failed");
+		return -1;
+	}
+
+	if (res != 1)
+		wpa_printf(MSG_DEBUG,
+			   "wolfSSL: crypto_ec_key_verify_signature failed");
+
+	return res;
 }
 
 #endif /* CONFIG_ECC */
