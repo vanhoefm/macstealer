@@ -2119,6 +2119,8 @@ def run_sae_pwe_group(dev, apdev, group):
     if group in [27, 28, 29, 30]:
         if tls.startswith("OpenSSL") and ("run=OpenSSL 1." in tls or "run=OpenSSL 3." in tls):
             logger.info("Add Brainpool EC groups since OpenSSL is new enough")
+        elif tls.startswith("wolfSSL"):
+            logger.info("Make sure Brainpool EC groups were enabled when compiling wolfSSL")
         else:
             raise HwsimSkip("Brainpool curve not supported")
     start_sae_pwe_ap(apdev[0], group, 2)
