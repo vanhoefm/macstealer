@@ -719,7 +719,7 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 			 struct hostapd_channel_data **ideal_chan,
 			 long double *ideal_factor)
 {
-	struct hostapd_channel_data *chan, *adj_chan = NULL;
+	struct hostapd_channel_data *chan, *adj_chan = NULL, *best;
 	long double factor;
 	int i, j;
 	unsigned int k;
@@ -727,8 +727,9 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 	for (i = 0; i < mode->num_channels; i++) {
 		double total_weight;
 		struct acs_bias *bias, tmp_bias;
+		bool update_best = true;
 
-		chan = &mode->channels[i];
+		best = chan = &mode->channels[i];
 
 		/* Since in the current ACS implementation the first channel is
 		 * always a primary channel, skip channels not available as
@@ -815,13 +816,33 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 			if (acs_usable_chan(adj_chan)) {
 				factor += adj_chan->interference_factor;
 				total_weight += 1;
+			} else {
+				update_best = false;
 			}
+
+			/* find the best channel in this segment */
+			if (update_best &&
+			    adj_chan->interference_factor <
+			    best->interference_factor)
+				best = adj_chan;
 		}
 
 		if (j != n_chans) {
 			wpa_printf(MSG_DEBUG, "ACS: Channel %d: not enough bandwidth",
 				   chan->chan);
 			continue;
+		}
+
+		/* If the AP is in the 5 GHz or 6 GHz band, lets prefer a less
+		 * crowded primary channel if one was found in the segment */
+		if (iface->current_mode->mode == HOSTAPD_MODE_IEEE80211A &&
+		    chan != best) {
+			wpa_printf(MSG_DEBUG,
+				   "ACS: promoting channel %d over %d (less interference %Lg/%Lg)",
+				   best->chan, chan->chan,
+				   chan->interference_factor,
+				   best->interference_factor);
+			chan = best;
 		}
 
 		/* 2.4 GHz has overlapping 20 MHz channels. Include adjacent
