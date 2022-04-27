@@ -241,6 +241,57 @@
  * [1] http://en.wikipedia.org/wiki/Near_and_far_field
  */
 
+enum bw_type {
+	ACS_BW40,
+	ACS_BW80,
+	ACS_BW160,
+};
+
+struct bw_item {
+	int first;
+	int last;
+	int center_chan;
+};
+
+static const struct bw_item bw_40[] = {
+	{ 5180, 5200, 38 }, { 5220, 5240, 46 }, { 5260, 5280, 54 },
+	{ 5300, 5320, 62 }, { 5500, 5520, 102 }, { 5540, 5560, 110 },
+	{ 5580, 5600, 110 }, { 5620, 5640, 126}, { 5660, 5680, 134 },
+	{ 5700, 5720, 142 }, { 5745, 5765, 151 }, { 5785, 5805, 159 },
+	{ 5825, 5845, 167 }, { 5865, 5885, 175 },
+	{ 5955, 5975, 3 }, { 5995, 6015, 11 }, { 6035, 6055, 19 },
+	{ 6075, 6095, 27 }, { 6115, 6135, 35 }, { 6155, 6175, 43 },
+	{ 6195, 6215, 51 }, { 6235, 6255, 59 }, { 6275, 6295, 67 },
+	{ 6315, 6335, 75 }, { 6355, 6375, 83 }, { 6395, 6415, 91 },
+	{ 6435, 6455, 99 }, { 6475, 6495, 107 }, { 6515, 6535, 115 },
+	{ 6555, 6575, 123 }, { 6595, 6615, 131 }, { 6635, 6655, 139 },
+	{ 6675, 6695, 147 }, { 6715, 6735, 155 }, { 6755, 6775, 163 },
+	{ 6795, 6815, 171 }, { 6835, 6855, 179 }, { 6875, 6895, 187 },
+	{ 6915, 6935, 195 }, { 6955, 6975, 203 }, { 6995, 7015, 211 },
+	{ 7035, 7055, 219 }, { 7075, 7095, 227}, { -1, -1, -1 }
+};
+static const struct bw_item bw_80[] = {
+	{ 5180, 5240, 42 }, { 5260, 5320, 58 }, { 5500, 5560, 106 },
+	{ 5580, 5640, 122 }, { 5660, 5720, 138 }, { 5745, 5805, 155 },
+	{ 5825, 5885, 171},
+	{ 5955, 6015, 7 }, { 6035, 6095, 23 }, { 6115, 6175, 39 },
+	{ 6195, 6255, 55 }, { 6275, 6335, 71 }, { 6355, 6415, 87 },
+	{ 6435, 6495, 103 }, { 6515, 6575, 119 }, { 6595, 6655, 135 },
+	{ 6675, 6735, 151 }, { 6755, 6815, 167 }, { 6835, 6895, 183 },
+	{ 6915, 6975, 199 }, { 6995, 7055, 215 }, { -1, -1, -1 }
+};
+static const struct bw_item bw_160[] = {
+	{ 5180, 5320, 50 }, { 5500, 5640, 114 }, { 5745, 5885, 163 },
+	{ 5955, 6095, 15 }, { 6115, 6255, 47 }, { 6275, 6415, 79 },
+	{ 6435, 6575, 111 }, { 6595, 6735, 143 },
+	{ 6755, 6895, 175 }, { 6915, 7055, 207 }, { -1, -1, -1 }
+};
+static const struct bw_item *bw_desc[] = {
+	[ACS_BW40] = bw_40,
+	[ACS_BW80] = bw_80,
+	[ACS_BW160] = bw_160,
+};
+
 
 static int acs_request_scan(struct hostapd_iface *iface);
 static int acs_survey_is_sufficient(struct freq_survey *survey);
@@ -370,50 +421,18 @@ acs_survey_chan_interference_factor(struct hostapd_iface *iface,
 }
 
 
-static int acs_usable_bw40_chan(const struct hostapd_channel_data *chan)
+static bool acs_usable_bw_chan(const struct hostapd_channel_data *chan,
+			       enum bw_type bw)
 {
-	const int allowed[] = { 5180, 5220, 5260, 5300, 5500, 5540, 5580, 5620,
-				5660, 5745, 5785, 4920, 4960, 5955, 5995, 6035,
-				6075, 6115, 6155, 6195, 6235, 6275, 6315, 6355,
-				6395, 6435, 6475, 6515, 6555, 6595, 6635, 6675,
-				6715, 6755, 6795, 6835, 6875, 6915, 6955, 6995,
-				7035, 7075 };
-	unsigned int i;
+	unsigned int i = 0;
 
-	for (i = 0; i < ARRAY_SIZE(allowed); i++)
-		if (chan->freq == allowed[i])
-			return 1;
+	while (bw_desc[bw][i].first != -1) {
+		if (chan->freq == bw_desc[bw][i].first)
+			return true;
+		i++;
+	}
 
-	return 0;
-}
-
-
-static int acs_usable_bw80_chan(const struct hostapd_channel_data *chan)
-{
-	const int allowed[] = { 5180, 5260, 5500, 5580, 5660, 5745, 5955, 6035,
-				6115, 6195, 6275, 6355, 6435, 6515, 6595, 6675,
-				6755, 6835, 6915, 6995 };
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(allowed); i++)
-		if (chan->freq == allowed[i])
-			return 1;
-
-	return 0;
-}
-
-
-static int acs_usable_bw160_chan(const struct hostapd_channel_data *chan)
-{
-	const int allowed[] = { 5180, 5500, 5955, 6115, 6275, 6435, 6595, 6755,
-				6915 };
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(allowed); i++)
-		if (chan->freq == allowed[i])
-			return 1;
-
-	return 0;
+	return false;
 }
 
 
@@ -713,7 +732,7 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 		    ((iface->conf->ieee80211n &&
 		      iface->conf->secondary_channel) ||
 		     is_6ghz_freq(chan->freq)) &&
-		    !acs_usable_bw40_chan(chan)) {
+		    !acs_usable_bw_chan(chan, ACS_BW40)) {
 			wpa_printf(MSG_DEBUG,
 				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
 				   chan->chan);
@@ -724,7 +743,7 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax)) {
 			if (hostapd_get_oper_chwidth(iface->conf) ==
 			    CONF_OPER_CHWIDTH_80MHZ &&
-			    !acs_usable_bw80_chan(chan)) {
+			    !acs_usable_bw_chan(chan, ACS_BW80)) {
 				wpa_printf(MSG_DEBUG,
 					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
 					   chan->chan);
@@ -733,7 +752,7 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 
 			if (hostapd_get_oper_chwidth(iface->conf) ==
 			    CONF_OPER_CHWIDTH_160MHZ &&
-			    !acs_usable_bw160_chan(chan)) {
+			    !acs_usable_bw_chan(chan, ACS_BW160)) {
 				wpa_printf(MSG_DEBUG,
 					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
 					   chan->chan);
