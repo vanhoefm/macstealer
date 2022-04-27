@@ -641,6 +641,26 @@ acs_find_chan_mode(struct hostapd_hw_modes *mode, int freq)
 }
 
 
+static enum hostapd_hw_mode
+acs_find_mode(struct hostapd_iface *iface, int freq)
+{
+	int i;
+	struct hostapd_hw_modes *mode;
+	struct hostapd_channel_data *chan;
+
+	for (i = 0; i < iface->num_hw_features; i++) {
+		mode = &iface->hw_features[i];
+		if (!hostapd_hw_skip_mode(iface, mode)) {
+			chan = acs_find_chan_mode(mode, freq);
+			if (chan)
+				return mode->mode;
+		}
+	}
+
+	return HOSTAPD_MODE_IEEE80211ANY;
+}
+
+
 static struct hostapd_channel_data *
 acs_find_chan(struct hostapd_iface *iface, int freq)
 {
@@ -957,6 +977,28 @@ bw_selected:
 }
 
 
+static void acs_adjust_secondary(struct hostapd_iface *iface)
+{
+	unsigned int i;
+
+	/* When working with bandwidth over 20 MHz on the 5 GHz or 6 GHz band,
+	 * ACS can return a secondary channel which is not the first channel of
+	 * the segment and we need to adjust. */
+	if (!iface->conf->secondary_channel ||
+	    acs_find_mode(iface, iface->freq) != HOSTAPD_MODE_IEEE80211A)
+		return;
+
+	wpa_printf(MSG_DEBUG, "ACS: Adjusting HT/VHT/HE secondary frequency");
+
+	for (i = 0; bw_desc[ACS_BW40][i].first != -1; i++) {
+		if (iface->freq == bw_desc[ACS_BW40][i].first)
+			iface->conf->secondary_channel = 1;
+		else if (iface->freq == bw_desc[ACS_BW40][i].last)
+			iface->conf->secondary_channel = -1;
+	}
+}
+
+
 static void acs_adjust_center_freq(struct hostapd_iface *iface)
 {
 	int center;
@@ -1044,8 +1086,10 @@ static void acs_study(struct hostapd_iface *iface)
 	iface->conf->channel = ideal_chan->chan;
 	iface->freq = ideal_chan->freq;
 
-	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax)
+	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax) {
+		acs_adjust_secondary(iface);
 		acs_adjust_center_freq(iface);
+	}
 
 	err = hostapd_select_hw_mode(iface);
 	if (err) {
