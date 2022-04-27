@@ -38,6 +38,7 @@
 #endif /* OpenSSL version >= 3.0 */
 
 #include "common.h"
+#include "utils/list.h"
 #include "crypto.h"
 #include "sha1.h"
 #include "sha256.h"
@@ -201,12 +202,18 @@ static int tls_add_ca_from_keystore_encoded(X509_STORE *ctx,
 static int tls_openssl_ref_count = 0;
 static int tls_ex_idx_session = -1;
 
+struct tls_session_data {
+	struct dl_list list;
+	struct wpabuf *buf;
+};
+
 struct tls_context {
 	void (*event_cb)(void *ctx, enum tls_event ev,
 			 union tls_event_data *data);
 	void *cb_ctx;
 	int cert_in_cb;
 	char *ocsp_stapling_response;
+	struct dl_list sessions; /* struct tls_session_data */
 };
 
 static struct tls_context *tls_global = NULL;
@@ -274,6 +281,7 @@ static struct tls_context * tls_context_new(const struct tls_config *conf)
 	struct tls_context *context = os_zalloc(sizeof(*context));
 	if (context == NULL)
 		return NULL;
+	dl_list_init(&context->sessions);
 	if (conf) {
 		context->event_cb = conf->event_cb;
 		context->cb_ctx = conf->cb_ctx;
@@ -925,21 +933,53 @@ static int tls_engine_load_dynamic_opensc(const char *opensc_so_path)
 #endif /* OPENSSL_NO_ENGINE */
 
 
+static struct tls_session_data * get_session_data(struct tls_context *context,
+						  const struct wpabuf *buf)
+{
+	struct tls_session_data *data;
+
+	dl_list_for_each(data, &context->sessions, struct tls_session_data,
+			 list) {
+		if (data->buf == buf)
+			return data;
+	}
+
+	return NULL;
+}
+
+
 static void remove_session_cb(SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	struct wpabuf *buf;
+	struct tls_context *context;
+	struct tls_session_data *found;
+
+	wpa_printf(MSG_DEBUG,
+		   "OpenSSL: Remove session %p (tls_ex_idx_session=%d)", sess,
+		   tls_ex_idx_session);
 
 	if (tls_ex_idx_session < 0)
 		return;
 	buf = SSL_SESSION_get_ex_data(sess, tls_ex_idx_session);
 	if (!buf)
 		return;
+
+	context = SSL_CTX_get_app_data(ctx);
+	SSL_SESSION_set_ex_data(sess, tls_ex_idx_session, NULL);
+	found = get_session_data(context, buf);
+	if (!found) {
+		wpa_printf(MSG_DEBUG,
+			   "OpenSSL: Do not free application session data %p (sess %p)",
+			   buf, sess);
+		return;
+	}
+
+	dl_list_del(&found->list);
+	os_free(found);
 	wpa_printf(MSG_DEBUG,
 		   "OpenSSL: Free application session data %p (sess %p)",
 		   buf, sess);
 	wpabuf_free(buf);
-
-	SSL_SESSION_set_ex_data(sess, tls_ex_idx_session, NULL);
 }
 
 
@@ -1113,10 +1153,24 @@ void tls_deinit(void *ssl_ctx)
 	struct tls_data *data = ssl_ctx;
 	SSL_CTX *ssl = data->ssl;
 	struct tls_context *context = SSL_CTX_get_app_data(ssl);
+	struct tls_session_data *sess_data;
+
+	if (data->tls_session_lifetime > 0) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Flush sessions");
+		SSL_CTX_flush_sessions(ssl, 0);
+		wpa_printf(MSG_DEBUG, "OpenSSL: Flush sessions - done");
+	}
+	while ((sess_data = dl_list_first(&context->sessions,
+					  struct tls_session_data, list))) {
+		wpa_printf(MSG_DEBUG,
+			   "OpenSSL: Freeing not-flushed session data %p",
+			   sess_data->buf);
+		wpabuf_free(sess_data->buf);
+		dl_list_del(&sess_data->list);
+		os_free(sess_data);
+	}
 	if (context != tls_global)
 		os_free(context);
-	if (data->tls_session_lifetime > 0)
-		SSL_CTX_flush_sessions(ssl, 0);
 	os_free(data->ca_cert);
 	SSL_CTX_free(ssl);
 
@@ -5679,6 +5733,7 @@ void tls_connection_set_success_data(struct tls_connection *conn,
 {
 	SSL_SESSION *sess;
 	struct wpabuf *old;
+	struct tls_session_data *sess_data = NULL;
 
 	if (tls_ex_idx_session < 0)
 		goto fail;
@@ -5687,20 +5742,35 @@ void tls_connection_set_success_data(struct tls_connection *conn,
 		goto fail;
 	old = SSL_SESSION_get_ex_data(sess, tls_ex_idx_session);
 	if (old) {
-		wpa_printf(MSG_DEBUG, "OpenSSL: Replacing old success data %p",
-			   old);
-		wpabuf_free(old);
+		struct tls_session_data *found;
+
+		found = get_session_data(conn->context, old);
+		wpa_printf(MSG_DEBUG,
+			   "OpenSSL: Replacing old success data %p (sess %p)%s",
+			   old, sess, found ? "" : " (not freeing)");
+		if (found) {
+			dl_list_del(&found->list);
+			os_free(found);
+			wpabuf_free(old);
+		}
 	}
-	if (SSL_SESSION_set_ex_data(sess, tls_ex_idx_session, data) != 1)
+
+	sess_data = os_zalloc(sizeof(*sess_data));
+	if (!sess_data ||
+	    SSL_SESSION_set_ex_data(sess, tls_ex_idx_session, data) != 1)
 		goto fail;
 
-	wpa_printf(MSG_DEBUG, "OpenSSL: Stored success data %p", data);
+	sess_data->buf = data;
+	dl_list_add(&conn->context->sessions, &sess_data->list);
+	wpa_printf(MSG_DEBUG, "OpenSSL: Stored success data %p (sess %p)",
+		   data, sess);
 	conn->success_data = 1;
 	return;
 
 fail:
 	wpa_printf(MSG_INFO, "OpenSSL: Failed to store success data");
 	wpabuf_free(data);
+	os_free(sess_data);
 }
 
 
