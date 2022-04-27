@@ -436,6 +436,21 @@ static bool acs_usable_bw_chan(const struct hostapd_channel_data *chan,
 }
 
 
+static int acs_get_bw_center_chan(int freq, enum bw_type bw)
+{
+	unsigned int i = 0;
+
+	while (bw_desc[bw][i].first != -1) {
+		if (freq >= bw_desc[bw][i].first &&
+		    freq <= bw_desc[bw][i].last)
+			return bw_desc[bw][i].center_chan;
+		i++;
+	}
+
+	return 0;
+}
+
+
 static int acs_survey_is_sufficient(struct freq_survey *survey)
 {
 	if (!(survey->filled & SURVEY_HAS_NF)) {
@@ -944,19 +959,26 @@ bw_selected:
 
 static void acs_adjust_center_freq(struct hostapd_iface *iface)
 {
-	int offset;
+	int center;
 
 	wpa_printf(MSG_DEBUG, "ACS: Adjusting VHT center frequency");
 
 	switch (hostapd_get_oper_chwidth(iface->conf)) {
 	case CONF_OPER_CHWIDTH_USE_HT:
-		offset = 2 * iface->conf->secondary_channel;
+		if (iface->conf->secondary_channel &&
+		    iface->freq >= 2400 && iface->freq < 2500)
+			center = iface->conf->channel +
+				2 * iface->conf->secondary_channel;
+		else if (iface->conf->secondary_channel)
+			center = acs_get_bw_center_chan(iface->freq, ACS_BW40);
+		else
+			center = iface->conf->channel;
 		break;
 	case CONF_OPER_CHWIDTH_80MHZ:
-		offset = 6;
+		center = acs_get_bw_center_chan(iface->freq, ACS_BW80);
 		break;
 	case CONF_OPER_CHWIDTH_160MHZ:
-		offset = 14;
+		center = acs_get_bw_center_chan(iface->freq, ACS_BW160);
 		break;
 	default:
 		/* TODO: How can this be calculated? Adjust
@@ -966,8 +988,7 @@ static void acs_adjust_center_freq(struct hostapd_iface *iface)
 		return;
 	}
 
-	hostapd_set_oper_centr_freq_seg0_idx(iface->conf,
-					     iface->conf->channel + offset);
+	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, center);
 }
 
 
