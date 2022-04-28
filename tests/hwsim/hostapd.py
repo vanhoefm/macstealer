@@ -201,11 +201,12 @@ class Hostapd:
                 raise utils.HwsimSkip("Cipher TKIP not supported")
             raise Exception("Failed to set hostapd parameter " + field)
 
-    def set_defaults(self):
+    def set_defaults(self, set_channel=True):
         self.set("driver", "nl80211")
-        self.set("hw_mode", "g")
-        self.set("channel", "1")
-        self.set("ieee80211n", "1")
+        if set_channel:
+            self.set("hw_mode", "g")
+            self.set("channel", "1")
+            self.set("ieee80211n", "1")
         self.set("logger_stdout", "-1")
         self.set("logger_stdout_level", "0")
 
@@ -586,7 +587,7 @@ class Hostapd:
         return None
 
 def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30,
-           global_ctrl_override=None, driver=False):
+           global_ctrl_override=None, driver=False, set_channel=True):
         if isinstance(apdev, dict):
             ifname = apdev['ifname']
             try:
@@ -610,7 +611,7 @@ def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30,
         hapd = Hostapd(ifname, hostname=hostname, port=port)
         if not hapd.ping():
             raise Exception("Could not ping hostapd")
-        hapd.set_defaults()
+        hapd.set_defaults(set_channel=set_channel)
         fields = ["ssid", "wpa_passphrase", "nas_identifier", "wpa_key_mgmt",
                   "wpa", "wpa_deny_ptk0_rekey",
                   "wpa_pairwise", "rsn_pairwise", "auth_server_addr",

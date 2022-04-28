@@ -1151,6 +1151,62 @@ def test_he_twt(dev, apdev):
     if "OK" not in dev[0].request("TWT_TEARDOWN flags=255"):
         raise Exception("TWT_SETUP failed")
 
+def test_he_6ghz(dev, apdev):
+    """HE with 20 MHz channel width on 6 GHz"""
+    try:
+        dev[0].set("sae_pwe", "1")
+        hapd = None
+        params = {"ssid": "he",
+                  "country_code": "DE",
+                  "op_class": "131",
+                  "channel": "5",
+                  "ieee80211ax": "1",
+                  "wpa": "2",
+                  "rsn_pairwise": "CCMP",
+                  "wpa_key_mgmt": "SAE",
+                  "sae_pwe": "1",
+                  "sae_password": "password",
+                  "ieee80211w": "2"}
+        hapd = hostapd.add_ap(apdev[0], params, set_channel=False)
+        bssid = apdev[0]['bssid']
+
+        dev[0].connect("he", sae_password="password", key_mgmt="SAE",
+                       ieee80211w="2", scan_freq="5975")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+        sig = dev[0].request("SIGNAL_POLL").splitlines()
+        if "FREQUENCY=5975" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
+        if "WIDTH=20 MHz" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+        status = dev[0].get_status()
+        if 'wifi_generation' not in status:
+            # For now, assume this is because of missing kernel support
+            raise HwsimSkip("Association Request IE reporting not supported")
+            #raise Exception("Missing wifi_generation information")
+        if status['wifi_generation'] != "6":
+            raise Exception("Unexpected wifi_generation value: " + status['wifi_generation'])
+        status = hapd.get_status()
+        logger.info("hostapd STATUS: " + str(status))
+        if status["ieee80211ax"] != "1":
+            raise Exception("Unexpected STATUS ieee80211ax value")
+        if status["he_oper_chwidth"] != "0":
+            raise Exception("Unexpected STATUS he_oper_chwidth value")
+
+        sta = hapd.get_sta(dev[0].own_addr())
+        logger.info("hostapd STA: " + str(sta))
+        if "[HE]" not in sta['flags']:
+            raise Exception("Missing STA flag: HE")
+
+    except Exception as e:
+        if isinstance(e, Exception) and str(e) == "AP startup failed":
+            if not he_supported():
+                raise HwsimSkip("HE 6 GHz channel not supported in regulatory information")
+        raise
+    finally:
+        dev[0].request("DISCONNECT")
+        dev[0].set("sae_pwe", "0")
+        clear_regdom(hapd, dev)
+
 def test_he_6ghz_security(dev, apdev):
     """HE AP and 6 GHz security parameter validation"""
     params = {"ssid": "he",
