@@ -7,6 +7,9 @@
  */
 
 #include "includes.h"
+#ifdef CONFIG_TESTING_OPTIONS
+#include <fcntl.h>
+#endif /* CONFIG_TESTING_OPTIONS */
 
 #ifndef CONFIG_SMARTCARD
 #ifndef OPENSSL_NO_ENGINE
@@ -1578,6 +1581,63 @@ static void tls_msg_cb(int write_p, int version, int content_type,
 }
 
 
+#ifdef CONFIG_TESTING_OPTIONS
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+/*
+ * By setting the environment variable SSLKEYLOGFILE to a filename keying
+ * material will be exported that you may use with Wireshark to decode any
+ * TLS flows. Please see the following for more details:
+ *
+ *	https://gitlab.com/wireshark/wireshark/-/wikis/TLS#tls-decryption
+ *
+ * Example logging sessions are (you should delete the file on each run):
+ *
+ *	rm -f /tmp/sslkey.log
+ *	env SSLKEYLOGFILE=/tmp/sslkey.log hostapd ...
+ *
+ *	rm -f /tmp/sslkey.log
+ *	env SSLKEYLOGFILE=/tmp/sslkey.log wpa_supplicant ...
+ *
+ *	rm -f /tmp/sslkey.log
+ *	env SSLKEYLOGFILE=/tmp/sslkey.log eapol_test ...
+ */
+static void tls_keylog_cb(const SSL *ssl, const char *line)
+{
+	int fd;
+	const char *filename;
+	struct iovec iov[2];
+
+	filename = getenv("SSLKEYLOGFILE");
+	if (!filename)
+		return;
+
+	fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+	if (fd < 0) {
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Failed to open keylog file %s: %s",
+			   filename, strerror(errno));
+		return;
+	}
+
+	/* Assume less than _POSIX_PIPE_BUF (512) where writes are guaranteed
+	 * to be atomic for O_APPEND. */
+	iov[0].iov_base = (void *) line;
+	iov[0].iov_len = os_strlen(line);
+	iov[1].iov_base = "\n";
+	iov[1].iov_len = 1;
+
+	if (writev(fd, iov, ARRAY_SIZE(iov)) < 01) {
+		wpa_printf(MSG_DEBUG,
+			   "OpenSSL: Failed to write to keylog file %s: %s",
+			   filename, strerror(errno));
+	}
+
+	close(fd);
+}
+#endif
+#endif /* CONFIG_TESTING_OPTIONS */
+
+
 struct tls_connection * tls_connection_init(void *ssl_ctx)
 {
 	struct tls_data *data = ssl_ctx;
@@ -1634,6 +1694,14 @@ struct tls_connection * tls_connection_init(void *ssl_ctx)
 	 * when going through EAP authentication. */
 	SSL_clear_options(conn->ssl, SSL_OP_ENABLE_MIDDLEBOX_COMPAT);
 #endif
+
+#ifdef CONFIG_TESTING_OPTIONS
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+	/* Set the keylog file if the admin requested it. */
+	if (getenv("SSLKEYLOGFILE"))
+		SSL_CTX_set_keylog_callback(conn->ssl_ctx, tls_keylog_cb);
+#endif
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	conn->ssl_in = BIO_new(BIO_s_mem());
 	if (!conn->ssl_in) {
