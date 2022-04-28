@@ -2436,7 +2436,7 @@ static void nl80211_dump_chan_list(struct hostapd_hw_modes *modes,
 
 	for (i = 0; i < num_modes; i++) {
 		struct hostapd_hw_modes *mode = &modes[i];
-		char str[200];
+		char str[1000];
 		char *pos = str;
 		char *end = pos + sizeof(str);
 		int j, res;
