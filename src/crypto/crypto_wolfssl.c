@@ -85,6 +85,7 @@ int sha1_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 		wc_ShaUpdate(&sha, addr[i], len[i]);
 
 	wc_ShaFinal(&sha, mac);
+	wc_ShaFree(&sha);
 
 	return 0;
 }
@@ -106,6 +107,7 @@ int sha256_vector(size_t num_elem, const u8 *addr[], const size_t *len,
 		wc_Sha256Update(&sha256, addr[i], len[i]);
 
 	wc_Sha256Final(&sha256, mac);
+	wc_Sha256Free(&sha256);
 
 	return 0;
 }
@@ -128,6 +130,7 @@ int sha384_vector(size_t num_elem, const u8 *addr[], const size_t *len,
 		wc_Sha384Update(&sha384, addr[i], len[i]);
 
 	wc_Sha384Final(&sha384, mac);
+	wc_Sha384Free(&sha384);
 
 	return 0;
 }
@@ -150,6 +153,7 @@ int sha512_vector(size_t num_elem, const u8 *addr[], const size_t *len,
 		wc_Sha512Update(&sha512, addr[i], len[i]);
 
 	wc_Sha512Final(&sha512, mac);
+	wc_Sha512Free(&sha512);
 
 	return 0;
 }
@@ -177,6 +181,8 @@ static int wolfssl_hmac_vector(int type, const u8 *key,
 			return -1;
 	if (wc_HmacFinal(&hmac, mac) != 0)
 		return -1;
+	wc_HmacFree(&hmac);
+
 	return 0;
 }
 
