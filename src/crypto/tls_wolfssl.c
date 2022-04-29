@@ -452,7 +452,13 @@ static int tls_connection_client_cert(struct tls_connection *conn,
 			    SSL_FILETYPE_ASN1) != SSL_SUCCESS) {
 			wpa_printf(MSG_INFO,
 				   "SSL: use client cert DER blob failed");
-			return -1;
+			if (wolfSSL_use_certificate_chain_buffer_format(
+				    conn->ssl, client_cert_blob, blob_len,
+				    SSL_FILETYPE_PEM) != SSL_SUCCESS) {
+				wpa_printf(MSG_INFO,
+					   "SSL: use client cert PEM blob failed");
+				return -1;
+			}
 		}
 		wpa_printf(MSG_DEBUG, "SSL: use client cert blob OK");
 		return 0;
@@ -514,23 +520,35 @@ static int tls_connection_private_key(void *tls_ctx,
 	if (private_key_blob) {
 		if (wolfSSL_use_PrivateKey_buffer(conn->ssl,
 						  private_key_blob, blob_len,
-						  SSL_FILETYPE_ASN1) <= 0) {
+						  SSL_FILETYPE_ASN1) !=
+		    SSL_SUCCESS) {
 			wpa_printf(MSG_INFO,
 				   "SSL: use private DER blob failed");
+			if (wolfSSL_use_PrivateKey_buffer(
+				    conn->ssl,
+				    private_key_blob, blob_len,
+				    SSL_FILETYPE_PEM) != SSL_SUCCESS) {
+				wpa_printf(MSG_INFO,
+					   "SSL: use private PEM blob failed");
+			} else {
+				ok = 1;
+			}
 		} else {
-			wpa_printf(MSG_DEBUG, "SSL: use private key blob OK");
 			ok = 1;
 		}
+		if (ok)
+			wpa_printf(MSG_DEBUG, "SSL: use private key blob OK");
 	}
 
 	if (!ok && private_key) {
 		if (wolfSSL_use_PrivateKey_file(conn->ssl, private_key,
-						SSL_FILETYPE_PEM) <= 0) {
+						SSL_FILETYPE_PEM) !=
+		    SSL_SUCCESS) {
 			wpa_printf(MSG_INFO,
 				   "SSL: use private key PEM file failed");
 			if (wolfSSL_use_PrivateKey_file(conn->ssl, private_key,
-							SSL_FILETYPE_ASN1) <= 0)
-			{
+							SSL_FILETYPE_ASN1) !=
+			    SSL_SUCCESS) {
 				wpa_printf(MSG_INFO,
 					   "SSL: use private key DER file failed");
 			} else {
@@ -1178,8 +1196,14 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 		if (wolfSSL_CTX_load_verify_buffer(ctx, ca_cert_blob, blob_len,
 						   SSL_FILETYPE_ASN1) !=
 		    SSL_SUCCESS) {
-			wpa_printf(MSG_INFO, "SSL: failed to load CA blob");
-			return -1;
+			wpa_printf(MSG_INFO, "SSL: failed to load DER CA blob");
+			if (wolfSSL_CTX_load_verify_buffer(
+				    ctx, ca_cert_blob, blob_len,
+				    SSL_FILETYPE_PEM) != SSL_SUCCESS) {
+				wpa_printf(MSG_INFO,
+					   "SSL: failed to load PEM CA blob");
+				return -1;
+			}
 		}
 		wpa_printf(MSG_DEBUG, "SSL: use CA cert blob OK");
 		return 0;
