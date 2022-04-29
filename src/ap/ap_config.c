@@ -1466,6 +1466,13 @@ int hostapd_config_check(struct hostapd_config *conf, int full_config)
 {
 	size_t i;
 
+	if (full_config && is_6ghz_op_class(conf->op_class) &&
+	    !conf->hw_mode_set) {
+		/* Use the appropriate hw_mode value automatically when the
+		 * op_class parameter has been set, but hw_mode was not. */
+		conf->hw_mode = HOSTAPD_MODE_IEEE80211A;
+	}
+
 	if (full_config && conf->ieee80211d &&
 	    (!conf->country[0] || !conf->country[1])) {
 		wpa_printf(MSG_ERROR, "Cannot enable IEEE 802.11d without "

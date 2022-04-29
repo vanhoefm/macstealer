@@ -3094,6 +3094,7 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 				   line, pos);
 			return 1;
 		}
+		conf->hw_mode_set = true;
 	} else if (os_strcmp(buf, "wps_rf_bands") == 0) {
 		if (os_strcmp(pos, "ad") == 0)
 			bss->wps_rf_bands = WPS_RF_60GHZ;
