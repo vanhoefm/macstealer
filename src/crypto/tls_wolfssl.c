@@ -26,6 +26,10 @@
 #include <wolfssl/wolfcrypt/aes.h>
 #endif
 
+#ifdef CONFIG_FIPS
+#include <wolfssl/wolfcrypt/fips_test.h>
+#endif /* CONFIG_FIPS */
+
 #if !defined(CONFIG_FIPS) &&                             \
     (defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC) ||   \
      defined(EAP_SERVER_FAST))
@@ -192,6 +196,23 @@ static void remove_session_cb(WOLFSSL_CTX *ctx, WOLFSSL_SESSION *sess)
 }
 
 
+#if defined(CONFIG_FIPS) && defined(HAVE_FIPS)
+static void wcFipsCb(int ok, int err, const char *hash)
+{
+	wpa_printf(MSG_INFO,
+		   "wolfFIPS: wolfCrypt Fips error callback, ok = %d, err = %d",
+		   ok, err);
+	wpa_printf(MSG_INFO, "wolfFIPS: message = %s", wc_GetErrorString(err));
+	wpa_printf(MSG_INFO, "wolfFIPS: hash = %s", hash);
+	if (err == IN_CORE_FIPS_E) {
+		wpa_printf(MSG_ERROR,
+			   "wolfFIPS: In core integrity hash check failure, copy above hash");
+		wpa_printf(MSG_ERROR, "wolfFIPS: into verifyCore[] in fips_test.c and rebuild");
+	}
+}
+#endif /* CONFIG_FIPS && HAVE_FIPS */
+
+
 #ifdef DEBUG_WOLFSSL
 static void wolfSSL_logging_cb(const int log_level,
 			       const char * const log_message)
@@ -222,7 +243,9 @@ void * tls_init(const struct tls_config *conf)
 
 		if (wolfSSL_Init() < 0)
 			return NULL;
-		/* wolfSSL_Debugging_ON(); */
+#if defined(CONFIG_FIPS) && defined(HAVE_FIPS)
+		wolfCrypt_SetCb_fips(wcFipsCb);
+#endif /* CONFIG_FIPS && HAVE_FIPS */
 	}
 
 	tls_ref_count++;
