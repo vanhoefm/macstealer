@@ -2082,9 +2082,15 @@ int tls_connection_get_eap_fast_key(void *tls_ctx, struct tls_connection *conn,
 			       _out, skip + out_len);
 		ret = 0;
 	} else {
+#ifdef CONFIG_FIPS
+		wpa_printf(MSG_ERROR,
+			   "wolfSSL: Can't use sha1_md5 in FIPS build");
+		ret = -1;
+#else /* CONFIG_FIPS */
 		ret = tls_prf_sha1_md5(master_key, master_key_len,
 				       "key expansion", seed, sizeof(seed),
 				       _out, skip + out_len);
+#endif /* CONFIG_FIPS */
 	}
 
 	forced_memzero(master_key, master_key_len);

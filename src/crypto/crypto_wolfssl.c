@@ -1727,11 +1727,11 @@ struct crypto_ecdh * crypto_ecdh_init(int group)
 	if (ret < 0)
 		goto fail;
 
-#ifdef ECC_TIMING_RESISTANT
+#if defined(ECC_TIMING_RESISTANT) && !defined(CONFIG_FIPS)
 	ret = wc_ecc_set_rng(&ecdh->ec->key, &ecdh->rng);
 	if (ret < 0)
 		goto fail;
-#endif /* ECC_TIMING_RESISTANT */
+#endif /* ECC_TIMING_RESISTANT && !CONFIG_FIPS */
 
 done:
 	return ecdh;
