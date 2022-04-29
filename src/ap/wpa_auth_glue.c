@@ -391,10 +391,14 @@ static const u8 * hostapd_wpa_auth_get_psk(void *ctx, const u8 *addr,
 		psk = sta->psk->psk;
 		for (pos = sta->psk; pos; pos = pos->next) {
 			if (pos->is_passphrase) {
-				pbkdf2_sha1(pos->passphrase,
-					    hapd->conf->ssid.ssid,
-					    hapd->conf->ssid.ssid_len, 4096,
-					    pos->psk, PMK_LEN);
+				if (pbkdf2_sha1(pos->passphrase,
+						hapd->conf->ssid.ssid,
+						hapd->conf->ssid.ssid_len, 4096,
+						pos->psk, PMK_LEN) != 0) {
+					wpa_printf(MSG_WARNING,
+						   "Error in pbkdf2_sha1()");
+					continue;
+				}
 				pos->is_passphrase = 0;
 			}
 			if (pos->psk == prev_psk) {

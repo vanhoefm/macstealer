@@ -461,9 +461,12 @@ static int hostapd_derive_psk(struct hostapd_ssid *ssid)
 	wpa_hexdump_ascii_key(MSG_DEBUG, "PSK (ASCII passphrase)",
 			      (u8 *) ssid->wpa_passphrase,
 			      os_strlen(ssid->wpa_passphrase));
-	pbkdf2_sha1(ssid->wpa_passphrase,
-		    ssid->ssid, ssid->ssid_len,
-		    4096, ssid->wpa_psk->psk, PMK_LEN);
+	if (pbkdf2_sha1(ssid->wpa_passphrase,
+			ssid->ssid, ssid->ssid_len,
+			4096, ssid->wpa_psk->psk, PMK_LEN) != 0) {
+		wpa_printf(MSG_ERROR, "Error in pbkdf2_sha1()");
+		return -1;
+	}
 	wpa_hexdump_key(MSG_DEBUG, "PSK (from passphrase)",
 			ssid->wpa_psk->psk, PMK_LEN);
 	return 0;

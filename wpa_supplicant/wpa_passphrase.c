@@ -58,7 +58,11 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	pbkdf2_sha1(passphrase, (u8 *) ssid, os_strlen(ssid), 4096, psk, 32);
+	if (pbkdf2_sha1(passphrase, (u8 *) ssid, os_strlen(ssid), 4096, psk, 32)
+	    != 0) {
+		fprintf(stderr, "Error in pbkdf2_sha1()\n");
+		return 1;
+	}
 
 	printf("network={\n");
 	printf("\tssid=\"%s\"\n", ssid);
