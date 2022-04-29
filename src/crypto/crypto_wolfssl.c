@@ -27,6 +27,7 @@
 #include <wolfssl/wolfcrypt/cmac.h>
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/openssl/bn.h>
 
 
@@ -282,9 +283,18 @@ int hmac_sha512(const u8 *key, size_t key_len, const u8 *data,
 int pbkdf2_sha1(const char *passphrase, const u8 *ssid, size_t ssid_len,
 		int iterations, u8 *buf, size_t buflen)
 {
-	if (wc_PBKDF2(buf, (const byte*)passphrase, os_strlen(passphrase), ssid,
-		      ssid_len, iterations, buflen, WC_SHA) != 0)
+	int ret;
+
+	ret = wc_PBKDF2(buf, (const byte *) passphrase, os_strlen(passphrase),
+			ssid, ssid_len, iterations, buflen, WC_SHA);
+	if (ret != 0) {
+		if (ret == HMAC_MIN_KEYLEN_E) {
+			wpa_printf(MSG_ERROR,
+				   "wolfSSL: Password is too short. Make sure your password is at least %d characters long. This is a requirement for FIPS builds.",
+				   HMAC_FIPS_MIN_KEY);
+		}
 		return -1;
+	}
 	return 0;
 }
 
