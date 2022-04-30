@@ -149,12 +149,12 @@ def read_pem(fname, decode=True):
         return base64.b64decode(cert)
     return cert.encode()
 
-def eap_connect(dev, hapd, method, identity,
+def eap_connect(dev, hapd, method, identity, raw_identity=None,
                 sha256=False, expect_failure=False, local_error_report=False,
                 maybe_local_error=False, report_failure=False,
                 expect_cert_error=None, **kwargs):
     id = dev.connect("test-wpa2-eap", key_mgmt="WPA-EAP WPA-EAP-SHA256",
-                     eap=method, identity=identity,
+                     eap=method, identity=identity, raw_identity=raw_identity,
                      wait_connect=False, scan_freq="2412", ieee80211w="1",
                      **kwargs)
     eap_check_auth(dev, method, True, sha256=sha256,
@@ -302,6 +302,48 @@ def test_ap_wpa2_eap_sim(dev, apdev):
     dev[0].request("REMOVE_NETWORK all")
     eap_connect(dev[0], hapd, "SIM", "1232010000000000",
                 expect_failure=True)
+
+def test_ap_wpa2_eap_sim_imsi_identity(dev, apdev, params):
+    """WPA2-Enterprise connection using EAP-SIM and imsi_identity"""
+    check_hlr_auc_gw_support()
+    prefix = params['prefix']
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+    tls = hapd.request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+
+    imsi = "232010000000000"
+    realm = "wlan.mnc232.mcc02.3gppnetwork.org"
+    method_id = '1'
+    permanent_id = method_id + imsi + '@' + realm
+    # RSA-OAEP(permanent_id)
+    perm_id = prefix + '.permanent-id'
+    enc_id = prefix + '.enc-permanent-id'
+    with open(perm_id, 'w') as f:
+        f.write(permanent_id)
+    pubkey = prefix + ".cert-pub.pem"
+    subprocess.check_call(["openssl", "x509",
+                           "-in", "auth_serv/imsi-privacy-cert.pem",
+                           "-pubkey", "-noout",
+                           "-out", pubkey])
+    subprocess.check_call(["openssl", "pkeyutl",
+                           "-inkey", pubkey, "-pubin", "-in", perm_id,
+                           "-pkeyopt", "rsa_padding_mode:oaep",
+                           "-pkeyopt", "rsa_oaep_md:sha256",
+                           "-encrypt",
+                           "-out", enc_id])
+    with open(enc_id, 'rb') as f:
+        data = f.read()
+        encrypted_id = base64.b64encode(data).decode()
+        if len(encrypted_id) != 344:
+            raise Exception("Unexpected length of the base64 encoded identity: " + b64)
+    eap_connect(dev[0], hapd, "SIM", identity=None,
+                raw_identity='P"\\0' + encrypted_id + '"',
+                anonymous_identity=method_id + "anonymous@" + realm,
+                imsi_identity=permanent_id,
+                password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581")
+    eap_reauth(dev[0], "SIM")
 
 def test_ap_wpa2_eap_sim_sql(dev, apdev, params):
     """WPA2-Enterprise connection using EAP-SIM (SQL)"""
@@ -1028,6 +1070,48 @@ def test_ap_wpa2_eap_aka(dev, apdev):
     eap_connect(dev[0], hapd, "AKA", "0232010000000000",
                 expect_failure=True)
 
+def test_ap_wpa2_eap_aka_imsi_identity(dev, apdev, params):
+    """WPA2-Enterprise connection using EAP-AKA and imsi_identity"""
+    check_hlr_auc_gw_support()
+    prefix = params['prefix']
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+    tls = hapd.request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+
+    imsi = "232010000000000"
+    realm = "wlan.mnc232.mcc02.3gppnetwork.org"
+    method_id = '0'
+    permanent_id = method_id + imsi + '@' + realm
+    # RSA-OAEP(permanent_id)
+    perm_id = prefix + '.permanent-id'
+    enc_id = prefix + '.enc-permanent-id'
+    with open(perm_id, 'w') as f:
+        f.write(permanent_id)
+    pubkey = prefix + ".cert-pub.pem"
+    subprocess.check_call(["openssl", "x509",
+                           "-in", "auth_serv/imsi-privacy-cert.pem",
+                           "-pubkey", "-noout",
+                           "-out", pubkey])
+    subprocess.check_call(["openssl", "pkeyutl",
+                           "-inkey", pubkey, "-pubin", "-in", perm_id,
+                           "-pkeyopt", "rsa_padding_mode:oaep",
+                           "-pkeyopt", "rsa_oaep_md:sha256",
+                           "-encrypt",
+                           "-out", enc_id])
+    with open(enc_id, 'rb') as f:
+        data = f.read()
+        encrypted_id = base64.b64encode(data).decode()
+        if len(encrypted_id) != 344:
+            raise Exception("Unexpected length of the base64 encoded identity: " + b64)
+    eap_connect(dev[0], hapd, "AKA", identity=None,
+                raw_identity='P"\\0' + encrypted_id + '"',
+                anonymous_identity=method_id + "anonymous@" + realm,
+                imsi_identity=permanent_id,
+                password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123")
+    eap_reauth(dev[0], "AKA")
+
 def test_ap_wpa2_eap_aka_sql(dev, apdev, params):
     """WPA2-Enterprise connection using EAP-AKA (SQL)"""
     check_hlr_auc_gw_support()
@@ -1240,6 +1324,48 @@ def test_ap_wpa2_eap_aka_prime(dev, apdev):
     eap_connect(dev[0], hapd, "AKA'", "6555444333222111",
                 password="ff22250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123",
                 expect_failure=True)
+
+def test_ap_wpa2_eap_aka_prime_imsi_identity(dev, apdev, params):
+    """WPA2-Enterprise connection using EAP-AKA' and imsi_identity"""
+    check_hlr_auc_gw_support()
+    prefix = params['prefix']
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+    tls = hapd.request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+
+    imsi = "555444333222111"
+    realm = "wlan.mnc555.mcc44.3gppnetwork.org"
+    method_id = '6'
+    permanent_id = method_id + imsi + '@' + realm
+    # RSA-OAEP(permanent_id)
+    perm_id = prefix + '.permanent-id'
+    enc_id = prefix + '.enc-permanent-id'
+    with open(perm_id, 'w') as f:
+        f.write(permanent_id)
+    pubkey = prefix + ".cert-pub.pem"
+    subprocess.check_call(["openssl", "x509",
+                           "-in", "auth_serv/imsi-privacy-cert.pem",
+                           "-pubkey", "-noout",
+                           "-out", pubkey])
+    subprocess.check_call(["openssl", "pkeyutl",
+                           "-inkey", pubkey, "-pubin", "-in", perm_id,
+                           "-pkeyopt", "rsa_padding_mode:oaep",
+                           "-pkeyopt", "rsa_oaep_md:sha256",
+                           "-encrypt",
+                           "-out", enc_id])
+    with open(enc_id, 'rb') as f:
+        data = f.read()
+        encrypted_id = base64.b64encode(data).decode()
+        if len(encrypted_id) != 344:
+            raise Exception("Unexpected length of the base64 encoded identity: " + b64)
+    eap_connect(dev[0], hapd, "AKA'", identity=None,
+                raw_identity='P"\\0' + encrypted_id + '"',
+                anonymous_identity=method_id + "anonymous@" + realm,
+                imsi_identity=permanent_id,
+                password="5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123")
+    eap_reauth(dev[0], "AKA'")
 
 def test_ap_wpa2_eap_aka_prime_sql(dev, apdev, params):
     """WPA2-Enterprise connection using EAP-AKA' (SQL)"""
