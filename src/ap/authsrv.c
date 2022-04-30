@@ -9,6 +9,7 @@
 #include "utils/includes.h"
 
 #include "utils/common.h"
+#include "crypto/crypto.h"
 #include "crypto/tls.h"
 #include "eap_server/eap.h"
 #include "eap_server/eap_sim_db.h"
@@ -209,6 +210,7 @@ static struct eap_config * authsrv_eap_config(struct hostapd_data *hapd)
 	cfg->eap_teap_id = hapd->conf->eap_teap_id;
 	cfg->eap_sim_aka_result_ind = hapd->conf->eap_sim_aka_result_ind;
 	cfg->eap_sim_id = hapd->conf->eap_sim_id;
+	cfg->imsi_privacy_key = hapd->imsi_privacy_key;
 	cfg->tnc = hapd->conf->tnc;
 	cfg->wps = hapd->wps;
 	cfg->fragment_size = hapd->conf->fragment_size;
@@ -295,6 +297,22 @@ int authsrv_init(struct hostapd_data *hapd)
 	}
 #endif /* EAP_TLS_FUNCS */
 
+#ifdef CRYPTO_RSA_OAEP_SHA256
+	crypto_rsa_key_free(hapd->imsi_privacy_key);
+	hapd->imsi_privacy_key = NULL;
+	if (hapd->conf->imsi_privacy_key) {
+		hapd->imsi_privacy_key = crypto_rsa_key_read(
+			hapd->conf->imsi_privacy_key, true);
+		if (!hapd->imsi_privacy_key) {
+			wpa_printf(MSG_ERROR,
+				   "Failed to read/parse IMSI privacy key %s",
+				   hapd->conf->imsi_privacy_key);
+			authsrv_deinit(hapd);
+			return -1;
+		}
+	}
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
+
 #ifdef EAP_SIM_DB
 	if (hapd->conf->eap_sim_db) {
 		hapd->eap_sim_db_priv =
@@ -334,6 +352,11 @@ void authsrv_deinit(struct hostapd_data *hapd)
 	radius_server_deinit(hapd->radius_srv);
 	hapd->radius_srv = NULL;
 #endif /* RADIUS_SERVER */
+
+#ifdef CRYPTO_RSA_OAEP_SHA256
+	crypto_rsa_key_free(hapd->imsi_privacy_key);
+	hapd->imsi_privacy_key = NULL;
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
 
 #ifdef EAP_TLS_FUNCS
 	if (hapd->ssl_ctx) {

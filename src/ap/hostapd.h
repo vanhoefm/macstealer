@@ -208,6 +208,7 @@ struct hostapd_data {
 
 	void *ssl_ctx;
 	void *eap_sim_db_priv;
+	struct crypto_rsa_key *imsi_privacy_key;
 	struct radius_server_data *radius_srv;
 	struct dl_list erp_keys; /* struct eap_server_erp_key */
 

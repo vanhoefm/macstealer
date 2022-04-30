@@ -124,6 +124,9 @@ struct eap_config {
 	 * callback context.
 	 */
 	void *eap_sim_db_priv;
+
+	struct crypto_rsa_key *imsi_privacy_key;
+
 	bool backend_auth;
 	int eap_server;
 

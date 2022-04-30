@@ -443,6 +443,7 @@ struct hostapd_bss_config {
 	int eap_teap_id;
 	int eap_sim_aka_result_ind;
 	int eap_sim_id;
+	char *imsi_privacy_key;
 	int tnc;
 	int fragment_size;
 	u16 pwd_group;
