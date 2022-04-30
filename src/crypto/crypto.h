@@ -1275,6 +1275,40 @@ struct wpabuf * crypto_csr_sign(struct crypto_csr *csr,
 				struct crypto_ec_key *key,
 				enum crypto_hash_alg algo);
 
+struct crypto_rsa_key;
+
+/**
+ * crypto_rsa_key_read - Read an RSA key
+ * @file: File from which to read (PEM encoded, can be X.509v3 certificate)
+ * @private_key: Whether to read the private key instead of public key
+ * Returns: RSA key or %NULL on failure
+ */
+struct crypto_rsa_key * crypto_rsa_key_read(const char *file, bool private_key);
+
+/**
+ * crypto_rsa_oaep_sha256_encrypt - RSA-OAEP-SHA-256 encryption
+ * @key: RSA key from crypto_rsa_key_read()
+ * @in: Plaintext input data
+ * Returns: Encrypted output data or %NULL on failure
+ */
+struct wpabuf * crypto_rsa_oaep_sha256_encrypt(struct crypto_rsa_key *key,
+					       const struct wpabuf *in);
+
+/**
+ * crypto_rsa_oaep_sha256_decrypt - RSA-OAEP-SHA-256 decryption
+ * @key: RSA key from crypto_rsa_key_read()
+ * @in: Encrypted input data
+ * Returns: Decrypted output data or %NULL on failure
+ */
+struct wpabuf * crypto_rsa_oaep_sha256_decrypt(struct crypto_rsa_key *key,
+					       const struct wpabuf *in);
+
+/**
+ * crypto_rsa_key_free - Free an RSA key
+ * @key: RSA key from crypto_rsa_key_read()
+ */
+void crypto_rsa_key_free(struct crypto_rsa_key *key);
+
 /**
  * crypto_unload - Unload crypto resources
  *

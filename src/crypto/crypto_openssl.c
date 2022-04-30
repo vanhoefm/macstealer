@@ -16,10 +16,10 @@
 #include <openssl/dh.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <openssl/pem.h>
 #ifdef CONFIG_ECC
 #include <openssl/ec.h>
 #include <openssl/x509.h>
-#include <openssl/pem.h>
 #endif /* CONFIG_ECC */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/provider.h>
@@ -3937,6 +3937,125 @@ struct wpabuf * crypto_csr_sign(struct crypto_csr *csr,
 }
 
 #endif /* CONFIG_ECC */
+
+
+static EVP_PKEY * crypto_rsa_key_read_public(FILE *f)
+{
+	EVP_PKEY *pkey;
+	X509 *x509;
+
+	pkey = PEM_read_PUBKEY(f, NULL, NULL, NULL);
+	if (pkey)
+		return pkey;
+
+	rewind(f);
+	x509 = PEM_read_X509(f, NULL, NULL, NULL);
+	if (!x509)
+		return NULL;
+
+	pkey = X509_get_pubkey(x509);
+	X509_free(x509);
+
+	if (!pkey)
+		return NULL;
+	if (EVP_PKEY_base_id(pkey) != EVP_PKEY_RSA) {
+		EVP_PKEY_free(pkey);
+		return NULL;
+	}
+
+	return pkey;
+}
+
+
+struct crypto_rsa_key * crypto_rsa_key_read(const char *file, bool private_key)
+{
+	FILE *f;
+	EVP_PKEY *pkey;
+
+	f = fopen(file, "r");
+	if (!f)
+		return NULL;
+	if (private_key)
+		pkey = PEM_read_PrivateKey(f, NULL, NULL, NULL);
+	else
+		pkey = crypto_rsa_key_read_public(f);
+	fclose(f);
+	return (struct crypto_rsa_key *) pkey;
+}
+
+
+#ifndef OPENSSL_NO_SHA256
+
+struct wpabuf * crypto_rsa_oaep_sha256_encrypt(struct crypto_rsa_key *key,
+					       const struct wpabuf *in)
+{
+	EVP_PKEY *pkey = (EVP_PKEY *) key;
+	EVP_PKEY_CTX *pkctx;
+	struct wpabuf *res = NULL;
+	size_t outlen;
+
+	pkctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (!pkctx)
+		goto fail;
+
+	if (EVP_PKEY_encrypt_init(pkctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pkctx, RSA_PKCS1_OAEP_PADDING) <= 0 ||
+	    EVP_PKEY_CTX_set_rsa_oaep_md(pkctx, EVP_sha256()) <= 0 ||
+	    EVP_PKEY_encrypt(pkctx, NULL, &outlen, wpabuf_head(in),
+			     wpabuf_len(in)) != 1 ||
+	    !(res = wpabuf_alloc(outlen)) ||
+	    EVP_PKEY_encrypt(pkctx, wpabuf_put(res, 0), &outlen,
+			     wpabuf_head(in), wpabuf_len(in)) != 1) {
+		wpabuf_free(res);
+		res = NULL;
+		goto fail;
+	}
+	wpabuf_put(res, outlen);
+
+fail:
+	EVP_PKEY_CTX_free(pkctx);
+	return res;
+}
+
+
+struct wpabuf * crypto_rsa_oaep_sha256_decrypt(struct crypto_rsa_key *key,
+					       const struct wpabuf *in)
+{
+	EVP_PKEY *pkey = (EVP_PKEY *) key;
+	EVP_PKEY_CTX *pkctx;
+	struct wpabuf *res = NULL;
+	size_t outlen;
+
+	pkctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (!pkctx)
+		goto fail;
+
+	if (EVP_PKEY_decrypt_init(pkctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pkctx, RSA_PKCS1_OAEP_PADDING) <= 0 ||
+	    EVP_PKEY_CTX_set_rsa_oaep_md(pkctx, EVP_sha256()) <= 0 ||
+	    EVP_PKEY_decrypt(pkctx, NULL, &outlen, wpabuf_head(in),
+			     wpabuf_len(in)) != 1 ||
+	    !(res = wpabuf_alloc(outlen)) ||
+	    EVP_PKEY_decrypt(pkctx, wpabuf_put(res, 0), &outlen,
+			     wpabuf_head(in), wpabuf_len(in)) != 1) {
+		wpabuf_free(res);
+		res = NULL;
+		goto fail;
+	}
+	wpabuf_put(res, outlen);
+
+fail:
+	EVP_PKEY_CTX_free(pkctx);
+	return res;
+}
+
+#endif /* OPENSSL_NO_SHA256 */
+
+
+void crypto_rsa_key_free(struct crypto_rsa_key *key)
+{
+	EVP_PKEY_free((EVP_PKEY *) key);
+}
 
 
 void crypto_unload(void)
