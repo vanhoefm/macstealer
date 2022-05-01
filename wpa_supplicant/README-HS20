@@ -168,6 +168,12 @@ Credentials can be pre-configured for automatic network selection:
 # milenage: Milenage parameters for SIM/USIM simulator in <Ki>:<OPc>:<SQN>
 #	format
 #
+# imsi_privacy_key: IMSI privacy key (PEM encoded X.509v3 certificate)
+#	This field is used with EAP-SIM/AKA/AKA' to encrypt the permanent
+#	identity (IMSI) to improve privacy. The X.509v3 certificate needs to
+#	include a 2048-bit RSA public key and this is from the operator who
+#	authenticates the SIM/USIM.
+#
 # domain_suffix_match: Constraint for server domain name
 #	If set, this FQDN is used as a suffix match requirement for the AAA
 #	server certificate in SubjectAltName dNSName element(s). If a

@@ -181,6 +181,16 @@ struct wpa_cred {
 	char *milenage;
 
 	/**
+	 * imsi_privacy_key - IMSI privacy key (PEM encoded X.509v3 certificate)
+	 *
+	 * This field is used with EAP-SIM/AKA/AKA' to encrypt the permanent
+	 * identity (IMSI) to improve privacy. The X.509v3 certificate needs to
+	 * include a 2048-bit RSA public key and this is from the operator who
+	 * authenticates the SIM/USIM.
+	 */
+	char *imsi_privacy_key;
+
+	/**
 	 * engine - Use an engine for private key operations
 	 */
 	int engine;

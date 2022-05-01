@@ -9,7 +9,9 @@
 #include "includes.h"
 
 #include "common.h"
+#include "utils/base64.h"
 #include "pcsc_funcs.h"
+#include "crypto/crypto.h"
 #include "crypto/milenage.h"
 #include "crypto/random.h"
 #include "eap_peer/eap_i.h"
@@ -49,6 +51,7 @@ struct eap_sim_data {
 	int result_ind, use_result_ind;
 	int use_pseudonym;
 	int error_code;
+	struct crypto_rsa_key *imsi_privacy_key;
 };
 
 
@@ -96,6 +99,25 @@ static void * eap_sim_init(struct eap_sm *sm)
 			   "for NONCE_MT");
 		os_free(data);
 		return NULL;
+	}
+
+	if (config && config->imsi_privacy_key) {
+#ifdef CRYPTO_RSA_OAEP_SHA256
+		data->imsi_privacy_key = crypto_rsa_key_read(
+			config->imsi_privacy_key, false);
+		if (!data->imsi_privacy_key) {
+			wpa_printf(MSG_ERROR,
+				   "EAP-SIM: Failed to read/parse IMSI privacy key %s",
+				   config->imsi_privacy_key);
+			os_free(data);
+			return NULL;
+		}
+#else /* CRYPTO_RSA_OAEP_SHA256 */
+		wpa_printf(MSG_ERROR,
+			   "EAP-SIM: No support for imsi_privacy_key in the build");
+		os_free(data);
+		return NULL;
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
 	}
 
 	/* Zero is a valid error code, so we need to initialize */
@@ -162,6 +184,9 @@ static void eap_sim_deinit(struct eap_sm *sm, void *priv)
 		os_free(data->reauth_id);
 		os_free(data->last_eap_identity);
 		eap_sim_clear_keys(data, 0);
+#ifdef CRYPTO_RSA_OAEP_SHA256
+		crypto_rsa_key_free(data->imsi_privacy_key);
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
 		os_free(data);
 	}
 }
@@ -481,6 +506,47 @@ static struct wpabuf * eap_sim_client_error(struct eap_sim_data *data, u8 id,
 }
 
 
+#ifdef CRYPTO_RSA_OAEP_SHA256
+static struct wpabuf *
+eap_sim_encrypt_identity(struct crypto_rsa_key *imsi_privacy_key,
+			 const u8 *identity, size_t identity_len)
+{
+	struct wpabuf *imsi_buf, *enc;
+	char *b64;
+	size_t b64_len;
+
+	wpa_hexdump_ascii(MSG_DEBUG, "EAP-SIM: Encrypt permanent identity",
+			  identity, identity_len);
+
+	imsi_buf = wpabuf_alloc_copy(identity, identity_len);
+	if (!imsi_buf)
+		return NULL;
+	enc = crypto_rsa_oaep_sha256_encrypt(imsi_privacy_key, imsi_buf);
+	wpabuf_free(imsi_buf);
+	if (!enc)
+		return NULL;
+
+	b64 = base64_encode_no_lf(wpabuf_head(enc), wpabuf_len(enc), &b64_len);
+	wpabuf_free(enc);
+	if (!b64)
+		return NULL;
+
+	enc = wpabuf_alloc(1 + b64_len);
+	if (!enc) {
+		os_free(b64);
+		return NULL;
+	}
+	wpabuf_put_u8(enc, '\0');
+	wpabuf_put_data(enc, b64, b64_len);
+	os_free(b64);
+	wpa_hexdump_ascii(MSG_DEBUG, "EAP-SIM: Encrypted permanent identity",
+			  wpabuf_head(enc), wpabuf_len(enc));
+
+	return enc;
+}
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
+
+
 static struct wpabuf * eap_sim_response_start(struct eap_sm *sm,
 					      struct eap_sim_data *data, u8 id,
 					      enum eap_sim_id_req id_req)
@@ -489,6 +555,7 @@ static struct wpabuf * eap_sim_response_start(struct eap_sm *sm,
 	size_t identity_len = 0;
 	struct eap_sim_msg *msg;
 	struct wpabuf *resp;
+	struct wpabuf *enc_identity = NULL;
 
 	data->reauth = 0;
 	if (id_req == ANY_ID && data->reauth_id) {
@@ -513,6 +580,22 @@ static struct wpabuf * eap_sim_response_start(struct eap_sm *sm,
 				ids &= ~CLEAR_PSEUDONYM;
 			eap_sim_clear_identities(sm, data, ids);
 		}
+#ifdef CRYPTO_RSA_OAEP_SHA256
+		if (identity && data->imsi_privacy_key) {
+			enc_identity = eap_sim_encrypt_identity(
+				data->imsi_privacy_key,
+				identity, identity_len);
+			if (!enc_identity) {
+				wpa_printf(MSG_INFO,
+					   "EAP-SIM: Failed to encrypt permanent identity");
+				return eap_sim_client_error(
+					data, id,
+					EAP_SIM_UNABLE_TO_PROCESS_PACKET);
+			}
+			identity = wpabuf_head(enc_identity);
+			identity_len = wpabuf_len(enc_identity);
+		}
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
 	}
 	if (id_req != NO_ID_REQ)
 		eap_sim_clear_identities(sm, data, CLEAR_EAP_ID);
@@ -526,6 +609,7 @@ static struct wpabuf * eap_sim_response_start(struct eap_sm *sm,
 		eap_sim_msg_add(msg, EAP_SIM_AT_IDENTITY, identity_len,
 				identity, identity_len);
 	}
+	wpabuf_free(enc_identity);
 	if (!data->reauth) {
 		wpa_hexdump(MSG_DEBUG, "   AT_NONCE_MT",
 			    data->nonce_mt, EAP_SIM_NONCE_MT_LEN);

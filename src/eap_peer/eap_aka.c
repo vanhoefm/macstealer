@@ -9,6 +9,7 @@
 #include "includes.h"
 
 #include "common.h"
+#include "utils/base64.h"
 #include "pcsc_funcs.h"
 #include "crypto/crypto.h"
 #include "crypto/sha1.h"
@@ -58,6 +59,7 @@ struct eap_aka_data {
 	u16 last_kdf_attrs[EAP_AKA_PRIME_KDF_MAX];
 	size_t last_kdf_count;
 	int error_code;
+	struct crypto_rsa_key *imsi_privacy_key;
 };
 
 
@@ -100,6 +102,25 @@ static void * eap_aka_init(struct eap_sm *sm)
 		return NULL;
 
 	data->eap_method = EAP_TYPE_AKA;
+
+	if (config && config->imsi_privacy_key) {
+#ifdef CRYPTO_RSA_OAEP_SHA256
+		data->imsi_privacy_key = crypto_rsa_key_read(
+			config->imsi_privacy_key, false);
+		if (!data->imsi_privacy_key) {
+			wpa_printf(MSG_ERROR,
+				   "EAP-AKA: Failed to read/parse IMSI privacy key %s",
+				   config->imsi_privacy_key);
+			os_free(data);
+			return NULL;
+		}
+#else /* CRYPTO_RSA_OAEP_SHA256 */
+		wpa_printf(MSG_ERROR,
+			   "EAP-AKA: No support for imsi_privacy_key in the build");
+		os_free(data);
+		return NULL;
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
+	}
 
 	/* Zero is a valid error code, so we need to initialize */
 	data->error_code = NO_EAP_METHOD_ERROR;
@@ -160,6 +181,9 @@ static void eap_aka_deinit(struct eap_sm *sm, void *priv)
 		wpabuf_free(data->id_msgs);
 		os_free(data->network_name);
 		eap_aka_clear_keys(data, 0);
+#ifdef CRYPTO_RSA_OAEP_SHA256
+		crypto_rsa_key_free(data->imsi_privacy_key);
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
 		os_free(data);
 	}
 }
@@ -617,6 +641,47 @@ static struct wpabuf * eap_aka_synchronization_failure(
 }
 
 
+#ifdef CRYPTO_RSA_OAEP_SHA256
+static struct wpabuf *
+eap_aka_encrypt_identity(struct crypto_rsa_key *imsi_privacy_key,
+			 const u8 *identity, size_t identity_len)
+{
+	struct wpabuf *imsi_buf, *enc;
+	char *b64;
+	size_t b64_len;
+
+	wpa_hexdump_ascii(MSG_DEBUG, "EAP-AKA: Encrypt permanent identity",
+			  identity, identity_len);
+
+	imsi_buf = wpabuf_alloc_copy(identity, identity_len);
+	if (!imsi_buf)
+		return NULL;
+	enc = crypto_rsa_oaep_sha256_encrypt(imsi_privacy_key, imsi_buf);
+	wpabuf_free(imsi_buf);
+	if (!enc)
+		return NULL;
+
+	b64 = base64_encode_no_lf(wpabuf_head(enc), wpabuf_len(enc), &b64_len);
+	wpabuf_free(enc);
+	if (!b64)
+		return NULL;
+
+	enc = wpabuf_alloc(1 + b64_len);
+	if (!enc) {
+		os_free(b64);
+		return NULL;
+	}
+	wpabuf_put_u8(enc, '\0');
+	wpabuf_put_data(enc, b64, b64_len);
+	os_free(b64);
+	wpa_hexdump_ascii(MSG_DEBUG, "EAP-AKA: Encrypted permanent identity",
+			  wpabuf_head(enc), wpabuf_len(enc));
+
+	return enc;
+}
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
+
+
 static struct wpabuf * eap_aka_response_identity(struct eap_sm *sm,
 						 struct eap_aka_data *data,
 						 u8 id,
@@ -625,6 +690,7 @@ static struct wpabuf * eap_aka_response_identity(struct eap_sm *sm,
 	const u8 *identity = NULL;
 	size_t identity_len = 0;
 	struct eap_sim_msg *msg;
+	struct wpabuf *enc_identity = NULL;
 
 	data->reauth = 0;
 	if (id_req == ANY_ID && data->reauth_id) {
@@ -649,6 +715,22 @@ static struct wpabuf * eap_aka_response_identity(struct eap_sm *sm,
 				ids &= ~CLEAR_PSEUDONYM;
 			eap_aka_clear_identities(sm, data, ids);
 		}
+#ifdef CRYPTO_RSA_OAEP_SHA256
+		if (identity && data->imsi_privacy_key) {
+			enc_identity = eap_aka_encrypt_identity(
+				data->imsi_privacy_key,
+				identity, identity_len);
+			if (!enc_identity) {
+				wpa_printf(MSG_INFO,
+					   "EAP-AKA: Failed to encrypt permanent identity");
+				return eap_aka_client_error(
+					data, id,
+					EAP_AKA_UNABLE_TO_PROCESS_PACKET);
+			}
+			identity = wpabuf_head(enc_identity);
+			identity_len = wpabuf_len(enc_identity);
+		}
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
 	}
 	if (id_req != NO_ID_REQ)
 		eap_aka_clear_identities(sm, data, CLEAR_EAP_ID);
@@ -663,6 +745,7 @@ static struct wpabuf * eap_aka_response_identity(struct eap_sm *sm,
 		eap_sim_msg_add(msg, EAP_SIM_AT_IDENTITY, identity_len,
 				identity, identity_len);
 	}
+	wpabuf_free(enc_identity);
 
 	return eap_sim_msg_finish(msg, data->eap_method, NULL, NULL, 0);
 }

@@ -1673,6 +1673,7 @@ struct wpabuf * eap_sm_buildIdentity(struct eap_sm *sm, int id, int encrypted)
 	struct wpabuf *resp;
 	const u8 *identity;
 	size_t identity_len;
+	struct wpabuf *privacy_identity = NULL;
 
 	if (config == NULL) {
 		wpa_printf(MSG_WARNING, "EAP: buildIdentity: configuration "
@@ -1694,6 +1695,30 @@ struct wpabuf * eap_sm_buildIdentity(struct eap_sm *sm, int id, int encrypted)
 		identity = config->machine_identity;
 		identity_len = config->machine_identity_len;
 		wpa_hexdump_ascii(MSG_DEBUG, "EAP: using machine identity",
+				  identity, identity_len);
+	} else if (config->imsi_privacy_key && config->identity &&
+		   config->identity_len > 0) {
+		const u8 *pos = config->identity;
+		const u8 *end = config->identity + config->identity_len;
+
+		privacy_identity = wpabuf_alloc(9 + config->identity_len);
+		if (!privacy_identity)
+			return NULL;
+
+		/* Include method prefix */
+		if (*pos == '0' || *pos == '1' || *pos == '6')
+			wpabuf_put_u8(privacy_identity, *pos);
+		wpabuf_put_str(privacy_identity, "anonymous");
+
+		/* Include realm */
+		while (pos < end && *pos != '@')
+			pos++;
+		wpabuf_put_data(privacy_identity, pos, end - pos);
+
+		identity = wpabuf_head(privacy_identity);
+		identity_len = wpabuf_len(privacy_identity);
+		wpa_hexdump_ascii(MSG_DEBUG,
+				  "EAP: using IMSI privacy anonymous identity",
 				  identity, identity_len);
 	} else {
 		identity = config->identity;
@@ -1731,6 +1756,7 @@ struct wpabuf * eap_sm_buildIdentity(struct eap_sm *sm, int id, int encrypted)
 		return NULL;
 
 	wpabuf_put_data(resp, identity, identity_len);
+	wpabuf_free(privacy_identity);
 
 	return resp;
 }
