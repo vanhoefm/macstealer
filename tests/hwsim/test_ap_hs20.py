@@ -530,7 +530,7 @@ def test_ap_hs20_select(dev, apdev):
                                  'domain': "example.org"})
     interworking_select(dev[0], bssid2, "home", freq="2412")
 
-def hs20_simulated_sim(dev, ap, method):
+def hs20_simulated_sim(dev, ap, method, imsi_privacy=False):
     bssid = ap['bssid']
     params = hs20_ap_params()
     params['hessid'] = bssid
@@ -539,8 +539,14 @@ def hs20_simulated_sim(dev, ap, method):
     hostapd.add_ap(ap, params)
 
     dev.hs20_enable()
-    dev.add_cred_values({'imsi': "555444-333222111", 'eap': method,
-                         'milenage': "5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123"})
+    params = {'imsi': "555444-333222111", 'eap': method,
+              'milenage': "5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123"}
+    if imsi_privacy:
+        tls = dev.request("GET tls_library")
+        if not tls.startswith("OpenSSL"):
+            raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+        params['imsi_privacy_key'] = "auth_serv/imsi-privacy-cert.pem"
+    dev.add_cred_values(params)
     interworking_select(dev, bssid, "home", freq="2412")
     interworking_connect(dev, bssid, method)
     check_sp_type(dev, "home")
@@ -553,6 +559,11 @@ def test_ap_hs20_sim(dev, apdev):
     ev = dev[0].wait_event(["INTERWORKING-ALREADY-CONNECTED"], timeout=15)
     if ev is None:
         raise Exception("Timeout on already-connected event")
+
+def test_ap_hs20_sim_imsi_privacy(dev, apdev):
+    """Hotspot 2.0 with simulated SIM and EAP-SIM with IMSI privacy"""
+    hlr_auc_gw_available()
+    hs20_simulated_sim(dev[0], apdev[0], "SIM", imsi_privacy=True)
 
 def test_ap_hs20_sim_invalid(dev, apdev):
     """Hotspot 2.0 with simulated SIM and EAP-SIM - invalid IMSI"""
@@ -599,10 +610,20 @@ def test_ap_hs20_aka(dev, apdev):
     hlr_auc_gw_available()
     hs20_simulated_sim(dev[0], apdev[0], "AKA")
 
+def test_ap_hs20_aka_imsi_privacy(dev, apdev):
+    """Hotspot 2.0 with simulated USIM and EAP-AKA with IMSI privacy"""
+    hlr_auc_gw_available()
+    hs20_simulated_sim(dev[0], apdev[0], "AKA", imsi_privacy=True)
+
 def test_ap_hs20_aka_prime(dev, apdev):
     """Hotspot 2.0 with simulated USIM and EAP-AKA'"""
     hlr_auc_gw_available()
     hs20_simulated_sim(dev[0], apdev[0], "AKA'")
+
+def test_ap_hs20_aka_prime_imsi_privacy(dev, apdev):
+    """Hotspot 2.0 with simulated USIM and EAP-AKA with IMSI privacy'"""
+    hlr_auc_gw_available()
+    hs20_simulated_sim(dev[0], apdev[0], "AKA'", imsi_privacy=True)
 
 def test_ap_hs20_ext_sim(dev, apdev):
     """Hotspot 2.0 with external SIM processing"""

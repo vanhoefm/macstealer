@@ -345,6 +345,24 @@ def test_ap_wpa2_eap_sim_imsi_identity(dev, apdev, params):
                 password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581")
     eap_reauth(dev[0], "SIM")
 
+def test_ap_wpa2_eap_sim_imsi_privacy_key(dev, apdev):
+    """WPA2-Enterprise connection using EAP-SIM and imsi_privacy_key"""
+    tls = dev[0].request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+    check_hlr_auc_gw_support()
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+    tls = hapd.request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+
+    eap_connect(dev[0], hapd, "SIM",
+                "1232010000000000@wlan.mnc232.mcc02.3gppnetwork.org",
+                imsi_privacy_key="auth_serv/imsi-privacy-cert.pem",
+                password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581")
+    eap_reauth(dev[0], "SIM")
+
 def test_ap_wpa2_eap_sim_sql(dev, apdev, params):
     """WPA2-Enterprise connection using EAP-SIM (SQL)"""
     check_hlr_auc_gw_support()
@@ -1112,6 +1130,24 @@ def test_ap_wpa2_eap_aka_imsi_identity(dev, apdev, params):
                 password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123")
     eap_reauth(dev[0], "AKA")
 
+def test_ap_wpa2_eap_aka_imsi_privacy_key(dev, apdev):
+    """WPA2-Enterprise connection using EAP-AKA and imsi_privacy_key"""
+    tls = dev[0].request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+    check_hlr_auc_gw_support()
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+    tls = hapd.request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+
+    eap_connect(dev[0], hapd, "AKA",
+                "0232010000000000@wlan.mnc232.mcc02.3gppnetwork.org",
+                imsi_privacy_key="auth_serv/imsi-privacy-cert.pem",
+                password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123")
+    eap_reauth(dev[0], "AKA")
+
 def test_ap_wpa2_eap_aka_sql(dev, apdev, params):
     """WPA2-Enterprise connection using EAP-AKA (SQL)"""
     check_hlr_auc_gw_support()
@@ -1364,6 +1400,24 @@ def test_ap_wpa2_eap_aka_prime_imsi_identity(dev, apdev, params):
                 raw_identity='P"\\0' + encrypted_id + '"',
                 anonymous_identity=method_id + "anonymous@" + realm,
                 imsi_identity=permanent_id,
+                password="5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123")
+    eap_reauth(dev[0], "AKA'")
+
+def test_ap_wpa2_eap_aka_prime_imsi_privacy_key(dev, apdev):
+    """WPA2-Enterprise connection using EAP-AKA' and imsi_privacy_key"""
+    tls = dev[0].request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+    check_hlr_auc_gw_support()
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    hapd = hostapd.add_ap(apdev[0], params)
+    tls = hapd.request("GET tls_library")
+    if not tls.startswith("OpenSSL"):
+        raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+
+    eap_connect(dev[0], hapd, "AKA'",
+                "6555444333222111@wlan.mnc555.mcc44.3gppnetwork.org",
+                imsi_privacy_key="auth_serv/imsi-privacy-cert.pem",
                 password="5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123")
     eap_reauth(dev[0], "AKA'")
 
