@@ -4980,6 +4980,17 @@ static int ocsp_resp_cb(SSL *s, void *arg)
 
 	len = SSL_get_tlsext_status_ocsp_resp(s, &p);
 	if (!p) {
+		if (SSL_version(s) == TLS1_3_VERSION && SSL_session_reused(s)) {
+			/* TLS 1.3 sends the OCSP response with the server
+			 * Certificate message. Since that Certificate message
+			 * is not sent when resuming a session, there can be no
+			 * new OCSP response. Allow this since the OCSP response
+			 * was validated when checking the initial certificate
+			 * exchange. */
+			wpa_printf(MSG_DEBUG,
+				   "OpenSSL: Allow no OCSP response when using TLS 1.3 and a resumed session");
+			return 1;
+		}
 		wpa_printf(MSG_DEBUG, "OpenSSL: No OCSP response received");
 		return (conn->flags & TLS_CONN_REQUIRE_OCSP) ? 0 : 1;
 	}
