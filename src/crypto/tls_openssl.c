@@ -1106,6 +1106,10 @@ void * tls_init(const struct tls_config *conf)
 		SSL_CTX_set_session_cache_mode(ssl, SSL_SESS_CACHE_SERVER);
 		SSL_CTX_set_timeout(ssl, data->tls_session_lifetime);
 		SSL_CTX_sess_set_remove_cb(ssl, remove_session_cb);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		/* One session ticket is sufficient for EAP-TLS */
+		SSL_CTX_set_num_tickets(ssl, 1);
+#endif
 	} else {
 		SSL_CTX_set_session_cache_mode(ssl, SSL_SESS_CACHE_OFF);
 	}
