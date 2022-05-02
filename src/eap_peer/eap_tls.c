@@ -341,6 +341,7 @@ static void eap_tls_deinit_for_reauth(struct eap_sm *sm, void *priv)
 
 	wpabuf_free(data->pending_resp);
 	data->pending_resp = NULL;
+	data->prot_success_received = false;
 }
 
 
