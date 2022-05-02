@@ -1112,6 +1112,9 @@ void * tls_init(const struct tls_config *conf)
 #endif
 	} else {
 		SSL_CTX_set_session_cache_mode(ssl, SSL_SESS_CACHE_OFF);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		SSL_CTX_set_num_tickets(ssl, 0);
+#endif
 	}
 
 	if (tls_ex_idx_session < 0) {
