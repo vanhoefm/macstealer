@@ -4909,6 +4909,7 @@ static int nl80211_put_freq_params(struct nl_msg *msg,
 	if (nla_put_u32(msg, NL80211_ATTR_WIPHY_FREQ, freq->freq))
 		return -ENOBUFS;
 
+	wpa_printf(MSG_DEBUG, "  * eht_enabled=%d", freq->eht_enabled);
 	wpa_printf(MSG_DEBUG, "  * he_enabled=%d", freq->he_enabled);
 	wpa_printf(MSG_DEBUG, "  * vht_enabled=%d", freq->vht_enabled);
 	wpa_printf(MSG_DEBUG, "  * ht_enabled=%d", freq->ht_enabled);
@@ -4919,7 +4920,8 @@ static int nl80211_put_freq_params(struct nl_msg *msg,
 	is_24ghz = hw_mode == HOSTAPD_MODE_IEEE80211G ||
 		hw_mode == HOSTAPD_MODE_IEEE80211B;
 
-	if (freq->vht_enabled || (freq->he_enabled && !is_24ghz)) {
+	if (freq->vht_enabled ||
+	    ((freq->he_enabled || freq->eht_enabled) && !is_24ghz)) {
 		enum nl80211_chan_width cw;
 
 		wpa_printf(MSG_DEBUG, "  * bandwidth=%d", freq->bandwidth);
@@ -5006,9 +5008,10 @@ static int nl80211_set_channel(struct i802_bss *bss,
 	int ret;
 
 	wpa_printf(MSG_DEBUG,
-		   "nl80211: Set freq %d (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz)",
-		   freq->freq, freq->ht_enabled, freq->vht_enabled, freq->he_enabled,
-		   freq->bandwidth, freq->center_freq1, freq->center_freq2);
+		   "nl80211: Set freq %d (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, eht_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz)",
+		   freq->freq, freq->ht_enabled, freq->vht_enabled,
+		   freq->he_enabled, freq->eht_enabled, freq->bandwidth,
+		   freq->center_freq1, freq->center_freq2);
 
 	msg = nl80211_drv_msg(drv, 0, set_chan ? NL80211_CMD_SET_CHANNEL :
 			      NL80211_CMD_SET_WIPHY);
