@@ -2495,9 +2495,9 @@ struct ieee80211_eht_operation {
 #define EHT_PPE_THRES_NSS_MASK			((u8) (BIT(0) | BIT(1) | \
 						       BIT(2) | BIT(3)))
 #define EHT_PPE_THRES_RU_INDEX_SHIFT		4
-#define EHT_PPE_THRES_RU_INDEX_MASK		((u8) (BIT(4) | BIT(5) | \
-						       BIT(6) | BIT(7) | \
-						       BIT(8)))
+#define EHT_PPE_THRES_RU_INDEX_MASK		((u16) (BIT(4) | BIT(5) | \
+							BIT(6) | BIT(7) | \
+							BIT(8)))
 
 #define EHT_NSS_MAX_STREAMS			8
 

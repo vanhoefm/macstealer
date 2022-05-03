@@ -13,32 +13,25 @@
 #include "ieee802_11.h"
 
 
-static u8 ieee80211_eht_ppet_size(const u8 *ppe_thres, const u8 *phy_cap_info)
+static u16 ieee80211_eht_ppet_size(u16 ppe_thres_hdr, const u8 *phy_cap_info)
 {
-	u8 sz = 0, nss, num_nss = 0;
-	u32 ru;
+	u8 ru;
+	u16 sz = 0;
 
 	if ((phy_cap_info[EHT_PHYCAP_PPE_THRESHOLD_PRESENT_IDX] &
 	     EHT_PHYCAP_PPE_THRESHOLD_PRESENT) == 0)
 		return 0;
 
-	ru = (u32) ppe_thres[0];
-	ru = (ru & EHT_PPE_THRES_RU_INDEX_MASK) >> EHT_PPE_THRES_RU_INDEX_SHIFT;
+	ru = (ppe_thres_hdr &
+	      EHT_PPE_THRES_RU_INDEX_MASK) >> EHT_PPE_THRES_RU_INDEX_SHIFT;
 	while (ru) {
 		if (ru & 0x1)
 			sz++;
 		ru >>= 1;
 	}
 
-	nss = (ppe_thres[0] & EHT_PPE_THRES_NSS_MASK) >>
-		EHT_PPE_THRES_NSS_SHIFT;
-	while (nss) {
-		if (nss & 0x1)
-			num_nss++;
-		nss >>= 1;
-	}
-
-	sz = sz * (1 + num_nss);
+	sz = sz * (1 + ((ppe_thres_hdr & EHT_PPE_THRES_NSS_MASK) >>
+			EHT_PPE_THRES_NSS_SHIFT));
 	sz = (sz * 6) + 9;
 	if (sz % 8)
 		sz += 8;
@@ -90,7 +83,8 @@ size_t hostapd_eid_eht_capab_len(struct hostapd_data *hapd,
 
 	len += ieee80211_eht_mcs_set_size(mode->he_capab[opmode].phy_cap,
 					  eht_cap->phy_cap);
-	len += ieee80211_eht_ppet_size(eht_cap->ppet, eht_cap->phy_cap);
+	len += ieee80211_eht_ppet_size(WPA_GET_LE16(&eht_cap->ppet[0]),
+				       eht_cap->phy_cap);
 
 	return len;
 }
@@ -146,8 +140,9 @@ u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
 		pos += mcs_nss_len;
 	}
 
-	ppe_thresh_len = ieee80211_eht_ppet_size(eht_cap->ppet,
-						 eht_cap->phy_cap);
+	ppe_thresh_len = ieee80211_eht_ppet_size(
+				WPA_GET_LE16(&eht_cap->ppet[0]),
+				eht_cap->phy_cap);
 	if (ppe_thresh_len) {
 		os_memcpy(pos, eht_cap->ppet, ppe_thresh_len);
 		pos += ppe_thresh_len;
@@ -289,11 +284,12 @@ static bool ieee80211_invalid_eht_cap_size(const u8 *he_cap, const u8 *eht_cap,
 	struct ieee80211_eht_capabilities *cap;
 	const u8 *he_phy_cap;
 	size_t cap_len;
+	u16 ppe_thres_hdr;
 
 	he_capab = (const struct ieee80211_he_capabilities *) he_cap;
 	he_phy_cap = he_capab->he_phy_capab_info;
 	cap = (struct ieee80211_eht_capabilities *) eht_cap;
-	cap_len = sizeof(*cap);
+	cap_len = sizeof(*cap) - sizeof(cap->optional);
 	if (len < cap_len)
 		return true;
 
@@ -301,7 +297,9 @@ static bool ieee80211_invalid_eht_cap_size(const u8 *he_cap, const u8 *eht_cap,
 	if (len < cap_len)
 		return true;
 
-	cap_len += ieee80211_eht_ppet_size(&eht_cap[cap_len], cap->phy_cap);
+	ppe_thres_hdr = len > cap_len + 1 ?
+		WPA_GET_LE16(&eht_cap[cap_len]) : 0x01ff;
+	cap_len += ieee80211_eht_ppet_size(ppe_thres_hdr, cap->phy_cap);
 
 	return len < cap_len;
 }
