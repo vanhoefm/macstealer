@@ -2514,6 +2514,9 @@ struct drv_acs_params {
 
 	/* Indicates whether EDMG is enabled */
 	int edmg_enabled;
+
+	/* Indicates whether EHT is enabled */
+	bool eht_enabled;
 };
 
 struct wpa_bss_trans_info {

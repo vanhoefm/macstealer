@@ -967,13 +967,15 @@ int hostapd_drv_do_acs(struct hostapd_data *hapd)
 	params.ht40_enabled = !!(hapd->iface->conf->ht_capab &
 				 HT_CAP_INFO_SUPP_CHANNEL_WIDTH_SET);
 	params.vht_enabled = !!(hapd->iface->conf->ieee80211ac);
+	params.eht_enabled = !!(hapd->iface->conf->ieee80211be);
 	params.ch_width = 20;
 	if (hapd->iface->conf->ieee80211n && params.ht40_enabled)
 		params.ch_width = 40;
 
 	/* Note: VHT20 is defined by combination of ht_capab & oper_chwidth
 	 */
-	if ((hapd->iface->conf->ieee80211ax ||
+	if ((hapd->iface->conf->ieee80211be ||
+	     hapd->iface->conf->ieee80211ax ||
 	     hapd->iface->conf->ieee80211ac) &&
 	    params.ht40_enabled) {
 		u8 oper_chwidth = hostapd_get_oper_chwidth(hapd->iface->conf);
