@@ -961,6 +961,7 @@ struct wpa_supplicant {
 	unsigned int connection_ht:1;
 	unsigned int connection_vht:1;
 	unsigned int connection_he:1;
+	unsigned int connection_eht:1;
 	unsigned int disable_mbo_oce:1;
 
 	struct os_reltime last_mac_addr_change;

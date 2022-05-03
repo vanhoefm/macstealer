@@ -2997,6 +2997,8 @@ static int wpa_supplicant_event_associnfo(struct wpa_supplicant *wpa_s,
 				 BAND_2_4_GHZ);
 			wpa_s->connection_he = req_elems.he_capabilities &&
 				resp_elems.he_capabilities;
+			wpa_s->connection_eht = req_elems.eht_capabilities &&
+				resp_elems.eht_capabilities;
 		}
 	}
 
