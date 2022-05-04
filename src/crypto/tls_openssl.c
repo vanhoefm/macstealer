@@ -4443,6 +4443,7 @@ int tls_connection_get_eap_fast_key(void *tls_ctx, struct tls_connection *conn,
 static struct wpabuf *
 openssl_handshake(struct tls_connection *conn, const struct wpabuf *in_data)
 {
+	struct tls_context *context = conn->context;
 	int res;
 	struct wpabuf *out_data;
 
@@ -4472,7 +4473,19 @@ openssl_handshake(struct tls_connection *conn, const struct wpabuf *in_data)
 			wpa_printf(MSG_DEBUG, "SSL: SSL_connect - want to "
 				   "write");
 		else {
+			unsigned long error = ERR_peek_last_error();
+
 			tls_show_errors(MSG_INFO, __func__, "SSL_connect");
+
+			if (context->event_cb &&
+			    ERR_GET_LIB(error) == ERR_LIB_SSL &&
+			    ERR_GET_REASON(error) ==
+			    SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED) {
+				context->event_cb(
+					context->cb_ctx,
+					TLS_UNSAFE_RENEGOTIATION_DISABLED,
+					NULL);
+			}
 			conn->failed++;
 			if (!conn->server && !conn->client_hello_generated) {
 				/* The server would not understand TLS Alert
@@ -4495,8 +4508,6 @@ openssl_handshake(struct tls_connection *conn, const struct wpabuf *in_data)
 	if ((conn->flags & TLS_CONN_SUITEB) && !conn->server &&
 	    os_strncmp(SSL_get_cipher(conn->ssl), "DHE-", 4) == 0 &&
 	    conn->server_dh_prime_len < 3072) {
-		struct tls_context *context = conn->context;
-
 		/*
 		 * This should not be reached since earlier cert_cb should have
 		 * terminated the handshake. Keep this check here for extra

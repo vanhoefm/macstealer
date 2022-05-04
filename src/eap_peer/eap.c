@@ -2172,6 +2172,11 @@ static void eap_peer_sm_tls_event(void *ctx, enum tls_event ev,
 			eap_notify_status(sm, "remote TLS alert",
 					  data->alert.description);
 		break;
+	case TLS_UNSAFE_RENEGOTIATION_DISABLED:
+		wpa_printf(MSG_INFO,
+			   "TLS handshake failed due to the server not supporting safe renegotiation (RFC 5746); phase1 parameter allow_unsafe_renegotiation=1 can be used to work around this");
+		eap_notify_status(sm, "unsafe server renegotiation", "failure");
+		break;
 	}
 
 	os_free(hash_hex);

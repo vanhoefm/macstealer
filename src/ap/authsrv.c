@@ -169,6 +169,9 @@ static void authsrv_tls_event(void *ctx, enum tls_event ev,
 			wpa_printf(MSG_DEBUG, "authsrv: remote TLS alert: %s",
 				   data->alert.description);
 		break;
+	case TLS_UNSAFE_RENEGOTIATION_DISABLED:
+		/* Not applicable to TLS server */
+		break;
 	}
 }
 #endif /* EAP_TLS_FUNCS */
