@@ -3989,6 +3989,7 @@ struct crypto_rsa_key * crypto_rsa_key_read(const char *file, bool private_key)
 struct wpabuf * crypto_rsa_oaep_sha256_encrypt(struct crypto_rsa_key *key,
 					       const struct wpabuf *in)
 {
+#if !defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER >= 0x30400000L
 	EVP_PKEY *pkey = (EVP_PKEY *) key;
 	EVP_PKEY_CTX *pkctx;
 	struct wpabuf *res = NULL;
@@ -4015,12 +4016,17 @@ struct wpabuf * crypto_rsa_oaep_sha256_encrypt(struct crypto_rsa_key *key,
 fail:
 	EVP_PKEY_CTX_free(pkctx);
 	return res;
+#else
+	wpa_printf(MSG_ERROR, "%s() not supported", __func__);
+	return NULL;
+#endif
 }
 
 
 struct wpabuf * crypto_rsa_oaep_sha256_decrypt(struct crypto_rsa_key *key,
 					       const struct wpabuf *in)
 {
+#if !defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER >= 0x30400000L
 	EVP_PKEY *pkey = (EVP_PKEY *) key;
 	EVP_PKEY_CTX *pkctx;
 	struct wpabuf *res = NULL;
@@ -4047,6 +4053,10 @@ struct wpabuf * crypto_rsa_oaep_sha256_decrypt(struct crypto_rsa_key *key,
 fail:
 	EVP_PKEY_CTX_free(pkctx);
 	return res;
+#else
+	wpa_printf(MSG_ERROR, "%s() not supported", __func__);
+	return NULL;
+#endif
 }
 
 #endif /* OPENSSL_NO_SHA256 */
