@@ -3081,6 +3081,11 @@ static int tls_set_conn_flags(struct tls_connection *conn, unsigned int flags,
 		SSL_clear_options(ssl, SSL_OP_NO_TICKET);
 #endif /* SSL_OP_NO_TICKET */
 
+#ifdef SSL_OP_LEGACY_SERVER_CONNECT
+	if (flags & TLS_CONN_ALLOW_UNSAFE_RENEGOTIATION)
+		SSL_set_options(ssl, SSL_OP_LEGACY_SERVER_CONNECT);
+#endif /* SSL_OP_LEGACY_SERVER_CONNECT */
+
 #ifdef SSL_OP_NO_TLSv1
 	if (flags & TLS_CONN_DISABLE_TLSv1_0)
 		SSL_set_options(ssl, SSL_OP_NO_TLSv1);

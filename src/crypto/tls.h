@@ -112,6 +112,7 @@ struct tls_config {
 #define TLS_CONN_ENABLE_TLSv1_1 BIT(15)
 #define TLS_CONN_ENABLE_TLSv1_2 BIT(16)
 #define TLS_CONN_TEAP_ANON_DH BIT(17)
+#define TLS_CONN_ALLOW_UNSAFE_RENEGOTIATION BIT(18)
 
 /**
  * struct tls_connection_params - Parameters for TLS connection

@@ -102,6 +102,10 @@ static void eap_tls_params_flags(struct tls_connection_params *params,
 		params->flags |= TLS_CONN_SUITEB_NO_ECDH;
 	if (os_strstr(txt, "tls_suiteb_no_ecdh=0"))
 		params->flags &= ~TLS_CONN_SUITEB_NO_ECDH;
+	if (os_strstr(txt, "allow_unsafe_renegotiation=1"))
+		params->flags |= TLS_CONN_ALLOW_UNSAFE_RENEGOTIATION;
+	if (os_strstr(txt, "allow_unsafe_renegotiation=0"))
+		params->flags &= ~TLS_CONN_ALLOW_UNSAFE_RENEGOTIATION;
 }
 
 
