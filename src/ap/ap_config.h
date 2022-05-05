@@ -20,6 +20,12 @@
 #include "fst/fst.h"
 #include "vlan.h"
 
+enum macaddr_acl {
+	ACCEPT_UNLESS_DENIED = 0,
+	DENY_UNLESS_ACCEPTED = 1,
+	USE_EXTERNAL_RADIUS_AUTH = 2
+};
+
 /**
  * mesh_conf - local MBSS state and settings
  */
@@ -335,11 +341,7 @@ struct hostapd_bss_config {
 	bool eap_skip_prot_success;
 #endif /* CONFIG_TESTING_OPTIONS */
 
-	enum macaddr_acl {
-		ACCEPT_UNLESS_DENIED = 0,
-		DENY_UNLESS_ACCEPTED = 1,
-		USE_EXTERNAL_RADIUS_AUTH = 2
-	} macaddr_acl;
+	enum macaddr_acl macaddr_acl;
 	struct mac_acl_entry *accept_mac;
 	int num_accept_mac;
 	struct mac_acl_entry *deny_mac;
