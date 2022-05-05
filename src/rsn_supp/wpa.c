@@ -694,7 +694,6 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 		return;
 	}
 
-	wpa_sm_set_state(sm, WPA_4WAY_HANDSHAKE);
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "WPA: RX message 1 of 4-Way "
 		"Handshake from " MACSTR " (ver=%d)", MAC2STR(src_addr), ver);
 
@@ -704,8 +703,11 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 		/* RSN: msg 1/4 should contain PMKID for the selected PMK */
 		wpa_hexdump(MSG_DEBUG, "RSN: msg 1/4 key data",
 			    key_data, key_data_len);
-		if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0)
-			goto failed;
+		if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0) {
+			wpa_printf(MSG_DEBUG,
+				   "RSN: Discard EAPOL-Key msg 1/4 with invalid IEs/KDEs");
+			return;
+		}
 		if (ie.pmkid) {
 			wpa_hexdump(MSG_DEBUG, "RSN: PMKID from "
 				    "Authenticator", ie.pmkid, PMKID_LEN);
@@ -720,6 +722,8 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 	}
 	if (res)
 		goto failed;
+
+	wpa_sm_set_state(sm, WPA_4WAY_HANDSHAKE);
 
 	if (sm->renew_snonce) {
 		if (random_get_bytes(sm->snonce, WPA_NONCE_LEN)) {
