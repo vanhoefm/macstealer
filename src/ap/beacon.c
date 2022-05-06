@@ -464,7 +464,8 @@ static u8 * hostapd_eid_supported_op_classes(struct hostapd_data *hapd, u8 *eid)
 
 static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 				   const struct ieee80211_mgmt *req,
-				   int is_p2p, size_t *resp_len)
+				   int is_p2p, size_t *resp_len,
+				   bool bcast_probe_resp)
 {
 	struct ieee80211_mgmt *resp;
 	u8 *pos, *epos, *csa_pos;
@@ -531,6 +532,9 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 					   WLAN_FC_STYPE_PROBE_RESP);
 	if (req)
 		os_memcpy(resp->da, req->sa, ETH_ALEN);
+	else if (bcast_probe_resp)
+		os_memset(resp->da, 0xff, ETH_ALEN);
+
 	os_memcpy(resp->sa, hapd->own_addr, ETH_ALEN);
 
 	os_memcpy(resp->bssid, hapd->own_addr, ETH_ALEN);
@@ -1141,7 +1145,7 @@ void handle_probe_req(struct hostapd_data *hapd,
 		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
 
 	resp = hostapd_gen_probe_resp(hapd, mgmt, elems.p2p != NULL,
-				      &resp_len);
+				      &resp_len, false);
 	if (resp == NULL)
 		return;
 
@@ -1210,7 +1214,7 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
 			   "this");
 
 	/* Generate a Probe Response template for the non-P2P case */
-	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len);
+	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len, false);
 }
 
 #endif /* NEED_AP_MLME */
@@ -1228,7 +1232,8 @@ static u8 * hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
 		hapd->conf->unsol_bcast_probe_resp_interval;
 
 	return hostapd_gen_probe_resp(hapd, NULL, 0,
-				      &params->unsol_bcast_probe_resp_tmpl_len);
+				      &params->unsol_bcast_probe_resp_tmpl_len,
+				      true);
 }
 #endif /* CONFIG_IEEE80211AX */
 
