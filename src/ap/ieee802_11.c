@@ -6589,7 +6589,8 @@ static void handle_assoc_cb(struct hostapd_data *hapd,
 			ieee802_1x_receive(
 				hapd, mgmt->da,
 				wpabuf_head(sta->pending_eapol_rx->buf),
-				wpabuf_len(sta->pending_eapol_rx->buf));
+				wpabuf_len(sta->pending_eapol_rx->buf),
+				sta->pending_eapol_rx->encrypted);
 		}
 		wpabuf_free(sta->pending_eapol_rx->buf);
 		os_free(sta->pending_eapol_rx);

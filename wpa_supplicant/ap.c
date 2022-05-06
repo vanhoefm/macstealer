@@ -1234,9 +1234,11 @@ void ap_mgmt_tx_cb(void *ctx, const u8 *buf, size_t len, u16 stype, int ok)
 
 
 void wpa_supplicant_ap_rx_eapol(struct wpa_supplicant *wpa_s,
-				const u8 *src_addr, const u8 *buf, size_t len)
+				const u8 *src_addr, const u8 *buf, size_t len,
+				enum frame_encryption encrypted)
 {
-	ieee802_1x_receive(wpa_s->ap_iface->bss[0], src_addr, buf, len);
+	ieee802_1x_receive(wpa_s->ap_iface->bss[0], src_addr, buf, len,
+			   encrypted);
 }
 
 

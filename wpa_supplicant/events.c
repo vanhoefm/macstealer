@@ -3528,7 +3528,8 @@ static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
 			wpa_supplicant_rx_eapol(
 				wpa_s, wpa_s->pending_eapol_rx_src,
 				wpabuf_head(wpa_s->pending_eapol_rx),
-				wpabuf_len(wpa_s->pending_eapol_rx));
+				wpabuf_len(wpa_s->pending_eapol_rx),
+				wpa_s->pending_eapol_encrypted);
 		}
 		wpabuf_free(wpa_s->pending_eapol_rx);
 		wpa_s->pending_eapol_rx = NULL;
@@ -5505,7 +5506,8 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 	case EVENT_EAPOL_RX:
 		wpa_supplicant_rx_eapol(wpa_s, data->eapol_rx.src,
 					data->eapol_rx.data,
-					data->eapol_rx.data_len);
+					data->eapol_rx.data_len,
+					data->eapol_rx.encrypted);
 		break;
 	case EVENT_SIGNAL_CHANGE:
 		wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_SIGNAL_CHANGE

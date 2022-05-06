@@ -2480,6 +2480,7 @@ static int wpa_supp_aead_decrypt(struct wpa_sm *sm, u8 *buf, size_t buf_len,
  * @src_addr: Source MAC address of the EAPOL packet
  * @buf: Pointer to the beginning of the EAPOL data (EAPOL header)
  * @len: Length of the EAPOL frame
+ * @encrypted: Whether the frame was encrypted
  * Returns: 1 = WPA EAPOL-Key processed, 0 = not a WPA EAPOL-Key, -1 failure
  *
  * This function is called for each received EAPOL frame. Other than EAPOL-Key
@@ -2491,7 +2492,7 @@ static int wpa_supp_aead_decrypt(struct wpa_sm *sm, u8 *buf, size_t buf_len,
  * successful key handshake.
  */
 int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
-		    const u8 *buf, size_t len)
+		    const u8 *buf, size_t len, enum frame_encryption encrypted)
 {
 	size_t plen, data_len, key_data_len;
 	const struct ieee802_1x_hdr *hdr;

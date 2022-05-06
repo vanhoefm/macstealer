@@ -75,7 +75,8 @@ static void rsn_preauth_receive(void *ctx, const u8 *src_addr,
 		return;
 	}
 
-	eapol_sm_rx_eapol(sm->preauth_eapol, src_addr, buf, len);
+	eapol_sm_rx_eapol(sm->preauth_eapol, src_addr, buf, len,
+			  FRAME_ENCRYPTION_UNKNOWN);
 }
 
 

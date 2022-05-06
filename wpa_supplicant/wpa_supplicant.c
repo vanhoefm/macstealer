@@ -4993,6 +4993,7 @@ static int wpa_supplicant_set_driver(struct wpa_supplicant *wpa_s,
  * @src_addr: Source address of the EAPOL frame
  * @buf: EAPOL data starting from the EAPOL header (i.e., no Ethernet header)
  * @len: Length of the EAPOL data
+ * @encrypted: Whether the frame was encrypted
  *
  * This function is called for each received EAPOL frame. Most driver
  * interfaces rely on more generic OS mechanism for receiving frames through
@@ -5001,11 +5002,13 @@ static int wpa_supplicant_set_driver(struct wpa_supplicant *wpa_s,
  * code by calling this function.
  */
 void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
-			     const u8 *buf, size_t len)
+			     const u8 *buf, size_t len,
+			     enum frame_encryption encrypted)
 {
 	struct wpa_supplicant *wpa_s = ctx;
 
-	wpa_dbg(wpa_s, MSG_DEBUG, "RX EAPOL from " MACSTR, MAC2STR(src_addr));
+	wpa_dbg(wpa_s, MSG_DEBUG, "RX EAPOL from " MACSTR " (encrypted=%d)",
+		MAC2STR(src_addr), encrypted);
 	wpa_hexdump(MSG_MSGDUMP, "RX EAPOL", buf, len);
 
 	if (wpa_s->own_disconnect_req) {
@@ -5051,6 +5054,7 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 			os_get_reltime(&wpa_s->pending_eapol_rx_time);
 			os_memcpy(wpa_s->pending_eapol_rx_src, src_addr,
 				  ETH_ALEN);
+			wpa_s->pending_eapol_encrypted = encrypted;
 		}
 		return;
 	}
@@ -5060,7 +5064,8 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 
 #ifdef CONFIG_AP
 	if (wpa_s->ap_iface) {
-		wpa_supplicant_ap_rx_eapol(wpa_s, src_addr, buf, len);
+		wpa_supplicant_ap_rx_eapol(wpa_s, src_addr, buf, len,
+					   encrypted);
 		return;
 	}
 #endif /* CONFIG_AP */
@@ -5120,7 +5125,8 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 #ifdef CONFIG_IBSS_RSN
 	if (wpa_s->current_ssid &&
 	    wpa_s->current_ssid->mode == WPAS_MODE_IBSS) {
-		ibss_rsn_rx_eapol(wpa_s->ibss_rsn, src_addr, buf, len);
+		ibss_rsn_rx_eapol(wpa_s->ibss_rsn, src_addr, buf, len,
+				  encrypted);
 		return;
 	}
 #endif /* CONFIG_IBSS_RSN */
@@ -5135,11 +5141,12 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 	if (!wpa_key_mgmt_wpa_psk(wpa_s->key_mgmt) &&
 	    wpa_s->key_mgmt != WPA_KEY_MGMT_OWE &&
 	    wpa_s->key_mgmt != WPA_KEY_MGMT_DPP &&
-	    eapol_sm_rx_eapol(wpa_s->eapol, src_addr, buf, len) > 0)
+	    eapol_sm_rx_eapol(wpa_s->eapol, src_addr, buf, len,
+			      encrypted) > 0)
 		return;
 	wpa_drv_poll(wpa_s);
 	if (!(wpa_s->drv_flags & WPA_DRIVER_FLAGS_4WAY_HANDSHAKE_PSK))
-		wpa_sm_rx_eapol(wpa_s->wpa, src_addr, buf, len);
+		wpa_sm_rx_eapol(wpa_s->wpa, src_addr, buf, len, encrypted);
 	else if (wpa_key_mgmt_wpa_ieee8021x(wpa_s->key_mgmt)) {
 		/*
 		 * Set portValid = true here since we are going to skip 4-way
@@ -5149,6 +5156,14 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 		 */
 		eapol_sm_notify_portValid(wpa_s->eapol, true);
 	}
+}
+
+
+static void wpa_supplicant_rx_eapol_cb(void *ctx, const u8 *src_addr,
+				       const u8 *buf, size_t len)
+{
+	wpa_supplicant_rx_eapol(ctx, src_addr, buf, len,
+				FRAME_ENCRYPTION_UNKNOWN);
 }
 
 
@@ -5169,7 +5184,7 @@ int wpa_supplicant_update_mac_addr(struct wpa_supplicant *wpa_s)
 					   wpa_drv_get_mac_addr(wpa_s),
 					   ETH_P_EAPOL,
 					   wpas_eapol_needs_l2_packet(wpa_s) ?
-					   wpa_supplicant_rx_eapol : NULL,
+					   wpa_supplicant_rx_eapol_cb : NULL,
 					   wpa_s, 0);
 		if (wpa_s->l2 == NULL)
 			return -1;
@@ -5223,7 +5238,7 @@ static void wpa_supplicant_rx_eapol_bridge(void *ctx, const u8 *src_addr,
 	wpa_dbg(wpa_s, MSG_DEBUG, "RX EAPOL from " MACSTR " to " MACSTR
 		" (bridge)", MAC2STR(src_addr), MAC2STR(eth->h_dest));
 	wpa_supplicant_rx_eapol(wpa_s, src_addr, buf + sizeof(*eth),
-				len - sizeof(*eth));
+				len - sizeof(*eth), FRAME_ENCRYPTION_UNKNOWN);
 }
 
 

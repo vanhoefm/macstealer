@@ -44,8 +44,10 @@ static void test_send_eapol(void *eloop_data, void *user_ctx)
 	wpa_ie_len = sizeof(wpa_ie);
 	wpa_sm_set_assoc_wpa_ie_default(ctx->wpa, wpa_ie, &wpa_ie_len);
 
-	if (eapol_sm_rx_eapol(ctx->eapol, src, ctx->data, ctx->data_len) <= 0)
-		wpa_sm_rx_eapol(ctx->wpa, src, ctx->data, ctx->data_len);
+	if (eapol_sm_rx_eapol(ctx->eapol, src, ctx->data, ctx->data_len,
+			      FRAME_ENCRYPTION_UNKNOWN) <= 0)
+		wpa_sm_rx_eapol(ctx->wpa, src, ctx->data, ctx->data_len,
+				FRAME_ENCRYPTION_UNKNOWN);
 
 	eloop_terminate();
 }

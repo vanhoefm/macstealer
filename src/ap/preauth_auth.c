@@ -90,7 +90,7 @@ static void rsn_preauth_receive(void *ctx, const u8 *src_addr,
 		return;
 	sta->preauth_iface = piface;
 	ieee802_1x_receive(hapd, ethhdr->h_source, (u8 *) (ethhdr + 1),
-			   len - sizeof(*ethhdr));
+			   len - sizeof(*ethhdr), FRAME_ENCRYPTION_UNKNOWN);
 }
 
 

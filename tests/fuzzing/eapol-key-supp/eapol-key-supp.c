@@ -91,7 +91,7 @@ static void supp_eapol_rx(void *eloop_data, void *user_ctx)
 
 	wpa_printf(MSG_DEBUG, "SUPP: RX EAPOL frame");
 	wpa_sm_rx_eapol(wpa->supp, wpa->auth_addr, wpa->auth_eapol,
-			wpa->auth_eapol_len);
+			wpa->auth_eapol_len, FRAME_ENCRYPTION_UNKNOWN);
 }
 
 

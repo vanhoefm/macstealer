@@ -948,6 +948,7 @@ struct wpa_supplicant {
 	struct wpabuf *pending_eapol_rx;
 	struct os_reltime pending_eapol_rx_time;
 	u8 pending_eapol_rx_src[ETH_ALEN];
+	enum frame_encryption pending_eapol_encrypted;
 	unsigned int last_eapol_matches_bssid:1;
 	unsigned int eapol_failed:1;
 	unsigned int eap_expected_failure:1;
@@ -1626,7 +1627,8 @@ int wpa_supplicant_scard_init(struct wpa_supplicant *wpa_s,
 			      struct wpa_ssid *ssid);
 void wpa_supplicant_terminate_proc(struct wpa_global *global);
 void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
-			     const u8 *buf, size_t len);
+			     const u8 *buf, size_t len,
+			     enum frame_encryption encrypted);
 void wpa_supplicant_update_config(struct wpa_supplicant *wpa_s);
 void wpa_supplicant_clear_status(struct wpa_supplicant *wpa_s);
 void wpas_connection_failed(struct wpa_supplicant *wpa_s, const u8 *bssid);

@@ -16,7 +16,8 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 			     struct wpa_ssid *ssid);
 void wpa_supplicant_ap_deinit(struct wpa_supplicant *wpa_s);
 void wpa_supplicant_ap_rx_eapol(struct wpa_supplicant *wpa_s,
-				const u8 *src_addr, const u8 *buf, size_t len);
+				const u8 *src_addr, const u8 *buf, size_t len,
+				enum frame_encryption encrypted);
 int wpa_supplicant_ap_wps_pbc(struct wpa_supplicant *wpa_s, const u8 *bssid,
 			      const u8 *p2p_dev_addr);
 int wpa_supplicant_ap_wps_pin(struct wpa_supplicant *wpa_s, const u8 *bssid,

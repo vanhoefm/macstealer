@@ -475,4 +475,10 @@ enum ptk0_rekey_handling {
 	PTK0_REKEY_ALLOW_NEVER
 };
 
+enum frame_encryption {
+	FRAME_ENCRYPTION_UNKNOWN = -1,
+	FRAME_NOT_ENCRYPTED = 0,
+	FRAME_ENCRYPTED = 1
+};
+
 #endif /* DEFS_H */

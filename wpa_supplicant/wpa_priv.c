@@ -1134,7 +1134,8 @@ void wpa_supplicant_event_global(void *ctx, enum wpa_event_type event,
 
 
 void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
-			     const u8 *buf, size_t len)
+			     const u8 *buf, size_t len,
+			     enum frame_encryption encrypted)
 {
 	struct wpa_priv_interface *iface = ctx;
 	struct msghdr msg;

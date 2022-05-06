@@ -1543,7 +1543,8 @@ static int hostapd_event_new_sta(struct hostapd_data *hapd, const u8 *addr)
 
 
 static void hostapd_event_eapol_rx(struct hostapd_data *hapd, const u8 *src,
-				   const u8 *data, size_t data_len)
+				   const u8 *data, size_t data_len,
+				   enum frame_encryption encrypted)
 {
 	struct hostapd_iface *iface = hapd->iface;
 	struct sta_info *sta;
@@ -1557,7 +1558,7 @@ static void hostapd_event_eapol_rx(struct hostapd_data *hapd, const u8 *src,
 		}
 	}
 
-	ieee802_1x_receive(hapd, src, data, data_len);
+	ieee802_1x_receive(hapd, src, data, data_len, encrypted);
 }
 
 #endif /* HOSTAPD */
@@ -1949,7 +1950,8 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 	case EVENT_EAPOL_RX:
 		hostapd_event_eapol_rx(hapd, data->eapol_rx.src,
 				       data->eapol_rx.data,
-				       data->eapol_rx.data_len);
+				       data->eapol_rx.data_len,
+				       data->eapol_rx.encrypted);
 		break;
 	case EVENT_ASSOC:
 		if (!data)

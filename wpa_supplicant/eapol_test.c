@@ -714,7 +714,7 @@ static void send_eap_request_identity(void *eloop_ctx, void *timeout_ctx)
 
 	printf("Sending fake EAP-Request-Identity\n");
 	eapol_sm_rx_eapol(wpa_s->eapol, wpa_s->bssid, buf,
-			  sizeof(*hdr) + 5);
+			  sizeof(*hdr) + 5, FRAME_ENCRYPTION_UNKNOWN);
 }
 
 
@@ -842,7 +842,8 @@ static void ieee802_1x_decapsulate_radius(struct eapol_test_data *e)
 			  wpabuf_len(eap));
 		eapol_sm_rx_eapol(e->wpa_s->eapol, e->wpa_s->bssid,
 				  (u8 *) dot1x,
-				  sizeof(*dot1x) + wpabuf_len(eap));
+				  sizeof(*dot1x) + wpabuf_len(eap),
+				  FRAME_ENCRYPTION_UNKNOWN);
 		os_free(dot1x);
 	}
 }

@@ -998,7 +998,7 @@ ieee802_1x_alloc_eapol_sm(struct hostapd_data *hapd, struct sta_info *sta)
 
 
 static void ieee802_1x_save_eapol(struct sta_info *sta, const u8 *buf,
-				  size_t len)
+				  size_t len, enum frame_encryption encrypted)
 {
 	if (sta->pending_eapol_rx) {
 		wpabuf_free(sta->pending_eapol_rx->buf);
@@ -1016,6 +1016,7 @@ static void ieee802_1x_save_eapol(struct sta_info *sta, const u8 *buf,
 		return;
 	}
 
+	sta->pending_eapol_rx->encrypted = encrypted;
 	os_get_reltime(&sta->pending_eapol_rx->rx_time);
 }
 
@@ -1026,11 +1027,12 @@ static void ieee802_1x_save_eapol(struct sta_info *sta, const u8 *buf,
  * @sa: Source address (sender of the EAPOL frame)
  * @buf: EAPOL frame
  * @len: Length of buf in octets
+ * @encrypted: Whether the frame was encrypted
  *
  * This function is called for each incoming EAPOL frame from the interface
  */
 void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
-			size_t len)
+			size_t len, enum frame_encryption encrypted)
 {
 	struct sta_info *sta;
 	struct ieee802_1x_hdr *hdr;
@@ -1043,8 +1045,9 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 	    !hapd->conf->wps_state)
 		return;
 
-	wpa_printf(MSG_DEBUG, "IEEE 802.1X: %lu bytes from " MACSTR,
-		   (unsigned long) len, MAC2STR(sa));
+	wpa_printf(MSG_DEBUG, "IEEE 802.1X: %lu bytes from " MACSTR
+		   " (encrypted=%d)",
+		   (unsigned long) len, MAC2STR(sa), encrypted);
 	sta = ap_get_sta(hapd, sa);
 	if (!sta || (!(sta->flags & (WLAN_STA_ASSOC | WLAN_STA_PREAUTH)) &&
 		     !(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_WIRED))) {
@@ -1054,7 +1057,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		if (sta && (sta->flags & WLAN_STA_AUTH)) {
 			wpa_printf(MSG_DEBUG, "Saving EAPOL frame from " MACSTR
 				   " for later use", MAC2STR(sta->addr));
-			ieee802_1x_save_eapol(sta, buf, len);
+			ieee802_1x_save_eapol(sta, buf, len, encrypted);
 		}
 
 		return;

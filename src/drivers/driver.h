@@ -5847,6 +5847,7 @@ union wpa_event_data {
 		const u8 *src;
 		const u8 *data;
 		size_t data_len;
+		enum frame_encryption encrypted;
 	} eapol_rx;
 
 	/**
@@ -6185,6 +6186,20 @@ static inline void drv_event_eapol_rx(void *ctx, const u8 *src, const u8 *data,
 	event.eapol_rx.src = src;
 	event.eapol_rx.data = data;
 	event.eapol_rx.data_len = data_len;
+	event.eapol_rx.encrypted = FRAME_ENCRYPTION_UNKNOWN;
+	wpa_supplicant_event(ctx, EVENT_EAPOL_RX, &event);
+}
+
+static inline void drv_event_eapol_rx2(void *ctx, const u8 *src, const u8 *data,
+				      size_t data_len,
+				       enum frame_encryption encrypted)
+{
+	union wpa_event_data event;
+	os_memset(&event, 0, sizeof(event));
+	event.eapol_rx.src = src;
+	event.eapol_rx.data = data;
+	event.eapol_rx.data_len = data_len;
+	event.eapol_rx.encrypted = encrypted;
 	wpa_supplicant_event(ctx, EVENT_EAPOL_RX, &event);
 }
 

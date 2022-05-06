@@ -2810,6 +2810,7 @@ static void nl80211_control_port_frame(struct wpa_driver_nl80211_data *drv,
 {
 	u8 *src_addr;
 	u16 ethertype;
+	enum frame_encryption encrypted;
 
 	if (!tb[NL80211_ATTR_MAC] ||
 	    !tb[NL80211_ATTR_FRAME] ||
@@ -2818,6 +2819,8 @@ static void nl80211_control_port_frame(struct wpa_driver_nl80211_data *drv,
 
 	src_addr = nla_data(tb[NL80211_ATTR_MAC]);
 	ethertype = nla_get_u16(tb[NL80211_ATTR_CONTROL_PORT_ETHERTYPE]);
+	encrypted = nla_get_flag(tb[NL80211_ATTR_CONTROL_PORT_NO_ENCRYPT]) ?
+		FRAME_NOT_ENCRYPTED : FRAME_ENCRYPTED;
 
 	switch (ethertype) {
 	case ETH_P_RSN_PREAUTH:
@@ -2826,9 +2829,10 @@ static void nl80211_control_port_frame(struct wpa_driver_nl80211_data *drv,
 			   MAC2STR(src_addr));
 		break;
 	case ETH_P_PAE:
-		drv_event_eapol_rx(drv->ctx, src_addr,
-				   nla_data(tb[NL80211_ATTR_FRAME]),
-				   nla_len(tb[NL80211_ATTR_FRAME]));
+		drv_event_eapol_rx2(drv->ctx, src_addr,
+				    nla_data(tb[NL80211_ATTR_FRAME]),
+				    nla_len(tb[NL80211_ATTR_FRAME]),
+				    encrypted);
 		break;
 	default:
 		wpa_printf(MSG_INFO,

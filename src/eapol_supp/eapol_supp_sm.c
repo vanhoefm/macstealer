@@ -1281,11 +1281,12 @@ int eapol_sm_get_mib(struct eapol_sm *sm, char *buf, size_t buflen)
  * @src: Source MAC address of the EAPOL packet
  * @buf: Pointer to the beginning of the EAPOL data (EAPOL header)
  * @len: Length of the EAPOL frame
+ * @encrypted: Whether the frame was encrypted
  * Returns: 1 = EAPOL frame processed, 0 = not for EAPOL state machine,
  * -1 failure
  */
 int eapol_sm_rx_eapol(struct eapol_sm *sm, const u8 *src, const u8 *buf,
-		      size_t len)
+		      size_t len, enum frame_encryption encrypted)
 {
 	const struct ieee802_1x_hdr *hdr;
 	const struct ieee802_1x_eapol_key *key;

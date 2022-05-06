@@ -19,6 +19,7 @@ struct eapol_sm;
 struct wpa_config_blob;
 struct hostapd_freq_params;
 struct wpa_channel_info;
+enum frame_encryption;
 
 struct wpa_sm_ctx {
 	void *ctx; /* pointer to arbitrary upper level context */
@@ -184,7 +185,7 @@ int wpa_parse_wpa_ie(const u8 *wpa_ie, size_t wpa_ie_len,
 void wpa_sm_aborted_cached(struct wpa_sm *sm);
 void wpa_sm_aborted_external_cached(struct wpa_sm *sm);
 int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
-		    const u8 *buf, size_t len);
+		    const u8 *buf, size_t len, enum frame_encryption encrypted);
 int wpa_sm_parse_own_wpa_ie(struct wpa_sm *sm, struct wpa_ie_data *data);
 int wpa_sm_pmksa_cache_list(struct wpa_sm *sm, char *buf, size_t len);
 struct rsn_pmksa_cache_entry * wpa_sm_pmksa_cache_head(struct wpa_sm *sm);
@@ -363,7 +364,8 @@ static inline void wpa_sm_aborted_external_cached(struct wpa_sm *sm)
 }
 
 static inline int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
-				  const u8 *buf, size_t len)
+				  const u8 *buf, size_t len,
+				  enum frame_encryption encrypted)
 {
 	return -1;
 }
