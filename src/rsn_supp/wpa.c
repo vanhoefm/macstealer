@@ -972,6 +972,7 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 	os_memset(sm->ptk.tk, 0, WPA_TK_MAX_LEN);
 	sm->ptk.tk_len = 0;
 	sm->ptk.installed = 1;
+	sm->tk_set = true;
 
 	if (sm->wpa_ptk_rekey) {
 		eloop_cancel_timeout(wpa_sm_rekey_ptk, sm, NULL);
@@ -3066,6 +3067,7 @@ void wpa_sm_notify_assoc(struct wpa_sm *sm, const u8 *bssid)
 		os_memset(&sm->gtk_wnm_sleep, 0, sizeof(sm->gtk_wnm_sleep));
 		os_memset(&sm->igtk, 0, sizeof(sm->igtk));
 		os_memset(&sm->igtk_wnm_sleep, 0, sizeof(sm->igtk_wnm_sleep));
+		sm->tk_set = false;
 	}
 
 #ifdef CONFIG_TDLS
@@ -3853,6 +3855,7 @@ void wpa_sm_drop_sa(struct wpa_sm *sm)
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "WPA: Clear old PMK and PTK");
 	sm->ptk_set = 0;
 	sm->tptk_set = 0;
+	sm->tk_set = false;
 	sm->pmk_len = 0;
 	os_memset(sm->pmk, 0, sizeof(sm->pmk));
 	os_memset(&sm->ptk, 0, sizeof(sm->ptk));
@@ -3889,7 +3892,7 @@ int wpa_sm_has_ptk_installed(struct wpa_sm *sm)
 {
 	if (!sm)
 		return 0;
-	return sm->ptk.installed;
+	return sm->tk_set || sm->ptk.installed;
 }
 
 
@@ -4995,6 +4998,7 @@ int fils_process_assoc_resp(struct wpa_sm *sm, const u8 *resp, size_t len)
 	os_memset(sm->ptk.tk, 0, WPA_TK_MAX_LEN);
 	sm->ptk.tk_len = 0;
 	sm->ptk.installed = 1;
+	sm->tk_set = true;
 
 	/* FILS HLP Container */
 	fils_process_hlp_container(sm, ie_start, end - ie_start);
