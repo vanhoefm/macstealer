@@ -1010,6 +1010,53 @@ def run_ap_pmf_inject_data(dev, apdev):
         raise Exception("Unexpected disconnection reported on the STA")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+def test_ap_pmf_inject_msg1(dev, apdev):
+    """WPA2-PSK AP with PMF and EAPOL-Key msg 1/4 injection"""
+    try:
+        run_ap_pmf_inject_msg1(dev, apdev)
+    finally:
+        stop_monitor(apdev[1]["ifname"])
+
+def test_ap_pmf_inject_msg1_no_pmf(dev, apdev):
+    """WPA2-PSK AP without PMF and EAPOL-Key msg 1/4 injection"""
+    try:
+        run_ap_pmf_inject_msg1(dev, apdev, pmf=False)
+    finally:
+        stop_monitor(apdev[1]["ifname"])
+
+def run_ap_pmf_inject_msg1(dev, apdev, pmf=True):
+    ssid = "test-pmf"
+    params = hostapd.wpa2_params(ssid=ssid, passphrase="12345678")
+    params["wpa_key_mgmt"] = "WPA-PSK-SHA256"
+    if pmf:
+        params["ieee80211w"] = "2"
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect(ssid, psk="12345678", ieee80211w="2" if pmf else "0",
+                   key_mgmt="WPA-PSK-SHA256", proto="WPA2",
+                   scan_freq="2412")
+    hapd.wait_sta()
+
+    sock = start_monitor(apdev[1]["ifname"])
+    radiotap = radiotap_build()
+
+    bssid = hapd.own_addr().replace(':', '')
+    addr = dev[0].own_addr().replace(':', '')
+
+    # Inject unprotected EAPOL-Key msg 1/4 with an invalid KDE
+    f = "88020000" + addr + bssid + bssid + "0000" + "0700"
+    f += "aaaa03000000" + "888e"
+    f += "0203006602008b00100000000000000005bcb714da6f98f817b88948485c26ef052922b795814819f1889ae01e11b486910000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007" + "dd33000fac0400"
+    frame = binascii.unhexlify(f)
+    sock.send(radiotap + frame)
+
+    ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.5)
+    if ev:
+        raise Exception("Unexpected disconnection reported on the STA")
+    hwsim_utils.test_connectivity(dev[0], hapd)
+    state = dev[0].get_status_field("wpa_state")
+    if state != "COMPLETED":
+        raise Exception("Unexpected wpa_state: " + state)
+
 def test_ap_pmf_tkip_reject(dev, apdev):
     """Mixed mode BSS and MFP-enabled AP rejecting TKIP"""
     skip_without_tkip(dev[0])
