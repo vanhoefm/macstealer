@@ -5964,6 +5964,7 @@ static const u8 * wpas_fst_get_peer_next(void *ctx,
 void fst_wpa_supplicant_fill_iface_obj(struct wpa_supplicant *wpa_s,
 				       struct fst_wpa_obj *iface_obj)
 {
+	os_memset(iface_obj, 0, sizeof(*iface_obj));
 	iface_obj->ctx              = wpa_s;
 	iface_obj->get_bssid        = wpas_fst_get_bssid_cb;
 	iface_obj->get_channel_info = wpas_fst_get_channel_info_cb;

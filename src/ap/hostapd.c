@@ -1784,6 +1784,16 @@ static void fst_hostapd_get_channel_info_cb(void *ctx,
 }
 
 
+static int fst_hostapd_get_hw_modes_cb(void *ctx,
+				       struct hostapd_hw_modes **modes)
+{
+	struct hostapd_data *hapd = ctx;
+
+	*modes = hapd->iface->hw_features;
+	return hapd->iface->num_hw_features;
+}
+
+
 static void fst_hostapd_set_ies_cb(void *ctx, const struct wpabuf *fst_ies)
 {
 	struct hostapd_data *hapd = ctx;
@@ -1876,9 +1886,11 @@ static const u8 * fst_hostapd_get_peer_next(void *ctx,
 void fst_hostapd_fill_iface_obj(struct hostapd_data *hapd,
 				struct fst_wpa_obj *iface_obj)
 {
+	os_memset(iface_obj, 0, sizeof(*iface_obj));
 	iface_obj->ctx = hapd;
 	iface_obj->get_bssid = fst_hostapd_get_bssid_cb;
 	iface_obj->get_channel_info = fst_hostapd_get_channel_info_cb;
+	iface_obj->get_hw_modes = fst_hostapd_get_hw_modes_cb;
 	iface_obj->set_ies = fst_hostapd_set_ies_cb;
 	iface_obj->send_action = fst_hostapd_send_action_cb;
 	iface_obj->get_mb_ie = fst_hostapd_get_mb_ie_cb;
