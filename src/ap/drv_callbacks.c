@@ -340,6 +340,16 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 		}
 #endif /* CONFIG_WPS */
 
+		if (check_sa_query_need(hapd, sta)) {
+			status = WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY;
+
+			p = hostapd_eid_assoc_comeback_time(hapd, sta, p);
+
+			hostapd_sta_assoc(hapd, addr, reassoc, status, buf,
+					  p - buf);
+			return 0;
+		}
+
 		if (sta->wpa_sm == NULL)
 			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
 							sta->addr,
@@ -418,16 +428,6 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 				   res);
 			wpa_hexdump(MSG_DEBUG, "IE", ie, ielen);
 			goto fail;
-		}
-
-		if (check_sa_query_need(hapd, sta)) {
-			status = WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY;
-
-			p = hostapd_eid_assoc_comeback_time(hapd, sta, p);
-
-			hostapd_sta_assoc(hapd, addr, reassoc, status, buf,
-					  p - buf);
-			return 0;
 		}
 
 		if (wpa_auth_uses_mfp(sta->wpa_sm))
