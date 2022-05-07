@@ -307,6 +307,13 @@ struct eapol_ctx {
 	 * Automatically triggers a reconnect when not.
 	 */
 	int (*confirm_auth_cb)(void *ctx);
+
+	/**
+	 * encryption_required - Check whether encryption is required
+	 * @ctx: eapol_ctx from eap_peer_sm_init() call
+	 * Returns: Whether the current session requires encryption
+	 */
+	bool (*encryption_required)(void *ctx);
 };
 
 

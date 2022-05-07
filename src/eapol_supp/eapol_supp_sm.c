@@ -1296,6 +1296,14 @@ int eapol_sm_rx_eapol(struct eapol_sm *sm, const u8 *src, const u8 *buf,
 
 	if (sm == NULL)
 		return 0;
+
+	if (encrypted == FRAME_NOT_ENCRYPTED && sm->ctx->encryption_required &&
+	    sm->ctx->encryption_required(sm->ctx->ctx)) {
+		wpa_printf(MSG_DEBUG,
+			   "EAPOL: Discard unencrypted EAPOL frame when encryption since encryption was expected");
+		return 0;
+	}
+
 	sm->dot1xSuppEapolFramesRx++;
 	if (len < sizeof(*hdr)) {
 		sm->dot1xSuppInvalidEapolFramesRx++;
