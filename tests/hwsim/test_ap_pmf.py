@@ -1057,6 +1057,128 @@ def run_ap_pmf_inject_msg1(dev, apdev, pmf=True):
     if state != "COMPLETED":
         raise Exception("Unexpected wpa_state: " + state)
 
+def test_ap_pmf_inject_eap(dev, apdev):
+    """WPA2-EAP AP with PMF and EAP frame injection"""
+    try:
+        run_ap_pmf_inject_eap(dev, apdev)
+    finally:
+        stop_monitor(apdev[1]["ifname"])
+
+def run_ap_pmf_inject_eap(dev, apdev, pmf=True):
+    ssid = "test-pmf-eap"
+    params = hostapd.wpa2_eap_params(ssid=ssid)
+    params["wpa_key_mgmt"] = "WPA-EAP-SHA256"
+    params["ieee80211w"] = "2"
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect(ssid, key_mgmt="WPA-EAP-SHA256",
+                   ieee80211w="2", eap="PSK", identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef",
+                   scan_freq="2412")
+    hapd.wait_sta()
+    dev[0].dump_monitor()
+    hapd.dump_monitor()
+
+    sock = start_monitor(apdev[1]["ifname"])
+    radiotap = radiotap_build()
+
+    bssid = hapd.own_addr().replace(':', '')
+    addr = dev[0].own_addr().replace(':', '')
+
+    disconnected = False
+    eap_start = False
+    eap_failure = False
+    ap_disconnected = False
+
+    # Inject various unexpected unprotected EAPOL frames to the STA
+    f = "88020000" + addr + bssid + bssid + "0000" + "0700"
+    f += "aaaa03000000" + "888e"
+    tests = []
+    for i in range(101):
+        tests += [ "02000005012d000501" ] # EAP-Request/Identity
+    for i in range(101):
+        tests += [ "02000022012e00222f00862406a9b45782fee8a62e837457d1367365727665722e77312e6669" ] # EAP-Request/PSK
+    tests += [ "0200000404780004" ] # EAP-Failure
+    tests += [ "0200000403780004" ] # EAP-Success
+    tests += [ "02000006057800060100" ] # EAP-Initiate
+    tests += [ "0200000406780004" ] # EAP-Finish
+    tests += [ "0200000400780004" ] # EAP-?
+    tests += [ "02020000" ] # EAPOL-Logoff
+    tests += [ "02010000" ] # EAPOL-Start
+    for t in tests:
+        dev[0].note("Inject " + t)
+        frame = binascii.unhexlify(f + t)
+        sock.send(radiotap + frame)
+        for i in range(2):
+            ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED",
+                                    "CTRL-EVENT-EAP-STARTED",
+                                    "CTRL-EVENT-EAP-FAILURE"],
+                                   timeout=0.0001)
+            if ev is None:
+                break
+            if "CTRL-EVENT-DISCONNECTED" in ev:
+                disconnected = True
+            if "CTRL-EVENT-EAP-START" in ev:
+                eap_start = True
+            if "CTRL-EVENT-EAP-FAILURE" in ev:
+                eap_failure = True
+    dev[0].dump_monitor()
+    ev = hapd.wait_event(["AP-STA-DISCONNECTED"], timeout=0.1)
+    if ev:
+        ap_disconnected = True
+    if disconnected or eap_start or eap_failure or ap_disconnected:
+        raise Exception("Unexpected event:%s%s%s%s" %
+                        (" disconnected" if disconnected else "",
+                         " eap_start" if eap_start else "",
+                         " eap_failure" if eap_failure else "",
+                         " ap_disconnected" if ap_disconnected else ""))
+    hwsim_utils.test_connectivity(dev[0], hapd)
+    state = dev[0].get_status_field("wpa_state")
+    if state != "COMPLETED":
+        raise Exception("Unexpected wpa_state: " + state)
+
+    dev[0].dump_monitor()
+    hapd.dump_monitor()
+
+    # Inject various unexpected unprotected EAPOL frames to the AP
+    f = "88010000" + bssid + addr + bssid + "0000" + "0700"
+    f += "aaaa03000000" + "888e"
+    tests = []
+    tests += [ "02020000" ] # EAPOL-Logoff
+    for i in range(10):
+        tests += [ "02010000" ] # EAPOL-Start
+    for t in tests:
+        hapd.note("Inject " + t)
+        frame = binascii.unhexlify(f + t)
+        sock.send(radiotap + frame)
+        for i in range(2):
+            ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED",
+                                    "CTRL-EVENT-EAP-STARTED",
+                                    "CTRL-EVENT-EAP-FAILURE"],
+                                   timeout=0.0001)
+            if ev is None:
+                break
+            if "CTRL-EVENT-DISCONNECTED" in ev:
+                disconnected = True
+            if "CTRL-EVENT-EAP-START" in ev:
+                eap_start = True
+            if "CTRL-EVENT-EAP-FAILURE" in ev:
+                eap_failure = True
+    dev[0].dump_monitor()
+    ev = hapd.wait_event(["AP-STA-DISCONNECTED"], timeout=0.1)
+    if ev:
+        ap_disconnected = True
+    hapd.dump_monitor()
+    if disconnected or eap_start or eap_failure or ap_disconnected:
+        raise Exception("Unexpected event(2):%s%s%s%s" %
+                        (" disconnected" if disconnected else "",
+                         " eap_start" if eap_start else "",
+                         " eap_failure" if eap_failure else "",
+                         " ap_disconnected" if ap_disconnected else ""))
+    hwsim_utils.test_connectivity(dev[0], hapd)
+    state = dev[0].get_status_field("wpa_state")
+    if state != "COMPLETED":
+        raise Exception("Unexpected wpa_state(2): " + state)
+
 def test_ap_pmf_tkip_reject(dev, apdev):
     """Mixed mode BSS and MFP-enabled AP rejecting TKIP"""
     skip_without_tkip(dev[0])
