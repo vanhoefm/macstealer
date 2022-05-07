@@ -2472,10 +2472,8 @@ retry:
 
 	/* Retrieve public key coordinates */
 	pub_key = crypto_ec_key_get_public_key(key);
-	if (!pub_key)
+	if (!pub_key || crypto_ec_point_to_bin(ec, pub_key, x, y))
 		goto fail;
-
-	crypto_ec_point_to_bin(ec, pub_key, x, y);
 
 	/* And corrupt them */
 	y[curve->prime_len - 1] ^= 0x01;
