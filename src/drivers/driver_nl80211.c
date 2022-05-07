@@ -4993,8 +4993,9 @@ static int nl80211_put_freq_params(struct nl_msg *msg,
 				NL80211_CHAN_NO_HT))
 			return -ENOBUFS;
 	}
-	if (freq->radar_background)
-		nla_put_flag(msg, NL80211_ATTR_RADAR_BACKGROUND);
+	if (freq->radar_background &&
+	    nla_put_flag(msg, NL80211_ATTR_RADAR_BACKGROUND))
+		return -ENOBUFS;
 
 	return 0;
 }
