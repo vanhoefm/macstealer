@@ -1021,6 +1021,22 @@ static void ieee802_1x_save_eapol(struct sta_info *sta, const u8 *buf,
 }
 
 
+static bool ieee802_1x_check_encryption(struct sta_info *sta,
+					enum frame_encryption encrypted,
+					u8 type)
+{
+	if (encrypted != FRAME_NOT_ENCRYPTED)
+		return true;
+	if (type != IEEE802_1X_TYPE_EAP_PACKET &&
+	    type != IEEE802_1X_TYPE_EAPOL_START &&
+	    type != IEEE802_1X_TYPE_EAPOL_LOGOFF)
+		return true;
+	if (!(sta->flags & WLAN_STA_MFP))
+		return true;
+	return !wpa_auth_pairwise_set(sta->wpa_sm);
+}
+
+
 /**
  * ieee802_1x_receive - Process the EAPOL frames from the Supplicant
  * @hapd: hostapd BSS data
@@ -1114,6 +1130,12 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 	     key_mgmt == WPA_KEY_MGMT_DPP)) {
 		wpa_printf(MSG_DEBUG,
 			   "IEEE 802.1X: Ignore EAPOL message - STA is using PSK");
+		return;
+	}
+
+	if (!ieee802_1x_check_encryption(sta, encrypted, hdr->type)) {
+		wpa_printf(MSG_DEBUG,
+			   "IEEE 802.1X: Discard unencrypted EAPOL message - encryption was expected");
 		return;
 	}
 
