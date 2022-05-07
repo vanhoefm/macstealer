@@ -2883,6 +2883,7 @@ int fils_set_tk(struct wpa_state_machine *sm)
 		wpa_printf(MSG_DEBUG, "FILS: Failed to set TK to the driver");
 		return -1;
 	}
+	sm->pairwise_set = true;
 	sm->tk_already_set = true;
 
 	wpa_auth_store_ptksa(sm->wpa_auth, sm->addr, sm->pairwise,
