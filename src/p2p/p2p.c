@@ -1797,6 +1797,7 @@ int p2p_go_params(struct p2p_data *p2p, struct p2p_go_neg_results *params)
 	p2p->ssid_set = 0;
 
 	p2p_random(params->passphrase, p2p->cfg->passphrase_len);
+	params->passphrase[p2p->cfg->passphrase_len] = '\0';
 	return 0;
 }
 
@@ -1829,6 +1830,7 @@ void p2p_go_complete(struct p2p_data *p2p, struct p2p_device *peer)
 		os_memcpy(res.ssid, p2p->ssid, p2p->ssid_len);
 		res.ssid_len = p2p->ssid_len;
 		p2p_random(res.passphrase, p2p->cfg->passphrase_len);
+		res.passphrase[p2p->cfg->passphrase_len] = '\0';
 	} else {
 		res.freq = peer->oper_freq;
 		if (p2p->ssid_len) {
