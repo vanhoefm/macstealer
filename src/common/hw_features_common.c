@@ -501,7 +501,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			break;
 
 		if (mode == HOSTAPD_MODE_IEEE80211G) {
-			if (!(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
+			if (he_cap &&
+			    !(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
 			      HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_IN_2G)) {
 				wpa_printf(MSG_ERROR,
 					   "40 MHz channel width is not supported in 2.4 GHz");
@@ -512,7 +513,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 		/* fall through */
 	case CHANWIDTH_80MHZ:
 		if (mode == HOSTAPD_MODE_IEEE80211A) {
-			if (!(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
+			if (he_cap &&
+			    !(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
 			      HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G)) {
 				wpa_printf(MSG_ERROR,
 					   "40/80 MHz channel width is not supported in 5/6 GHz");
@@ -521,7 +523,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 		}
 		break;
 	case CHANWIDTH_80P80MHZ:
-		if (!(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
+		if (he_cap &&
+		    !(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
 		      HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G)) {
 			wpa_printf(MSG_ERROR,
 				   "80+80 MHz channel width is not supported in 5/6 GHz");
@@ -529,7 +532,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 		}
 		break;
 	case CHANWIDTH_160MHZ:
-		if (!(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
+		if (he_cap &&
+		    !(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
 		      HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G)) {
 			wpa_printf(MSG_ERROR,
 				   "160 MHz channel width is not supported in 5 / 6GHz");
