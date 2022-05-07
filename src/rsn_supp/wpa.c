@@ -672,13 +672,21 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 					  const unsigned char *src_addr,
 					  const struct wpa_eapol_key *key,
 					  u16 ver, const u8 *key_data,
-					  size_t key_data_len)
+					  size_t key_data_len,
+					  enum frame_encryption encrypted)
 {
 	struct wpa_eapol_ie_parse ie;
 	struct wpa_ptk *ptk;
 	int res;
 	u8 *kde, *kde_buf = NULL;
 	size_t kde_len;
+
+	if (encrypted == FRAME_NOT_ENCRYPTED && sm->tk_set &&
+	    wpa_sm_pmf_enabled(sm)) {
+		wpa_printf(MSG_DEBUG,
+			   "RSN: Discard unencrypted EAPOL-Key msg 1/4 when TK is set and PMF is enabled");
+		return;
+	}
 
 	if (wpa_sm_get_network_ctx(sm) == NULL) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING, "WPA: No SSID info "
@@ -2727,7 +2735,8 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 			/* 1/4 4-Way Handshake */
 			wpa_supplicant_process_1_of_4(sm, src_addr, key,
 						      ver, key_data,
-						      key_data_len);
+						      key_data_len,
+						      encrypted);
 		}
 	} else {
 		if ((mic_len && (key_info & WPA_KEY_INFO_MIC)) ||
