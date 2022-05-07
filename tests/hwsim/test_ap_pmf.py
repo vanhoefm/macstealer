@@ -898,6 +898,80 @@ def test_ap_pmf_inject_auth(dev, apdev):
     # Verify that original association is still functional.
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+def test_ap_pmf_inject_assoc(dev, apdev):
+    """WPA2-PSK with PMF and Association Request frame injection"""
+    ssid = "test-pmf"
+    params = hostapd.wpa2_params(ssid=ssid, passphrase="12345678")
+    params["wpa_key_mgmt"] = "WPA-PSK WPA-PSK-SHA256"
+    params["ieee80211w"] = "1"
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect(ssid, psk="12345678", ieee80211w="2",
+                   key_mgmt="WPA-PSK-SHA256", proto="WPA2",
+                   scan_freq="2412")
+    hapd.wait_sta()
+    sta = hapd.get_sta(dev[0].own_addr())
+    if "[MFP]" not in sta['flags']:
+        raise Exception("MFP flag not reported")
+    if sta["AKMSuiteSelector"] != '00-0f-ac-6':
+        raise Exception("Incorrect AKMSuiteSelector value")
+
+    bssid = hapd.own_addr().replace(':', '')
+    addr = dev[0].own_addr().replace(':', '')
+
+    # Inject unprotected Association Request frames
+    failed = False
+
+    hapd.set("ext_mgmt_frame_handling", "1")
+    assoc = "00003a01" + bssid + addr + bssid + '2000' + '31040500' + '0008746573742d706d66' + '010802040b160c121824' + '30140100000fac040100000fac040100000fac020000'
+    res = hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc)
+    if "OK" not in res:
+        failed = True
+    hapd.set("ext_mgmt_frame_handling", "0")
+    sta = hapd.get_sta(dev[0].own_addr())
+    if "[MFP]" not in sta['flags']:
+        raise Exception("MFP flag removed")
+    #if sta["AKMSuiteSelector"] != '00-0f-ac-6':
+    #    raise Exception("AKMSuiteSelector value changed")
+
+    time.sleep(0.1)
+    hapd.set("ext_mgmt_frame_handling", "1")
+    res = hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc)
+    if "OK" not in res:
+        failed = True
+    hapd.set("ext_mgmt_frame_handling", "0")
+    sta = hapd.get_sta(dev[0].own_addr())
+    if "[MFP]" not in sta['flags']:
+        raise Exception("MFP flag removed")
+    if sta["AKMSuiteSelector"] != '00-0f-ac-6':
+        raise Exception("AKMSuiteSelector value changed")
+
+    time.sleep(0.1)
+    hapd.set("ext_mgmt_frame_handling", "1")
+    assoc = "00003a01" + bssid + addr + bssid + '2000' + '31040500' + '0008746573742d706d66' + '010802040b160c121824' + '30140100000fac040100000fac040100000fac060000'
+    res = hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc)
+    if "OK" not in res:
+        failed = True
+
+    hapd.request("SET ext_mgmt_frame_handling 0")
+    if failed:
+        raise Exception("MGMT_RX_PROCESS failed")
+
+    sta = hapd.get_sta(dev[0].own_addr())
+    if "[MFP]" not in sta['flags']:
+        raise Exception("MFP flag removed")
+    if sta["AKMSuiteSelector"] != '00-0f-ac-6':
+        raise Exception("AKMSuiteSelector value changed")
+
+    ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=5.1)
+    if ev:
+        raise Exception("Unexpected disconnection reported on the STA")
+    ev = hapd.wait_event(["AP-STA-DISCONNECTED"], timeout=0.1)
+    if ev:
+        raise Exception("Unexpected disconnection event received from hostapd")
+
+    # Verify that original association is still functional.
+    hwsim_utils.test_connectivity(dev[0], hapd)
+
 def test_ap_pmf_inject_data(dev, apdev):
     """WPA2-PSK AP with PMF and Data frame injection"""
     try:
