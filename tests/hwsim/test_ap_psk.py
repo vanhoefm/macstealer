@@ -2168,7 +2168,7 @@ def test_ap_wpa2_psk_supp_proto_msg_1_invalid_kde(dev, apdev):
                               key_data=binascii.unhexlify('5555'))
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    dev[0].wait_disconnected(timeout=1)
+    time.sleep(0.1)
 
 def test_ap_wpa2_psk_supp_proto_wrong_pairwise_key_len(dev, apdev):
     """WPA2-PSK supplicant protocol testing: wrong pairwise key length"""
