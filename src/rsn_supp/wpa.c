@@ -186,7 +186,7 @@ void wpa_sm_key_request(struct wpa_sm *sm, int error, int pairwise)
 	u8 bssid[ETH_ALEN], *rbuf, *key_mic, *mic;
 
 	if (pairwise && sm->wpa_deny_ptk0_rekey && !sm->use_ext_key_id &&
-	    wpa_sm_get_state(sm) == WPA_COMPLETED) {
+	    wpa_sm_get_state(sm) == WPA_COMPLETED && !error) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
 			"WPA: PTK0 rekey not allowed, reconnecting");
 		wpa_sm_reconnect(sm);
