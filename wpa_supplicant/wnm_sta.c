@@ -1453,15 +1453,22 @@ static void ieee802_11_rx_bss_trans_mgmt_req(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->wnm_mode & WNM_BSS_TM_REQ_ESS_DISASSOC_IMMINENT) {
 		char url[256];
+		u8 url_len;
 
-		if (end - pos < 1 || 1 + pos[0] > end - pos) {
+		if (end - pos < 1) {
 			wpa_printf(MSG_DEBUG, "WNM: Invalid BSS Transition "
 				   "Management Request (URL)");
 			return;
 		}
-		os_memcpy(url, pos + 1, pos[0]);
-		url[pos[0]] = '\0';
-		pos += 1 + pos[0];
+		url_len = *pos++;
+		if (url_len > end - pos) {
+			wpa_printf(MSG_DEBUG,
+				   "WNM: Invalid BSS Transition Management Request (URL truncated)");
+			return;
+		}
+		os_memcpy(url, pos, url_len);
+		url[url_len] = '\0';
+		pos += url_len;
 
 		wpa_msg(wpa_s, MSG_INFO, ESS_DISASSOC_IMMINENT "%d %u %s",
 			wpa_sm_pmf_enabled(wpa_s->wpa),
