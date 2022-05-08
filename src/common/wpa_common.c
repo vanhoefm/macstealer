@@ -3025,120 +3025,116 @@ static void wpa_parse_vendor_specific(const u8 *pos, const u8 *end,
  */
 static int wpa_parse_generic(const u8 *pos, struct wpa_eapol_ie_parse *ie)
 {
-	if (pos[1] == 0)
+	u8 len = pos[1];
+	size_t dlen = 2 + len;
+	u32 selector;
+	const u8 *p;
+	size_t left;
+
+	if (len == 0)
 		return 1;
 
-	if (pos[1] >= 6 &&
-	    RSN_SELECTOR_GET(pos + 2) == WPA_OUI_TYPE &&
-	    pos[2 + WPA_SELECTOR_LEN] == 1 &&
-	    pos[2 + WPA_SELECTOR_LEN + 1] == 0) {
+	if (len < RSN_SELECTOR_LEN)
+		return 2;
+
+	p = pos + 2;
+	selector = RSN_SELECTOR_GET(p);
+	p += RSN_SELECTOR_LEN;
+	left = len - RSN_SELECTOR_LEN;
+
+	if (left >= 2 && selector == WPA_OUI_TYPE && p[0] == 1 && p[1] == 0) {
 		ie->wpa_ie = pos;
-		ie->wpa_ie_len = pos[1] + 2;
+		ie->wpa_ie_len = dlen;
 		wpa_hexdump(MSG_DEBUG, "WPA: WPA IE in EAPOL-Key",
 			    ie->wpa_ie, ie->wpa_ie_len);
 		return 0;
 	}
 
-	if (pos[1] >= 4 && WPA_GET_BE32(pos + 2) == OSEN_IE_VENDOR_TYPE) {
+	if (selector == OSEN_IE_VENDOR_TYPE) {
 		ie->osen = pos;
-		ie->osen_len = pos[1] + 2;
+		ie->osen_len = dlen;
 		return 0;
 	}
 
-	if (pos[1] >= RSN_SELECTOR_LEN + PMKID_LEN &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_PMKID) {
-		ie->pmkid = pos + 2 + RSN_SELECTOR_LEN;
-		wpa_hexdump(MSG_DEBUG, "WPA: PMKID in EAPOL-Key",
-			    pos, pos[1] + 2);
+	if (left >= PMKID_LEN && selector == RSN_KEY_DATA_PMKID) {
+		ie->pmkid = p;
+		wpa_hexdump(MSG_DEBUG, "WPA: PMKID in EAPOL-Key", pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] >= RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_KEYID) {
-		ie->key_id = pos + 2 + RSN_SELECTOR_LEN;
-		wpa_hexdump(MSG_DEBUG, "WPA: KeyID in EAPOL-Key",
-			    pos, pos[1] + 2);
+	if (left >= 2 && selector == RSN_KEY_DATA_KEYID) {
+		ie->key_id = p;
+		wpa_hexdump(MSG_DEBUG, "WPA: KeyID in EAPOL-Key", pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_GROUPKEY) {
-		ie->gtk = pos + 2 + RSN_SELECTOR_LEN;
-		ie->gtk_len = pos[1] - RSN_SELECTOR_LEN;
-		wpa_hexdump_key(MSG_DEBUG, "WPA: GTK in EAPOL-Key",
-				pos, pos[1] + 2);
+	if (left > 2 && selector == RSN_KEY_DATA_GROUPKEY) {
+		ie->gtk = p;
+		ie->gtk_len = left;
+		wpa_hexdump_key(MSG_DEBUG, "WPA: GTK in EAPOL-Key", pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_MAC_ADDR) {
-		ie->mac_addr = pos + 2 + RSN_SELECTOR_LEN;
-		ie->mac_addr_len = pos[1] - RSN_SELECTOR_LEN;
+	if (left > 2 && selector == RSN_KEY_DATA_MAC_ADDR) {
+		ie->mac_addr = p;
+		ie->mac_addr_len = left;
 		wpa_hexdump(MSG_DEBUG, "WPA: MAC Address in EAPOL-Key",
-			    pos, pos[1] + 2);
+			    pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_IGTK) {
-		ie->igtk = pos + 2 + RSN_SELECTOR_LEN;
-		ie->igtk_len = pos[1] - RSN_SELECTOR_LEN;
+	if (left > 2 && selector == RSN_KEY_DATA_IGTK) {
+		ie->igtk = p;
+		ie->igtk_len = left;
 		wpa_hexdump_key(MSG_DEBUG, "WPA: IGTK in EAPOL-Key",
-				pos, pos[1] + 2);
+				pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_BIGTK) {
-		ie->bigtk = pos + 2 + RSN_SELECTOR_LEN;
-		ie->bigtk_len = pos[1] - RSN_SELECTOR_LEN;
+	if (left > 2 && selector == RSN_KEY_DATA_BIGTK) {
+		ie->bigtk = p;
+		ie->bigtk_len = left;
 		wpa_hexdump_key(MSG_DEBUG, "WPA: BIGTK in EAPOL-Key",
-				pos, pos[1] + 2);
+				pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] >= RSN_SELECTOR_LEN + 1 &&
-	    RSN_SELECTOR_GET(pos + 2) == WFA_KEY_DATA_IP_ADDR_REQ) {
-		ie->ip_addr_req = pos + 2 + RSN_SELECTOR_LEN;
+	if (left >= 1 && selector == WFA_KEY_DATA_IP_ADDR_REQ) {
+		ie->ip_addr_req = p;
 		wpa_hexdump(MSG_DEBUG, "WPA: IP Address Request in EAPOL-Key",
-			    ie->ip_addr_req, pos[1] - RSN_SELECTOR_LEN);
+			    ie->ip_addr_req, left);
 		return 0;
 	}
 
-	if (pos[1] >= RSN_SELECTOR_LEN + 3 * 4 &&
-	    RSN_SELECTOR_GET(pos + 2) == WFA_KEY_DATA_IP_ADDR_ALLOC) {
-		ie->ip_addr_alloc = pos + 2 + RSN_SELECTOR_LEN;
+	if (left >= 3 * 4 && selector == WFA_KEY_DATA_IP_ADDR_ALLOC) {
+		ie->ip_addr_alloc = p;
 		wpa_hexdump(MSG_DEBUG,
 			    "WPA: IP Address Allocation in EAPOL-Key",
-			    ie->ip_addr_alloc, pos[1] - RSN_SELECTOR_LEN);
+			    ie->ip_addr_alloc, left);
 		return 0;
 	}
 
-	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_OCI) {
-		ie->oci = pos + 2 + RSN_SELECTOR_LEN;
-		ie->oci_len = pos[1] - RSN_SELECTOR_LEN;
+	if (left > 2 && selector == RSN_KEY_DATA_OCI) {
+		ie->oci = p;
+		ie->oci_len = left;
 		wpa_hexdump(MSG_DEBUG, "WPA: OCI KDE in EAPOL-Key",
-			    pos, pos[1] + 2);
+			    pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] >= RSN_SELECTOR_LEN + 1 &&
-	    RSN_SELECTOR_GET(pos + 2) == WFA_KEY_DATA_TRANSITION_DISABLE) {
-		ie->transition_disable = pos + 2 + RSN_SELECTOR_LEN;
-		ie->transition_disable_len = pos[1] - RSN_SELECTOR_LEN;
+	if (left >= 1 && selector == WFA_KEY_DATA_TRANSITION_DISABLE) {
+		ie->transition_disable = p;
+		ie->transition_disable_len = left;
 		wpa_hexdump(MSG_DEBUG,
 			    "WPA: Transition Disable KDE in EAPOL-Key",
-			    pos, pos[1] + 2);
+			    pos, dlen);
 		return 0;
 	}
 
-	if (pos[1] >= RSN_SELECTOR_LEN + 2 &&
-	    RSN_SELECTOR_GET(pos + 2) == WFA_KEY_DATA_DPP) {
-		ie->dpp_kde = pos + 2 + RSN_SELECTOR_LEN;
-		ie->dpp_kde_len = pos[1] - RSN_SELECTOR_LEN;
-		wpa_hexdump(MSG_DEBUG, "WPA: DPP KDE in EAPOL-Key",
-			    pos, pos[1] + 2);
+	if (left >= 2 && selector == WFA_KEY_DATA_DPP) {
+		ie->dpp_kde = p;
+		ie->dpp_kde_len = left;
+		wpa_hexdump(MSG_DEBUG, "WPA: DPP KDE in EAPOL-Key", pos, dlen);
 		return 0;
 	}
 
