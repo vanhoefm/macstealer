@@ -3153,15 +3153,17 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 {
 	const u8 *pos, *end;
 	int ret = 0;
+	size_t dlen = 0;
 
 	os_memset(ie, 0, sizeof(*ie));
-	for (pos = buf, end = pos + len; end - pos > 1; pos += 2 + pos[1]) {
+	for (pos = buf, end = pos + len; end - pos > 1; pos += dlen) {
 		if (pos[0] == 0xdd &&
 		    ((pos == buf + len - 1) || pos[1] == 0)) {
 			/* Ignore padding */
 			break;
 		}
-		if (2 + pos[1] > end - pos) {
+		dlen = 2 + pos[1];
+		if ((int) dlen > end - pos) {
 			wpa_printf(MSG_DEBUG,
 				   "WPA: EAPOL-Key Key Data underflow (ie=%d len=%d pos=%d)",
 				   pos[0], pos[1], (int) (pos - buf));
@@ -3171,22 +3173,22 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 		}
 		if (*pos == WLAN_EID_RSN) {
 			ie->rsn_ie = pos;
-			ie->rsn_ie_len = pos[1] + 2;
+			ie->rsn_ie_len = dlen;
 			wpa_hexdump(MSG_DEBUG, "WPA: RSN IE in EAPOL-Key",
 				    ie->rsn_ie, ie->rsn_ie_len);
 		} else if (*pos == WLAN_EID_RSNX) {
 			ie->rsnxe = pos;
-			ie->rsnxe_len = pos[1] + 2;
+			ie->rsnxe_len = dlen;
 			wpa_hexdump(MSG_DEBUG, "WPA: RSNXE in EAPOL-Key",
 				    ie->rsnxe, ie->rsnxe_len);
 		} else if (*pos == WLAN_EID_MOBILITY_DOMAIN) {
 			ie->mdie = pos;
-			ie->mdie_len = pos[1] + 2;
+			ie->mdie_len = dlen;
 			wpa_hexdump(MSG_DEBUG, "WPA: MDIE in EAPOL-Key",
 				    ie->mdie, ie->mdie_len);
 		} else if (*pos == WLAN_EID_FAST_BSS_TRANSITION) {
 			ie->ftie = pos;
-			ie->ftie_len = pos[1] + 2;
+			ie->ftie_len = dlen;
 			wpa_hexdump(MSG_DEBUG, "WPA: FTIE in EAPOL-Key",
 				    ie->ftie, ie->ftie_len);
 		} else if (*pos == WLAN_EID_TIMEOUT_INTERVAL && pos[1] >= 5) {
@@ -3194,31 +3196,31 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 				ie->reassoc_deadline = pos;
 				wpa_hexdump(MSG_DEBUG, "WPA: Reassoc Deadline "
 					    "in EAPOL-Key",
-					    ie->reassoc_deadline, pos[1] + 2);
+					    ie->reassoc_deadline, dlen);
 			} else if (pos[2] == WLAN_TIMEOUT_KEY_LIFETIME) {
 				ie->key_lifetime = pos;
 				wpa_hexdump(MSG_DEBUG, "WPA: KeyLifetime "
 					    "in EAPOL-Key",
-					    ie->key_lifetime, pos[1] + 2);
+					    ie->key_lifetime, dlen);
 			} else {
 				wpa_hexdump(MSG_DEBUG, "WPA: Unrecognized "
 					    "EAPOL-Key Key Data IE",
-					    pos, 2 + pos[1]);
+					    pos, dlen);
 			}
 		} else if (*pos == WLAN_EID_LINK_ID) {
 			if (pos[1] >= 18) {
 				ie->lnkid = pos;
-				ie->lnkid_len = pos[1] + 2;
+				ie->lnkid_len = dlen;
 			}
 		} else if (*pos == WLAN_EID_EXT_CAPAB) {
 			ie->ext_capab = pos;
-			ie->ext_capab_len = pos[1] + 2;
+			ie->ext_capab_len = dlen;
 		} else if (*pos == WLAN_EID_SUPP_RATES) {
 			ie->supp_rates = pos;
-			ie->supp_rates_len = pos[1] + 2;
+			ie->supp_rates_len = dlen;
 		} else if (*pos == WLAN_EID_EXT_SUPP_RATES) {
 			ie->ext_supp_rates = pos;
-			ie->ext_supp_rates_len = pos[1] + 2;
+			ie->ext_supp_rates_len = dlen;
 		} else if (*pos == WLAN_EID_HT_CAP &&
 			   pos[1] >= sizeof(struct ieee80211_ht_capabilities)) {
 			ie->ht_capabilities = pos + 2;
@@ -3272,7 +3274,7 @@ int wpa_parse_kde_ies(const u8 *buf, size_t len, struct wpa_eapol_ie_parse *ie)
 		} else {
 			wpa_hexdump(MSG_DEBUG,
 				    "WPA: Unrecognized EAPOL-Key Key Data IE",
-				    pos, 2 + pos[1]);
+				    pos, dlen);
 		}
 	}
 
