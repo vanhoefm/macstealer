@@ -30,6 +30,8 @@
 #define GAS_QUERY_WAIT_TIME_INITIAL 1000
 #define GAS_QUERY_WAIT_TIME_COMEBACK 150
 
+#define GAS_QUERY_MAX_COMEBACK_DELAY 60000
+
 /**
  * struct gas_query_pending - Pending GAS query
  */
@@ -589,6 +591,8 @@ int gas_query_rx(struct gas_query *gas, const u8 *da, const u8 *sa,
 	if (pos + 2 > data + len)
 		return 0;
 	comeback_delay = WPA_GET_LE16(pos);
+	if (comeback_delay > GAS_QUERY_MAX_COMEBACK_DELAY)
+		comeback_delay = GAS_QUERY_MAX_COMEBACK_DELAY;
 	pos += 2;
 
 	/* Advertisement Protocol element */
