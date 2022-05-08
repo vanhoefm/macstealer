@@ -3804,7 +3804,7 @@ static void hostapd_switch_color_timeout_handler(void *eloop_data,
 
 	r = os_random() % HE_OPERATION_BSS_COLOR_MAX;
 	for (i = 0; i < HE_OPERATION_BSS_COLOR_MAX; i++) {
-		if (r && !(hapd->color_collision_bitmap & BIT(r)))
+		if (r && !(hapd->color_collision_bitmap & (1ULL << r)))
 			break;
 
 		r = (r + 1) % HE_OPERATION_BSS_COLOR_MAX;
