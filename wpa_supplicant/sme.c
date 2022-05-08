@@ -1293,21 +1293,24 @@ static int sme_sae_auth(struct wpa_supplicant *wpa_s, u16 auth_transaction,
 		token_len = len - sizeof(le16);
 		h2e = wpa_s->sme.sae.h2e;
 		if (h2e) {
+			u8 id, elen, extid;
+
 			if (token_len < 3) {
 				wpa_dbg(wpa_s, MSG_DEBUG,
 					"SME: Too short SAE anti-clogging token container");
 				return -1;
 			}
-			if (token_pos[0] != WLAN_EID_EXTENSION ||
-			    token_pos[1] == 0 ||
-			    token_pos[1] > token_len - 2 ||
-			    token_pos[2] != WLAN_EID_EXT_ANTI_CLOGGING_TOKEN) {
+			id = *token_pos++;
+			elen = *token_pos++;
+			extid = *token_pos++;
+			if (id != WLAN_EID_EXTENSION ||
+			    elen == 0 || elen > token_len - 2 ||
+			    extid != WLAN_EID_EXT_ANTI_CLOGGING_TOKEN) {
 				wpa_dbg(wpa_s, MSG_DEBUG,
 					"SME: Invalid SAE anti-clogging token container header");
 				return -1;
 			}
-			token_len = token_pos[1] - 1;
-			token_pos += 3;
+			token_len = elen - 1;
 		}
 		wpa_s->sme.sae_token = wpabuf_alloc_copy(token_pos, token_len);
 		wpa_hexdump_buf(MSG_DEBUG, "SME: Requested anti-clogging token",
