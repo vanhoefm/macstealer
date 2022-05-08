@@ -2064,9 +2064,11 @@ hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
 
 try_relay:
 #ifdef CONFIG_DPP2
-	if (v2)
-		dpp_relay_rx_action(hapd->iface->interfaces->dpp,
-				    src, hdr, buf, len, freq, NULL, NULL, hapd);
+	if (v2 && dpp_relay_rx_action(hapd->iface->interfaces->dpp,
+				      src, hdr, buf, len, freq, NULL, NULL,
+				      hapd) != 0)
+		wpa_printf(MSG_DEBUG,
+			   "DPP: No Relay available for the message");
 #else /* CONFIG_DPP2 */
 	wpa_printf(MSG_DEBUG, "DPP: No relay functionality included - skip");
 #endif /* CONFIG_DPP2 */
