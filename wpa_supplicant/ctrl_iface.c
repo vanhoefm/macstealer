@@ -10027,8 +10027,9 @@ static int wpas_ctrl_iface_send_twt_setup(struct wpa_supplicant *wpa_s,
 		setup_cmd = atoi(tok_s + os_strlen(" setup_cmd="));
 
 	tok_s = os_strstr(cmd, " twt=");
-	if (tok_s)
-		sscanf(tok_s + os_strlen(" twt="), "%llu", &twt);
+	if (tok_s &&
+	    sscanf(tok_s + os_strlen(" twt="), "%llu", &twt) != 1)
+		return -1;
 
 	tok_s = os_strstr(cmd, " requestor=");
 	if (tok_s)
