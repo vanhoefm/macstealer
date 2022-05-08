@@ -1301,11 +1301,17 @@ void wpas_handle_qos_mgmt_recv_action(struct wpa_supplicant *wpa_s,
 		attr = qos_ie + 6;
 		rem_attrs_len = qos_ie[1] - 4;
 
-		while (rem_attrs_len > 2 && rem_attrs_len >= 2 + attr[1]) {
-			wpas_fill_dscp_policy(&policy, attr[0], attr[1],
-					      &attr[2]);
-			rem_attrs_len -= 2 + attr[1];
-			attr += 2 + attr[1];
+		while (rem_attrs_len > 2) {
+			u8 attr_id, attr_len;
+
+			attr_id = *attr++;
+			attr_len = *attr++;
+			rem_attrs_len -= 2;
+			if (attr_len > rem_attrs_len)
+				break;
+			wpas_fill_dscp_policy(&policy, attr_id, attr_len, attr);
+			rem_attrs_len -= attr_len;
+			attr += attr_len;
 		}
 
 		rem_len -= ie_len;
