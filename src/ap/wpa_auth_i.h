@@ -152,6 +152,7 @@ struct wpa_state_machine {
 
 #ifdef CONFIG_P2P
 	u8 ip_addr[4];
+	unsigned int ip_addr_bit;
 #endif /* CONFIG_P2P */
 
 #ifdef CONFIG_FILS

@@ -731,16 +731,13 @@ static void wpa_free_sta_sm(struct wpa_state_machine *sm)
 {
 #ifdef CONFIG_P2P
 	if (WPA_GET_BE32(sm->ip_addr)) {
-		u32 start;
 		wpa_printf(MSG_DEBUG,
 			   "P2P: Free assigned IP address %u.%u.%u.%u from "
-			   MACSTR,
+			   MACSTR " (bit %u)",
 			   sm->ip_addr[0], sm->ip_addr[1],
 			   sm->ip_addr[2], sm->ip_addr[3],
-			   MAC2STR(sm->addr));
-		start = WPA_GET_BE32(sm->wpa_auth->conf.ip_addr_start);
-		bitfield_clear(sm->wpa_auth->ip_pool,
-			       WPA_GET_BE32(sm->ip_addr) - start);
+			   MAC2STR(sm->addr), sm->ip_addr_bit);
+		bitfield_clear(sm->wpa_auth->ip_pool, sm->ip_addr_bit);
 	}
 #endif /* CONFIG_P2P */
 	if (sm->GUpdateStationKeys) {
@@ -3170,12 +3167,14 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 		if (idx >= 0) {
 			u32 start = WPA_GET_BE32(wpa_auth->conf.ip_addr_start);
 			bitfield_set(wpa_auth->ip_pool, idx);
+			sm->ip_addr_bit = idx;
 			WPA_PUT_BE32(sm->ip_addr, start + idx);
 			wpa_printf(MSG_DEBUG,
 				   "P2P: Assigned IP address %u.%u.%u.%u to "
-				   MACSTR, sm->ip_addr[0], sm->ip_addr[1],
+				   MACSTR " (bit %u)",
+				   sm->ip_addr[0], sm->ip_addr[1],
 				   sm->ip_addr[2], sm->ip_addr[3],
-				   MAC2STR(sm->addr));
+				   MAC2STR(sm->addr), sm->ip_addr_bit);
 		}
 	}
 #endif /* CONFIG_P2P */
