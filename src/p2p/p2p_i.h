@@ -758,7 +758,7 @@ void p2p_buf_add_listen_channel(struct wpabuf *buf, const char *country,
 void p2p_buf_add_operating_channel(struct wpabuf *buf, const char *country,
 				   u8 reg_class, u8 channel);
 void p2p_buf_add_channel_list(struct wpabuf *buf, const char *country,
-			      struct p2p_channels *chan);
+			      struct p2p_channels *chan, bool is_6ghz_capab);
 void p2p_buf_add_config_timeout(struct wpabuf *buf, u8 go_timeout,
 				u8 client_timeout);
 void p2p_buf_add_intended_addr(struct wpabuf *buf, const u8 *interface_addr);

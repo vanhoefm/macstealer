@@ -24,6 +24,7 @@ static struct wpabuf * p2p_build_invitation_req(struct p2p_data *p2p,
 	u8 *len;
 	const u8 *dev_addr;
 	size_t extra = 0;
+	bool is_6ghz_capab;
 
 #ifdef CONFIG_WIFI_DISPLAY
 	struct wpabuf *wfd_ie = p2p->wfd_ie_invitation;
@@ -74,7 +75,10 @@ static struct wpabuf * p2p_build_invitation_req(struct p2p_data *p2p,
 					      p2p->op_channel);
 	if (p2p->inv_bssid_set)
 		p2p_buf_add_group_bssid(buf, p2p->inv_bssid);
-	p2p_buf_add_channel_list(buf, p2p->cfg->country, &p2p->channels);
+	is_6ghz_capab = is_p2p_6ghz_capable(p2p) &&
+		p2p_is_peer_6ghz_capab(p2p, peer->info.p2p_device_addr);
+	p2p_buf_add_channel_list(buf, p2p->cfg->country, &p2p->channels,
+				 is_6ghz_capab);
 	if (go_dev_addr)
 		dev_addr = go_dev_addr;
 	else if (p2p->inv_role == P2P_INVITE_ROLE_CLIENT)
@@ -155,8 +159,14 @@ static struct wpabuf * p2p_build_invitation_resp(struct p2p_data *p2p,
 					      reg_class, channel);
 	if (group_bssid)
 		p2p_buf_add_group_bssid(buf, group_bssid);
-	if (channels)
-		p2p_buf_add_channel_list(buf, p2p->cfg->country, channels);
+	if (channels) {
+		bool is_6ghz_capab;
+
+		is_6ghz_capab = is_p2p_6ghz_capable(p2p) &&
+			p2p_is_peer_6ghz_capab(p2p, peer->info.p2p_device_addr);
+		p2p_buf_add_channel_list(buf, p2p->cfg->country, channels,
+					 is_6ghz_capab);
+	}
 	p2p_buf_update_ie_hdr(buf, len);
 
 #ifdef CONFIG_WIFI_DISPLAY

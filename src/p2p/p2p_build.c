@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "common/ieee802_11_defs.h"
+#include "common/ieee802_11_common.h"
 #include "common/qca-vendor.h"
 #include "wps/wps_i.h"
 #include "p2p_i.h"
@@ -149,7 +150,7 @@ void p2p_buf_add_pref_channel_list(struct wpabuf *buf,
 
 
 void p2p_buf_add_channel_list(struct wpabuf *buf, const char *country,
-			      struct p2p_channels *chan)
+			      struct p2p_channels *chan, bool is_6ghz_capab)
 {
 	u8 *len;
 	size_t i;
@@ -161,6 +162,9 @@ void p2p_buf_add_channel_list(struct wpabuf *buf, const char *country,
 
 	for (i = 0; i < chan->reg_classes; i++) {
 		struct p2p_reg_class *c = &chan->reg_class[i];
+
+		if (is_6ghz_op_class(c->reg_class) && !is_6ghz_capab)
+			continue;
 		wpabuf_put_u8(buf, c->reg_class);
 		wpabuf_put_u8(buf, c->channels);
 		wpabuf_put_data(buf, c->channel, c->channels);
