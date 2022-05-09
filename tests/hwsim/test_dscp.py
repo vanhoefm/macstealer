@@ -340,6 +340,11 @@ def test_dscp_response(dev, apdev):
     qos_ie += ie
     send_dscp_req(hapd, da, 1, dialog_token, 0, qos_ie)
 
+    ev = dev[0].wait_event(["CTRL-EVENT-DSCP-POLICY"], timeout=5)
+    if ev is None:
+        raise Exception("DSCP event not reported")
+    if "request_start" not in ev:
+        raise Exception("Unexpected DSCP event: " + ev)
     cmd = "DSCP_RESP solicited policy_id=1 status=0 policy_id=4 status=0"
     if "OK" not in dev[0].request(cmd):
         raise Exception("Sending DSCP Response failed")
