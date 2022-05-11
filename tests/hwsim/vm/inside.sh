@@ -45,6 +45,9 @@ fi
 
 mount --bind "$TESTDIR/vm/regdb/" /lib/firmware
 
+# reload reg if (and only if) cfg80211.ko is already loaded
+iw reg reload || true
+
 # create /dev entries we need
 mknod -m 660 /dev/ttyS0 c 4 64
 mknod -m 666 /dev/ptmx c 5 2
