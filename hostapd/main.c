@@ -494,7 +494,8 @@ static void usage(void)
 #endif /* CONFIG_DEBUG_SYSLOG */
 		"   -S   start all the interfaces synchronously\n"
 		"   -t   include timestamps in some debug messages\n"
-		"   -v   show hostapd version\n");
+		"   -v   show hostapd version\n"
+		"   -q   show less debug messages (-qq for even less)\n");
 
 	exit(1);
 }
