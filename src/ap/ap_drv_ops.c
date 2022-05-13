@@ -978,12 +978,13 @@ int hostapd_drv_do_acs(struct hostapd_data *hapd)
 	     hapd->iface->conf->ieee80211ax ||
 	     hapd->iface->conf->ieee80211ac) &&
 	    params.ht40_enabled) {
-		u8 oper_chwidth = hostapd_get_oper_chwidth(hapd->iface->conf);
+		enum oper_chan_width oper_chwidth;
 
-		if (oper_chwidth == CHANWIDTH_80MHZ)
+		oper_chwidth = hostapd_get_oper_chwidth(hapd->iface->conf);
+		if (oper_chwidth == CONF_OPER_CHWIDTH_80MHZ)
 			params.ch_width = 80;
-		else if (oper_chwidth == CHANWIDTH_160MHZ ||
-			 oper_chwidth == CHANWIDTH_80P80MHZ)
+		else if (oper_chwidth == CONF_OPER_CHWIDTH_160MHZ ||
+			 oper_chwidth == CONF_OPER_CHWIDTH_80P80MHZ)
 			params.ch_width = 160;
 	}
 

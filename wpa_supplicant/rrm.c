@@ -731,24 +731,24 @@ int wpas_get_op_chan_phy(int freq, const u8 *ies, size_t ies_len,
 		vht_oper = (struct ieee80211_vht_operation *) (ie + 2);
 
 		switch (vht_oper->vht_op_info_chwidth) {
-		case 1:
+		case CHANWIDTH_80MHZ:
 			seg0 = vht_oper->vht_op_info_chan_center_freq_seg0_idx;
 			seg1 = vht_oper->vht_op_info_chan_center_freq_seg1_idx;
 			if (seg1 && abs(seg1 - seg0) == 8)
-				vht = CHANWIDTH_160MHZ;
+				vht = CONF_OPER_CHWIDTH_160MHZ;
 			else if (seg1)
-				vht = CHANWIDTH_80P80MHZ;
+				vht = CONF_OPER_CHWIDTH_80P80MHZ;
 			else
-				vht = CHANWIDTH_80MHZ;
+				vht = CONF_OPER_CHWIDTH_80MHZ;
 			break;
-		case 2:
-			vht = CHANWIDTH_160MHZ;
+		case CHANWIDTH_160MHZ:
+			vht = CONF_OPER_CHWIDTH_160MHZ;
 			break;
-		case 3:
-			vht = CHANWIDTH_80P80MHZ;
+		case CHANWIDTH_80P80MHZ:
+			vht = CONF_OPER_CHWIDTH_80P80MHZ;
 			break;
 		default:
-			vht = CHANWIDTH_USE_HT;
+			vht = CONF_OPER_CHWIDTH_USE_HT;
 			break;
 		}
 	}

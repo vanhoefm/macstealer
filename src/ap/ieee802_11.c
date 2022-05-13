@@ -7033,7 +7033,7 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
 #endif /* CONFIG_IEEE80211AX */
 
 	switch (hostapd_get_oper_chwidth(iconf)) {
-	case CHANWIDTH_USE_HT:
+	case CONF_OPER_CHWIDTH_USE_HT:
 		if (iconf->secondary_channel == 0) {
 			/* Max Transmit Power count = 0 (20 MHz) */
 			tx_pwr_count = 0;
@@ -7042,12 +7042,12 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
 			tx_pwr_count = 1;
 		}
 		break;
-	case CHANWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_80MHZ:
 		/* Max Transmit Power count = 2 (20, 40, and 80 MHz) */
 		tx_pwr_count = 2;
 		break;
-	case CHANWIDTH_80P80MHZ:
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_80P80MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		/* Max Transmit Power count = 3 (20, 40, 80, 160/80+80 MHz) */
 		tx_pwr_count = 3;
 		break;

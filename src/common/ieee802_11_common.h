@@ -215,9 +215,10 @@ int hostapd_config_tx_queue(struct hostapd_tx_queue_params queue[],
 			    const char *name, const char *val);
 enum hostapd_hw_mode ieee80211_freq_to_chan(int freq, u8 *channel);
 int ieee80211_chan_to_freq(const char *country, u8 op_class, u8 chan);
-enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
-						   int sec_channel, int vht,
-						   u8 *op_class, u8 *channel);
+enum hostapd_hw_mode
+ieee80211_freq_to_channel_ext(unsigned int freq, int sec_channel,
+			      enum oper_chan_width chanwidth,
+			      u8 *op_class, u8 *channel);
 int ieee80211_chaninfo_to_channel(unsigned int freq, enum chan_width chanwidth,
 				  int sec_channel, u8 *op_class, u8 *channel);
 int ieee80211_is_dfs(int freq, const struct hostapd_hw_modes *modes,
@@ -279,7 +280,7 @@ bool ieee802_11_rsnx_capab_len(const u8 *rsnxe, size_t rsnxe_len,
 			       unsigned int capab);
 bool ieee802_11_rsnx_capab(const u8 *rsnxe, unsigned int capab);
 int op_class_to_bandwidth(u8 op_class);
-int op_class_to_ch_width(u8 op_class);
+enum oper_chan_width op_class_to_ch_width(u8 op_class);
 
 /* element iteration helpers */
 #define for_each_element(_elem, _data, _datalen)			\

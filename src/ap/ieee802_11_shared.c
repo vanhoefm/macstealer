@@ -998,7 +998,7 @@ int get_tx_parameters(struct sta_info *sta, int ap_max_chanwidth,
 		 * If a VHT Operation element was present, use it to determine
 		 * the supported channel bandwidth.
 		 */
-		if (oper->vht_op_info_chwidth == 0) {
+		if (oper->vht_op_info_chwidth == CHANWIDTH_USE_HT) {
 			requested_bw = ht_40mhz ? 40 : 20;
 		} else if (oper->vht_op_info_chan_center_freq_seg1_idx == 0) {
 			requested_bw = 80;

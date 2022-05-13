@@ -2686,7 +2686,7 @@ skip_to_6ghz:
 	if (!ibss_mesh_is_80mhz_avail(channel, mode))
 		return;
 
-	chwidth = CHANWIDTH_80MHZ;
+	chwidth = CONF_OPER_CHWIDTH_80MHZ;
 	seg0 = channel + 6;
 	seg1 = 0;
 
@@ -2702,14 +2702,14 @@ skip_to_6ghz:
 
 		for (j = 0; j < ARRAY_SIZE(bw160); j++) {
 			if (freq->freq == bw160[j]) {
-				chwidth = CHANWIDTH_160MHZ;
+				chwidth = CONF_OPER_CHWIDTH_160MHZ;
 				seg0 = channel + 14;
 				break;
 			}
 		}
 	}
 
-	if (ssid->max_oper_chwidth == CHANWIDTH_80P80MHZ) {
+	if (ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_80P80MHZ) {
 		/* setup center_freq2, bandwidth */
 		for (k = 0; k < ARRAY_SIZE(bw80); k++) {
 			/* Only accept 80 MHz segments separated by a gap */
@@ -2733,28 +2733,28 @@ skip_to_6ghz:
 					continue;
 
 				/* Found a suitable second segment for 80+80 */
-				chwidth = CHANWIDTH_80P80MHZ;
+				chwidth = CONF_OPER_CHWIDTH_80P80MHZ;
 				if (!is_6ghz)
 					vht_caps |=
 						VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
 				seg1 = channel + 6;
 			}
 
-			if (chwidth == CHANWIDTH_80P80MHZ)
+			if (chwidth == CONF_OPER_CHWIDTH_80P80MHZ)
 				break;
 		}
-	} else if (ssid->max_oper_chwidth == CHANWIDTH_160MHZ) {
+	} else if (ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_160MHZ) {
 		if (freq->freq == 5180) {
-			chwidth = CHANWIDTH_160MHZ;
+			chwidth = CONF_OPER_CHWIDTH_160MHZ;
 			vht_caps |= VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
 			seg0 = 50;
 		} else if (freq->freq == 5520) {
-			chwidth = CHANWIDTH_160MHZ;
+			chwidth = CONF_OPER_CHWIDTH_160MHZ;
 			vht_caps |= VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
 			seg0 = 114;
 		}
-	} else if (ssid->max_oper_chwidth == CHANWIDTH_USE_HT) {
-		chwidth = CHANWIDTH_USE_HT;
+	} else if (ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_USE_HT) {
+		chwidth = CONF_OPER_CHWIDTH_USE_HT;
 		seg0 = channel + 2;
 #ifdef CONFIG_HT_OVERRIDES
 		if (ssid->disable_ht40)

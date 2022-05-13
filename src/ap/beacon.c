@@ -1280,21 +1280,23 @@ static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
 		}
 	} else {
 		switch (hostapd_get_oper_chwidth(hapd->iconf)) {
-		case CHANWIDTH_80P80MHZ:
+		case CONF_OPER_CHWIDTH_80P80MHZ:
 			mcs_nss_size += 4;
 			/* fallthrough */
-		case CHANWIDTH_160MHZ:
+		case CONF_OPER_CHWIDTH_160MHZ:
 			mcs_nss_size += 4;
 			chwidth = FD_CAP_BSS_CHWIDTH_160_80_80;
 			break;
-		case CHANWIDTH_80MHZ:
+		case CONF_OPER_CHWIDTH_80MHZ:
 			chwidth = FD_CAP_BSS_CHWIDTH_80;
 			break;
-		case CHANWIDTH_USE_HT:
+		case CONF_OPER_CHWIDTH_USE_HT:
 			if (hapd->iconf->secondary_channel)
 				chwidth = FD_CAP_BSS_CHWIDTH_40;
 			else
 				chwidth = FD_CAP_BSS_CHWIDTH_20;
+			break;
+		default:
 			break;
 		}
 

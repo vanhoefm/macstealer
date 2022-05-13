@@ -90,7 +90,7 @@ static void wpas_conf_ap_vht(struct wpa_supplicant *wpa_s,
 					      &conf->op_class,
 					      &conf->channel);
 
-	if (hostapd_get_oper_chwidth(conf) == CHANWIDTH_80P80MHZ) {
+	if (hostapd_get_oper_chwidth(conf) == CONF_OPER_CHWIDTH_80P80MHZ) {
 		ieee80211_freq_to_chan(ssid->vht_center_freq2,
 				       &freq_seg_idx);
 		hostapd_set_oper_centr_freq_seg1_idx(conf, freq_seg_idx);
@@ -112,15 +112,15 @@ static void wpas_conf_ap_vht(struct wpa_supplicant *wpa_s,
 
 #ifdef CONFIG_P2P
 	switch (hostapd_get_oper_chwidth(conf)) {
-	case CHANWIDTH_80MHZ:
-	case CHANWIDTH_80P80MHZ:
+	case CONF_OPER_CHWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_80P80MHZ:
 		center_chan = wpas_p2p_get_vht80_center(wpa_s, mode, channel,
 							conf->op_class);
 		wpa_printf(MSG_DEBUG,
 			   "VHT center channel %u for 80 or 80+80 MHz bandwidth",
 			   center_chan);
 		break;
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		center_chan = wpas_p2p_get_vht160_center(wpa_s, mode, channel,
 							 conf->op_class);
 		wpa_printf(MSG_DEBUG,
@@ -133,7 +133,7 @@ static void wpas_conf_ap_vht(struct wpa_supplicant *wpa_s,
 		 * try oper_cwidth 160 MHz first then VHT 80 MHz, if 160 MHz is
 		 * not supported.
 		 */
-		hostapd_set_oper_chwidth(conf, CHANWIDTH_160MHZ);
+		hostapd_set_oper_chwidth(conf, CONF_OPER_CHWIDTH_160MHZ);
 		ieee80211_freq_to_channel_ext(ssid->frequency, 0,
 					      conf->vht_oper_chwidth,
 					      &conf->op_class,
@@ -145,7 +145,7 @@ static void wpas_conf_ap_vht(struct wpa_supplicant *wpa_s,
 				   "VHT center channel %u for auto-selected 160 MHz bandwidth",
 				   center_chan);
 		} else {
-			hostapd_set_oper_chwidth(conf, CHANWIDTH_80MHZ);
+			hostapd_set_oper_chwidth(conf, CONF_OPER_CHWIDTH_80MHZ);
 			ieee80211_freq_to_channel_ext(ssid->frequency, 0,
 						      conf->vht_oper_chwidth,
 						      &conf->op_class,
@@ -174,7 +174,7 @@ no_vht:
 		   conf->channel);
 	hostapd_set_oper_centr_freq_seg0_idx(
 		conf, conf->channel + conf->secondary_channel * 2);
-	hostapd_set_oper_chwidth(conf, CHANWIDTH_USE_HT);
+	hostapd_set_oper_chwidth(conf, CONF_OPER_CHWIDTH_USE_HT);
 }
 
 
@@ -201,14 +201,14 @@ wpa_supplicant_find_hw_mode(struct wpa_supplicant *wpa_s,
 static int get_max_oper_chwidth_6ghz(int chwidth)
 {
 	switch (chwidth) {
-	case CHANWIDTH_USE_HT:
+	case CONF_OPER_CHWIDTH_USE_HT:
 		return 20;
-	case CHANWIDTH_40MHZ_6GHZ:
+	case CONF_OPER_CHWIDTH_40MHZ_6GHZ:
 		return 40;
-	case CHANWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_80MHZ:
 		return 80;
-	case CHANWIDTH_80P80MHZ:
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_80P80MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		return 160;
 	default:
 		return 0;
@@ -249,8 +249,8 @@ static void wpas_conf_ap_he_6ghz(struct wpa_supplicant *wpa_s,
 		wpa_printf(MSG_DEBUG,
 			   "Secondary channel offset %d for P2P group",
 			   conf->secondary_channel);
-		if (ssid->max_oper_chwidth == CHANWIDTH_40MHZ_6GHZ)
-			ssid->max_oper_chwidth = CHANWIDTH_USE_HT;
+		if (ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_40MHZ_6GHZ)
+			ssid->max_oper_chwidth = CONF_OPER_CHWIDTH_USE_HT;
 	}
 
 	if ((is_chanwidth_40_80 || is_chanwidth_160) && ssid->p2p_group &&
@@ -266,7 +266,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa_supplicant *wpa_s,
 			      struct hostapd_config *conf)
 {
 	conf->hw_mode = ieee80211_freq_to_channel_ext(ssid->frequency, 0,
-						      CHANWIDTH_USE_HT,
+						      CONF_OPER_CHWIDTH_USE_HT,
 						      &conf->op_class,
 						      &conf->channel);
 	if (conf->hw_mode == NUM_HOSTAPD_MODES) {

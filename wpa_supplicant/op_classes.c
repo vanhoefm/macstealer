@@ -470,8 +470,9 @@ size_t wpas_supp_op_class_ie(struct wpa_supplicant *wpa_s,
 	 * or used.
 	 */
 	if (wpas_sta_secondary_channel_offset(bss, &current, &chan) < 0 &&
-	    ieee80211_freq_to_channel_ext(bss->freq, 0, CHANWIDTH_USE_HT,
-					  &current, &chan) == NUM_HOSTAPD_MODES)
+	    ieee80211_freq_to_channel_ext(bss->freq, 0,
+					  CONF_OPER_CHWIDTH_USE_HT, &current,
+					  &chan) == NUM_HOSTAPD_MODES)
 		return 0;
 
 	/*

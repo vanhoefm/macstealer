@@ -6674,8 +6674,8 @@ static int wpas_p2p_init_go_params(struct wpa_supplicant *wpa_s,
 
 			if (!is_6ghz &&
 			    ieee80211_freq_to_channel_ext(
-				    cand, -1, CHANWIDTH_USE_HT, &op_class,
-				    &chan) != NUM_HOSTAPD_MODES &&
+				    cand, -1, CONF_OPER_CHWIDTH_USE_HT,
+				    &op_class, &chan) != NUM_HOSTAPD_MODES &&
 			    wpas_p2p_verify_channel(
 				    wpa_s, hwmode, op_class, chan,
 				    BW40MINUS) == ALLOWED)
@@ -6683,8 +6683,8 @@ static int wpas_p2p_init_go_params(struct wpa_supplicant *wpa_s,
 
 			if (!supported && !is_6ghz &&
 			    ieee80211_freq_to_channel_ext(
-				    cand, 1, CHANWIDTH_USE_HT, &op_class,
-				    &chan) != NUM_HOSTAPD_MODES &&
+				    cand, 1, CONF_OPER_CHWIDTH_USE_HT,
+				    &op_class, &chan) != NUM_HOSTAPD_MODES &&
 			    wpas_p2p_verify_channel(
 				    wpa_s, hwmode, op_class, chan,
 				    BW40PLUS) == ALLOWED)
@@ -9717,12 +9717,14 @@ static int wpas_p2p_move_go_csa(struct wpa_supplicant *wpa_s)
 		csa_settings.freq_params.center_freq2 = freq2;
 
 		switch (conf->vht_oper_chwidth) {
-		case CHANWIDTH_80MHZ:
-		case CHANWIDTH_80P80MHZ:
+		case CONF_OPER_CHWIDTH_80MHZ:
+		case CONF_OPER_CHWIDTH_80P80MHZ:
 			csa_settings.freq_params.bandwidth = 80;
 			break;
-		case CHANWIDTH_160MHZ:
+		case CONF_OPER_CHWIDTH_160MHZ:
 			csa_settings.freq_params.bandwidth = 160;
+			break;
+		default:
 			break;
 		}
 	}

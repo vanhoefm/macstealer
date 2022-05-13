@@ -384,7 +384,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			    u8 edmg_channel, int ht_enabled,
 			    int vht_enabled, int he_enabled,
 			    bool eht_enabled, int sec_channel_offset,
-			    int oper_chwidth, int center_segment0,
+			    enum oper_chan_width oper_chwidth,
+			    int center_segment0,
 			    int center_segment1, u32 vht_caps,
 			    struct he_capabilities *he_cap,
 			    struct eht_capabilities *eht_cap)
@@ -402,10 +403,10 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 	data->sec_channel_offset = sec_channel_offset;
 	data->center_freq1 = freq + sec_channel_offset * 10;
 	data->center_freq2 = 0;
-	if (oper_chwidth == CHANWIDTH_80MHZ)
+	if (oper_chwidth == CONF_OPER_CHWIDTH_80MHZ)
 		data->bandwidth = 80;
-	else if (oper_chwidth == CHANWIDTH_160MHZ ||
-		 oper_chwidth == CHANWIDTH_80P80MHZ)
+	else if (oper_chwidth == CONF_OPER_CHWIDTH_160MHZ ||
+		 oper_chwidth == CONF_OPER_CHWIDTH_80P80MHZ)
 		data->bandwidth = 160;
 	else if (sec_channel_offset)
 		data->bandwidth = 40;
@@ -496,7 +497,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 #endif
 
 	if (data->he_enabled || data->eht_enabled) switch (oper_chwidth) {
-	case CHANWIDTH_USE_HT:
+	case CONF_OPER_CHWIDTH_USE_HT:
 		if (sec_channel_offset == 0)
 			break;
 
@@ -511,7 +512,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			break;
 		}
 		/* fall through */
-	case CHANWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_80MHZ:
 		if (mode == HOSTAPD_MODE_IEEE80211A) {
 			if (he_cap &&
 			    !(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
@@ -522,7 +523,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			}
 		}
 		break;
-	case CHANWIDTH_80P80MHZ:
+	case CONF_OPER_CHWIDTH_80P80MHZ:
 		if (he_cap &&
 		    !(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
 		      HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G)) {
@@ -531,7 +532,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			return -1;
 		}
 		break;
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		if (he_cap &&
 		    !(he_cap->phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
 		      HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G)) {
@@ -540,19 +541,21 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			return -1;
 		}
 		break;
-	} else if (data->vht_enabled) switch (oper_chwidth) {
-	case CHANWIDTH_USE_HT:
+	default:
 		break;
-	case CHANWIDTH_80P80MHZ:
+	} else if (data->vht_enabled) switch (oper_chwidth) {
+	case CONF_OPER_CHWIDTH_USE_HT:
+		break;
+	case CONF_OPER_CHWIDTH_80P80MHZ:
 		if (!(vht_caps & VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ)) {
 			wpa_printf(MSG_ERROR,
 				   "80+80 channel width is not supported!");
 			return -1;
 		}
 		/* fall through */
-	case CHANWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_80MHZ:
 		break;
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		if (!(vht_caps & (VHT_CAP_SUPP_CHAN_WIDTH_160MHZ |
 				  VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ))) {
 			wpa_printf(MSG_ERROR,
@@ -560,11 +563,13 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			return -1;
 		}
 		break;
+	default:
+		break;
 	}
 
 	if (data->eht_enabled || data->he_enabled ||
 	    data->vht_enabled) switch (oper_chwidth) {
-	case CHANWIDTH_USE_HT:
+	case CONF_OPER_CHWIDTH_USE_HT:
 		if (center_segment1 ||
 		    (center_segment0 != 0 &&
 		     5000 + center_segment0 * 5 != data->center_freq1 &&
@@ -575,7 +580,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			return -1;
 		}
 		break;
-	case CHANWIDTH_80P80MHZ:
+	case CONF_OPER_CHWIDTH_80P80MHZ:
 		if (center_segment1 == center_segment0 + 4 ||
 		    center_segment1 == center_segment0 - 4) {
 			wpa_printf(MSG_ERROR,
@@ -584,19 +589,21 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 		}
 		data->center_freq2 = 5000 + center_segment1 * 5;
 		/* fall through */
-	case CHANWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_80MHZ:
 		data->bandwidth = 80;
 		if (!sec_channel_offset) {
 			wpa_printf(MSG_ERROR,
 				   "80/80+80 MHz: no second channel offset");
 			return -1;
 		}
-		if (oper_chwidth == CHANWIDTH_80MHZ && center_segment1) {
+		if (oper_chwidth == CONF_OPER_CHWIDTH_80MHZ &&
+		    center_segment1) {
 			wpa_printf(MSG_ERROR,
 				   "80 MHz: center segment 1 configured");
 			return -1;
 		}
-		if (oper_chwidth == CHANWIDTH_80P80MHZ && !center_segment1) {
+		if (oper_chwidth == CONF_OPER_CHWIDTH_80P80MHZ &&
+		    !center_segment1) {
 			wpa_printf(MSG_ERROR,
 				   "80+80 MHz: center segment 1 not configured");
 			return -1;
@@ -635,7 +642,7 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 			}
 		}
 		break;
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		data->bandwidth = 160;
 		if (center_segment1) {
 			wpa_printf(MSG_ERROR,
@@ -665,6 +672,8 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
 				   "160 MHz: HT40 channel band is not in 160 MHz band");
 			return -1;
 		}
+		break;
+	default:
 		break;
 	}
 

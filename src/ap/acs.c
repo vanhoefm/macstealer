@@ -710,7 +710,7 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
 		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax)) {
 			if (hostapd_get_oper_chwidth(iface->conf) ==
-			    CHANWIDTH_80MHZ &&
+			    CONF_OPER_CHWIDTH_80MHZ &&
 			    !acs_usable_bw80_chan(chan)) {
 				wpa_printf(MSG_DEBUG,
 					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
@@ -719,7 +719,7 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
 			}
 
 			if (hostapd_get_oper_chwidth(iface->conf) ==
-			    CHANWIDTH_160MHZ &&
+			    CONF_OPER_CHWIDTH_160MHZ &&
 			    !acs_usable_bw160_chan(chan)) {
 				wpa_printf(MSG_DEBUG,
 					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
@@ -873,11 +873,13 @@ acs_find_ideal_chan(struct hostapd_iface *iface)
 
 	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax) {
 		switch (hostapd_get_oper_chwidth(iface->conf)) {
-		case CHANWIDTH_80MHZ:
+		case CONF_OPER_CHWIDTH_80MHZ:
 			n_chans = 4;
 			break;
-		case CHANWIDTH_160MHZ:
+		case CONF_OPER_CHWIDTH_160MHZ:
 			n_chans = 8;
+			break;
+		default:
 			break;
 		}
 	}
@@ -915,13 +917,13 @@ static void acs_adjust_center_freq(struct hostapd_iface *iface)
 	wpa_printf(MSG_DEBUG, "ACS: Adjusting VHT center frequency");
 
 	switch (hostapd_get_oper_chwidth(iface->conf)) {
-	case CHANWIDTH_USE_HT:
+	case CONF_OPER_CHWIDTH_USE_HT:
 		offset = 2 * iface->conf->secondary_channel;
 		break;
-	case CHANWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_80MHZ:
 		offset = 6;
 		break;
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		offset = 14;
 		break;
 	default:

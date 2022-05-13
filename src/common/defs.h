@@ -432,6 +432,21 @@ enum chan_width {
 	CHAN_WIDTH_UNKNOWN
 };
 
+/* VHT/EDMG/etc. channel widths
+ * Note: The first four values are used in hostapd.conf and as such, must
+ * maintain their defined values. Other values are used internally. */
+enum oper_chan_width {
+	CONF_OPER_CHWIDTH_USE_HT = 0,
+	CONF_OPER_CHWIDTH_80MHZ = 1,
+	CONF_OPER_CHWIDTH_160MHZ = 2,
+	CONF_OPER_CHWIDTH_80P80MHZ = 3,
+	CONF_OPER_CHWIDTH_2160MHZ,
+	CONF_OPER_CHWIDTH_4320MHZ,
+	CONF_OPER_CHWIDTH_6480MHZ,
+	CONF_OPER_CHWIDTH_8640MHZ,
+	CONF_OPER_CHWIDTH_40MHZ_6GHZ,
+};
+
 enum key_flag {
 	KEY_FLAG_MODIFY			= BIT(0),
 	KEY_FLAG_DEFAULT		= BIT(1),

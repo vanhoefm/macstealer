@@ -102,19 +102,21 @@ u8 * hostapd_eid_he_capab(struct hostapd_data *hapd, u8 *eid,
 					   mode->he_capab[opmode].phy_cap);
 
 	switch (hapd->iface->conf->he_oper_chwidth) {
-	case CHANWIDTH_80P80MHZ:
+	case CONF_OPER_CHWIDTH_80P80MHZ:
 		he_oper_chwidth |=
 			HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G;
 		mcs_nss_size += 4;
 		/* fall through */
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		he_oper_chwidth |= HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
 		mcs_nss_size += 4;
 		/* fall through */
-	case CHANWIDTH_80MHZ:
-	case CHANWIDTH_USE_HT:
+	case CONF_OPER_CHWIDTH_80MHZ:
+	case CONF_OPER_CHWIDTH_USE_HT:
 		he_oper_chwidth |= HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_IN_2G |
 			HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G;
+		break;
+	default:
 		break;
 	}
 
@@ -430,10 +432,10 @@ static int check_valid_he_mcs(struct hostapd_data *hapd, const u8 *sta_he_capab,
 	 * band/stream cases.
 	 */
 	switch (hapd->iface->conf->he_oper_chwidth) {
-	case CHANWIDTH_80P80MHZ:
+	case CONF_OPER_CHWIDTH_80P80MHZ:
 		mcs_count = 3;
 		break;
-	case CHANWIDTH_160MHZ:
+	case CONF_OPER_CHWIDTH_160MHZ:
 		mcs_count = 2;
 		break;
 	default:

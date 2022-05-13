@@ -891,19 +891,19 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
 
 	switch (width) {
 	case CHAN_WIDTH_80:
-		chwidth = CHANWIDTH_80MHZ;
+		chwidth = CONF_OPER_CHWIDTH_80MHZ;
 		break;
 	case CHAN_WIDTH_80P80:
-		chwidth = CHANWIDTH_80P80MHZ;
+		chwidth = CONF_OPER_CHWIDTH_80P80MHZ;
 		break;
 	case CHAN_WIDTH_160:
-		chwidth = CHANWIDTH_160MHZ;
+		chwidth = CONF_OPER_CHWIDTH_160MHZ;
 		break;
 	case CHAN_WIDTH_20_NOHT:
 	case CHAN_WIDTH_20:
 	case CHAN_WIDTH_40:
 	default:
-		chwidth = CHANWIDTH_USE_HT;
+		chwidth = CONF_OPER_CHWIDTH_USE_HT;
 		break;
 	}
 
@@ -979,10 +979,10 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
 	hostapd_set_oper_centr_freq_seg1_idx(hapd->iconf, seg1_idx);
 	if (hapd->iconf->ieee80211ac) {
 		hapd->iconf->vht_capab &= ~VHT_CAP_SUPP_CHAN_WIDTH_MASK;
-		if (chwidth == CHANWIDTH_160MHZ)
+		if (chwidth == CONF_OPER_CHWIDTH_160MHZ)
 			hapd->iconf->vht_capab |=
 				VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
-		else if (chwidth == CHANWIDTH_80P80MHZ)
+		else if (chwidth == CONF_OPER_CHWIDTH_80P80MHZ)
 			hapd->iconf->vht_capab |=
 				VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ;
 	}
@@ -1145,7 +1145,7 @@ void hostapd_acs_channel_selected(struct hostapd_data *hapd,
 		/* set defaults for backwards compatibility */
 		hostapd_set_oper_centr_freq_seg1_idx(hapd->iconf, 0);
 		hostapd_set_oper_centr_freq_seg0_idx(hapd->iconf, 0);
-		hostapd_set_oper_chwidth(hapd->iconf, CHANWIDTH_USE_HT);
+		hostapd_set_oper_chwidth(hapd->iconf, CONF_OPER_CHWIDTH_USE_HT);
 		if (acs_res->ch_width == 40) {
 			if (is_6ghz_freq(acs_res->pri_freq))
 				hostapd_set_oper_centr_freq_seg0_idx(
@@ -1155,17 +1155,19 @@ void hostapd_acs_channel_selected(struct hostapd_data *hapd,
 			hostapd_set_oper_centr_freq_seg0_idx(
 				hapd->iconf, acs_res->vht_seg0_center_ch);
 			if (acs_res->vht_seg1_center_ch == 0) {
-				hostapd_set_oper_chwidth(hapd->iconf,
-							 CHANWIDTH_80MHZ);
+				hostapd_set_oper_chwidth(
+					hapd->iconf, CONF_OPER_CHWIDTH_80MHZ);
 			} else {
-				hostapd_set_oper_chwidth(hapd->iconf,
-							 CHANWIDTH_80P80MHZ);
+				hostapd_set_oper_chwidth(
+					hapd->iconf,
+					CONF_OPER_CHWIDTH_80P80MHZ);
 				hostapd_set_oper_centr_freq_seg1_idx(
 					hapd->iconf,
 					acs_res->vht_seg1_center_ch);
 			}
 		} else if (acs_res->ch_width == 160) {
-			hostapd_set_oper_chwidth(hapd->iconf, CHANWIDTH_160MHZ);
+			hostapd_set_oper_chwidth(hapd->iconf,
+						 CONF_OPER_CHWIDTH_160MHZ);
 			hostapd_set_oper_centr_freq_seg0_idx(
 				hapd->iconf, acs_res->vht_seg1_center_ch);
 		}

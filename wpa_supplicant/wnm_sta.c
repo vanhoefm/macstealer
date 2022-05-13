@@ -921,7 +921,8 @@ static int wnm_nei_rep_add_bss(struct wpa_supplicant *wpa_s,
 {
 	const u8 *ie;
 	u8 op_class, chan;
-	int sec_chan = 0, vht = 0;
+	int sec_chan = 0;
+	enum oper_chan_width vht = CONF_OPER_CHWIDTH_USE_HT;
 	enum phy_type phy_type;
 	u32 info;
 	struct ieee80211_ht_operation *ht_oper = NULL;

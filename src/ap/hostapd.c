@@ -1718,7 +1718,7 @@ static int setup_interface2(struct hostapd_iface *iface)
 			goto fail;
 
 		if (iface->conf->op_class) {
-			int ch_width;
+			enum oper_chan_width ch_width;
 
 			ch_width = op_class_to_ch_width(iface->conf->op_class);
 			hostapd_set_oper_chwidth(iface->conf, ch_width);
@@ -3503,16 +3503,18 @@ static int hostapd_change_config_freq(struct hostapd_data *hapd,
 	case 0:
 	case 20:
 	case 40:
-		hostapd_set_oper_chwidth(conf, CHANWIDTH_USE_HT);
+		hostapd_set_oper_chwidth(conf, CONF_OPER_CHWIDTH_USE_HT);
 		break;
 	case 80:
 		if (params->center_freq2)
-			hostapd_set_oper_chwidth(conf, CHANWIDTH_80P80MHZ);
+			hostapd_set_oper_chwidth(conf,
+						 CONF_OPER_CHWIDTH_80P80MHZ);
 		else
-			hostapd_set_oper_chwidth(conf, CHANWIDTH_80MHZ);
+			hostapd_set_oper_chwidth(conf,
+						 CONF_OPER_CHWIDTH_80MHZ);
 		break;
 	case 160:
-		hostapd_set_oper_chwidth(conf, CHANWIDTH_160MHZ);
+		hostapd_set_oper_chwidth(conf, CONF_OPER_CHWIDTH_160MHZ);
 		break;
 	default:
 		return -1;
@@ -3550,15 +3552,15 @@ static int hostapd_fill_csa_settings(struct hostapd_data *hapd,
 	switch (settings->freq_params.bandwidth) {
 	case 80:
 		if (settings->freq_params.center_freq2)
-			bandwidth = CHANWIDTH_80P80MHZ;
+			bandwidth = CONF_OPER_CHWIDTH_80P80MHZ;
 		else
-			bandwidth = CHANWIDTH_80MHZ;
+			bandwidth = CONF_OPER_CHWIDTH_80MHZ;
 		break;
 	case 160:
-		bandwidth = CHANWIDTH_160MHZ;
+		bandwidth = CONF_OPER_CHWIDTH_160MHZ;
 		break;
 	default:
-		bandwidth = CHANWIDTH_USE_HT;
+		bandwidth = CONF_OPER_CHWIDTH_USE_HT;
 		break;
 	}
 
@@ -3688,7 +3690,8 @@ void
 hostapd_switch_channel_fallback(struct hostapd_iface *iface,
 				const struct hostapd_freq_params *freq_params)
 {
-	int seg0_idx = 0, seg1_idx = 0, bw = CHANWIDTH_USE_HT;
+	int seg0_idx = 0, seg1_idx = 0;
+	enum oper_chan_width bw = CONF_OPER_CHWIDTH_USE_HT;
 
 	wpa_printf(MSG_DEBUG, "Restarting all CSA-related BSSes");
 
@@ -3701,16 +3704,16 @@ hostapd_switch_channel_fallback(struct hostapd_iface *iface,
 	case 0:
 	case 20:
 	case 40:
-		bw = CHANWIDTH_USE_HT;
+		bw = CONF_OPER_CHWIDTH_USE_HT;
 		break;
 	case 80:
 		if (freq_params->center_freq2)
-			bw = CHANWIDTH_80P80MHZ;
+			bw = CONF_OPER_CHWIDTH_80P80MHZ;
 		else
-			bw = CHANWIDTH_80MHZ;
+			bw = CONF_OPER_CHWIDTH_80MHZ;
 		break;
 	case 160:
-		bw = CHANWIDTH_160MHZ;
+		bw = CONF_OPER_CHWIDTH_160MHZ;
 		break;
 	default:
 		wpa_printf(MSG_WARNING, "Unknown CSA bandwidth: %d",
