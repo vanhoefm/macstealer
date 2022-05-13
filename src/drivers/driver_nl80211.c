@@ -215,6 +215,8 @@ enum chan_width convert2width(int width)
 		return CHAN_WIDTH_80P80;
 	case NL80211_CHAN_WIDTH_160:
 		return CHAN_WIDTH_160;
+	case NL80211_CHAN_WIDTH_320:
+		return CHAN_WIDTH_320;
 	}
 	return CHAN_WIDTH_UNKNOWN;
 }
@@ -4940,6 +4942,9 @@ static int nl80211_put_freq_params(struct nl_msg *msg,
 			break;
 		case 160:
 			cw = NL80211_CHAN_WIDTH_160;
+			break;
+		case 320:
+			cw = NL80211_CHAN_WIDTH_320;
 			break;
 		default:
 			return -EINVAL;

@@ -838,6 +838,9 @@ void hostapd_event_sta_opmode_changed(struct hostapd_data *hapd, const u8 *addr,
 	case CHAN_WIDTH_160:
 		txt = "160";
 		break;
+	case CHAN_WIDTH_320:
+		txt = "320";
+		break;
 	default:
 		txt = NULL;
 		break;
@@ -898,6 +901,9 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
 		break;
 	case CHAN_WIDTH_160:
 		chwidth = CONF_OPER_CHWIDTH_160MHZ;
+		break;
+	case CHAN_WIDTH_320:
+		chwidth = CONF_OPER_CHWIDTH_320MHZ;
 		break;
 	case CHAN_WIDTH_20_NOHT:
 	case CHAN_WIDTH_20:
@@ -1172,6 +1178,15 @@ void hostapd_acs_channel_selected(struct hostapd_data *hapd,
 				hapd->iconf, acs_res->vht_seg1_center_ch);
 		}
 	}
+
+#ifdef CONFIG_IEEE80211BE
+	if (hapd->iface->conf->ieee80211be && acs_res->ch_width == 320) {
+		hostapd_set_oper_chwidth(hapd->iconf, CONF_OPER_CHWIDTH_320MHZ);
+		hostapd_set_oper_centr_freq_seg0_idx(
+			hapd->iconf, acs_res->vht_seg1_center_ch);
+		hostapd_set_oper_centr_freq_seg1_idx(hapd->iconf, 0);
+	}
+#endif /* CONFIG_IEEE80211BE */
 
 out:
 	ret = hostapd_acs_completed(hapd->iface, err);

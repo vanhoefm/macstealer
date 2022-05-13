@@ -1060,6 +1060,9 @@ ieee80211_freq_to_channel_ext(unsigned int freq, int sec_channel,
 		case CONF_OPER_CHWIDTH_80P80MHZ:
 			*op_class = 135;
 			break;
+		case CONF_OPER_CHWIDTH_320MHZ:
+			*op_class = 137;
+			break;
 		default:
 			if (sec_channel)
 				*op_class = 132;
@@ -1156,6 +1159,9 @@ int ieee80211_chaninfo_to_channel(unsigned int freq, enum chan_width chanwidth,
 		break;
 	case CHAN_WIDTH_8640:
 		cw = CONF_OPER_CHWIDTH_8640MHZ;
+		break;
+	case CHAN_WIDTH_320:
+		cw = CONF_OPER_CHWIDTH_320MHZ;
 		break;
 	}
 
@@ -1452,6 +1458,7 @@ static int ieee80211_chan_to_freq_global(u8 op_class, u8 chan)
 	case 133: /* UHB channels, 80 MHz: 7, 23, 39.. */
 	case 134: /* UHB channels, 160 MHz: 15, 47, 79.. */
 	case 135: /* UHB channels, 80+80 MHz: 7, 23, 39.. */
+	case 137: /* UHB channels, 320 MHz: 31, 63, 95, 127, 159, 191 */
 		if (chan < 1 || chan > 233)
 			return -1;
 		return 5950 + chan * 5;
@@ -2265,6 +2272,9 @@ int center_idx_to_bw_6ghz(u8 idx)
 	/* channels 15, 47, 79...*/
 	if ((idx & 0x1f) == 0xf)
 		return 3; /* 160 MHz */
+	/* channels 31, 63, 95, 127, 159, 191 */
+	if ((idx & 0x1f) == 0x1f && idx < 192)
+		return 4; /* 320 MHz */
 
 	return -1;
 }
@@ -2287,7 +2297,7 @@ bool is_6ghz_freq(int freq)
 
 bool is_6ghz_op_class(u8 op_class)
 {
-	return op_class >= 131 && op_class <= 136;
+	return op_class >= 131 && op_class <= 137;
 }
 
 
@@ -2593,6 +2603,8 @@ int op_class_to_bandwidth(u8 op_class)
 		return 160;
 	case 136: /* UHB channels, 20 MHz: 2 */
 		return 20;
+	case 137: /* UHB channels, 320 MHz: 31, 63, 95, 127, 159, 191 */
+		return 320;
 	case 180: /* 60 GHz band, channels 1..8 */
 		return 2160;
 	case 181: /* 60 GHz band, EDMG CB2, channels 9..15 */
@@ -2655,6 +2667,8 @@ enum oper_chan_width op_class_to_ch_width(u8 op_class)
 		return CONF_OPER_CHWIDTH_80P80MHZ;
 	case 136: /* UHB channels, 20 MHz: 2 */
 		return CONF_OPER_CHWIDTH_USE_HT;
+	case 137: /* UHB channels, 320 MHz: 31, 63, 95, 127, 159, 191 */
+		return CONF_OPER_CHWIDTH_320MHZ;
 	case 180: /* 60 GHz band, channels 1..8 */
 		return CONF_OPER_CHWIDTH_2160MHZ;
 	case 181: /* 60 GHz band, EDMG CB2, channels 9..15 */

@@ -674,6 +674,9 @@ static int calculate_chan_offset(int width, int freq, int cf1, int cf2)
 	case CHAN_WIDTH_80P80:
 		freq1 = cf1 - 30;
 		break;
+	case CHAN_WIDTH_320:
+		freq1 = cf1 - 150;
+		break;
 	case CHAN_WIDTH_UNKNOWN:
 	case CHAN_WIDTH_2160:
 	case CHAN_WIDTH_4320:
@@ -2790,6 +2793,9 @@ static void nl80211_sta_opmode_change_event(struct wpa_driver_nl80211_data *drv,
 			break;
 		case NL80211_CHAN_WIDTH_160:
 			ed.sta_opmode.chan_width = CHAN_WIDTH_160;
+			break;
+		case NL80211_CHAN_WIDTH_320:
+			ed.sta_opmode.chan_width = CHAN_WIDTH_320;
 			break;
 		default:
 			ed.sta_opmode.chan_width = CHAN_WIDTH_UNKNOWN;

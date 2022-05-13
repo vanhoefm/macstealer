@@ -5989,6 +5989,8 @@ static int parse_freq(int chwidth, int freq2)
 		return CONF_OPER_CHWIDTH_80MHZ;
 	case 160:
 		return CONF_OPER_CHWIDTH_160MHZ;
+	case 320:
+		return CONF_OPER_CHWIDTH_320MHZ;
 	default:
 		wpa_printf(MSG_DEBUG, "Unknown max oper bandwidth: %d",
 			   chwidth);

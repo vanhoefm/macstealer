@@ -2527,6 +2527,9 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
 	case 160:
 		bandwidth = CHAN_WIDTH_160;
 		break;
+	case 320:
+		bandwidth = CHAN_WIDTH_320;
+		break;
 	default:
 		bandwidth = CHAN_WIDTH_20;
 		break;

@@ -986,6 +986,8 @@ int hostapd_drv_do_acs(struct hostapd_data *hapd)
 		else if (oper_chwidth == CONF_OPER_CHWIDTH_160MHZ ||
 			 oper_chwidth == CONF_OPER_CHWIDTH_80P80MHZ)
 			params.ch_width = 160;
+		else if (oper_chwidth == CONF_OPER_CHWIDTH_320MHZ)
+			params.ch_width = 320;
 	}
 
 	if (hapd->iface->conf->op_class)

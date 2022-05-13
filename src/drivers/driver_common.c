@@ -117,6 +117,8 @@ const char * channel_width_to_string(enum chan_width width)
 		return "80+80 MHz";
 	case CHAN_WIDTH_160:
 		return "160 MHz";
+	case CHAN_WIDTH_320:
+		return "320 MHz";
 	default:
 		return "unknown";
 	}
@@ -136,6 +138,8 @@ int channel_width_to_int(enum chan_width width)
 	case CHAN_WIDTH_80P80:
 	case CHAN_WIDTH_160:
 		return 160;
+	case CHAN_WIDTH_320:
+		return 320;
 	default:
 		return 0;
 	}

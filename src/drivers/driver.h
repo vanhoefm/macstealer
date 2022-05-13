@@ -66,6 +66,7 @@ enum hostapd_chan_width_attr {
 	HOSTAPD_CHAN_WIDTH_40M  = BIT(3),
 	HOSTAPD_CHAN_WIDTH_80   = BIT(4),
 	HOSTAPD_CHAN_WIDTH_160  = BIT(5),
+	HOSTAPD_CHAN_WIDTH_320  = BIT(6),
 };
 
 /* Filter gratuitous ARP */

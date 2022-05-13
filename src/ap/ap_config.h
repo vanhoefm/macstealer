@@ -1163,6 +1163,8 @@ hostapd_set_oper_chwidth(struct hostapd_config *conf,
 #ifdef CONFIG_IEEE80211BE
 	if (conf->ieee80211be)
 		conf->eht_oper_chwidth = oper_chwidth;
+	if (oper_chwidth == CONF_OPER_CHWIDTH_320MHZ)
+		oper_chwidth = CONF_OPER_CHWIDTH_160MHZ;
 #endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211AX
 	if (conf->ieee80211ax)
@@ -1192,6 +1194,9 @@ hostapd_set_oper_centr_freq_seg0_idx(struct hostapd_config *conf,
 #ifdef CONFIG_IEEE80211BE
 	if (conf->ieee80211be)
 		conf->eht_oper_centr_freq_seg0_idx = oper_centr_freq_seg0_idx;
+	if (center_idx_to_bw_6ghz(oper_centr_freq_seg0_idx) == 4)
+		oper_centr_freq_seg0_idx +=
+			conf->channel > oper_centr_freq_seg0_idx ? 16 : -16;
 #endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211AX
 	if (conf->ieee80211ax)

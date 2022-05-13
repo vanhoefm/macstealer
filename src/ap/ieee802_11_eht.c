@@ -197,9 +197,7 @@ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
 	seg0 = hostapd_get_oper_centr_freq_seg0_idx(conf);
 
 	switch (chwidth) {
-#if 0 /* FIX: Need to clean up CHANWIDTH_* use for protocol vs. internal
-       * needs to be able to define this. */
-	case CHANWIDTH_320MHZ:
+	case CONF_OPER_CHWIDTH_320MHZ:
 		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
 		seg1 = seg0;
 		if (hapd->iconf->channel < seg0)
@@ -207,7 +205,6 @@ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
 		else
 			seg0 += 16;
 		break;
-#endif
 	case CONF_OPER_CHWIDTH_160MHZ:
 		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_160MHZ;
 		seg1 = seg0;
@@ -286,10 +283,12 @@ static bool check_valid_eht_mcs(struct hostapd_data *hapd,
 			EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
 
 	switch (hapd->iface->conf->eht_oper_chwidth) {
-	/* TODO: CHANWIDTH_320MHZ */
+	case CONF_OPER_CHWIDTH_320MHZ:
+		mcs_count++;
+		/* fall through */
 	case CONF_OPER_CHWIDTH_80P80MHZ:
 	case CONF_OPER_CHWIDTH_160MHZ:
-		mcs_count = 2;
+		mcs_count++;
 		break;
 	default:
 		break;

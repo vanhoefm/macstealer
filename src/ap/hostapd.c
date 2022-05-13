@@ -3516,6 +3516,9 @@ static int hostapd_change_config_freq(struct hostapd_data *hapd,
 	case 160:
 		hostapd_set_oper_chwidth(conf, CONF_OPER_CHWIDTH_160MHZ);
 		break;
+	case 320:
+		hostapd_set_oper_chwidth(conf, CONF_OPER_CHWIDTH_320MHZ);
+		break;
 	default:
 		return -1;
 	}
@@ -3714,6 +3717,9 @@ hostapd_switch_channel_fallback(struct hostapd_iface *iface,
 		break;
 	case 160:
 		bw = CONF_OPER_CHWIDTH_160MHZ;
+		break;
+	case 320:
+		bw = CONF_OPER_CHWIDTH_320MHZ;
 		break;
 	default:
 		wpa_printf(MSG_WARNING, "Unknown CSA bandwidth: %d",

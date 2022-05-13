@@ -219,7 +219,7 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
 	pos += 6; /* skip the fixed part */
 
 	if (is_6ghz_op_class(hapd->iconf->op_class)) {
-		u8 seg0 = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
+		u8 seg0 = hapd->iconf->he_oper_centr_freq_seg0_idx;
 		u8 seg1 = hostapd_get_oper_centr_freq_seg1_idx(hapd->iconf);
 		u8 control;
 
