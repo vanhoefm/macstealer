@@ -1318,7 +1318,7 @@ def test_ap_wpa2_psk_ext_delayed_ptk_rekey(dev, apdev):
     if ev is None:
         raise Exception("Timeout on EAPOL-TX from hostapd")
     keyinfo = ev.split(' ')[2][10:14]
-    if keyinfo != "008a":
+    if keyinfo != "028a":
         raise Exception("Unexpected key info when expected msg 1/4:" + keyinfo)
 
     # EAPOL-Key msg 4/4 from the previous 4-way handshake
@@ -1334,7 +1334,7 @@ def test_ap_wpa2_psk_ext_delayed_ptk_rekey(dev, apdev):
     if ev is None:
         raise Exception("Did not see EAPOL-TX from hostapd in the end (expected msg 1/4)")
     keyinfo = ev.split(' ')[2][10:14]
-    if keyinfo != "008a":
+    if keyinfo != "028a":
         raise Exception("Unexpected key info when expected msg 1/4:" + keyinfo)
 
 def parse_eapol(data):
