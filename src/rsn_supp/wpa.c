@@ -552,6 +552,8 @@ int wpa_supplicant_send_2_of_4(struct wpa_sm *sm, const unsigned char *dst,
 		       sm->proto == WPA_PROTO_OSEN) ?
 		EAPOL_KEY_TYPE_RSN : EAPOL_KEY_TYPE_WPA;
 	key_info = ver | WPA_KEY_INFO_KEY_TYPE;
+	if (sm->ptk_set && sm->proto != WPA_PROTO_WPA)
+		key_info |= WPA_KEY_INFO_SECURE;
 	if (mic_len)
 		key_info |= WPA_KEY_INFO_MIC;
 	else

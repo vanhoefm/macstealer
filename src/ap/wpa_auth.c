@@ -2192,6 +2192,7 @@ SM_STATE(WPA_PTK, PTKSTART)
 {
 	u8 buf[2 + RSN_SELECTOR_LEN + PMKID_LEN], *pmkid = NULL;
 	size_t pmkid_len = 0;
+	u16 key_info;
 
 	SM_ENTRY_MA(WPA_PTK, PTKSTART, wpa_ptk);
 	sm->PTKRequest = false;
@@ -2295,8 +2296,10 @@ SM_STATE(WPA_PTK, PTKSTART)
 	}
 	if (!pmkid)
 		pmkid_len = 0;
-	wpa_send_eapol(sm->wpa_auth, sm,
-		       WPA_KEY_INFO_ACK | WPA_KEY_INFO_KEY_TYPE, NULL,
+	key_info = WPA_KEY_INFO_ACK | WPA_KEY_INFO_KEY_TYPE;
+	if (sm->pairwise_set && sm->wpa != WPA_VERSION_WPA)
+		key_info |= WPA_KEY_INFO_SECURE;
+	wpa_send_eapol(sm->wpa_auth, sm, key_info, NULL,
 		       sm->ANonce, pmkid, pmkid_len, 0, 0);
 }
 
