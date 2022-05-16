@@ -983,6 +983,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_ROAM_EVENTS = 203,
 	QCA_NL80211_VENDOR_SUBCMD_RATEMASK_CONFIG = 204,
 	QCA_NL80211_VENDOR_SUBCMD_MCC_QUOTA = 205,
+	/* 206..212 - reserved for QCA */
 };
 
 enum qca_wlan_vendor_attr {
