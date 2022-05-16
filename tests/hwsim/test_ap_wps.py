@@ -3961,6 +3961,7 @@ def test_ap_wps_priority(dev, apdev):
     logger.info("WPS provisioning step")
     pin = dev[0].wps_read_pin()
     hapd.request("WPS_PIN any " + pin)
+    dev[0].flush_scan_cache()
     dev[0].scan_for_bss(apdev[0]['bssid'], freq="2412")
     dev[0].dump_monitor()
     try:
