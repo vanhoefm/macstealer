@@ -4893,6 +4893,12 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	Optional parameter. Scan dwell time for 6G Non Preferred Scanning
  *	Channels. If this attribute is not configured, the driver shall proceed
  *	with default behavior.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_RX_LINKSPEED_THRESHOLD: u16 value in Mbps.
+ *	Optional parameter. RX link speed threshold to disable roaming.
+ *	If the current RX link speed is above the threshold, roaming is not
+ *	needed. If this attribute is not configured, or if it is set to 0, the
+ *	driver will not consider the RX link speed in the roaming decision.
  */
 enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_ENABLE = 1,
@@ -4918,6 +4924,7 @@ enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_MAXIMUM_AWAY_TIME = 21,
 	QCA_ATTR_ROAM_CONTROL_SCAN_6G_PSC_DWELL_TIME = 22,
 	QCA_ATTR_ROAM_CONTROL_SCAN_6G_NON_PSC_DWELL_TIME = 23,
+	QCA_ATTR_ROAM_CONTROL_LINKSPEED_THRESHOLD = 24,
 
 	/* keep last */
 	QCA_ATTR_ROAM_CONTROL_AFTER_LAST,
