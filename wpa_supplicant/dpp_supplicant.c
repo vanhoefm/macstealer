@@ -799,7 +799,17 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
 	}
 
 	addr = get_param(cmd, " tcp_addr=");
-	if (addr) {
+	if (addr && os_strcmp(addr, "from-uri") == 0) {
+		os_free(addr);
+		if (!peer_bi->host) {
+			wpa_printf(MSG_INFO,
+				   "DPP: TCP address not available in peer URI");
+			return -1;
+		}
+		tcp = 1;
+		os_memcpy(&ipaddr, peer_bi->host, sizeof(ipaddr));
+		tcp_port = peer_bi->port;
+	} else if (addr) {
 		int res;
 
 		res = hostapd_parse_ip_addr(addr, &ipaddr);
