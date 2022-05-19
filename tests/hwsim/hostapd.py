@@ -427,7 +427,8 @@ class Hostapd:
         return int(res)
 
     def dpp_bootstrap_gen(self, type="qrcode", chan=None, mac=None, info=None,
-                          curve=None, key=None, supported_curves=None):
+                          curve=None, key=None, supported_curves=None,
+                          host=None):
         cmd = "DPP_BOOTSTRAP_GEN type=" + type
         if chan:
             cmd += " chan=" + chan
@@ -443,6 +444,8 @@ class Hostapd:
             cmd += " key=" + key
         if supported_curves:
             cmd += " supported_curves=" + supported_curves
+        if host:
+            cmd += " host=" + host
         res = self.request(cmd)
         if "FAIL" in res:
             raise Exception("Failed to generate bootstrapping info")

@@ -65,6 +65,10 @@ def test_dpp_qr_code_parsing(dev, apdev):
              "DPP:C:81/1,81/2,81/3,81/4,81/5,81/6,81/7,81/8,81/9,81/10,81/11,81/12,81/13,82/14,83/1,83/2,83/3,83/4,83/5,83/6,83/7,83/8,83/9,84/5,84/6,84/7,84/8,84/9,84/10,84/11,84/12,84/13,115/36;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADM2206avxHJaHXgLMkq/24e0rsrfMP9K1Tm8gx+ovP0I=;;",
              "DPP:C:81/1,2,3,4,5,6,7,8,9,10,11,12,13,82/14,83/1,2,3,4,5,6,7,8,9,84/5,6,7,8,9,10,11,12,13,115/36;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADM2206avxHJaHXgLMkq/24e0rsrfMP9K1Tm8gx+ovP0I=;;",
              "DPP:C:81/1,2,3;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADM2206avxHJaHXgLMkq/24e0rsrfMP9K1Tm8gx+ovP0I=;;",
+             "DPP:H:192.168.1.1;M:010203040506;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=;;",
+             "DPP:H:192.168.1.1:12345;M:010203040506;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=;;",
+             "DPP:H:fe80::1234:5678:9abc:def0;M:010203040506;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=;;",
+             "DPP:H:[fe80::1234:5678:9abc:def0]:12345;M:010203040506;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=;;",
              "DPP:I:SN=4774LH2b4044;M:010203040506;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=;;",
              "DPP:I:;M:010203040506;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=;;"]
     for uri in tests:
@@ -94,7 +98,7 @@ def test_dpp_qr_code_parsing(dev, apdev):
             raise Exception("Accepted invalid QR Code: " + t)
 
     logger.info("ID: " + str(id))
-    if id[0] == id[1] or id[0] == id[2] or id[1] == id[2]:
+    if len(id) != len(set(id)):
         raise Exception("Duplicate ID returned")
 
     if "FAIL" not in dev[0].request("DPP_BOOTSTRAP_REMOVE 12345678"):
@@ -174,6 +178,28 @@ def test_dpp_uri_supported_curves(dev, apdev):
         logger.info("Parsed URI info:\n" + info)
         if "supp_curves=" + t[0] not in info.splitlines():
             raise Exception("supp_curves not indicated correctly in info")
+
+def test_dpp_uri_host(dev, apdev):
+    """DPP URI host"""
+    check_dpp_capab(dev[0], min_ver=3)
+
+    tests = [("192.168.1.1", "192.168.1.1 8908"),
+             ("192.168.1.1:12345", "192.168.1.1 12345"),
+             ("fe80::1234:5678:9abc:def0", "fe80::1234:5678:9abc:def0 8908"),
+             ("[fe80::1234:5678:9abc:def0]:12345",
+              "fe80::1234:5678:9abc:def0 12345")]
+    for t in tests:
+        logger.info("host: " + t[0])
+        id0 = dev[0].dpp_bootstrap_gen(host=t[0])
+        uri = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+        logger.info("Generated URI: " + uri)
+        if ";H:%s;" % t[0] not in uri:
+            raise Exception("host not indicated correctly: " + uri)
+
+        info = dev[0].request("DPP_BOOTSTRAP_INFO %d" % id0)
+        logger.info("Parsed URI info:\n" + info)
+        if "host=" + t[1] not in info.splitlines():
+            raise Exception("host not indicated correctly in info")
 
 def test_dpp_qr_code_parsing_fail(dev, apdev):
     """DPP QR Code parsing local failure"""
