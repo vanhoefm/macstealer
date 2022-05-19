@@ -13,6 +13,7 @@
 #include "utils/common.h"
 #include "utils/base64.h"
 #include "utils/json.h"
+#include "utils/ip_addr.h"
 #include "common/ieee802_11_common.h"
 #include "common/wpa_ctrl.h"
 #include "common/gas.h"
@@ -162,6 +163,7 @@ void dpp_bootstrap_info_free(struct dpp_bootstrap_info *info)
 	os_free(info->uri);
 	os_free(info->info);
 	os_free(info->chan);
+	os_free(info->host);
 	os_free(info->pk);
 	crypto_ec_key_deinit(info->pubkey);
 	str_clear_free(info->configurator_params);
@@ -369,12 +371,70 @@ static int dpp_parse_uri_supported_curves(struct dpp_bootstrap_info *bi,
 }
 
 
+static int dpp_parse_uri_host(struct dpp_bootstrap_info *bi, const char *txt)
+{
+	const char *end;
+	char *port;
+	struct hostapd_ip_addr addr;
+	char buf[100], *pos;
+
+	if (!txt)
+		return 0;
+
+	end = os_strchr(txt, ';');
+	if (!end)
+		end = txt + os_strlen(txt);
+	if (end - txt > (int) sizeof(buf) - 1)
+		return -1;
+	os_memcpy(buf, txt, end - txt);
+	buf[end - txt] = '\0';
+
+	bi->port = DPP_TCP_PORT;
+
+	pos = buf;
+	if (*pos == '[') {
+		pos = &buf[1];
+		port = os_strchr(pos, ']');
+		if (!port)
+			return -1;
+		*port++ = '\0';
+		if (*port == ':')
+			bi->port = atoi(port + 1);
+	}
+
+	if (hostapd_parse_ip_addr(pos, &addr) < 0) {
+		if (buf[0] != '[') {
+			port = os_strrchr(pos, ':');
+			if (port) {
+				*port++ = '\0';
+				bi->port = atoi(port);
+			}
+		}
+		if (hostapd_parse_ip_addr(pos, &addr) < 0) {
+			wpa_printf(MSG_INFO,
+				   "DPP: Invalid IP address in URI host entry: %s",
+				   pos);
+			return -1;
+		}
+	}
+	os_free(bi->host);
+	bi->host = os_memdup(&addr, sizeof(addr));
+	if (!bi->host)
+		return -1;
+
+	wpa_printf(MSG_DEBUG, "DPP: host: %s port: %u",
+		   hostapd_ip_txt(bi->host, buf, sizeof(buf)), bi->port);
+
+	return 0;
+}
+
+
 static struct dpp_bootstrap_info * dpp_parse_uri(const char *uri)
 {
 	const char *pos = uri;
 	const char *end;
 	const char *chan_list = NULL, *mac = NULL, *info = NULL, *pk = NULL;
-	const char *version = NULL, *supported_curves = NULL;
+	const char *version = NULL, *supported_curves = NULL, *host = NULL;
 	struct dpp_bootstrap_info *bi;
 
 	wpa_hexdump_ascii(MSG_DEBUG, "DPP: URI", uri, os_strlen(uri));
@@ -409,6 +469,8 @@ static struct dpp_bootstrap_info * dpp_parse_uri(const char *uri)
 			version = pos + 2;
 		else if (pos[0] == 'B' && pos[1] == ':' && !supported_curves)
 			supported_curves = pos + 2;
+		else if (pos[0] == 'H' && pos[1] == ':' && !host)
+			host = pos + 2;
 		else
 			wpa_hexdump_ascii(MSG_DEBUG,
 					  "DPP: Ignore unrecognized URI parameter",
@@ -431,6 +493,7 @@ static struct dpp_bootstrap_info * dpp_parse_uri(const char *uri)
 	    dpp_parse_uri_info(bi, info) < 0 ||
 	    dpp_parse_uri_version(bi, version) < 0 ||
 	    dpp_parse_uri_supported_curves(bi, supported_curves) < 0 ||
+	    dpp_parse_uri_host(bi, host) < 0 ||
 	    dpp_parse_uri_pk(bi, pk) < 0) {
 		dpp_bootstrap_info_free(bi);
 		bi = NULL;
@@ -632,6 +695,7 @@ int dpp_gen_uri(struct dpp_bootstrap_info *bi)
 	char macstr[ETH_ALEN * 2 + 10];
 	size_t len;
 	char supp_curves[10];
+	char host[100];
 
 	len = 4; /* "DPP:" */
 	if (bi->chan)
@@ -664,11 +728,29 @@ int dpp_gen_uri(struct dpp_bootstrap_info *bi)
 		supp_curves[0] = '\0';
 	}
 
+	host[0] = '\0';
+	if (bi->host) {
+		char buf[100];
+		const char *addr;
+
+		addr = hostapd_ip_txt(bi->host, buf, sizeof(buf));
+		if (!addr)
+			return -1;
+		if (bi->port == DPP_TCP_PORT)
+			len += os_snprintf(host, sizeof(host), "H:%s;", addr);
+		else if (bi->host->af == AF_INET)
+			len += os_snprintf(host, sizeof(host), "H:%s:%u;",
+					   addr, bi->port);
+		else
+			len += os_snprintf(host, sizeof(host), "H:[%s]:%u;",
+					   addr, bi->port);
+	}
+
 	os_free(bi->uri);
 	bi->uri = os_malloc(len + 1);
 	if (!bi->uri)
 		return -1;
-	os_snprintf(bi->uri, len + 1, "DPP:%s%s%s%s%s%s%s%s%sK:%s;;",
+	os_snprintf(bi->uri, len + 1, "DPP:%s%s%s%s%s%s%s%s%s%sK:%s;;",
 		    bi->chan ? "C:" : "", bi->chan ? bi->chan : "",
 		    bi->chan ? ";" : "",
 		    macstr,
@@ -677,6 +759,7 @@ int dpp_gen_uri(struct dpp_bootstrap_info *bi)
 		    DPP_VERSION == 3 ? "V:3;" :
 		    (DPP_VERSION == 2 ? "V:2;" : ""),
 		    supp_curves,
+		    host,
 		    bi->pk);
 	return 0;
 }
@@ -4228,7 +4311,7 @@ static int dpp_parse_supported_curves_list(struct dpp_bootstrap_info *bi,
 int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd)
 {
 	char *mac = NULL, *info = NULL, *curve = NULL;
-	char *key = NULL, *supported_curves = NULL;
+	char *key = NULL, *supported_curves = NULL, *host = NULL;
 	u8 *privkey = NULL;
 	size_t privkey_len = 0;
 	int ret = -1;
@@ -4256,6 +4339,7 @@ int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd)
 	curve = get_param(cmd, " curve=");
 	key = get_param(cmd, " key=");
 	supported_curves = get_param(cmd, " supported_curves=");
+	host = get_param(cmd, " host=");
 
 	if (key) {
 		privkey_len = os_strlen(key) / 2;
@@ -4270,6 +4354,7 @@ int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd)
 	    dpp_parse_uri_mac(bi, mac) < 0 ||
 	    dpp_parse_uri_info(bi, info) < 0 ||
 	    dpp_parse_supported_curves_list(bi, supported_curves) < 0 ||
+	    dpp_parse_uri_host(bi, host) < 0 ||
 	    dpp_gen_uri(bi) < 0)
 		goto fail;
 
@@ -4283,6 +4368,7 @@ fail:
 	os_free(info);
 	str_clear_free(key);
 	os_free(supported_curves);
+	os_free(host);
 	bin_clear_free(privkey, privkey_len);
 	dpp_bootstrap_info_free(bi);
 	return ret;
@@ -4338,6 +4424,8 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 	struct dpp_bootstrap_info *bi;
 	char pkhash[2 * SHA256_MAC_LEN + 1];
 	char supp_curves[100];
+	char host[100];
+	int ret;
 
 	bi = dpp_bootstrap_get_id(dpp, id);
 	if (!bi)
@@ -4347,7 +4435,6 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 
 	supp_curves[0] = '\0';
 	if (bi->supported_curves) {
-		int ret;
 		size_t i;
 		char *pos = supp_curves;
 		char *end = &supp_curves[sizeof(supp_curves)];
@@ -4374,6 +4461,17 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 			supp_curves[0] = '\0';
 	}
 
+	host[0] = '\0';
+	if (bi->host) {
+		char buf[100];
+
+		ret = os_snprintf(host, sizeof(host), "host=%s %u\n",
+				  hostapd_ip_txt(bi->host, buf, sizeof(buf)),
+				  bi->port);
+		if (os_snprintf_error(sizeof(host), ret))
+			return -1;
+	}
+
 	return os_snprintf(reply, reply_size, "type=%s\n"
 			   "mac_addr=" MACSTR "\n"
 			   "info=%s\n"
@@ -4381,7 +4479,7 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 			   "use_freq=%u\n"
 			   "curve=%s\n"
 			   "pkhash=%s\n"
-			   "version=%d\n%s",
+			   "version=%d\n%s%s",
 			   dpp_bootstrap_type_txt(bi->type),
 			   MAC2STR(bi->mac_addr),
 			   bi->info ? bi->info : "",
@@ -4390,7 +4488,8 @@ int dpp_bootstrap_info(struct dpp_global *dpp, int id,
 			   bi->curve->name,
 			   pkhash,
 			   bi->version,
-			   supp_curves);
+			   supp_curves,
+			   host);
 }
 
 

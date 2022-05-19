@@ -163,6 +163,8 @@ struct dpp_bootstrap_info {
 	u8 mac_addr[ETH_ALEN];
 	char *chan;
 	char *info;
+	struct hostapd_ip_addr *host;
+	unsigned int port;
 	char *pk;
 	unsigned int freq[DPP_BOOTSTRAP_MAX_FREQ];
 	unsigned int num_freq;
