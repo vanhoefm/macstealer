@@ -3372,6 +3372,29 @@ def test_sigma_dut_dpp_tcp_configurator_init_mutual(dev, apdev):
         stop_sigma_dut(sigma)
         dev[1].request("DPP_CONTROLLER_STOP")
 
+def test_sigma_dut_dpp_tcp_configurator_init_from_uri(dev, apdev):
+    """sigma_dut DPP TCP Configurator as initiator with addr from URI"""
+    check_dpp_capab(dev[0], min_ver=2)
+    check_dpp_capab(dev[1], min_ver=2)
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        id_c = dev[1].dpp_bootstrap_gen(host="127.0.0.1")
+        uri_c = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id_c)
+        if "OK" not in dev[1].request("DPP_CONTROLLER_START role=enrollee"):
+            raise Exception("Failed to start Controller")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,SetPeerBootstrap,DPPBootstrappingdata,%s,DPPBS,QR" % to_hex(uri_c))
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPOverTCP,from-uri,DPPTimeout,6"
+        res = sigma_dut_cmd(cmd, timeout=10)
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+        dev[1].request("DPP_CONTROLLER_STOP")
+
 def test_sigma_dut_dpp_nfc_handover_requestor_enrollee(dev, apdev):
     """sigma_dut DPP/NFC handover requestor as Enrollee"""
     check_dpp_capab(dev[0])
