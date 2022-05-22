@@ -1557,6 +1557,15 @@ static void tls_msg_cb(int write_p, int version, int content_type,
 	struct tls_connection *conn = arg;
 	const u8 *pos = buf;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if ((SSL_version(ssl) == TLS1_VERSION ||
+	     SSL_version(ssl) == TLS1_1_VERSION) &&
+	    SSL_get_security_level(ssl) > 0) {
+		wpa_printf(MSG_DEBUG,
+			   "OpenSSL: Drop security level to 0 to allow TLS 1.0/1.1 use of MD5-SHA1 signature algorithm");
+		SSL_set_security_level(ssl, 0);
+	}
+#endif /* OpenSSL version >= 3.0 */
 	if (write_p == 2) {
 		wpa_printf(MSG_DEBUG,
 			   "OpenSSL: session ver=0x%x content_type=%d",
