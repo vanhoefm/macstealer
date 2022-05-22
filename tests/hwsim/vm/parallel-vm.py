@@ -96,6 +96,7 @@ def vm_read_stdout(vm, test_queue):
     global total_started, total_passed, total_failed, total_skipped
     global rerun_failures
     global first_run_failures
+    global all_failed
 
     ready = False
     try:
@@ -136,6 +137,7 @@ def vm_read_stdout(vm, test_queue):
                 name = vals[1]
             logger.debug("VM[%d] test case failed: %s" % (vm['idx'], name))
             vm['failed'].append(name)
+            all_failed.append(name)
             if name != vm['current_name']:
                 logger.info("VM[%d] test result mismatch: %s (expected %s)" % (vm['idx'], name, vm['current_name']))
             else:
@@ -267,20 +269,20 @@ def update_screen(scr, total_tests):
     scr.addstr("{} %".format(int(100.0 * (total_passed + total_failed + total_skipped) / total_tests)))
     scr.addstr(num_servers + 1, 20,
                "TOTAL={} STARTED={} PASS={} FAIL={} SKIP={}".format(total_tests, total_started, total_passed, total_failed, total_skipped))
-    failed = get_failed(vm)
-    if len(failed) > 0:
+    global all_failed
+    max_y, max_x = scr.getmaxyx()
+    max_lines = max_y - num_servers - 3
+    if len(all_failed) > 0 and max_lines > 0:
         scr.move(num_servers + 2, 0)
-        scr.clrtoeol()
-        scr.addstr("Failed test cases: ")
+        scr.addstr("Last failed test cases:")
+        if max_lines >= len(all_failed):
+            max_lines = len(all_failed)
         count = 0
-        for f in failed:
+        for i in range(len(all_failed) - max_lines, len(all_failed)):
             count += 1
-            if count > 30:
-                scr.addstr('...')
-                scr.clrtoeol()
-                break
-            scr.addstr(f)
-            scr.addstr(' ')
+            scr.move(num_servers + 2 + count, 0)
+            scr.addstr(all_failed[i])
+            scr.clrtoeol()
     scr.refresh()
 
 def show_progress(scr):
@@ -366,6 +368,7 @@ def main():
     import os
     global num_servers
     global vm
+    global all_failed
     global dir
     global timestamp
     global tests
@@ -484,6 +487,7 @@ def main():
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
 
+    all_failed = []
     vm = {}
     for i in range(0, num_servers):
         cmd = [os.path.join(scriptsdir, 'vm-run.sh'),
@@ -520,6 +524,9 @@ def main():
                 pass
             def clrtoeol(self):
                 pass
+            def getmaxyx(self):
+                return (25, 80)
+
         show_progress(FakeScreen())
 
     with open('{}/{}-parallel.log'.format(dir, timestamp), 'w') as f:
