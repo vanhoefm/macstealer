@@ -8,6 +8,7 @@
 
 import os
 import re
+import gc
 import sys
 import time
 from datetime import datetime
@@ -576,6 +577,15 @@ def main():
                 if args.loglevel == logging.WARNING:
                     print("Exception: " + str(e))
                 result = "FAIL"
+
+            # Work around some objects having __del__, we really should
+            # use context managers, but that's complex. Doing this here
+            # will (on cpython at least) at make sure those objects that
+            # are no longer reachable will be collected now, invoking
+            # __del__() on them. This then ensures that __del__() isn't
+            # invoked at a bad time, e.g. causing recursion in locking.
+            gc.collect()
+
             open('/dev/kmsg', 'w').write('TEST-STOP %s @%.6f\n' % (name, time.time()))
             for d in dev:
                 try:
