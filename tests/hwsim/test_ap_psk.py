@@ -6,7 +6,10 @@
 
 from remotehost import remote_compatible
 import binascii
-from Crypto.Cipher import AES
+try:
+    from Cryptodome.Cipher import AES
+except ImportError:
+    from Crypto.Cipher import AES
 import hashlib
 import hmac
 import logging

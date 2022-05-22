@@ -8,7 +8,10 @@ from remotehost import remote_compatible
 from tshark import run_tshark
 import base64
 import binascii
-from Crypto.Cipher import AES
+try:
+    from Cryptodome.Cipher import AES
+except ImportError:
+    from Crypto.Cipher import AES
 import hashlib
 import hmac
 import os
