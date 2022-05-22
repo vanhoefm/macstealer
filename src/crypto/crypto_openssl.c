@@ -25,6 +25,7 @@
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
+#include <openssl/rsa.h>
 #else /* OpenSSL version >= 3.0 */
 #include <openssl/cmac.h>
 #endif /* OpenSSL version >= 3.0 */
