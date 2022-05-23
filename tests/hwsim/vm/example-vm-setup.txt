@@ -3,7 +3,7 @@ Step-by-step guide for setting up hostapd/wpa_supplicant test framework (VM)
 
 This document can be used as a quick guide for getting started with
 hostapd/wpa_supplicant test framework with mac80211_hwsim. While the
-example here uses Ubuntu 16.04.1 server to have a list of exact steps,
+example here uses Ubuntu 22.04 desktop to have a list of exact steps,
 there are no requirements for using that specific distribution in the
 testing setup.
 
@@ -11,10 +11,9 @@ The steps here describe how to run a guest VM for testing on a Linux
 host system.
 
 
-Install Ubuntu Server 16.04.1 as the host system for VMs
+Install Ubuntu 22.04 as the host system for VMs
 
-- download installation image, e.g.,
-  http://releases.ubuntu.com/16.04.1/ubuntu-16.04.1-server-amd64.iso
+- download installation image
 - install the host system with default settings
 - boot to the installed system
 - update the installed packages:
@@ -24,22 +23,22 @@ Install Ubuntu Server 16.04.1 as the host system for VMs
 
 Install the prerequisite packages that may not have been installed by default
 
-# kvm for running the VM guests
-sudo apt install qemu-kvm
-
 # build tools
-sudo apt install build-essential git libpcap-dev libsqlite3-dev binutils-dev \
-	bc pkg-config libssl-dev libiberty-dev libdbus-1-dev \
-	libnl-3-dev libnl-genl-3-dev libnl-route-3-dev
+sudo apt install build-essential git libpcap-dev libssl-dev libxml2-dev \
+	libcurl4-openssl-dev libnl-3-dev libnl-genl-3-dev libnl-route-3-dev \
+	libsqlite3-dev binutils-dev libiberty-dev zlib1g-dev libpcsclite-dev \
+	flex bison libconfig-dev
 
 # tools used be the test scripts
-sudo apt install python-minimal python-crypto python-pyrad python-netifaces \
-	python-dbus python-gobject python-openssl bridge-utils ebtables tshark
+sudo apt install net-tools bridge-utils ebtables iw tshark \
+	python3-openssl python3-pyrad python3-cryptography python3-pycryptodome
 
-
-Enable kvm use for the user
-
+# If using kvm and VM instead of UML (though, UML is the recommended option)
+# kvm for running the VM guests
+sudo apt install qemu-kvm
+#Enable kvm use for the user
 sudo adduser $USER kvm
+
 
 
 Download a snapshot of the hostap.git repository and build the programs
@@ -50,7 +49,7 @@ cd hostap/tests/hwsim
 ./build.sh
 cd vm
 cat > vm-config <<EOF
-KERNELDIR=~/wireless-testing
+KERNELDIR=~/wireless-next
 MEMORY=512
 KVMARGS="-cpu host"
 EOF
@@ -59,11 +58,31 @@ EOF
 Build a Linux kernel for testing
 
 cd
-git clone git://git.kernel.org/pub/scm/linux/kernel/git/wireless/wireless-testing.git
-cd wireless-testing
-cp ~/hostap/tests/hwsim/vm/kernel-config .config
-make oldconfig
-make -j8
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/wireless/wireless-next.git
+cd wireless-next
+cp ~/hostap/tests/hwsim/vm/kernel-config.uml .config
+make ARCH=um oldconfig
+make -j8 ARCH=um
+
+
+Build wmediumd for testing
+
+cd
+git clone https://github.com/bcopeland/wmediumd.git
+cd wmediumd
+make
+sudo cp wmediumd/wmediumd /usr/local/bin
+
+
+Build sigma_dut for testing
+
+cd
+git clone https://github.com/qca/sigma-dut.git
+cd sigma_dut
+make
+cd ~/hostap/tests/hwsim
+ln -s ~/sigma_dut/sigma_dut
+ln -s ~/sigma_dut/dpp-ca.py
 
 
 Setup is now ready for testing. You can run a quick test to confirm that
