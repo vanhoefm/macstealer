@@ -118,6 +118,19 @@ static const unsigned char * ASN1_STRING_get0_data(const ASN1_STRING *x)
 {
 	return ASN1_STRING_data((ASN1_STRING *) x);
 }
+
+
+static const ASN1_TIME * X509_get0_notBefore(const X509 *x)
+{
+	return X509_get_notBefore(x);
+}
+
+
+static const ASN1_TIME * X509_get0_notAfter(const X509 *x)
+{
+	return X509_get_notAfter(x);
+}
+
 #endif /* OpenSSL version < 1.1.0 */
 
 
@@ -3944,6 +3957,8 @@ static EVP_PKEY * crypto_rsa_key_read_public(FILE *f)
 {
 	EVP_PKEY *pkey;
 	X509 *x509;
+	const ASN1_TIME *not_before, *not_after;
+	int res_before, res_after;
 
 	pkey = PEM_read_PUBKEY(f, NULL, NULL, NULL);
 	if (pkey)
@@ -3954,17 +3969,36 @@ static EVP_PKEY * crypto_rsa_key_read_public(FILE *f)
 	if (!x509)
 		return NULL;
 
+	not_before = X509_get0_notBefore(x509);
+	not_after = X509_get0_notAfter(x509);
+	if (!not_before || !not_after)
+		goto fail;
+	res_before = X509_cmp_current_time(not_before);
+	res_after = X509_cmp_current_time(not_after);
+	if (!res_before || !res_after)
+		goto fail;
+	if (res_before > 0 || res_after < 0) {
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: Certificate for RSA public key is not valid at this time (%d %d)",
+			   res_before, res_after);
+		goto fail;
+	}
+
 	pkey = X509_get_pubkey(x509);
 	X509_free(x509);
 
 	if (!pkey)
 		return NULL;
 	if (EVP_PKEY_base_id(pkey) != EVP_PKEY_RSA) {
+		wpa_printf(MSG_INFO, "OpenSSL: No RSA public key found");
 		EVP_PKEY_free(pkey);
 		return NULL;
 	}
 
 	return pkey;
+fail:
+	X509_free(x509);
+	return NULL;
 }
 
 
