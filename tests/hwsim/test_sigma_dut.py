@@ -4425,6 +4425,39 @@ def test_sigma_dut_eap_ttls_uosc_ca_mistrust(dev, apdev, params):
     finally:
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_eap_aka(dev, apdev, params):
+    """sigma_dut controlled STA and EAP-AKA parameters"""
+    logdir = params['logdir']
+    name = "sigma_dut_eap_aka"
+    cert_file = name + ".imsi-privacy.pem"
+
+    with open("auth_serv/imsi-privacy-cert.pem", "r") as f:
+        with open(os.path.join(logdir, cert_file), "w") as f2:
+            f2.write(f.read())
+
+    ssid = "test-wpa2-eap"
+    params = hostapd.wpa2_eap_params(ssid=ssid)
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    ifname = dev[0].ifname
+    sigma = start_sigma_dut(ifname, cert_path=logdir)
+
+    identity = "0232010000000000@wlan.mnc232.mcc02.3gppnetwork.org"
+    password = "90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123"
+    cmd = "sta_set_eapaka,interface,%s,ssid,%s,keymgmttype,wpa2,encpType,AES-CCMP,imsiPrivacyCert,%s,username,%s,password,%s" % (ifname, ssid, cert_file, identity, password)
+
+    try:
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,WPA3" % ifname)
+        sigma_dut_cmd_check(cmd)
+        sigma_dut_cmd_check("sta_associate,interface,%s,ssid,%s,channel,1" % (ifname, ssid),
+                            timeout=10)
+        sigma_dut_wait_connected(ifname)
+        sigma_dut_cmd_check("sta_disconnect,interface," + ifname)
+        sigma_dut_cmd_check("sta_reset_default,interface," + ifname)
+        dev[0].dump_monitor()
+    finally:
+        stop_sigma_dut(sigma)
+
 def start_sae_pwe_ap(apdev, sae_pwe):
     ssid = "test-sae"
     params = hostapd.wpa2_params(ssid=ssid, passphrase="12345678")
