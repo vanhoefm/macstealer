@@ -1696,7 +1696,7 @@ struct wpabuf * eap_sm_buildIdentity(struct eap_sm *sm, int id, int encrypted)
 		identity_len = config->machine_identity_len;
 		wpa_hexdump_ascii(MSG_DEBUG, "EAP: using machine identity",
 				  identity, identity_len);
-	} else if (config->imsi_privacy_key && config->identity &&
+	} else if (config->imsi_privacy_cert && config->identity &&
 		   config->identity_len > 0) {
 		const u8 *pos = config->identity;
 		const u8 *end = config->identity + config->identity_len;

@@ -103,20 +103,20 @@ static void * eap_aka_init(struct eap_sm *sm)
 
 	data->eap_method = EAP_TYPE_AKA;
 
-	if (config && config->imsi_privacy_key) {
+	if (config && config->imsi_privacy_cert) {
 #ifdef CRYPTO_RSA_OAEP_SHA256
 		data->imsi_privacy_key = crypto_rsa_key_read(
-			config->imsi_privacy_key, false);
+			config->imsi_privacy_cert, false);
 		if (!data->imsi_privacy_key) {
 			wpa_printf(MSG_ERROR,
-				   "EAP-AKA: Failed to read/parse IMSI privacy key %s",
-				   config->imsi_privacy_key);
+				   "EAP-AKA: Failed to read/parse IMSI privacy certificate %s",
+				   config->imsi_privacy_cert);
 			os_free(data);
 			return NULL;
 		}
 #else /* CRYPTO_RSA_OAEP_SHA256 */
 		wpa_printf(MSG_ERROR,
-			   "EAP-AKA: No support for imsi_privacy_key in the build");
+			   "EAP-AKA: No support for imsi_privacy_cert in the build");
 		os_free(data);
 		return NULL;
 #endif /* CRYPTO_RSA_OAEP_SHA256 */

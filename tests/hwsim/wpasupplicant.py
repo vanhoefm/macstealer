@@ -454,7 +454,7 @@ class WpaSupplicant:
                   "excluded_ssid", "milenage", "ca_cert", "client_cert",
                   "private_key", "domain_suffix_match", "provisioning_sp",
                   "roaming_partner", "phase1", "phase2", "private_key_passwd",
-                  "roaming_consortiums", "imsi_privacy_key"]
+                  "roaming_consortiums", "imsi_privacy_cert"]
         for field in quoted:
             if field in params:
                 self.set_cred_quoted(id, field, params[field])
@@ -1083,7 +1083,7 @@ class WpaSupplicant:
                   "sae_password_id", "check_cert_subject",
                   "machine_ca_cert", "machine_client_cert",
                   "machine_private_key", "machine_phase2",
-                  "imsi_identity", "imsi_privacy_key"]
+                  "imsi_identity", "imsi_privacy_cert"]
         for field in quoted:
             if field in kwargs and kwargs[field]:
                 self.set_network_quoted(id, field, kwargs[field])

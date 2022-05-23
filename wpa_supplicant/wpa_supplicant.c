@@ -8001,18 +8001,18 @@ int wpas_network_disabled(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 		return 1;
 
 #ifdef CRYPTO_RSA_OAEP_SHA256
-	if (ssid->eap.imsi_privacy_key) {
+	if (ssid->eap.imsi_privacy_cert) {
 		struct crypto_rsa_key *key;
 		bool failed = false;
 
-		key = crypto_rsa_key_read(ssid->eap.imsi_privacy_key, false);
+		key = crypto_rsa_key_read(ssid->eap.imsi_privacy_cert, false);
 		if (!key)
 			failed = true;
 		crypto_rsa_key_free(key);
 		if (failed) {
 			wpa_printf(MSG_DEBUG,
-				   "Invalid imsi_privacy_key (%s) - disable network",
-				   ssid->eap.imsi_privacy_key);
+				   "Invalid imsi_privacy_cert (%s) - disable network",
+				   ssid->eap.imsi_privacy_cert);
 			return 1;
 		}
 	}

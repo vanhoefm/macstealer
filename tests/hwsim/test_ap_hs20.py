@@ -545,7 +545,7 @@ def hs20_simulated_sim(dev, ap, method, imsi_privacy=False):
         tls = dev.request("GET tls_library")
         if not tls.startswith("OpenSSL"):
             raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
-        params['imsi_privacy_key'] = "auth_serv/imsi-privacy-cert.pem"
+        params['imsi_privacy_cert'] = "auth_serv/imsi-privacy-cert.pem"
     dev.add_cred_values(params)
     interworking_select(dev, bssid, "home", freq="2412")
     interworking_connect(dev, bssid, method)

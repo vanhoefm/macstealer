@@ -1065,9 +1065,9 @@ static int interworking_connect_3gpp(struct wpa_supplicant *wpa_s,
 			goto fail;
 	}
 
-	if (cred->imsi_privacy_key && cred->imsi_privacy_key[0]) {
-		if (wpa_config_set_quoted(ssid, "imsi_privacy_key",
-					  cred->imsi_privacy_key) < 0)
+	if (cred->imsi_privacy_cert && cred->imsi_privacy_cert[0]) {
+		if (wpa_config_set_quoted(ssid, "imsi_privacy_cert",
+					  cred->imsi_privacy_cert) < 0)
 			goto fail;
 	}
 

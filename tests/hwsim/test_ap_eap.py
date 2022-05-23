@@ -346,7 +346,7 @@ def test_ap_wpa2_eap_sim_imsi_identity(dev, apdev, params):
     eap_reauth(dev[0], "SIM")
 
 def test_ap_wpa2_eap_sim_imsi_privacy_key(dev, apdev):
-    """WPA2-Enterprise connection using EAP-SIM and imsi_privacy_key"""
+    """WPA2-Enterprise connection using EAP-SIM and imsi_privacy_cert"""
     tls = dev[0].request("GET tls_library")
     if not tls.startswith("OpenSSL"):
         raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
@@ -359,7 +359,7 @@ def test_ap_wpa2_eap_sim_imsi_privacy_key(dev, apdev):
 
     eap_connect(dev[0], hapd, "SIM",
                 "1232010000000000@wlan.mnc232.mcc02.3gppnetwork.org",
-                imsi_privacy_key="auth_serv/imsi-privacy-cert.pem",
+                imsi_privacy_cert="auth_serv/imsi-privacy-cert.pem",
                 password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581")
     eap_reauth(dev[0], "SIM")
 
@@ -1131,7 +1131,7 @@ def test_ap_wpa2_eap_aka_imsi_identity(dev, apdev, params):
     eap_reauth(dev[0], "AKA")
 
 def test_ap_wpa2_eap_aka_imsi_privacy_key(dev, apdev):
-    """WPA2-Enterprise connection using EAP-AKA and imsi_privacy_key"""
+    """WPA2-Enterprise connection using EAP-AKA and imsi_privacy_cert"""
     tls = dev[0].request("GET tls_library")
     if not tls.startswith("OpenSSL"):
         raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
@@ -1144,12 +1144,12 @@ def test_ap_wpa2_eap_aka_imsi_privacy_key(dev, apdev):
 
     eap_connect(dev[0], hapd, "AKA",
                 "0232010000000000@wlan.mnc232.mcc02.3gppnetwork.org",
-                imsi_privacy_key="auth_serv/imsi-privacy-cert.pem",
+                imsi_privacy_cert="auth_serv/imsi-privacy-cert.pem",
                 password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123")
     eap_reauth(dev[0], "AKA")
 
 def test_ap_wpa2_eap_aka_imsi_privacy_key_expired(dev, apdev):
-    """WPA2-Enterprise connection using EAP-AKA and expired imsi_privacy_key"""
+    """WPA2-Enterprise connection using EAP-AKA and expired imsi_privacy_cert"""
     tls = dev[0].request("GET tls_library")
     if not tls.startswith("OpenSSL"):
         raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
@@ -1166,7 +1166,7 @@ def test_ap_wpa2_eap_aka_imsi_privacy_key_expired(dev, apdev):
                    eap="AKA",
                    identity="0232010000000000@wlan.mnc232.mcc02.3gppnetwork.org",
                    wait_connect=False, scan_freq="2412", ieee80211w="1",
-                   imsi_privacy_key="auth_serv/imsi-privacy-cert-2.pem",
+                   imsi_privacy_cert="auth_serv/imsi-privacy-cert-2.pem",
                    password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123")
     ev = dev[0].wait_event(["Trying to associate with"], timeout=10)
     if ev is not None:
@@ -1428,7 +1428,7 @@ def test_ap_wpa2_eap_aka_prime_imsi_identity(dev, apdev, params):
     eap_reauth(dev[0], "AKA'")
 
 def test_ap_wpa2_eap_aka_prime_imsi_privacy_key(dev, apdev):
-    """WPA2-Enterprise connection using EAP-AKA' and imsi_privacy_key"""
+    """WPA2-Enterprise connection using EAP-AKA' and imsi_privacy_cert"""
     tls = dev[0].request("GET tls_library")
     if not tls.startswith("OpenSSL"):
         raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
@@ -1441,7 +1441,7 @@ def test_ap_wpa2_eap_aka_prime_imsi_privacy_key(dev, apdev):
 
     eap_connect(dev[0], hapd, "AKA'",
                 "6555444333222111@wlan.mnc555.mcc44.3gppnetwork.org",
-                imsi_privacy_key="auth_serv/imsi-privacy-cert.pem",
+                imsi_privacy_cert="auth_serv/imsi-privacy-cert.pem",
                 password="5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123")
     eap_reauth(dev[0], "AKA'")
 
