@@ -133,6 +133,9 @@ static void * eap_sim_init(struct eap_sm *sm)
 					   "sim_min_num_chal configuration "
 					   "(%lu, expected 2 or 3)",
 					   (unsigned long) data->min_num_chal);
+#ifdef CRYPTO_RSA_OAEP_SHA256
+				crypto_rsa_key_free(data->imsi_privacy_key);
+#endif /* CRYPTO_RSA_OAEP_SHA256 */
 				os_free(data);
 				return NULL;
 			}
