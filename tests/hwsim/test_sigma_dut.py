@@ -1816,6 +1816,41 @@ def run_sigma_dut_dpp_qr_mutual_resp_enrollee(dev, apdev, extra=None):
         dev[0].set("dpp_config_processing", "0")
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_qr_mutual_resp_configurator(dev, apdev):
+    """sigma_dut DPP/QR (mutual) responder as Configurator (NAK from URI)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        id0 = dev[1].dpp_bootstrap_gen(chan="81/6", mac=True,
+                                       supported_curves="P-256:P-384:P-521")
+        uri0 = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,GetLocalBootstrap,DPPCryptoIdentifier,P-256,DPPBS,QR")
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+        hex = res.split(',')[3]
+        uri = from_hex(hex)
+        logger.info("URI from sigma_dut: " + uri)
+
+        id1 = dev[1].dpp_qr_code(uri)
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,SetPeerBootstrap,DPPBootstrappingdata,%s,DPPBS,QR" % to_hex(uri0))
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+
+        t = threading.Thread(target=dpp_init_enrollee_mutual,
+                             args=(dev[1], id1, id0))
+        t.start()
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Mutual,DPPProvisioningRole,Configurator,DPPConfEnrolleeRole,STA,DPPConfIndex,1,DPPNAKECC,URI,DPPBS,QR,DPPTimeout,20"
+        res = sigma_dut_cmd(cmd, timeout=25)
+        t.join()
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+
 def dpp_resp_conf_mutual(dev, conf_id, uri):
     logger.info("Starting DPP responder/configurator in a thread")
     dev.set("dpp_configurator_params",
@@ -2017,16 +2052,37 @@ def test_sigma_dut_dpp_qr_init_configurator_mud_url_nak_change(dev, apdev):
                                            mud_url="https://example.com/mud",
                                            net_access_key_curve="P-384")
 
+def test_sigma_dut_dpp_qr_init_configurator_sign_curve_from_uri(dev, apdev):
+    """sigma_dut DPP/QR initiator as Configurator (signing key from URI)"""
+    run_sigma_dut_dpp_qr_init_configurator(dev, apdev, 1,
+                                           sign_curve_from_uri=True)
+
+def test_sigma_dut_dpp_qr_init_configurator_nak_from_uri(dev, apdev):
+    """sigma_dut DPP/QR initiator as Configurator (NAK from URI)"""
+    run_sigma_dut_dpp_qr_init_configurator(dev, apdev, 1,
+                                           net_access_key_curve="URI")
+
 def run_sigma_dut_dpp_qr_init_configurator(dev, apdev, conf_idx,
                                            prov_role="Configurator",
                                            extra=None, mud_url=None,
-                                           net_access_key_curve=None):
+                                           net_access_key_curve=None,
+                                           sign_curve_from_uri=False):
     min_ver = 3 if net_access_key_curve else 1
     check_dpp_capab(dev[0], min_ver=min_ver)
     check_dpp_capab(dev[1], min_ver=min_ver)
     sigma = start_sigma_dut(dev[0].ifname)
     try:
-        id0 = dev[1].dpp_bootstrap_gen(chan="81/6", mac=True)
+        supported_curves = None
+        sign_curve = "P-256"
+
+        if sign_curve_from_uri:
+            supported_curves = "P-256:P-384:P-521"
+            sign_curve = "URI"
+        if net_access_key_curve == "URI":
+            supported_curves = "P-256:P-384:P-521"
+
+        id0 = dev[1].dpp_bootstrap_gen(chan="81/6", mac=True,
+                                       supported_curves=supported_curves)
         uri0 = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
 
         if mud_url:
@@ -2039,7 +2095,7 @@ def run_sigma_dut_dpp_qr_init_configurator(dev, apdev, conf_idx,
         if "status,COMPLETE" not in res:
             raise Exception("dev_exec_action did not succeed: " + res)
 
-        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,%s,DPPConfIndex,%d,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPTimeout,6" % (prov_role, conf_idx)
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,%s,DPPConfIndex,%d,DPPSigningKeyECC,%s,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPTimeout,6" % (prov_role, conf_idx, sign_curve)
         if net_access_key_curve:
             cmd += ",DPPNAKECC," + net_access_key_curve
         if extra:
