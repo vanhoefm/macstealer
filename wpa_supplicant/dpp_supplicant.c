@@ -3130,6 +3130,13 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 		return;
 	if (WPA_GET_BE24(buf) != OUI_WFA || buf[3] != DPP_OUI_TYPE)
 		return;
+#ifdef CONFIG_TESTING_OPTIONS
+	if (wpa_s->dpp_discard_public_action) {
+		wpa_printf(MSG_DEBUG,
+			   "TESTING: Discard received DPP Public Action frame");
+		return;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
 	hdr = buf;
 	buf += 4;
 	len -= 4;

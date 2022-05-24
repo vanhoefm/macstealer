@@ -1497,6 +1497,7 @@ struct wpa_supplicant {
 	char *dpp_discovery_override;
 	char *dpp_groups_override;
 	unsigned int dpp_ignore_netaccesskey_mismatch:1;
+	unsigned int dpp_discard_public_action:1;
 #endif /* CONFIG_TESTING_OPTIONS */
 #endif /* CONFIG_DPP */
 

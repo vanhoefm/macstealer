@@ -7348,3 +7348,18 @@ def test_dpp_qr_code_config_event_responder(dev, apdev):
     time.sleep(0.01)
     dev[0].dump_monitor()
     dev[1].dump_monitor()
+
+def test_dpp_discard_public_action(dev, apdev):
+    """DPP and discarding Public Action frames"""
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/1")
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    dev[0].dpp_listen(2412)
+    dev[1].set("dpp_discard_public_action", "1")
+    dev[1].dpp_auth_init(uri=uri0)
+    ev = dev[0].wait_event(["DPP-FAIL"], timeout=5)
+    if ev is None:
+        raise Exception("Failure not reported")
+    if "No Auth Confirm received" not in ev:
+        raise Exception("Unexpected failure reason: " + ev)
