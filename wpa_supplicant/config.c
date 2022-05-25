@@ -2504,6 +2504,7 @@ static const struct parse_data ssid_fields[] = {
 	{ INT(eapol_flags) },
 	{ INTe(sim_num, sim_num) },
 	{ STRe(imsi_privacy_cert, imsi_privacy_cert) },
+	{ STRe(imsi_privacy_attr, imsi_privacy_attr) },
 	{ STRe(openssl_ciphers, openssl_ciphers) },
 	{ INTe(erp, erp) },
 #endif /* IEEE8021X_EAPOL */
@@ -2772,6 +2773,7 @@ static void eap_peer_config_free(struct eap_peer_config *eap)
 	os_free(eap->anonymous_identity);
 	os_free(eap->imsi_identity);
 	os_free(eap->imsi_privacy_cert);
+	os_free(eap->imsi_privacy_attr);
 	os_free(eap->machine_identity);
 	bin_clear_free(eap->password, eap->password_len);
 	bin_clear_free(eap->machine_password, eap->machine_password_len);
@@ -2876,6 +2878,7 @@ void wpa_config_free_cred(struct wpa_cred *cred)
 	os_free(cred->req_conn_capab_port);
 	os_free(cred->req_conn_capab_proto);
 	os_free(cred->imsi_privacy_cert);
+	os_free(cred->imsi_privacy_attr);
 	os_free(cred);
 }
 
@@ -3917,6 +3920,12 @@ int wpa_config_set_cred(struct wpa_cred *cred, const char *var,
 		return 0;
 	}
 
+	if (os_strcmp(var, "imsi_privacy_attr") == 0) {
+		os_free(cred->imsi_privacy_attr);
+		cred->imsi_privacy_attr = val;
+		return 0;
+	}
+
 	if (line) {
 		wpa_printf(MSG_ERROR, "Line %d: unknown cred field '%s'.",
 			   line, var);
@@ -4069,6 +4078,9 @@ char * wpa_config_get_cred_no_key(struct wpa_cred *cred, const char *var)
 
 	if (os_strcmp(var, "imsi_privacy_cert") == 0)
 		return alloc_strdup(cred->imsi_privacy_cert);
+
+	if (os_strcmp(var, "imsi_privacy_attr") == 0)
+		return alloc_strdup(cred->imsi_privacy_attr);
 
 	if (os_strcmp(var, "milenage") == 0) {
 		if (!(cred->milenage))

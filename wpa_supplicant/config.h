@@ -191,6 +191,16 @@ struct wpa_cred {
 	char *imsi_privacy_cert;
 
 	/**
+	 * imsi_privacy_attr - IMSI privacy attribute
+	 *
+	 * This field is used to help the EAP-SIM/AKA/AKA' server to identify
+	 * the used certificate (and as such, the matching private key). This
+	 * is set to an attribute in name=value format if the operator needs
+	 * this information.
+	 */
+	char *imsi_privacy_attr;
+
+	/**
 	 * engine - Use an engine for private key operations
 	 */
 	int engine;

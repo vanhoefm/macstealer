@@ -1036,6 +1036,13 @@ static void wpa_config_write_cred(FILE *f, struct wpa_cred *cred)
 		fprintf(f, "\tcert_id=\"%s\"\n", cred->cert_id);
 	if (cred->ca_cert_id)
 		fprintf(f, "\tca_cert_id=\"%s\"\n", cred->ca_cert_id);
+
+	if (cred->imsi_privacy_cert)
+		fprintf(f, "\timsi_privacy_cert=\"%s\"\n",
+			cred->imsi_privacy_cert);
+	if (cred->imsi_privacy_attr)
+		fprintf(f, "\timsi_privacy_attr=\"%s\"\n",
+			cred->imsi_privacy_attr);
 }
 
 
