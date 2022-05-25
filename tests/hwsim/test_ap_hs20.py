@@ -530,7 +530,8 @@ def test_ap_hs20_select(dev, apdev):
                                  'domain': "example.org"})
     interworking_select(dev[0], bssid2, "home", freq="2412")
 
-def hs20_simulated_sim(dev, ap, method, imsi_privacy=False):
+def hs20_simulated_sim(dev, ap, method, imsi_privacy=False,
+                       imsi_privacy_attr=False):
     bssid = ap['bssid']
     params = hs20_ap_params()
     params['hessid'] = bssid
@@ -546,6 +547,8 @@ def hs20_simulated_sim(dev, ap, method, imsi_privacy=False):
         if not tls.startswith("OpenSSL"):
             raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
         params['imsi_privacy_cert'] = "auth_serv/imsi-privacy-cert.pem"
+        if imsi_privacy_attr:
+            params['imsi_privacy_attr'] = "Identifier=1234567"
     dev.add_cred_values(params)
     interworking_select(dev, bssid, "home", freq="2412")
     interworking_connect(dev, bssid, method)
@@ -614,6 +617,12 @@ def test_ap_hs20_aka_imsi_privacy(dev, apdev):
     """Hotspot 2.0 with simulated USIM and EAP-AKA with IMSI privacy"""
     hlr_auc_gw_available()
     hs20_simulated_sim(dev[0], apdev[0], "AKA", imsi_privacy=True)
+
+def test_ap_hs20_aka_imsi_privacy_attr(dev, apdev):
+    """Hotspot 2.0 with simulated USIM and EAP-AKA with IMSI privacy/attr"""
+    hlr_auc_gw_available()
+    hs20_simulated_sim(dev[0], apdev[0], "AKA", imsi_privacy=True,
+                       imsi_privacy_attr=True)
 
 def test_ap_hs20_aka_prime(dev, apdev):
     """Hotspot 2.0 with simulated USIM and EAP-AKA'"""
