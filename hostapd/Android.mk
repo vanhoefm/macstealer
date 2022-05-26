@@ -256,6 +256,7 @@ L_CFLAGS += -DCONFIG_SAE
 OBJS += src/common/sae.c
 ifdef CONFIG_SAE_PK
 L_CFLAGS += -DCONFIG_SAE_PK
+NEED_AES_SIV=y
 OBJS += src/common/sae_pk.c
 endif
 NEED_ECC=y
