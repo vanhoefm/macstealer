@@ -30,8 +30,7 @@ static struct wpabuf * dpp_pkex_build_exchange_req(struct dpp_pkex *pkex,
 						   bool v2)
 {
 	struct crypto_ec *ec = NULL;
-	const struct crypto_ec_point *X;
-	struct crypto_ec_point *Qi = NULL, *M = NULL;
+	struct crypto_ec_point *Qi = NULL, *M = NULL, *X = NULL;
 	u8 *Mx, *My;
 	struct wpabuf *msg = NULL;
 	size_t attr_len;
@@ -150,6 +149,7 @@ skip_finite_cyclic_group:
 	os_memcpy(pkex->Mx, Mx, curve->prime_len);
 
 out:
+	crypto_ec_point_deinit(X, 1);
 	crypto_ec_point_deinit(M, 1);
 	crypto_ec_point_deinit(Qi, 1);
 	crypto_ec_deinit(ec);
@@ -349,9 +349,8 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 	u16 ike_group;
 	struct dpp_pkex *pkex = NULL;
 	struct crypto_ec_point *Qi = NULL, *Qr = NULL, *M = NULL, *X = NULL,
-		*N = NULL;
+		*N = NULL, *Y = NULL;
 	struct crypto_ec *ec = NULL;
-	const struct crypto_ec_point *Y;
 	u8 *x_coord = NULL, *y_coord = NULL;
 	u8 Kx[DPP_MAX_SHARED_SECRET_LEN];
 	size_t Kx_len;
@@ -566,6 +565,7 @@ out:
 	crypto_ec_point_deinit(M, 1);
 	crypto_ec_point_deinit(N, 1);
 	crypto_ec_point_deinit(X, 1);
+	crypto_ec_point_deinit(Y, 1);
 	crypto_ec_deinit(ec);
 	return pkex;
 fail:

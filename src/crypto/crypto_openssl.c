@@ -3413,15 +3413,24 @@ struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
 }
 
 
-const struct crypto_ec_point *
+struct crypto_ec_point *
 crypto_ec_key_get_public_key(struct crypto_ec_key *key)
 {
+	EVP_PKEY *pkey = (EVP_PKEY *) key;
 	const EC_KEY *eckey;
+	const EC_POINT *point;
+	const EC_GROUP *group;
 
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	eckey = EVP_PKEY_get0_EC_KEY(pkey);
 	if (!eckey)
 		return NULL;
-	return (const struct crypto_ec_point *) EC_KEY_get0_public_key(eckey);
+	group = EC_KEY_get0_group(eckey);
+	if (!group)
+		return NULL;
+	point = EC_KEY_get0_public_key(eckey);
+	if (!point)
+		return NULL;
+	return (struct crypto_ec_point *) EC_POINT_dup(point, group);
 }
 
 

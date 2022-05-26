@@ -1035,8 +1035,7 @@ fail:
 int dpp_auth_derive_l_responder(struct dpp_authentication *auth)
 {
 	struct crypto_ec *ec;
-	struct crypto_ec_point *L = NULL;
-	const struct crypto_ec_point *BI;
+	struct crypto_ec_point *L = NULL, *BI = NULL;
 	const struct crypto_bignum *q;
 	struct crypto_bignum *sum = NULL, *lx = NULL, *bR = NULL, *pR = NULL;
 	int ret = -1;
@@ -1071,6 +1070,7 @@ fail:
 	crypto_bignum_deinit(bR, 1);
 	crypto_bignum_deinit(pR, 1);
 	crypto_ec_point_deinit(L, 1);
+	crypto_ec_point_deinit(BI, 1);
 	crypto_ec_deinit(ec);
 	return ret;
 }
@@ -1079,8 +1079,7 @@ fail:
 int dpp_auth_derive_l_initiator(struct dpp_authentication *auth)
 {
 	struct crypto_ec *ec;
-	struct crypto_ec_point *L = NULL, *sum = NULL;
-	const struct crypto_ec_point *BR, *PR;
+	struct crypto_ec_point *L = NULL, *sum = NULL, *BR = NULL, *PR = NULL;
 	struct crypto_bignum *lx = NULL, *bI = NULL;
 	int ret = -1;
 
@@ -1112,6 +1111,8 @@ fail:
 	crypto_bignum_deinit(bI, 1);
 	crypto_ec_point_deinit(sum, 1);
 	crypto_ec_point_deinit(L, 1);
+	crypto_ec_point_deinit(BR, 1);
+	crypto_ec_point_deinit(PR, 1);
 	crypto_ec_deinit(ec);
 	return ret;
 }
@@ -1443,9 +1444,8 @@ dpp_pkex_derive_Qi(const struct dpp_curve_params *curve, const u8 *mac_init,
 	const u8 *addr[3];
 	size_t len[3];
 	unsigned int num_elem = 0;
-	struct crypto_ec_point *Qi = NULL;
+	struct crypto_ec_point *Qi = NULL, *Pi = NULL;
 	struct crypto_ec_key *Pi_key = NULL;
-	const struct crypto_ec_point *Pi = NULL;
 	struct crypto_bignum *hash_bn = NULL;
 	struct crypto_ec *ec = NULL;
 
@@ -1496,6 +1496,7 @@ dpp_pkex_derive_Qi(const struct dpp_curve_params *curve, const u8 *mac_init,
 	crypto_ec_point_debug_print(ec, Qi, "DPP: Qi");
 out:
 	crypto_ec_key_deinit(Pi_key);
+	crypto_ec_point_deinit(Pi, 1);
 	crypto_bignum_deinit(hash_bn, 1);
 	if (ret_ec && Qi)
 		*ret_ec = ec;
@@ -1518,9 +1519,8 @@ dpp_pkex_derive_Qr(const struct dpp_curve_params *curve, const u8 *mac_resp,
 	const u8 *addr[3];
 	size_t len[3];
 	unsigned int num_elem = 0;
-	struct crypto_ec_point *Qr = NULL;
+	struct crypto_ec_point *Qr = NULL, *Pr = NULL;
 	struct crypto_ec_key *Pr_key = NULL;
-	const struct crypto_ec_point *Pr = NULL;
 	struct crypto_bignum *hash_bn = NULL;
 	struct crypto_ec *ec = NULL;
 
@@ -1572,6 +1572,7 @@ dpp_pkex_derive_Qr(const struct dpp_curve_params *curve, const u8 *mac_resp,
 
 out:
 	crypto_ec_key_deinit(Pr_key);
+	crypto_ec_point_deinit(Pr, 1);
 	crypto_bignum_deinit(hash_bn, 1);
 	if (ret_ec && Qr)
 		*ret_ec = ec;
@@ -1666,8 +1667,7 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 	struct crypto_bignum *sum = NULL, *cR = NULL, *pR = NULL;
 	const struct crypto_bignum *q;
 	struct crypto_ec *ec = NULL;
-	struct crypto_ec_point *M = NULL;
-	const struct crypto_ec_point *CI;
+	struct crypto_ec_point *M = NULL, *CI = NULL;
 	u8 Mx[DPP_MAX_SHARED_SECRET_LEN];
 	u8 prk[DPP_MAX_HASH_LEN];
 	const struct dpp_curve_params *curve;
@@ -1750,6 +1750,7 @@ fail:
 	forced_memzero(prk, sizeof(prk));
 	forced_memzero(Mx, sizeof(Mx));
 	crypto_ec_point_deinit(M, 1);
+	crypto_ec_point_deinit(CI, 1);
 	crypto_bignum_deinit(sum, 1);
 	crypto_bignum_deinit(cR, 1);
 	crypto_bignum_deinit(pR, 1);
@@ -1765,10 +1766,9 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 				     struct json_token *net_access_key)
 {
 	struct crypto_ec_key *pr = NULL, *peer_key = NULL;
-	const struct crypto_ec_point *CR, *PR;
 	struct crypto_bignum *cI = NULL;
 	struct crypto_ec *ec = NULL;
-	struct crypto_ec_point *sum = NULL, *M = NULL;
+	struct crypto_ec_point *sum = NULL, *M = NULL, *CR = NULL, *PR = NULL;
 	u8 Mx[DPP_MAX_SHARED_SECRET_LEN];
 	u8 prk[DPP_MAX_HASH_LEN];
 	int res = -1;
@@ -1844,6 +1844,8 @@ fail:
 	crypto_ec_key_deinit(peer_key);
 	crypto_ec_point_deinit(sum, 1);
 	crypto_ec_point_deinit(M, 1);
+	crypto_ec_point_deinit(CR, 1);
+	crypto_ec_point_deinit(PR, 1);
 	crypto_ec_deinit(ec);
 	return res;
 }
@@ -2264,8 +2266,8 @@ int dpp_update_reconfig_id(struct dpp_reconfig_id *id)
 {
 	const struct crypto_bignum *q;
 	struct crypto_bignum *bn;
-	const struct crypto_ec_point *pp, *generator;
-	struct crypto_ec_point *e_prime_id, *a_nonce;
+	const struct crypto_ec_point *generator;
+	struct crypto_ec_point *e_prime_id, *a_nonce, *pp;
 	int ret = -1;
 
 	pp = crypto_ec_key_get_public_key(id->pp_key);
@@ -2302,6 +2304,7 @@ int dpp_update_reconfig_id(struct dpp_reconfig_id *id)
 fail:
 	crypto_ec_point_deinit(e_prime_id, 1);
 	crypto_ec_point_deinit(a_nonce, 1);
+	crypto_ec_point_deinit(pp, 1);
 	crypto_bignum_deinit(bn, 1);
 	return ret;
 }
@@ -2328,7 +2331,7 @@ struct crypto_ec_point * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
 	struct crypto_ec *ec;
 	struct crypto_bignum *pp = NULL;
 	struct crypto_ec_point *e_id = NULL;
-	const struct crypto_ec_point *a_nonce_point, *e_prime_id_point;
+	struct crypto_ec_point *a_nonce_point, *e_prime_id_point;
 
 	if (!ppkey)
 		return NULL;
@@ -2353,6 +2356,8 @@ struct crypto_ec_point * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
 	crypto_ec_point_debug_print(ec, e_id, "DPP: Decrypted E-id");
 
 fail:
+	crypto_ec_point_deinit(a_nonce_point, 1);
+	crypto_ec_point_deinit(e_prime_id_point, 1);
 	crypto_bignum_deinit(pp, 1);
 	crypto_ec_deinit(ec);
 	return e_id;
@@ -2459,8 +2464,7 @@ int dpp_test_gen_invalid_key(struct wpabuf *msg,
 {
 	struct crypto_ec *ec;
 	struct crypto_ec_key *key = NULL;
-	const struct crypto_ec_point *pub_key;
-	struct crypto_ec_point *p = NULL;
+	struct crypto_ec_point *p = NULL, *pub_key = NULL;
 	u8 *x, *y;
 	int ret = -1;
 
@@ -2493,6 +2497,7 @@ retry:
 	ret = 0;
 fail:
 	crypto_ec_point_deinit(p, 0);
+	crypto_ec_point_deinit(pub_key, 0);
 	crypto_ec_key_deinit(key);
 	crypto_ec_deinit(ec);
 	return ret;
