@@ -3438,6 +3438,14 @@ struct crypto_bignum *
 crypto_ec_key_get_private_key(struct crypto_ec_key *key)
 {
 	EVP_PKEY *pkey = (EVP_PKEY *) key;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	BIGNUM *bn = NULL;
+
+	if (!EVP_PKEY_is_a(pkey, "EC") ||
+	    EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bn) != 1)
+		return NULL;
+	return (struct crypto_bignum *) bn;
+#else /* OpenSSL version >= 3.0 */
 	const EC_KEY *eckey;
 	const BIGNUM *bn;
 
@@ -3448,6 +3456,7 @@ crypto_ec_key_get_private_key(struct crypto_ec_key *key)
 	if (!bn)
 		return NULL;
 	return (struct crypto_bignum *) BN_dup(bn);
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
