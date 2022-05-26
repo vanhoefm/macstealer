@@ -1362,21 +1362,22 @@ struct crypto_hash * crypto_hash_init(enum crypto_hash_alg alg, const u8 *key,
 
 	ctx = os_zalloc(sizeof(*ctx));
 	if (!ctx)
-		return NULL;
+		goto fail;
 	ctx->ctx = EVP_MAC_CTX_new(mac);
 	if (!ctx->ctx) {
-		EVP_MAC_free(mac);
 		os_free(ctx);
-		return NULL;
+		ctx = NULL;
+		goto fail;
 	}
 
 	if (EVP_MAC_init(ctx->ctx, key, key_len, params) != 1) {
 		EVP_MAC_CTX_free(ctx->ctx);
 		bin_clear_free(ctx, sizeof(*ctx));
-		EVP_MAC_free(mac);
-		return NULL;
+		ctx = NULL;
+		goto fail;
 	}
 
+fail:
 	EVP_MAC_free(mac);
 	return ctx;
 #else /* OpenSSL version >= 3.0 */
