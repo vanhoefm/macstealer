@@ -3417,6 +3417,43 @@ struct crypto_ec_point *
 crypto_ec_key_get_public_key(struct crypto_ec_key *key)
 {
 	EVP_PKEY *pkey = (EVP_PKEY *) key;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	char group[64];
+	unsigned char pub[256];
+	size_t len;
+	EC_POINT *point = NULL;
+	EC_GROUP *grp;
+	int res = 0;
+	OSSL_PARAM params[2];
+
+	if (!EVP_PKEY_is_a(pkey, "EC") ||
+	    EVP_PKEY_get_utf8_string_param(pkey, OSSL_PKEY_PARAM_GROUP_NAME,
+					   group, sizeof(group), &len) != 1 ||
+	    EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY,
+					    pub, sizeof(pub), &len) != 1)
+		return NULL;
+
+	params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME,
+						     group, 0);
+	params[1] = OSSL_PARAM_construct_end();
+	grp = EC_GROUP_new_from_params(params, NULL, NULL);
+	if (!grp)
+		goto fail;
+	point = EC_POINT_new(grp);
+	if (!point)
+		goto fail;
+	res = EC_POINT_oct2point(grp, point, pub, len, NULL);
+
+fail:
+	if (res != 1) {
+		EC_POINT_free(point);
+		point = NULL;
+	}
+
+	EC_GROUP_free(grp);
+
+	return (struct crypto_ec_point *) point;
+#else /* OpenSSL version >= 3.0 */
 	const EC_KEY *eckey;
 	const EC_POINT *point;
 	const EC_GROUP *group;
@@ -3431,6 +3468,7 @@ crypto_ec_key_get_public_key(struct crypto_ec_key *key)
 	if (!point)
 		return NULL;
 	return (struct crypto_ec_point *) EC_POINT_dup(point, group);
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
