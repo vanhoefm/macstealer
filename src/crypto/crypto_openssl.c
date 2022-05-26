@@ -26,6 +26,7 @@
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
 #include <openssl/rsa.h>
+#include <openssl/encoder.h>
 #include <openssl/decoder.h>
 #else /* OpenSSL version >= 3.0 */
 #include <openssl/cmac.h>
@@ -2232,6 +2233,7 @@ fail:
 struct crypto_ec {
 	EC_GROUP *group;
 	int nid;
+	int iana_group;
 	BN_CTX *bnctx;
 	BIGNUM *prime;
 	BIGNUM *order;
@@ -2276,6 +2278,44 @@ static int crypto_ec_group_2_nid(int group)
 }
 
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static const char * crypto_ec_group_2_name(int group)
+{
+	/* Map from IANA registry for IKE D-H groups to OpenSSL group name */
+	switch (group) {
+	case 19:
+		return "prime256v1";
+	case 20:
+		return "secp384r1";
+	case 21:
+		return "secp521r1";
+	case 25:
+		return "prime192v1";
+	case 26:
+		return "secp224r1";
+#ifdef NID_brainpoolP224r1
+	case 27:
+		return "brainpoolP224r1";
+#endif /* NID_brainpoolP224r1 */
+#ifdef NID_brainpoolP256r1
+	case 28:
+		return "brainpoolP256r1";
+#endif /* NID_brainpoolP256r1 */
+#ifdef NID_brainpoolP384r1
+	case 29:
+		return "brainpoolP384r1";
+#endif /* NID_brainpoolP384r1 */
+#ifdef NID_brainpoolP512r1
+	case 30:
+		return "brainpoolP512r1";
+#endif /* NID_brainpoolP512r1 */
+	default:
+		return NULL;
+	}
+}
+#endif /* OpenSSL version >= 3.0 */
+
+
 struct crypto_ec * crypto_ec_init(int group)
 {
 	struct crypto_ec *e;
@@ -2290,6 +2330,7 @@ struct crypto_ec * crypto_ec_init(int group)
 		return NULL;
 
 	e->nid = nid;
+	e->iana_group = group;
 	e->bnctx = BN_CTX_new();
 	e->group = EC_GROUP_new_by_curve_name(nid);
 	e->prime = BN_new();
@@ -3027,6 +3068,47 @@ fail:
 struct crypto_ec_key * crypto_ec_key_set_pub(int group, const u8 *buf_x,
 					     const u8 *buf_y, size_t len)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	const char *group_name;
+	OSSL_PARAM params[3];
+	u8 *pub;
+	EVP_PKEY_CTX *ctx;
+	EVP_PKEY *pkey = NULL;
+
+	group_name = crypto_ec_group_2_name(group);
+	if (!group_name)
+		return NULL;
+
+	pub = os_malloc(1 + len * 2);
+	if (!pub)
+		return NULL;
+	pub[0] = 0x04; /* uncompressed */
+	os_memcpy(pub + 1, buf_x, len);
+	os_memcpy(pub + 1 + len, buf_y, len);
+
+	params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME,
+						     (char *) group_name, 0);
+	params[1] = OSSL_PARAM_construct_octet_string(OSSL_PKEY_PARAM_PUB_KEY,
+						      pub, 1 + len * 2);
+	params[2] = OSSL_PARAM_construct_end();
+
+	ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+	if (!ctx) {
+		os_free(pub);
+		return NULL;
+	}
+	if (EVP_PKEY_fromdata_init(ctx) <= 0 ||
+	    EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0) {
+		os_free(pub);
+		EVP_PKEY_CTX_free(ctx);
+		return NULL;
+	}
+
+	os_free(pub);
+	EVP_PKEY_CTX_free(ctx);
+
+	return (struct crypto_ec_key *) pkey;
+#else /* OpenSSL version >= 3.0 */
 	EC_KEY *eckey = NULL;
 	EVP_PKEY *pkey = NULL;
 	EC_GROUP *ec_group = NULL;
@@ -3101,6 +3183,7 @@ fail:
 	EVP_PKEY_free(pkey);
 	pkey = NULL;
 	goto out;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
@@ -3108,9 +3191,28 @@ struct crypto_ec_key *
 crypto_ec_key_set_pub_point(struct crypto_ec *ec,
 			    const struct crypto_ec_point *pub)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	int len = BN_num_bytes(ec->prime);
+	struct crypto_ec_key *key;
+	u8 *buf;
+
+	buf = os_malloc(2 * len);
+	if (!buf)
+		return NULL;
+	if (crypto_ec_point_to_bin(ec, pub, buf, buf + len) < 0) {
+		os_free(buf);
+		return NULL;
+	}
+
+	key = crypto_ec_key_set_pub(ec->iana_group, buf, buf + len, len);
+	os_free(buf);
+
+	return key;
+#else /* OpenSSL version >= 3.0 */
 	EC_KEY *eckey;
 	EVP_PKEY *pkey = NULL;
 
+	wpa_printf(MSG_INFO, "JKM:%s", __func__);
 	eckey = EC_KEY_new();
 	if (!eckey ||
 	    EC_KEY_set_group(eckey, ec->group) != 1 ||
@@ -3136,11 +3238,41 @@ fail:
 	EC_KEY_free(eckey);
 	pkey = NULL;
 	goto out;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 struct crypto_ec_key * crypto_ec_key_gen(int group)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY_CTX *ctx;
+	OSSL_PARAM params[2];
+	const char *group_name;
+	EVP_PKEY *pkey = NULL;
+
+	group_name = crypto_ec_group_2_name(group);
+	if (!group_name)
+		return NULL;
+
+	params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME,
+						     (char *) group_name, 0);
+	params[1] = OSSL_PARAM_construct_end();
+
+	ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+	if (!ctx ||
+	    EVP_PKEY_keygen_init(ctx) != 1 ||
+	    EVP_PKEY_CTX_set_params(ctx, params) != 1 ||
+	    EVP_PKEY_generate(ctx, &pkey) != 1) {
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: failed to generate EC keypair: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		pkey = NULL;
+	}
+
+	EVP_PKEY_CTX_free(ctx);
+
+	return (struct crypto_ec_key *) pkey;
+#else /* OpenSSL version >= 3.0 */
 	EVP_PKEY_CTX *kctx = NULL;
 	EC_KEY *ec_params = NULL, *eckey;
 	EVP_PKEY *params = NULL, *key = NULL;
@@ -3188,6 +3320,7 @@ fail:
 	EVP_PKEY_free(params);
 	EVP_PKEY_CTX_free(kctx);
 	return (struct crypto_ec_key *) key;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
@@ -3226,6 +3359,54 @@ IMPLEMENT_ASN1_FUNCTIONS(EC_COMP_PUBKEY);
 
 struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key)
 {
+	EVP_PKEY *pkey = (EVP_PKEY *) key;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	OSSL_ENCODER_CTX *ctx;
+	int selection;
+	unsigned char *pdata = NULL;
+	size_t pdata_len = 0;
+	EVP_PKEY *copy = NULL;
+	struct wpabuf *buf = NULL;
+
+	if (EVP_PKEY_get_ec_point_conv_form(pkey) !=
+	    POINT_CONVERSION_COMPRESSED) {
+		copy = EVP_PKEY_dup(pkey);
+		if (!copy)
+			return NULL;
+		if (EVP_PKEY_set_utf8_string_param(
+			    copy, OSSL_PKEY_PARAM_EC_POINT_CONVERSION_FORMAT,
+			    OSSL_PKEY_EC_POINT_CONVERSION_FORMAT_COMPRESSED) !=
+		    1) {
+			wpa_printf(MSG_INFO,
+				   "OpenSSL: Failed to set compressed format");
+			EVP_PKEY_free(copy);
+			return NULL;
+		}
+		pkey = copy;
+	}
+
+	selection = OSSL_KEYMGMT_SELECT_ALL_PARAMETERS |
+		OSSL_KEYMGMT_SELECT_PUBLIC_KEY;
+
+	ctx = OSSL_ENCODER_CTX_new_for_pkey(pkey, selection, "DER",
+					    "SubjectPublicKeyInfo",
+					    NULL);
+	if (!ctx || OSSL_ENCODER_to_data(ctx, &pdata, &pdata_len) != 1) {
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: Failed to encode SubjectPublicKeyInfo: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		pdata = NULL;
+	}
+	OSSL_ENCODER_CTX_free(ctx);
+	if (pdata) {
+		buf = wpabuf_alloc_copy(pdata, pdata_len);
+		OPENSSL_free(pdata);
+	}
+
+	EVP_PKEY_free(copy);
+
+	return buf;
+#else /* OpenSSL version >= 3.0 */
 #ifdef OPENSSL_IS_BORINGSSL
 	unsigned char *der = NULL;
 	int der_len;
@@ -3239,7 +3420,7 @@ struct wpabuf * crypto_ec_key_get_subject_public_key(struct crypto_ec_key *key)
 	int nid;
 
 	ctx = BN_CTX_new();
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	eckey = EVP_PKEY_get0_EC_KEY(pkey);
 	if (!ctx || !eckey)
 		goto fail;
 
@@ -3292,33 +3473,16 @@ fail:
 	int der_len;
 	struct wpabuf *buf;
 	EC_KEY *eckey;
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	EVP_PKEY *tmp;
-#endif /* OpenSSL version >= 3.0 */
 
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
+	eckey = EVP_PKEY_get1_EC_KEY(pkey);
 	if (!eckey)
 		return NULL;
 
 	/* For now, all users expect COMPRESSED form */
 	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_COMPRESSED);
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	tmp = EVP_PKEY_new();
-	if (!tmp)
-		return NULL;
-	if (EVP_PKEY_set1_EC_KEY(tmp, eckey) != 1) {
-		EVP_PKEY_free(tmp);
-		return NULL;
-	}
-	key = (struct crypto_ec_key *) tmp;
-#endif /* OpenSSL version >= 3.0 */
-
 	der_len = i2d_PUBKEY((EVP_PKEY *) key, &der);
 	EC_KEY_free(eckey);
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	EVP_PKEY_free(tmp);
-#endif /* OpenSSL version >= 3.0 */
 	if (der_len <= 0) {
 		wpa_printf(MSG_INFO, "OpenSSL: i2d_PUBKEY() failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
@@ -3329,19 +3493,58 @@ fail:
 	OPENSSL_free(der);
 	return buf;
 #endif /* OPENSSL_IS_BORINGSSL */
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
 						bool include_pub)
 {
+	EVP_PKEY *pkey = (EVP_PKEY *) key;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	OSSL_ENCODER_CTX *ctx;
+	int selection;
+	unsigned char *pdata = NULL;
+	size_t pdata_len = 0;
+	struct wpabuf *buf;
+	EVP_PKEY *copy = NULL;
+
+	selection = OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS |
+		OSSL_KEYMGMT_SELECT_PRIVATE_KEY;
+	if (include_pub) {
+		selection |= OSSL_KEYMGMT_SELECT_PUBLIC_KEY;
+	} else {
+		/* Not including OSSL_KEYMGMT_SELECT_PUBLIC_KEY does not seem
+		 * to really be sufficient, so clone the key and explicitly
+		 * mark it not to include the public key. */
+		copy = EVP_PKEY_dup(pkey);
+		if (!copy)
+			return NULL;
+		EVP_PKEY_set_int_param(copy, OSSL_PKEY_PARAM_EC_INCLUDE_PUBLIC,
+				       0);
+		pkey = copy;
+	}
+
+	ctx = OSSL_ENCODER_CTX_new_for_pkey(pkey, selection, "DER",
+					    "type-specific", NULL);
+	if (!ctx || OSSL_ENCODER_to_data(ctx, &pdata, &pdata_len) != 1) {
+		OSSL_ENCODER_CTX_free(ctx);
+		EVP_PKEY_free(copy);
+		return NULL;
+	}
+	OSSL_ENCODER_CTX_free(ctx);
+	buf = wpabuf_alloc_copy(pdata, pdata_len);
+	OPENSSL_free(pdata);
+	EVP_PKEY_free(copy);
+	return buf;
+#else /* OpenSSL version >= 3.0 */
 	EC_KEY *eckey;
 	unsigned char *der = NULL;
 	int der_len;
 	struct wpabuf *buf;
 	unsigned int key_flags;
 
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
+	eckey = EVP_PKEY_get1_EC_KEY(pkey);
 	if (!eckey)
 		return NULL;
 
@@ -3362,18 +3565,53 @@ struct wpabuf * crypto_ec_key_get_ecprivate_key(struct crypto_ec_key *key,
 	OPENSSL_free(der);
 
 	return buf;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
 struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
 					       int prefix)
 {
+	EVP_PKEY *pkey = (EVP_PKEY *) key;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	struct wpabuf *buf;
+	unsigned char *pos;
+	size_t pub_len = OSSL_PARAM_UNMODIFIED;
+
+	buf = NULL;
+	if (!EVP_PKEY_is_a(pkey, "EC") ||
+	    EVP_PKEY_get_octet_string_param(pkey,
+					    OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+					    NULL, 0, &pub_len) < 0 ||
+	    pub_len == OSSL_PARAM_UNMODIFIED ||
+	    !(buf = wpabuf_alloc(pub_len)) ||
+	    EVP_PKEY_get_octet_string_param(pkey,
+					    OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+					    wpabuf_put(buf, pub_len),
+					    pub_len, NULL) != 1 ||
+	    wpabuf_head_u8(buf)[0] != 0x04) {
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: Failed to get encoded public key: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		wpabuf_free(buf);
+		return NULL;
+	}
+
+	if (!prefix) {
+		/* Remove 0x04 prefix if requested */
+		pos = wpabuf_mhead(buf);
+		os_memmove(pos, pos + 1, pub_len - 1);
+		buf->used--;
+	}
+
+	return buf;
+#else /* OpenSSL version >= 3.0 */
 	int len, res;
 	EC_KEY *eckey;
 	struct wpabuf *buf;
 	unsigned char *pos;
 
-	eckey = EVP_PKEY_get1_EC_KEY((EVP_PKEY *) key);
+	eckey = EVP_PKEY_get1_EC_KEY(pkey);
 	if (!eckey)
 		return NULL;
 	EC_KEY_set_conv_form(eckey, POINT_CONVERSION_UNCOMPRESSED);
@@ -3410,6 +3648,7 @@ struct wpabuf * crypto_ec_key_get_pubkey_point(struct crypto_ec_key *key,
 	}
 
 	return buf;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
