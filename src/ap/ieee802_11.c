@@ -7516,7 +7516,7 @@ static u8 * hostapd_eid_rnr_iface(struct hostapd_data *hapd,
 				break;
 
 			*eid++ = RNR_NEIGHBOR_AP_OFFSET_UNKNOWN;
-			os_memcpy(eid, bss->conf->bssid, ETH_ALEN);
+			os_memcpy(eid, bss->own_addr, ETH_ALEN);
 			eid += ETH_ALEN;
 			os_memcpy(eid, &bss->conf->ssid.short_ssid, 4);
 			eid += 4;
