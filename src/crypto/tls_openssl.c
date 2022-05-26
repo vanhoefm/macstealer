@@ -4151,8 +4151,10 @@ static int tls_global_dh(struct tls_data *data, const char *dh_file)
 			   "TLS: Failed to decode domain parameters from '%s': %s",
 			   dh_file, ERR_error_string(ERR_get_error(), NULL));
 		BIO_free(bio);
+		OSSL_DECODER_CTX_free(ctx);
 		return -1;
 	}
+	OSSL_DECODER_CTX_free(ctx);
 	BIO_free(bio);
 
 	if (!tmpkey) {
