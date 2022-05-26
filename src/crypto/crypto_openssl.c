@@ -26,6 +26,7 @@
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
 #include <openssl/rsa.h>
+#include <openssl/decoder.h>
 #else /* OpenSSL version >= 3.0 */
 #include <openssl/cmac.h>
 #endif /* OpenSSL version >= 3.0 */
@@ -2950,6 +2951,27 @@ size_t crypto_ecdh_prime_len(struct crypto_ecdh *ecdh)
 
 struct crypto_ec_key * crypto_ec_key_parse_priv(const u8 *der, size_t der_len)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *pkey = NULL;
+	OSSL_DECODER_CTX *ctx;
+
+	ctx = OSSL_DECODER_CTX_new_for_pkey(
+		&pkey, "DER", NULL, "EC",
+		OSSL_KEYMGMT_SELECT_KEYPAIR |
+		OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+		NULL, NULL);
+	if (!ctx ||
+	    OSSL_DECODER_from_data(ctx, &der, &der_len) != 1) {
+		wpa_printf(MSG_INFO, "OpenSSL: Decoding EC private key (DER) failed: %s",
+			   ERR_error_string(ERR_get_error(), NULL));
+		goto fail;
+	}
+
+	return (struct crypto_ec_key *) pkey;
+fail:
+	crypto_ec_key_deinit((struct crypto_ec_key *) pkey);
+	return NULL;
+#else /* OpenSSL version >= 3.0 */
 	EVP_PKEY *pkey = NULL;
 	EC_KEY *eckey;
 
@@ -2971,6 +2993,7 @@ struct crypto_ec_key * crypto_ec_key_parse_priv(const u8 *der, size_t der_len)
 fail:
 	crypto_ec_key_deinit((struct crypto_ec_key *) pkey);
 	return NULL;
+#endif /* OpenSSL version >= 3.0 */
 }
 
 
@@ -2986,8 +3009,13 @@ struct crypto_ec_key * crypto_ec_key_parse_pub(const u8 *der, size_t der_len)
 	}
 
 	/* Ensure this is an EC key */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!EVP_PKEY_is_a(pkey, "EC"))
+		goto fail;
+#else /* OpenSSL version >= 3.0 */
 	if (!EVP_PKEY_get0_EC_KEY(pkey))
 		goto fail;
+#endif /* OpenSSL version >= 3.0 */
 	return (struct crypto_ec_key *) pkey;
 fail:
 	crypto_ec_key_deinit((struct crypto_ec_key *) pkey);
