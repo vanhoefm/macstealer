@@ -3425,15 +3425,20 @@ crypto_ec_key_get_public_key(struct crypto_ec_key *key)
 }
 
 
-const struct crypto_bignum *
+struct crypto_bignum *
 crypto_ec_key_get_private_key(struct crypto_ec_key *key)
 {
+	EVP_PKEY *pkey = (EVP_PKEY *) key;
 	const EC_KEY *eckey;
+	const BIGNUM *bn;
 
-	eckey = EVP_PKEY_get0_EC_KEY((EVP_PKEY *) key);
+	eckey = EVP_PKEY_get0_EC_KEY(pkey);
 	if (!eckey)
 		return NULL;
-	return (const struct crypto_bignum *) EC_KEY_get0_private_key(eckey);
+	bn = EC_KEY_get0_private_key(eckey);
+	if (!bn)
+		return NULL;
+	return (struct crypto_bignum *) BN_dup(bn);
 }
 
 

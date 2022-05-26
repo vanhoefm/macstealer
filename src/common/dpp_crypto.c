@@ -1037,8 +1037,8 @@ int dpp_auth_derive_l_responder(struct dpp_authentication *auth)
 	struct crypto_ec *ec;
 	struct crypto_ec_point *L = NULL;
 	const struct crypto_ec_point *BI;
-	const struct crypto_bignum *bR, *pR, *q;
-	struct crypto_bignum *sum = NULL, *lx = NULL;
+	const struct crypto_bignum *q;
+	struct crypto_bignum *sum = NULL, *lx = NULL, *bR = NULL, *pR = NULL;
 	int ret = -1;
 
 	/* L = ((bR + pR) modulo q) * BI */
@@ -1068,6 +1068,8 @@ int dpp_auth_derive_l_responder(struct dpp_authentication *auth)
 fail:
 	crypto_bignum_deinit(lx, 1);
 	crypto_bignum_deinit(sum, 1);
+	crypto_bignum_deinit(bR, 1);
+	crypto_bignum_deinit(pR, 1);
 	crypto_ec_point_deinit(L, 1);
 	crypto_ec_deinit(ec);
 	return ret;
@@ -1079,8 +1081,7 @@ int dpp_auth_derive_l_initiator(struct dpp_authentication *auth)
 	struct crypto_ec *ec;
 	struct crypto_ec_point *L = NULL, *sum = NULL;
 	const struct crypto_ec_point *BR, *PR;
-	const struct crypto_bignum *bI;
-	struct crypto_bignum *lx = NULL;
+	struct crypto_bignum *lx = NULL, *bI = NULL;
 	int ret = -1;
 
 	/* L = bI * (BR + PR) */
@@ -1108,6 +1109,7 @@ int dpp_auth_derive_l_initiator(struct dpp_authentication *auth)
 	ret = 0;
 fail:
 	crypto_bignum_deinit(lx, 1);
+	crypto_bignum_deinit(bI, 1);
 	crypto_ec_point_deinit(sum, 1);
 	crypto_ec_point_deinit(L, 1);
 	crypto_ec_deinit(ec);
@@ -1661,8 +1663,8 @@ int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
 				     struct json_token *peer_net_access_key)
 {
 	struct crypto_ec_key *own_key = NULL, *peer_key = NULL;
-	struct crypto_bignum *sum = NULL;
-	const struct crypto_bignum *q, *cR, *pR;
+	struct crypto_bignum *sum = NULL, *cR = NULL, *pR = NULL;
+	const struct crypto_bignum *q;
 	struct crypto_ec *ec = NULL;
 	struct crypto_ec_point *M = NULL;
 	const struct crypto_ec_point *CI;
@@ -1749,6 +1751,8 @@ fail:
 	forced_memzero(Mx, sizeof(Mx));
 	crypto_ec_point_deinit(M, 1);
 	crypto_bignum_deinit(sum, 1);
+	crypto_bignum_deinit(cR, 1);
+	crypto_bignum_deinit(pR, 1);
 	crypto_ec_key_deinit(own_key);
 	crypto_ec_key_deinit(peer_key);
 	crypto_ec_deinit(ec);
@@ -1762,7 +1766,7 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 {
 	struct crypto_ec_key *pr = NULL, *peer_key = NULL;
 	const struct crypto_ec_point *CR, *PR;
-	const struct crypto_bignum *cI;
+	struct crypto_bignum *cI = NULL;
 	struct crypto_ec *ec = NULL;
 	struct crypto_ec_point *sum = NULL, *M = NULL;
 	u8 Mx[DPP_MAX_SHARED_SECRET_LEN];
@@ -1835,6 +1839,7 @@ int dpp_reconfig_derive_ke_initiator(struct dpp_authentication *auth,
 fail:
 	forced_memzero(prk, sizeof(prk));
 	forced_memzero(Mx, sizeof(Mx));
+	crypto_bignum_deinit(cI, 1);
 	crypto_ec_key_deinit(pr);
 	crypto_ec_key_deinit(peer_key);
 	crypto_ec_point_deinit(sum, 1);
@@ -2321,7 +2326,7 @@ struct crypto_ec_point * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
 					  struct crypto_ec_key *e_prime_id)
 {
 	struct crypto_ec *ec;
-	const struct crypto_bignum *pp;
+	struct crypto_bignum *pp = NULL;
 	struct crypto_ec_point *e_id = NULL;
 	const struct crypto_ec_point *a_nonce_point, *e_prime_id_point;
 
@@ -2348,6 +2353,7 @@ struct crypto_ec_point * dpp_decrypt_e_id(struct crypto_ec_key *ppkey,
 	crypto_ec_point_debug_print(ec, e_id, "DPP: Decrypted E-id");
 
 fail:
+	crypto_bignum_deinit(pp, 1);
 	crypto_ec_deinit(ec);
 	return e_id;
 }
