@@ -2660,6 +2660,13 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_ARP_NS_OFFLOAD = 81,
 
+	/*
+	 * 8-bit unsigned value. This attribute can be used to configure the
+	 * data path mode to be followed for audio traffic. Possible values
+	 * are defined in enum qca_wlan_audio_data_path.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_AUDIO_DATA_PATH = 82,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
@@ -12296,6 +12303,20 @@ enum qca_wlan_vendor_attr_ratemask_params {
 	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_MAX =
 	QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_audio_data_path - Defines the data path to be used for audio
+ * traffic.
+ *
+ * @QCA_WLAN_AUDIO_DATA_PATH_VIA_HOST_PROCESSOR:
+ * Send audio traffic through the host processor.
+ * @QCA_WLAN_AUDIO_DATA_PATH_VIA_LOW_POWER_DSP:
+ * Send audio traffic using the low power DSP to/from the encoder.
+ */
+enum qca_wlan_audio_data_path {
+	QCA_WLAN_AUDIO_DATA_PATH_VIA_HOST_PROCESSOR = 0,
+	QCA_WLAN_AUDIO_DATA_PATH_VIA_LOW_POWER_DSP = 1,
 };
 
 #endif /* QCA_VENDOR_H */
