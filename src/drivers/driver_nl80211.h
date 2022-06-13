@@ -68,6 +68,7 @@ struct i802_bss {
 	unsigned int use_nl_connect:1;
 
 	u8 addr[ETH_ALEN];
+	u8 prev_addr[ETH_ALEN];
 
 	int freq;
 	int bandwidth;

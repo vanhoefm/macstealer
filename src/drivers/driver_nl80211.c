@@ -1189,6 +1189,7 @@ static void nl80211_refresh_mac(struct wpa_driver_nl80211_data *drv,
 			   MACSTR " to " MACSTR,
 			   ifindex, bss->ifname,
 			   MAC2STR(bss->addr), MAC2STR(addr));
+		os_memcpy(bss->prev_addr, bss->addr, ETH_ALEN);
 		os_memcpy(bss->addr, addr, ETH_ALEN);
 		if (notify)
 			wpa_supplicant_event(drv->ctx,
@@ -10892,6 +10893,7 @@ static int nl80211_set_mac_addr(void *priv, const u8 *addr)
 	wpa_printf(MSG_DEBUG, "nl80211: set_mac_addr for %s to " MACSTR,
 		   bss->ifname, MAC2STR(addr));
 	drv->addr_changed = new_addr;
+	os_memcpy(bss->prev_addr, bss->addr, ETH_ALEN);
 	os_memcpy(bss->addr, addr, ETH_ALEN);
 
 	if (linux_set_iface_flags(drv->global->ioctl_sock, bss->ifname, 1) < 0)

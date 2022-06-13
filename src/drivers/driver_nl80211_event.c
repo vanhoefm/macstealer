@@ -1240,8 +1240,11 @@ static void mlme_event_deauth_disassoc(struct wpa_driver_nl80211_data *drv,
 			 * ignore_next_local_deauth as well, to avoid next local
 			 * deauth event be wrongly ignored.
 			 */
-			if (!os_memcmp(mgmt->sa, drv->first_bss->addr,
-				       ETH_ALEN)) {
+			if (os_memcmp(mgmt->sa, drv->first_bss->addr,
+				      ETH_ALEN) == 0 ||
+			    (!is_zero_ether_addr(drv->first_bss->prev_addr) &&
+			     os_memcmp(mgmt->sa, drv->first_bss->prev_addr,
+				       ETH_ALEN) == 0)) {
 				wpa_printf(MSG_DEBUG,
 					   "nl80211: Received a locally generated deauth event. Clear ignore_next_local_deauth flag");
 				drv->ignore_next_local_deauth = 0;
@@ -1451,7 +1454,10 @@ static void mlme_event(struct i802_bss *bss,
 		   os_memcmp(bss->addr, data + 4, ETH_ALEN) != 0 &&
 		   (is_zero_ether_addr(bss->rand_addr) ||
 		    os_memcmp(bss->rand_addr, data + 4, ETH_ALEN) != 0) &&
-		   os_memcmp(bss->addr, data + 4 + ETH_ALEN, ETH_ALEN) != 0) {
+		   os_memcmp(bss->addr, data + 4 + ETH_ALEN, ETH_ALEN) != 0 &&
+		   (is_zero_ether_addr(drv->first_bss->prev_addr) ||
+		    os_memcmp(bss->prev_addr, data + 4 + ETH_ALEN,
+			      ETH_ALEN) != 0)) {
 		wpa_printf(MSG_MSGDUMP, "nl80211: %s: Ignore MLME frame event "
 			   "for foreign address", bss->ifname);
 		return;
