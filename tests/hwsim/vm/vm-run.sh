@@ -62,6 +62,7 @@ TIMESTAMP=$(date +%s)
 DATE=$TIMESTAMP
 CODECOV=no
 TIMEWARP=0
+GDB=0
 TELNET_QEMU=
 TELNET_ARG=0
 CODECOV_DIR=
@@ -84,6 +85,9 @@ while [ "$1" != "" ]; do
 			;;
 		--timewrap ) shift
 			TIMEWARP=1
+			;;
+		--gdb ) shift
+			GDB=1
 			;;
 		--telnet ) shift
 			TELNET_ARG=1
@@ -162,17 +166,22 @@ fi
 A+="ro"
 
 if [ -z $KVM ]; then
-	$KERNEL \
-	     mem=${MEMORY}M \
+	UML_ARGS="mem=${MEMORY}M \
 	     LOGDIR=$LOGDIR \
 	     time-travel=inf-cpu \
 	     $A \
 	     root=none hostfs=/ rootfstype=hostfs rootflags=/ \
 	     ssl0=fd:0,fd:1 \
 	     ssl1=fd:100 \
-	     ssl-non-raw \
-	     100<>$LOGDIR/console 2>&1 | \
-	    sed -u '0,/VM has started up/d'
+	     ssl-non-raw"
+
+	if [ "$GDB" = "1" ] ; then
+		export KERNELDIR=$KERNELDIR
+		export MODULEDIR=$MODULEDIR
+		gdb -ex "source linux.gdb" --args $KERNEL $UML_ARGS 100<>$LOGDIR/console
+	else
+		$KERNEL $UML_ARGS 100<>$LOGDIR/console 2>&1 | sed -u '0,/VM has started up/d'
+	fi
 else
 	$KVM \
 	    -kernel $KERNEL \
