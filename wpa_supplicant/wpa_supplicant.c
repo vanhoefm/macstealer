@@ -3772,6 +3772,11 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 		wpa_supplicant_set_wpa_none_key(wpa_s, ssid);
 	}
 
+	/* Set current_ssid before changing state to ASSOCIATING, so that the
+	 * selected SSID is available to wpas_notify_state_changed(). */
+	old_ssid = wpa_s->current_ssid;
+	wpa_s->current_ssid = ssid;
+
 	wpa_supplicant_set_state(wpa_s, WPA_ASSOCIATING);
 	if (bss) {
 		params.ssid = bss->ssid;
@@ -4007,7 +4012,7 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 #endif /* CONFIG_P2P */
 
 	if (wpa_s->reassoc_same_ess && !is_zero_ether_addr(prev_bssid) &&
-	    wpa_s->current_ssid)
+	    old_ssid)
 		params.prev_bssid = prev_bssid;
 
 #ifdef CONFIG_SAE
@@ -4075,15 +4080,13 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 	}
 #endif /* CONFIG_WEP */
 
-	if (wpa_s->current_ssid && wpa_s->current_ssid != ssid) {
+	if (old_ssid && old_ssid != ssid) {
 		/*
 		 * Do not allow EAP session resumption between different
 		 * network configurations.
 		 */
 		eapol_sm_invalidate_cached_session(wpa_s->eapol);
 	}
-	old_ssid = wpa_s->current_ssid;
-	wpa_s->current_ssid = ssid;
 
 	if (!wpas_driver_bss_selection(wpa_s) || ssid->bssid_set) {
 		wpa_s->current_bss = bss;
