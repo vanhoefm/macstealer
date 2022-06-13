@@ -45,6 +45,10 @@ fi
 
 mount --bind "$TESTDIR/vm/regdb/" /lib/firmware
 
+if [ "$MODULEDIR" != "" ] ; then
+	mount --bind $MODULEDIR /lib/modules
+fi
+
 # reload reg if (and only if) cfg80211.ko is already loaded
 iw reg reload || true
 
