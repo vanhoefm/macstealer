@@ -216,13 +216,7 @@ ASN1_SEQUENCE(BasicOCSPResponse) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(BasicOCSPResponse);
 
-#define sk_SingleResponse_num(sk) \
-sk_num(CHECKED_CAST(_STACK *, STACK_OF(SingleResponse) *, sk))
-
-#define sk_SingleResponse_value(sk, i) \
-	((SingleResponse *)						\
-	 sk_value(CHECKED_CAST(_STACK *, STACK_OF(SingleResponse) *, sk), (i)))
-
+DEFINE_STACK_OF(SingleResponse)
 
 static char * mem_bio_to_str(BIO *out)
 {
