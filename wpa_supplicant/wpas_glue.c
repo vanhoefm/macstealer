@@ -942,28 +942,9 @@ const char * wpa_supplicant_ctrl_req_to_string(enum wpa_ctrl_req_type field,
 void wpas_send_ctrl_req(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 			const char *field_name, const char *txt)
 {
-	char *buf;
-	size_t buflen;
-	int len;
-
-	buflen = 100 + os_strlen(txt) + ssid->ssid_len;
-	buf = os_malloc(buflen);
-	if (buf == NULL)
-		return;
-	len = os_snprintf(buf, buflen, "%s-%d:%s needed for SSID ",
-			  field_name, ssid->id, txt);
-	if (os_snprintf_error(buflen, len)) {
-		os_free(buf);
-		return;
-	}
-	if (ssid->ssid && buflen > len + ssid->ssid_len) {
-		os_memcpy(buf + len, ssid->ssid, ssid->ssid_len);
-		len += ssid->ssid_len;
-		buf[len] = '\0';
-	}
-	buf[buflen - 1] = '\0';
-	wpa_msg(wpa_s, MSG_INFO, WPA_CTRL_REQ "%s", buf);
-	os_free(buf);
+	wpa_msg(wpa_s, MSG_INFO, WPA_CTRL_REQ "%s-%d:%s needed for SSID %s",
+		field_name, ssid->id, txt,
+		wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
 }
 
 
