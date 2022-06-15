@@ -4126,6 +4126,22 @@ enum qca_wlan_vendor_attr_ll_stats_results {
 	 * Possible values are 0-100.
 	 */
 	QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_INFO_TS_DUTY_CYCLE = 87,
+	/* Unsigned 32 bit value. The number of Beacon frames which are received
+	 * from the associated AP and indicate buffered unicast frame(s) for us
+	 * in the TIM element.
+	 */
+	QCA_WLAN_VENDOR_ATTR_LL_STATS_TIM_BEACON = 88,
+	/* Unsigned 32 bit value. The total number of Beacon frames received
+	 * from the associated AP that have wrongly indicated buffered unicast
+	 * traffic in the TIM element for us.
+	 * Below scenarios will be considered as wrong TIM element beacon:
+	 * 1)	The related TIM element is set in the beacon for STA but STA
+	 *      doesn’t receive any unicast data after this beacon.
+	 * 2)	The related TIM element is still set in the beacon for STA
+	 *	after STA has indicated power save exit by QoS Null Data frame.
+	 */
+	QCA_WLAN_VENDOR_ATTR_LL_STATS_TIM_BEACON_ERR = 89,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_LL_STATS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_LL_STATS_MAX =
