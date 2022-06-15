@@ -796,6 +796,11 @@ enum qca_radiotap_vendor_ids {
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_radio_combination_matrix.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_DRIVER_READY: Event indicating to the user space
+ *	that the driver is ready for operations again after recovering from
+ *	internal failures. This occurs following a failure that was indicated by
+ *	@QCA_NL80211_VENDOR_SUBCMD_HANG.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -993,6 +998,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_MCC_QUOTA = 205,
 	/* 206..212 - reserved for QCA */
 	QCA_NL80211_VENDOR_SUBCMD_GET_RADIO_COMBINATION_MATRIX = 213,
+	QCA_NL80211_VENDOR_SUBCMD_DRIVER_READY = 214,
 };
 
 enum qca_wlan_vendor_attr {
