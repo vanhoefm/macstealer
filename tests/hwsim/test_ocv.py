@@ -359,6 +359,7 @@ class APConnection:
         self.bssid = None
         self.anonce = None
         self.snonce = None
+        self.dev = None
 
     def __init__(self, apdev, dev, params):
         self.init_params()
@@ -380,6 +381,7 @@ class APConnection:
                 raise HwsimSkip("OCV not supported")
             raise
         self.hapd.request("SET ext_eapol_frame_io 1")
+        self.dev = dev
         dev.request("SET ext_eapol_frame_io 1")
 
         self.bssid = apdev['bssid']
@@ -415,6 +417,7 @@ class APConnection:
                     self.rsne + ocikde, self.kck)
         self.msg = recv_eapol(self.hapd)
         if self.anonce != self.msg['rsn_key_nonce'] or self.msg["rsn_key_info"] != 138:
+            self.dev.request("DISCONNECT")
             raise Exception("Didn't receive retransmitted 1/4")
 
     def confirm_valid_oci(self, op_class, channel, seg1_idx):
