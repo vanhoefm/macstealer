@@ -16,6 +16,7 @@
 #include <openssl/dh.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <openssl/rsa.h>
 #include <openssl/pem.h>
 #ifdef CONFIG_ECC
 #include <openssl/ec.h>
@@ -25,7 +26,6 @@
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
-#include <openssl/rsa.h>
 #include <openssl/encoder.h>
 #include <openssl/decoder.h>
 #else /* OpenSSL version >= 3.0 */
