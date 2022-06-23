@@ -945,12 +945,6 @@ static int dpp_controller_rx_presence_announcement(struct dpp_connection *conn,
 	struct dpp_authentication *auth;
 	struct dpp_global *dpp = conn->ctrl->global;
 
-	if (conn->auth) {
-		wpa_printf(MSG_DEBUG,
-			   "DPP: Ignore Presence Announcement during ongoing Authentication");
-		return -1;
-	}
-
 	wpa_printf(MSG_DEBUG, "DPP: Presence Announcement");
 
 	r_bootstrap = dpp_get_attr(buf, len, DPP_ATTR_R_BOOTSTRAP_KEY_HASH,
@@ -967,6 +961,12 @@ static int dpp_controller_rx_presence_announcement(struct dpp_connection *conn,
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No matching bootstrapping information found");
 		return -1;
+	}
+
+	if (conn->auth) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Ignore Presence Announcement during ongoing Authentication");
+		return 0;
 	}
 
 	auth = dpp_auth_init(dpp, conn->msg_ctx, peer_bi, NULL,
