@@ -3135,11 +3135,15 @@ dbus_bool_t wpas_dbus_getter_capabilities(
 		if (capa.key_mgmt & (WPA_DRIVER_CAPA_KEY_MGMT_WPA |
 				     WPA_DRIVER_CAPA_KEY_MGMT_WPA2)) {
 			if (!wpa_dbus_dict_string_array_add_element(
-				    &iter_array, "wpa-eap") ||
-			    ((capa.key_mgmt & WPA_DRIVER_CAPA_KEY_MGMT_FT) &&
-			     !wpa_dbus_dict_string_array_add_element(
-				     &iter_array, "wpa-ft-eap")))
+				    &iter_array, "wpa-eap"))
 				goto nomem;
+
+#ifdef CONFIG_IEEE80211R
+			if ((capa.key_mgmt & WPA_DRIVER_CAPA_KEY_MGMT_FT) &&
+			     !wpa_dbus_dict_string_array_add_element(
+				     &iter_array, "wpa-ft-eap"))
+				goto nomem;
+#endif /* CONFIG_IEEE80211R */
 
 /* TODO: Ensure that driver actually supports sha256 encryption. */
 			if (!wpa_dbus_dict_string_array_add_element(
@@ -3150,12 +3154,16 @@ dbus_bool_t wpas_dbus_getter_capabilities(
 		if (capa.key_mgmt & (WPA_DRIVER_CAPA_KEY_MGMT_WPA_PSK |
 				     WPA_DRIVER_CAPA_KEY_MGMT_WPA2_PSK)) {
 			if (!wpa_dbus_dict_string_array_add_element(
-				    &iter_array, "wpa-psk") ||
-			    ((capa.key_mgmt &
+				    &iter_array, "wpa-psk"))
+				goto nomem;
+
+#ifdef CONFIG_IEEE80211R
+			if ((capa.key_mgmt &
 			      WPA_DRIVER_CAPA_KEY_MGMT_FT_PSK) &&
 			     !wpa_dbus_dict_string_array_add_element(
-				     &iter_array, "wpa-ft-psk")))
+				     &iter_array, "wpa-ft-psk"))
 				goto nomem;
+#endif /* CONFIG_IEEE80211R */
 
 /* TODO: Ensure that driver actually supports sha256 encryption. */
 			if (!wpa_dbus_dict_string_array_add_element(
