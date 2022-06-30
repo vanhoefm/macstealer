@@ -286,7 +286,7 @@ static void wpa_supplicant_eapol_cb(struct eapol_sm *eapol,
 {
 	struct wpa_supplicant *wpa_s = ctx;
 	int res, pmk_len;
-	u8 pmk[PMK_LEN];
+	u8 pmk[PMK_LEN_MAX];
 
 	wpa_printf(MSG_DEBUG, "EAPOL authentication completed - result=%s",
 		   result_str(result));
@@ -326,7 +326,11 @@ static void wpa_supplicant_eapol_cb(struct eapol_sm *eapol,
 	wpa_printf(MSG_DEBUG, "Configure PMK for driver-based RSN 4-way "
 		   "handshake");
 
-	pmk_len = PMK_LEN;
+	if (wpa_key_mgmt_sha384(wpa_s->key_mgmt))
+		pmk_len = PMK_LEN_SUITE_B_192;
+	else
+		pmk_len = PMK_LEN;
+
 	if (wpa_key_mgmt_ft(wpa_s->key_mgmt)) {
 #ifdef CONFIG_IEEE80211R
 		u8 buf[2 * PMK_LEN];
@@ -341,7 +345,7 @@ static void wpa_supplicant_eapol_cb(struct eapol_sm *eapol,
 		res = -1;
 #endif /* CONFIG_IEEE80211R */
 	} else {
-		res = eapol_sm_get_key(eapol, pmk, PMK_LEN);
+		res = eapol_sm_get_key(eapol, pmk, pmk_len);
 		if (res) {
 			/*
 			 * EAP-LEAP is an exception from other EAP methods: it
