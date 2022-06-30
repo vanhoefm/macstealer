@@ -828,6 +828,12 @@ enum qca_radiotap_vendor_ids {
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_coap_offload.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_SCS_RULE_CONFIG: Subcommand to configure
+ *	(add, remove, or change) a Stream Classification Service (SCS) rule.
+ *
+ *      The attributes used with this event are defined in
+ *      enum qca_wlan_vendor_attr_scs_rule_config.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -1029,6 +1035,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_PASN = 215,
 	QCA_NL80211_VENDOR_SUBCMD_SECURE_RANGING_CONTEXT = 216,
 	QCA_NL80211_VENDOR_SUBCMD_COAP_OFFLOAD = 217,
+	QCA_NL80211_VENDOR_SUBCMD_SCS_RULE_CONFIG = 218,
 };
 
 /* Compatibility defines for previously used subcmd names.
@@ -13011,6 +13018,136 @@ enum qca_wlan_vendor_attr_coap_offload {
 	QCA_WLAN_VENDOR_ATTR_COAP_OFFLOAD_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_COAP_OFFLOAD_MAX =
 	QCA_WLAN_VENDOR_ATTR_COAP_OFFLOAD_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_scs_rule_config - Used by the vendor command
+ * QCA_NL80211_VENDOR_SUBCMD_SCS_RULE_CONFIG to configure Stream Classification
+ * Service (SCS) rule.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_RULE_ID: Mandatory u32 attribute.
+ * Represents the unique id of SCS rule to be configured.
+
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_REQUEST_TYPE: Mandatory u8 attribute.
+ * Represents the request type: add, remove, or change.
+ * Values as defined in IEEE Std 802.11-2020, Table 9-246 (SCS Request
+ * Type definitions).
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_OUTPUT_TID: Mandatory u8 attribute
+ * in case of add/change request type.
+ * Represents the output traffic identifier (TID) to be assigned to the flow
+ * matching the rule.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_CLASSIFIER_TYPE: Mandatory u8
+ * attribute in case of add/change request type.
+ * Represents type of classifier parameters present in SCS rule.
+ * Refer IEEE Std 802.11-2020 Table 9-164 (Frame classifier type).
+ * Only classifier types 4 and 10 are supported for SCS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_VERSION: Mandatory u8 attribute
+ * in case of add/change request type when classifier type is TCLAS4.
+ * Represents the IP version (4: IPv4, 6: IPv6) of the rule.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_SRC_IPV4_ADDR: Optional
+ * attribute in case of add/change request type when classifier type is TCLAS4
+ * and version attribute is IPv4.
+ * Represents the source IPv4 address in the rule which is to be compared
+ * against the source IP address in the IPv4 header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DST_IPV4_ADDR: Optional
+ * attribute in case of add/change request type when classifier type is TCLAS4
+ * and version attribute is IPv4.
+ * Represents the destination IPv4 address in the rule which is to be compared
+ * against the destination IP address in the IPv4 header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_SRC_IPV6_ADDR: Optional
+ * attribute in case of add/change request type when classifier type is TCLAS4
+ * and version attribute is IPv6.
+ * Represents the source IPv6 address in the rule which is to be compared
+ * against the source IP address in the IPv6 header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DST_IPV6_ADDR: Optional
+ * attribute in case of add/change request type when classifier type is TCLAS4
+ * and version attribute is IPv6.
+ * Represents the destination IPv6 address in the rule which is to be compared
+ * against the destination IP address in the IPv6 header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_SRC_PORT: Optional u16 attribute
+ * in case of add/change request type when classifier type is TCLAS4.
+ * Represents the source port number in the rule which is to be compared against
+ * the source port number in the protocol header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DST_PORT: Optional u16 attribute
+ * in case of add/change request type when classifier type is TCLAS4.
+ * Represents the destination port number in the rule which is to be compared
+ * against the destination port number in the protocol header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DSCP: Optional u8 attribute
+ * in case of add/change request type when classifier type is TCLAS4.
+ * Represents the DSCP value in the rule which is to be compared against the
+ * DSCP field present in the IP header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_NEXT_HEADER: Optional u8
+ * attribute in case of add/change request type when classifier type is TCLAS4.
+ * Represents the protocol/next header in the rule which is to be compared
+ * against the protocol/next header field present in the IPv4/IPv6 header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_FLOW_LABEL: Optional
+ * attribute of size 3 bytes present in case of add/change request type
+ * when classifier type is TCLAS4 and version is IPv6.
+ * Represents the flow label value in the rule which is to be compared against
+ * the flow label field present in the IPv6 header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_PROTOCOL_INSTANCE: Optional u8
+ * attribute in case of add/change request type when classifier type is TCLAS10.
+ * Represents the protocol instance number in the rule.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_NEXT_HEADER: Optional u8
+ * attribute in case of add/change request type when classifier type is TCLAS10.
+ * Represents the protocol/next header in the rule which is to be compared
+ * against the protocol/next header field present in the IPv4/IPv6 header.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_FILTER_MASK: Optional
+ * attribute of variable length present when request type is add/change and
+ * classifier type is TCLAS10.
+ * Represents the mask to be used for masking the header contents of the header
+ * specified by QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_NEXT_HEADER
+ * attribute.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_FILTER_VALUE: Optional
+ * attribute of variable length present when request type is add/change and
+ * classifier type is TCLAS10.
+ * Represents the value to be compared against after masking the header contents
+ * of the header specified by the
+ * QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_NEXT_HEADER attribute with the
+ * filter mask specified by the
+ * QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_FILTER_MASK attribute.
+ */
+enum qca_wlan_vendor_attr_scs_rule_config {
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_RULE_ID = 1,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_REQUEST_TYPE = 2,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_OUTPUT_TID = 3,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_CLASSIFIER_TYPE = 4,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_VERSION = 5,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_SRC_IPV4_ADDR = 6,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DST_IPV4_ADDR = 7,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_SRC_IPV6_ADDR = 8,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DST_IPV6_ADDR = 9,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_SRC_PORT = 10,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DST_PORT = 11,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_DSCP = 12,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_NEXT_HEADER = 13,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS4_FLOW_LABEL = 14,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_PROTOCOL_INSTANCE = 15,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_NEXT_HEADER = 16,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_FILTER_MASK = 17,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_TCLAS10_FILTER_VALUE = 18,
+
+	/* Keep last */
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_MAX =
+	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_AFTER_LAST - 1,
 };
 
 #endif /* QCA_VENDOR_H */
