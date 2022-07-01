@@ -605,7 +605,6 @@ struct ipv4_params {
 	u16 dst_port;
 	u8 dscp;
 	u8 protocol;
-	u8 param_mask;
 };
 
 
@@ -617,7 +616,6 @@ struct ipv6_params {
 	u8 dscp;
 	u8 next_header;
 	u8 flow_label[3];
-	u8 param_mask;
 };
 
 
