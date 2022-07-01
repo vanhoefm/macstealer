@@ -1670,6 +1670,30 @@ enum qca_wlan_vendor_acs_hw_mode {
  *	during the register/unregister of netdev. Create and delete NDP
  *	interface using NL80211_CMD_NEW_INTERFACE and NL80211_CMD_DEL_INTERFACE
  *	commands respectively if the driver advertises this capability set.
+ * @QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_STA: Flag indicates that the device in
+ *	station mode supports secure LTF. If NL80211_EXT_FEATURE_SECURE_LTF is
+ *	set, then QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_STA will be ignored.
+ * @QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_AP: Flag indicates that the device in AP
+ *	mode supports secure LTF. If NL80211_EXT_FEATURE_SECURE_LTF is set, then
+ *	QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_AP will be ignored.
+ * @QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_STA: Flag indicates that the device in
+ *	station mode supports secure RTT measurement exchange. If
+ *	NL80211_EXT_FEATURE_SECURE_RTT is set,
+ *	QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_STA will be ignored.
+ * @QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_AP: Flag indicates that the device in AP
+ *	mode supports secure RTT measurement exchange. If
+ *	NL80211_EXT_FEATURE_SECURE_RTT is set,
+ *	QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_AP will be ignored.
+ * @QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_STA: Flag indicates that
+ *	the device in station mode supports protection of range negotiation and
+ *	measurement management frames. If
+ *	NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE is set, then
+ *	QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_STA will be ignored.
+ * @QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_AP: Flag indicates that
+ *	the device in AP mode supports protection of range negotiation and
+ *	measurement management frames. If
+ *	NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE is set, then
+ *	QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_AP will be ignored.
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits
  */
 enum qca_wlan_vendor_features {
@@ -1689,6 +1713,12 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_CONCURRENT_BAND_SESSIONS = 13,
 	QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT	= 14,
 	QCA_WLAN_VENDOR_FEATURE_USE_ADD_DEL_VIRTUAL_INTF_FOR_NDI = 15,
+	QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_STA		= 16,
+	QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_AP		= 17,
+	QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_STA		= 18,
+	QCA_WLAN_VENDOR_FEATURE_SECURE_RTT_AP		= 19,
+	QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_STA = 20,
+	QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_AP = 21,
 	NUM_QCA_WLAN_VENDOR_FEATURES /* keep last */
 };
 
