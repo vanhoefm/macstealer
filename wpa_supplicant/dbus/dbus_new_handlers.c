@@ -908,8 +908,10 @@ dbus_bool_t wpas_dbus_getter_debug_timestamp(
 	const struct wpa_dbus_property_desc *property_desc,
 	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
+	dbus_bool_t b = wpa_debug_timestamp ? TRUE : FALSE;
+
 	return wpas_dbus_simple_property_getter(iter, DBUS_TYPE_BOOLEAN,
-						&wpa_debug_timestamp, error);
+						&b, error);
 
 }
 
@@ -927,8 +929,10 @@ dbus_bool_t wpas_dbus_getter_debug_show_keys(
 	const struct wpa_dbus_property_desc *property_desc,
 	DBusMessageIter *iter, DBusError *error, void *user_data)
 {
+	dbus_bool_t b = wpa_debug_show_keys ? TRUE : FALSE;
+
 	return wpas_dbus_simple_property_getter(iter, DBUS_TYPE_BOOLEAN,
-						&wpa_debug_show_keys, error);
+						&b, error);
 
 }
 
