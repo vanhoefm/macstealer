@@ -15,6 +15,7 @@
 #include "common/dpp.h"
 #include "common/gas.h"
 #include "common/wpa_ctrl.h"
+#include "crypto/random.h"
 #include "hostapd.h"
 #include "ap_drv_ops.h"
 #include "gas_query_ap.h"
@@ -362,7 +363,7 @@ static int hostapd_dpp_pkex_init(struct hostapd_data *hapd,
 	hapd->dpp_pkex = NULL;
 	pkex = dpp_pkex_init(hapd->msg_ctx, hapd->dpp_pkex_bi, hapd->own_addr,
 			     hapd->dpp_pkex_identifier,
-			     hapd->dpp_pkex_code, v2);
+			     hapd->dpp_pkex_code, hapd->dpp_pkex_code_len, v2);
 	if (!pkex)
 		return -1;
 	pkex->forced_ver = ver != PKEX_VER_AUTO;
@@ -1450,11 +1451,53 @@ static void hostapd_dpp_conn_status_result_wait_timeout(void *eloop_ctx,
 }
 
 
+#ifdef CONFIG_DPP3
+
+static bool hostapd_dpp_pb_active(struct hostapd_data *hapd)
+{
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+
+	return ifaces && (ifaces->dpp_pb_time.sec ||
+			  ifaces->dpp_pb_time.usec);
+}
+
+
+static void hostapd_dpp_remove_pb_hash(struct hostapd_data *hapd)
+{
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+	int i;
+
+	if (!ifaces->dpp_pb_bi)
+		return;
+	for (i = 0; i < DPP_PB_INFO_COUNT; i++) {
+		struct dpp_pb_info *info = &ifaces->dpp_pb[i];
+
+		if (info->rx_time.sec == 0 && info->rx_time.usec == 0)
+			continue;
+		if (os_memcmp(info->hash, ifaces->dpp_pb_resp_hash,
+			      SHA256_MAC_LEN) == 0) {
+			/* Allow a new push button session to be established
+			 * immediately without the successfully completed
+			 * session triggering session overlap. */
+			info->rx_time.sec = 0;
+			info->rx_time.usec = 0;
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Removed PB hash from session overlap detection due to successfully completed provisioning");
+		}
+	}
+}
+
+#endif /* CONFIG_DPP3 */
+
+
 static void hostapd_dpp_rx_conf_result(struct hostapd_data *hapd, const u8 *src,
 				       const u8 *hdr, const u8 *buf, size_t len)
 {
 	struct dpp_authentication *auth = hapd->dpp_auth;
 	enum dpp_status_error status;
+#ifdef CONFIG_DPP3
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+#endif /* CONFIG_DPP3 */
 
 	wpa_printf(MSG_DEBUG, "DPP: Configuration Result from " MACSTR,
 		   MAC2STR(src));
@@ -1498,6 +1541,20 @@ static void hostapd_dpp_rx_conf_result(struct hostapd_data *hapd, const u8 *src,
 	hapd->dpp_auth = NULL;
 	eloop_cancel_timeout(hostapd_dpp_config_result_wait_timeout, hapd,
 			     NULL);
+#ifdef CONFIG_DPP3
+	if (!ifaces->dpp_pb_result_indicated && hostapd_dpp_pb_active(hapd)) {
+		if (status == DPP_STATUS_OK)
+			wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_PB_RESULT
+				"success");
+		else
+			wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_PB_RESULT
+				"no-configuration-available");
+		ifaces->dpp_pb_result_indicated = true;
+		if (status == DPP_STATUS_OK)
+			hostapd_dpp_remove_pb_hash(hapd);
+		hostapd_dpp_push_button_stop(hapd);
+	}
+#endif /* CONFIG_DPP3 */
 }
 
 
@@ -2048,6 +2105,7 @@ hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
 						  hapd->own_addr, src,
 						  hapd->dpp_pkex_identifier,
 						  hapd->dpp_pkex_code,
+						  hapd->dpp_pkex_code_len,
 						  buf, len, v2);
 	if (!hapd->dpp_pkex) {
 		wpa_printf(MSG_DEBUG,
@@ -2177,6 +2235,7 @@ hostapd_dpp_rx_pkex_commit_reveal_resp(struct hostapd_data *hapd, const u8 *src,
 				       const u8 *hdr, const u8 *buf, size_t len,
 				       unsigned int freq)
 {
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
 	int res;
 	struct dpp_bootstrap_info *bi;
 	struct dpp_pkex *pkex = hapd->dpp_pkex;
@@ -2196,10 +2255,32 @@ hostapd_dpp_rx_pkex_commit_reveal_resp(struct hostapd_data *hapd, const u8 *src,
 		return;
 	}
 
-	bi = dpp_pkex_finish(hapd->iface->interfaces->dpp, pkex, src, freq);
+	bi = dpp_pkex_finish(ifaces->dpp, pkex, src, freq);
 	if (!bi)
 		return;
 	hapd->dpp_pkex = NULL;
+
+#ifdef CONFIG_DPP3
+	if (ifaces->dpp_pb_bi &&
+	    os_memcmp(bi->pubkey_hash_chirp, ifaces->dpp_pb_resp_hash,
+		      SHA256_MAC_LEN) != 0) {
+		char id[20];
+
+		wpa_printf(MSG_INFO,
+			   "DPP: Peer bootstrap key from PKEX does not match PB announcement hash");
+		wpa_hexdump(MSG_DEBUG,
+			    "DPP: Peer provided bootstrap key hash(chirp) from PB PKEX",
+			    bi->pubkey_hash_chirp, SHA256_MAC_LEN);
+		wpa_hexdump(MSG_DEBUG,
+			    "DPP: Peer provided bootstrap key hash(chirp) from PB announcement",
+			    ifaces->dpp_pb_resp_hash, SHA256_MAC_LEN);
+
+		os_snprintf(id, sizeof(id), "%u", bi->id);
+		dpp_bootstrap_remove(ifaces->dpp, id);
+		hostapd_dpp_push_button_stop(hapd);
+		return;
+	}
+#endif /* CONFIG_DPP3 */
 
 	os_snprintf(cmd, sizeof(cmd), " peer=%u %s",
 		    bi->id,
@@ -2213,6 +2294,292 @@ hostapd_dpp_rx_pkex_commit_reveal_resp(struct hostapd_data *hapd, const u8 *src,
 		return;
 	}
 }
+
+
+#ifdef CONFIG_DPP3
+
+static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
+				     unsigned int freq, const u8 *src,
+				     const u8 *r_hash)
+{
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+	struct dpp_pkex *pkex;
+	struct wpabuf *msg;
+	char ssid_hex[2 * SSID_MAX_LEN + 1], *pass_hex = NULL;
+	char cmd[300];
+	const char *password = NULL;
+	struct sae_password_entry *e;
+	int conf_id = -1;
+	bool sae = false, psk = false;
+
+	if (hapd->dpp_pkex) {
+		wpa_printf(MSG_DEBUG,
+			   "PDP: Sending previously generated PKEX Exchange Request to "
+			   MACSTR, MAC2STR(src));
+		msg = hapd->dpp_pkex->exchange_req;
+		hostapd_drv_send_action(hapd, freq, 0, src,
+					wpabuf_head(msg), wpabuf_len(msg));
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "DPP: Initiate PKEX for push button with "
+		   MACSTR, MAC2STR(src));
+
+	hapd->dpp_pkex_bi = ifaces->dpp_pb_bi;
+	os_memcpy(ifaces->dpp_pb_resp_hash, r_hash, SHA256_MAC_LEN);
+
+	pkex = dpp_pkex_init(hapd->msg_ctx, hapd->dpp_pkex_bi, hapd->own_addr,
+			     "PBPKEX", (const char *) ifaces->dpp_pb_c_nonce,
+			     ifaces->dpp_pb_bi->curve->nonce_len,
+			     true);
+	if (!pkex) {
+		hostapd_dpp_push_button_stop(hapd);
+		return;
+	}
+	pkex->freq = freq;
+
+	hapd->dpp_pkex = pkex;
+	msg = hapd->dpp_pkex->exchange_req;
+	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
+		" freq=%u type=%d", MAC2STR(src), freq,
+		DPP_PA_PKEX_EXCHANGE_REQ);
+	hostapd_drv_send_action(hapd, pkex->freq, 0, src,
+				wpabuf_head(msg), wpabuf_len(msg));
+	pkex->exch_req_wait_time = 2000;
+	pkex->exch_req_tries = 1;
+
+	wpa_snprintf_hex(ssid_hex, sizeof(ssid_hex),
+			 (const u8 *) hapd->conf->ssid.ssid,
+			 hapd->conf->ssid.ssid_len);
+
+	if (hapd->conf->wpa_key_mgmt & WPA_KEY_MGMT_DPP) {
+		/* TODO: If a local Configurator has been enabled, allow a
+		 * DPP AKM credential to be provisioned by setting conf_id. */
+	}
+
+	if (hapd->conf->wpa & WPA_PROTO_RSN) {
+		psk = hapd->conf->wpa_key_mgmt & (WPA_KEY_MGMT_PSK |
+						  WPA_KEY_MGMT_PSK_SHA256);
+#ifdef CONFIG_SAE
+		sae = hapd->conf->wpa_key_mgmt & WPA_KEY_MGMT_SAE;
+#endif /* CONFIG_SAE */
+	}
+
+#ifdef CONFIG_SAE
+	for (e = hapd->conf->sae_passwords; sae && e && !password;
+	     e = e->next) {
+		if (e->identifier || !is_broadcast_ether_addr(e->peer_addr))
+			continue;
+		password = e->password;
+	}
+#endif /* CONFIG_SAE */
+	if (!password && hapd->conf->ssid.wpa_passphrase_set &&
+	    hapd->conf->ssid.wpa_passphrase)
+		password = hapd->conf->ssid.wpa_passphrase;
+	if (password) {
+		size_t len = 2 * os_strlen(password) + 1;
+
+		pass_hex = os_malloc(len);
+		if (!pass_hex) {
+			hostapd_dpp_push_button_stop(hapd);
+			return;
+		}
+		wpa_snprintf_hex(pass_hex, len, (const u8 *) password,
+				 os_strlen(password));
+	}
+
+	if (conf_id > 0 && sae && psk && pass_hex) {
+		os_snprintf(cmd, sizeof(cmd),
+			    "conf=sta-dpp+psk+sae configurator=%d ssid=%s pass=%s",
+			    conf_id, ssid_hex, pass_hex);
+	} else if (conf_id > 0 && sae && pass_hex) {
+		os_snprintf(cmd, sizeof(cmd),
+			    "conf=sta-dpp+sae configurator=%d ssid=%s pass=%s",
+			    conf_id, ssid_hex, pass_hex);
+	} else if (conf_id > 0) {
+		os_snprintf(cmd, sizeof(cmd),
+			    "conf=sta-dpp configurator=%d ssid=%s",
+			    conf_id, ssid_hex);
+	} if (sae && psk && pass_hex) {
+		os_snprintf(cmd, sizeof(cmd),
+			    "conf=sta-psk+sae ssid=%s pass=%s",
+			    ssid_hex, pass_hex);
+	} else if (sae && pass_hex) {
+		os_snprintf(cmd, sizeof(cmd),
+			    "conf=sta-sae ssid=%s pass=%s",
+			    ssid_hex, pass_hex);
+	} else if (psk && pass_hex) {
+		os_snprintf(cmd, sizeof(cmd),
+			    "conf=sta-psk ssid=%s pass=%s",
+			    ssid_hex, pass_hex);
+	} else {
+		wpa_printf(MSG_INFO,
+			   "DPP: Unsupported AP configuration for push button");
+		str_clear_free(pass_hex);
+		hostapd_dpp_push_button_stop(hapd);
+		return;
+	}
+	str_clear_free(pass_hex);
+
+	os_free(hapd->dpp_pkex_auth_cmd);
+	hapd->dpp_pkex_auth_cmd = os_strdup(cmd);
+	forced_memzero(cmd, sizeof(cmd));
+	if (!hapd->dpp_pkex_auth_cmd) {
+		hostapd_dpp_push_button_stop(hapd);
+		return;
+	}
+}
+
+
+static void
+hostapd_dpp_rx_pb_presence_announcement(struct hostapd_data *hapd,
+					const u8 *src, const u8 *hdr,
+					const u8 *buf, size_t len,
+					unsigned int freq)
+{
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+	const u8 *r_hash;
+	u16 r_hash_len;
+	unsigned int i;
+	bool found = false;
+	struct dpp_pb_info *info, *tmp;
+	struct os_reltime now, age;
+	struct wpabuf *msg;
+
+	if (!ifaces)
+		return;
+
+	os_get_reltime(&now);
+	wpa_printf(MSG_DEBUG, "DPP: Push Button Presence Announcement from "
+		   MACSTR, MAC2STR(src));
+
+	r_hash = dpp_get_attr(buf, len, DPP_ATTR_R_BOOTSTRAP_KEY_HASH,
+			      &r_hash_len);
+	if (!r_hash || r_hash_len != SHA256_MAC_LEN) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Missing or invalid required Responder Bootstrapping Key Hash attribute");
+		return;
+	}
+	wpa_hexdump(MSG_MSGDUMP, "DPP: Responder Bootstrapping Key Hash",
+		    r_hash, r_hash_len);
+
+	for (i = 0; i < DPP_PB_INFO_COUNT; i++) {
+		info = &ifaces->dpp_pb[i];
+		if ((info->rx_time.sec == 0 && info->rx_time.usec == 0) ||
+		    os_memcmp(r_hash, info->hash, SHA256_MAC_LEN) != 0)
+			continue;
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Active push button Enrollee already known");
+		found = true;
+		info->rx_time = now;
+	}
+
+	if (!found) {
+		for (i = 0; i < DPP_PB_INFO_COUNT; i++) {
+			tmp = &ifaces->dpp_pb[i];
+			if (tmp->rx_time.sec == 0 && tmp->rx_time.usec == 0)
+				continue;
+
+			if (os_reltime_expired(&now, &tmp->rx_time, 120)) {
+				wpa_hexdump(MSG_DEBUG,
+					    "DPP: Push button Enrollee hash expired",
+					    tmp->hash, SHA256_MAC_LEN);
+				tmp->rx_time.sec = 0;
+				tmp->rx_time.usec = 0;
+				continue;
+			}
+
+			wpa_hexdump(MSG_DEBUG,
+				    "DPP: Push button session overlap with hash",
+				    tmp->hash, SHA256_MAC_LEN);
+			if (!ifaces->dpp_pb_result_indicated &&
+			    hostapd_dpp_pb_active(hapd)) {
+				wpa_msg(hapd->msg_ctx, MSG_INFO,
+					DPP_EVENT_PB_RESULT "session-overlap");
+				ifaces->dpp_pb_result_indicated = true;
+			}
+			hostapd_dpp_push_button_stop(hapd);
+			return;
+		}
+
+		/* Replace the oldest entry */
+		info = &ifaces->dpp_pb[0];
+		for (i = 1; i < DPP_PB_INFO_COUNT; i++) {
+			tmp = &ifaces->dpp_pb[i];
+			if (os_reltime_before(&tmp->rx_time, &info->rx_time))
+				info = tmp;
+		}
+		wpa_printf(MSG_DEBUG, "DPP: New active push button Enrollee");
+		os_memcpy(info->hash, r_hash, SHA256_MAC_LEN);
+		info->rx_time = now;
+	}
+
+	if (!hostapd_dpp_pb_active(hapd)) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Discard message since own push button has not been pressed");
+		return;
+	}
+
+	if (ifaces->dpp_pb_announce_time.sec == 0 &&
+	    ifaces->dpp_pb_announce_time.usec == 0) {
+		/* Start a wait before allowing PKEX to be initiated */
+		ifaces->dpp_pb_announce_time = now;
+	}
+
+	if (!ifaces->dpp_pb_bi) {
+		int res;
+
+		res = dpp_bootstrap_gen(ifaces->dpp, "type=pkex");
+		if (res < 0)
+			return;
+		ifaces->dpp_pb_bi = dpp_bootstrap_get_id(ifaces->dpp, res);
+		if (!ifaces->dpp_pb_bi)
+			return;
+
+		if (random_get_bytes(ifaces->dpp_pb_c_nonce,
+				     ifaces->dpp_pb_bi->curve->nonce_len)) {
+			wpa_printf(MSG_ERROR,
+				   "DPP: Failed to generate C-nonce");
+			hostapd_dpp_push_button_stop(hapd);
+			return;
+		}
+	}
+
+	/* Skip the response if one was sent within last 50 ms since the
+	 * Enrollee is going to send out at least three announcement messages.
+	 */
+	os_reltime_sub(&now, &ifaces->dpp_pb_last_resp, &age);
+	if (age.sec == 0 && age.usec < 50000) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Skip Push Button Presence Announcement Response frame immediately after having sent one");
+		return;
+	}
+
+	msg = dpp_build_pb_announcement_resp(
+		ifaces->dpp_pb_bi, r_hash, ifaces->dpp_pb_c_nonce,
+		ifaces->dpp_pb_bi->curve->nonce_len);
+	if (!msg) {
+		hostapd_dpp_push_button_stop(hapd);
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Send Push Button Presence Announcement Response to "
+		   MACSTR, MAC2STR(src));
+	ifaces->dpp_pb_last_resp = now;
+
+	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
+		" freq=%u type=%d", MAC2STR(src), freq,
+		DPP_PA_PB_PRESENCE_ANNOUNCEMENT_RESP);
+	hostapd_drv_send_action(hapd, freq, 0, src,
+				wpabuf_head(msg), wpabuf_len(msg));
+	wpabuf_free(msg);
+
+	if (os_reltime_expired(&now, &ifaces->dpp_pb_announce_time, 15))
+		hostapd_dpp_pb_pkex_init(hapd, freq, src, r_hash);
+}
+
+#endif /* CONFIG_DPP3 */
 
 
 void hostapd_dpp_rx_action(struct hostapd_data *hapd, const u8 *src,
@@ -2320,6 +2687,12 @@ void hostapd_dpp_rx_action(struct hostapd_data *hapd, const u8 *src,
 						  freq);
 		break;
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	case DPP_PA_PB_PRESENCE_ANNOUNCEMENT:
+		hostapd_dpp_rx_pb_presence_announcement(hapd, src, hdr,
+							buf, len, freq);
+		break;
+#endif /* CONFIG_DPP3 */
 	default:
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Ignored unsupported frame subtype %d", type);
@@ -2388,6 +2761,9 @@ hostapd_dpp_gas_req_handler(struct hostapd_data *hapd, const u8 *sa,
 void hostapd_dpp_gas_status_handler(struct hostapd_data *hapd, int ok)
 {
 	struct dpp_authentication *auth = hapd->dpp_auth;
+#ifdef CONFIG_DPP3
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+#endif /* CONFIG_DPP3 */
 
 	if (!auth)
 		return;
@@ -2427,6 +2803,20 @@ void hostapd_dpp_gas_status_handler(struct hostapd_data *hapd, int ok)
 		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	dpp_auth_deinit(hapd->dpp_auth);
 	hapd->dpp_auth = NULL;
+#ifdef CONFIG_DPP3
+	if (!ifaces->dpp_pb_result_indicated && hostapd_dpp_pb_active(hapd)) {
+		if (ok)
+			wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_PB_RESULT
+				"success");
+		else
+			wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_PB_RESULT
+				"could-not-connect");
+		ifaces->dpp_pb_result_indicated = true;
+		if (ok)
+			hostapd_dpp_remove_pb_hash(hapd);
+		hostapd_dpp_push_button_stop(hapd);
+	}
+#endif /* CONFIG_DPP3 */
 }
 
 
@@ -2528,6 +2918,7 @@ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd)
 	hapd->dpp_pkex_code = os_strdup(pos + 6);
 	if (!hapd->dpp_pkex_code)
 		return -1;
+	hapd->dpp_pkex_code_len = os_strlen(hapd->dpp_pkex_code);
 
 	pos = os_strstr(cmd, " ver=");
 	if (pos) {
@@ -2600,6 +2991,9 @@ void hostapd_dpp_stop(struct hostapd_data *hapd)
 	hapd->dpp_auth = NULL;
 	dpp_pkex_free(hapd->dpp_pkex);
 	hapd->dpp_pkex = NULL;
+#ifdef CONFIG_DPP3
+	hostapd_dpp_push_button_stop(hapd);
+#endif /* CONFIG_DPP3 */
 }
 
 
@@ -2698,6 +3092,7 @@ void hostapd_dpp_deinit(struct hostapd_data *hapd)
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_DPP3
 	eloop_cancel_timeout(hostapd_dpp_build_new_key, hapd, NULL);
+	hostapd_dpp_push_button_stop(hapd);
 #endif /* CONFIG_DPP3 */
 	dpp_auth_deinit(hapd->dpp_auth);
 	hapd->dpp_auth = NULL;
@@ -2705,6 +3100,8 @@ void hostapd_dpp_deinit(struct hostapd_data *hapd)
 	hapd->dpp_pkex = NULL;
 	os_free(hapd->dpp_configurator_params);
 	hapd->dpp_configurator_params = NULL;
+	os_free(hapd->dpp_pkex_auth_cmd);
+	hapd->dpp_pkex_auth_cmd = NULL;
 }
 
 
@@ -3077,3 +3474,64 @@ void hostapd_dpp_remove_bi(void *ctx, struct dpp_bootstrap_info *bi)
 }
 
 #endif /* CONFIG_DPP2 */
+
+
+#ifdef CONFIG_DPP3
+
+static void hostapd_dpp_push_button_expire(void *eloop_ctx, void *timeout_ctx)
+{
+	struct hostapd_data *hapd = eloop_ctx;
+
+	wpa_printf(MSG_DEBUG, "DPP: Active push button mode expired");
+	hostapd_dpp_push_button_stop(hapd);
+}
+
+
+int hostapd_dpp_push_button(struct hostapd_data *hapd)
+{
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+
+	if (!ifaces || !ifaces->dpp)
+		return -1;
+	os_get_reltime(&ifaces->dpp_pb_time);
+	ifaces->dpp_pb_announce_time.sec = 0;
+	ifaces->dpp_pb_announce_time.usec = 0;
+	eloop_register_timeout(100, 0, hostapd_dpp_push_button_expire,
+			       hapd, NULL);
+
+	return 0;
+}
+
+
+void hostapd_dpp_push_button_stop(struct hostapd_data *hapd)
+{
+	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
+
+	if (!ifaces || !ifaces->dpp)
+		return;
+	eloop_cancel_timeout(hostapd_dpp_push_button_expire, hapd, NULL);
+	if (hostapd_dpp_pb_active(hapd)) {
+		wpa_printf(MSG_DEBUG, "DPP: Stop active push button mode");
+		if (!ifaces->dpp_pb_result_indicated)
+			wpa_msg(hapd->msg_ctx, MSG_INFO,
+				DPP_EVENT_PB_RESULT "failed");
+	}
+	ifaces->dpp_pb_time.sec = 0;
+	ifaces->dpp_pb_time.usec = 0;
+	dpp_pkex_free(hapd->dpp_pkex);
+	hapd->dpp_pkex = NULL;
+	os_free(hapd->dpp_pkex_auth_cmd);
+	hapd->dpp_pkex_auth_cmd = NULL;
+
+	if (ifaces->dpp_pb_bi) {
+		char id[20];
+
+		os_snprintf(id, sizeof(id), "%u", ifaces->dpp_pb_bi->id);
+		dpp_bootstrap_remove(ifaces->dpp, id);
+		ifaces->dpp_pb_bi = NULL;
+	}
+
+	ifaces->dpp_pb_result_indicated = false;
+}
+
+#endif /* CONFIG_DPP3 */

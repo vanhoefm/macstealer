@@ -45,5 +45,7 @@ int hostapd_dpp_controller_start(struct hostapd_data *hapd, const char *cmd);
 int hostapd_dpp_chirp(struct hostapd_data *hapd, const char *cmd);
 void hostapd_dpp_chirp_stop(struct hostapd_data *hapd);
 void hostapd_dpp_remove_bi(void *ctx, struct dpp_bootstrap_info *bi);
+int hostapd_dpp_push_button(struct hostapd_data *hapd);
+void hostapd_dpp_push_button_stop(struct hostapd_data *hapd);
 
 #endif /* DPP_HOSTAPD_H */

@@ -56,6 +56,8 @@ enum dpp_public_action_frame_type {
 	DPP_PA_RECONFIG_AUTH_RESP = 16,
 	DPP_PA_RECONFIG_AUTH_CONF = 17,
 	DPP_PA_PKEX_EXCHANGE_REQ = 18,
+	DPP_PA_PB_PRESENCE_ANNOUNCEMENT = 19,
+	DPP_PA_PB_PRESENCE_ANNOUNCEMENT_RESP = 20,
 };
 
 enum dpp_attribute_id {
@@ -203,6 +205,7 @@ struct dpp_pkex {
 	u8 peer_mac[ETH_ALEN];
 	char *identifier;
 	char *code;
+	size_t code_len;
 	struct crypto_ec_key *x;
 	struct crypto_ec_key *y;
 	u8 Mx[DPP_MAX_SHARED_SECRET_LEN];
@@ -644,13 +647,13 @@ int dpp_get_connector_version(const char *connector);
 struct dpp_pkex * dpp_pkex_init(void *msg_ctx, struct dpp_bootstrap_info *bi,
 				const u8 *own_mac,
 				const char *identifier, const char *code,
-				bool v2);
+				size_t code_len, bool v2);
 struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 					   struct dpp_bootstrap_info *bi,
 					   const u8 *own_mac,
 					   const u8 *peer_mac,
 					   const char *identifier,
-					   const char *code,
+					   const char *code, size_t code_len,
 					   const u8 *buf, size_t len, bool v2);
 struct wpabuf * dpp_pkex_rx_exchange_resp(struct dpp_pkex *pkex,
 					  const u8 *peer_mac,
@@ -758,6 +761,12 @@ void dpp_tcp_send_conn_status(struct dpp_global *dpp,
 struct wpabuf * dpp_build_presence_announcement(struct dpp_bootstrap_info *bi);
 void dpp_notify_chirp_received(void *msg_ctx, int id, const u8 *src,
 				unsigned int freq, const u8 *hash);
+
+struct wpabuf * dpp_build_pb_announcement(struct dpp_bootstrap_info *bi);
+struct wpabuf * dpp_build_pb_announcement_resp(struct dpp_bootstrap_info *bi,
+					       const u8 *e_hash,
+					       const u8 *c_nonce,
+					       size_t c_nonce_len);
 
 struct dpp_global_config {
 	void *cb_ctx;

@@ -43,6 +43,13 @@ struct mesh_conf;
 #define CTRL_IFACE_COOKIE_LEN 8
 #endif /* CONFIG_CTRL_IFACE_UDP */
 
+#define DPP_PB_INFO_COUNT 2
+
+struct dpp_pb_info {
+	u8 hash[SHA256_MAC_LEN];
+	struct os_reltime rx_time;
+};
+
 struct hostapd_iface;
 
 struct hapd_interfaces {
@@ -76,6 +83,16 @@ struct hapd_interfaces {
 
 #ifdef CONFIG_DPP
 	struct dpp_global *dpp;
+#ifdef CONFIG_DPP3
+	struct os_reltime dpp_pb_time;
+	struct os_reltime dpp_pb_announce_time;
+	struct dpp_pb_info dpp_pb[DPP_PB_INFO_COUNT];
+	struct dpp_bootstrap_info *dpp_pb_bi;
+	u8 dpp_pb_c_nonce[DPP_MAX_NONCE_LEN];
+	u8 dpp_pb_resp_hash[SHA256_MAC_LEN];
+	struct os_reltime dpp_pb_last_resp;
+	bool dpp_pb_result_indicated;
+#endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 
 #ifdef CONFIG_CTRL_IFACE_UDP
@@ -401,6 +418,7 @@ struct hostapd_data {
 	struct dpp_pkex *dpp_pkex;
 	struct dpp_bootstrap_info *dpp_pkex_bi;
 	char *dpp_pkex_code;
+	size_t dpp_pkex_code_len;
 	char *dpp_pkex_identifier;
 	enum dpp_pkex_ver dpp_pkex_ver;
 	char *dpp_pkex_auth_cmd;

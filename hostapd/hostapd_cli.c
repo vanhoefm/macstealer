@@ -1503,6 +1503,15 @@ static int hostapd_cli_cmd_dpp_stop_chirp(struct wpa_ctrl *ctrl, int argc,
 }
 
 #endif /* CONFIG_DPP2 */
+
+
+#ifdef CONFIG_DPP3
+static int hostapd_cli_cmd_dpp_push_button(struct wpa_ctrl *ctrl, int argc,
+					   char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "DPP_PUSH_BUTTON");
+}
+#endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 
 
@@ -1729,6 +1738,10 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
 	{ "dpp_stop_chirp", hostapd_cli_cmd_dpp_stop_chirp, NULL,
 	  "= stop DPP chirp" },
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	{ "dpp_push_button", hostapd_cli_cmd_dpp_push_button, NULL,
+	  "= press DPP push button" },
+#endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 	{ "accept_acl", hostapd_cli_cmd_accept_macacl, NULL,
 	  "=Add/Delete/Show/Clear accept MAC ACL" },

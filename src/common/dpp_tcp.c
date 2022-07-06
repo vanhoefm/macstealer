@@ -1017,6 +1017,7 @@ static int dpp_controller_rx_pkex_exchange_req(struct dpp_connection *conn,
 					      NULL, NULL,
 					      ctrl->pkex_identifier,
 					      ctrl->pkex_code,
+					      os_strlen(ctrl->pkex_code),
 					      buf, len, true);
 	if (!conn->pkex) {
 		wpa_printf(MSG_DEBUG,

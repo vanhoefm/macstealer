@@ -41,7 +41,7 @@ static struct wpabuf * dpp_pkex_build_exchange_req(struct dpp_pkex *pkex,
 
 	/* Qi = H([MAC-Initiator |] [identifier |] code) * Pi */
 	Qi = dpp_pkex_derive_Qi(curve, v2 ? NULL : pkex->own_mac, pkex->code,
-				pkex->identifier, &ec);
+				pkex->code_len, pkex->identifier, &ec);
 	if (!Qi)
 		goto fail;
 
@@ -171,7 +171,7 @@ static void dpp_pkex_fail(struct dpp_pkex *pkex, const char *txt)
 struct dpp_pkex * dpp_pkex_init(void *msg_ctx, struct dpp_bootstrap_info *bi,
 				const u8 *own_mac,
 				const char *identifier, const char *code,
-				bool v2)
+				size_t code_len, bool v2)
 {
 	struct dpp_pkex *pkex;
 
@@ -196,9 +196,10 @@ struct dpp_pkex * dpp_pkex_init(void *msg_ctx, struct dpp_bootstrap_info *bi,
 		if (!pkex->identifier)
 			goto fail;
 	}
-	pkex->code = os_strdup(code);
+	pkex->code = os_memdup(code, code_len);
 	if (!pkex->code)
 		goto fail;
+	pkex->code_len = code_len;
 	pkex->exchange_req = dpp_pkex_build_exchange_req(pkex, v2);
 	if (!pkex->exchange_req)
 		goto fail;
@@ -340,7 +341,7 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 					   const u8 *own_mac,
 					   const u8 *peer_mac,
 					   const char *identifier,
-					   const char *code,
+					   const char *code, size_t code_len,
 					   const u8 *buf, size_t len, bool v2)
 {
 	const u8 *attr_group, *attr_id, *attr_key;
@@ -437,8 +438,8 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 	}
 
 	/* Qi = H([MAC-Initiator |] [identifier |] code) * Pi */
-	Qi = dpp_pkex_derive_Qi(curve, v2 ? NULL : peer_mac, code, identifier,
-				&ec);
+	Qi = dpp_pkex_derive_Qi(curve, v2 ? NULL : peer_mac, code, code_len,
+				identifier, &ec);
 	if (!Qi)
 		goto fail;
 
@@ -477,9 +478,10 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 		if (!pkex->identifier)
 			goto fail;
 	}
-	pkex->code = os_strdup(code);
+	pkex->code = os_memdup(code, code_len);
 	if (!pkex->code)
 		goto fail;
+	pkex->code_len = code_len;
 
 	os_memcpy(pkex->Mx, attr_key, attr_key_len / 2);
 
@@ -495,8 +497,8 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 		goto fail;
 
 	/* Qr = H([MAC-Responder |] [identifier |] code) * Pr */
-	Qr = dpp_pkex_derive_Qr(curve, v2 ? NULL : own_mac, code, identifier,
-				NULL);
+	Qr = dpp_pkex_derive_Qr(curve, v2 ? NULL : own_mac, code, code_len,
+				identifier, NULL);
 	if (!Qr)
 		goto fail;
 
@@ -550,7 +552,8 @@ struct dpp_pkex * dpp_pkex_rx_exchange_req(void *msg_ctx,
 				pkex->peer_version, DPP_VERSION,
 				pkex->Mx, curve->prime_len,
 				pkex->Nx, curve->prime_len, pkex->code,
-				Kx, Kx_len, pkex->z, curve->hash_len);
+				pkex->code_len,	Kx, Kx_len, pkex->z,
+				curve->hash_len);
 	os_memset(Kx, 0, Kx_len);
 	if (res < 0)
 		goto fail;
@@ -791,7 +794,8 @@ struct wpabuf * dpp_pkex_rx_exchange_resp(struct dpp_pkex *pkex,
 
 	/* Qr = H([MAC-Responder |] [identifier |] code) * Pr */
 	Qr = dpp_pkex_derive_Qr(curve, pkex->v2 ? NULL : pkex->peer_mac,
-				pkex->code, pkex->identifier, &ec);
+				pkex->code, pkex->code_len, pkex->identifier,
+				&ec);
 	if (!Qr)
 		goto fail;
 
@@ -869,7 +873,7 @@ struct wpabuf * dpp_pkex_rx_exchange_resp(struct dpp_pkex *pkex,
 				DPP_VERSION, pkex->peer_version,
 				pkex->Mx, curve->prime_len,
 				attr_key /* N.x */, attr_key_len / 2,
-				pkex->code, Kx, Kx_len,
+				pkex->code, pkex->code_len, Kx, Kx_len,
 				pkex->z, curve->hash_len);
 	os_memset(Kx, 0, Kx_len);
 	if (res < 0)

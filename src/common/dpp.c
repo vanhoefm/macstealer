@@ -4950,3 +4950,64 @@ void dpp_notify_chirp_received(void *msg_ctx, int id, const u8 *src,
 }
 
 #endif /* CONFIG_DPP2 */
+
+
+#ifdef CONFIG_DPP3
+
+struct wpabuf * dpp_build_pb_announcement(struct dpp_bootstrap_info *bi)
+{
+	struct wpabuf *msg;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Build Push Button Presence Announcement frame");
+
+	msg = dpp_alloc_msg(DPP_PA_PB_PRESENCE_ANNOUNCEMENT,
+			    4 + SHA256_MAC_LEN);
+	if (!msg)
+		return NULL;
+
+	/* Responder Bootstrapping Key Hash */
+	dpp_build_attr_r_bootstrap_key_hash(msg, bi->pubkey_hash_chirp);
+	wpa_hexdump_buf(MSG_DEBUG,
+			"DPP: Push Button Presence Announcement frame attributes",
+			msg);
+	return msg;
+}
+
+
+struct wpabuf * dpp_build_pb_announcement_resp(struct dpp_bootstrap_info *bi,
+					       const u8 *e_hash,
+					       const u8 *c_nonce,
+					       size_t c_nonce_len)
+{
+	struct wpabuf *msg;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Build Push Button Presence Announcement Response frame");
+
+	msg = dpp_alloc_msg(DPP_PA_PB_PRESENCE_ANNOUNCEMENT_RESP,
+			    2 * (4 + SHA256_MAC_LEN) + 4 + c_nonce_len);
+	if (!msg)
+		return NULL;
+
+	/* Initiator Bootstrapping Key Hash */
+	wpa_printf(MSG_DEBUG, "DPP: I-Bootstrap Key Hash");
+	wpabuf_put_le16(msg, DPP_ATTR_I_BOOTSTRAP_KEY_HASH);
+	wpabuf_put_le16(msg, SHA256_MAC_LEN);
+	wpabuf_put_data(msg, bi->pubkey_hash_chirp, SHA256_MAC_LEN);
+
+	/* Responder Bootstrapping Key Hash */
+	dpp_build_attr_r_bootstrap_key_hash(msg, e_hash);
+
+	/* Configurator Nonce */
+	wpabuf_put_le16(msg, DPP_ATTR_CONFIGURATOR_NONCE);
+	wpabuf_put_le16(msg, c_nonce_len);
+	wpabuf_put_data(msg, c_nonce, c_nonce_len);
+
+	wpa_hexdump_buf(MSG_DEBUG,
+			"DPP: Push Button Presence Announcement Response frame attributes",
+			msg);
+	return msg;
+}
+
+#endif /* CONFIG_DPP3 */

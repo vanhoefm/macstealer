@@ -1462,6 +1462,7 @@ struct wpa_supplicant {
 	struct dpp_pkex *dpp_pkex;
 	struct dpp_bootstrap_info *dpp_pkex_bi;
 	char *dpp_pkex_code;
+	size_t dpp_pkex_code_len;
 	char *dpp_pkex_identifier;
 	enum dpp_pkex_ver dpp_pkex_ver;
 	char *dpp_pkex_auth_cmd;
@@ -1492,6 +1493,21 @@ struct wpa_supplicant {
 	int dpp_reconfig_ssid_id;
 	struct dpp_reconfig_id *dpp_reconfig_id;
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	struct os_reltime dpp_pb_time;
+	int *dpp_pb_freqs;
+	unsigned int dpp_pb_freq_idx;
+	unsigned int dpp_pb_announce_count;
+	struct wpabuf *dpp_pb_announcement;
+	struct dpp_bootstrap_info *dpp_pb_bi;
+	unsigned int dpp_pb_resp_freq;
+	u8 dpp_pb_init_hash[SHA256_MAC_LEN];
+	int dpp_pb_stop_iter;
+	bool dpp_pb_discovery_done;
+	u8 dpp_pb_c_nonce[DPP_MAX_NONCE_LEN];
+	size_t dpp_pb_c_nonce_len;
+	bool dpp_pb_result_indicated;
+#endif /* CONFIG_DPP3 */
 #ifdef CONFIG_TESTING_OPTIONS
 	char *dpp_config_obj_override;
 	char *dpp_discovery_override;

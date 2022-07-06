@@ -3159,6 +3159,15 @@ static int wpa_cli_cmd_dpp_stop_chirp(struct wpa_ctrl *ctrl, int argc,
 }
 
 #endif /* CONFIG_DPP2 */
+
+
+#ifdef CONFIG_DPP3
+static int wpa_cli_cmd_dpp_push_button(struct wpa_ctrl *ctrl, int argc,
+				       char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "DPP_PUSH_BUTTON");
+}
+#endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 
 
@@ -3994,6 +4003,11 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	  cli_cmd_flag_none,
 	  "= stop DPP chirp" },
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	{ "dpp_push_button", wpa_cli_cmd_dpp_push_button, NULL,
+	  cli_cmd_flag_none,
+	  "= press DPP push button" },
+#endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 	{ "all_bss", wpa_cli_cmd_all_bss, NULL, cli_cmd_flag_none,
 	  "= list all BSS entries (scan results)" },

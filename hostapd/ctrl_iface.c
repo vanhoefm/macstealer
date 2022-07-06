@@ -3674,6 +3674,11 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 	} else if (os_strcmp(buf, "DPP_STOP_CHIRP") == 0) {
 		hostapd_dpp_chirp_stop(hapd);
 #endif /* CONFIG_DPP2 */
+#ifdef CONFIG_DPP3
+	} else if (os_strcmp(buf, "DPP_PUSH_BUTTON") == 0) {
+		if (hostapd_dpp_push_button(hapd) < 0)
+			reply_len = -1;
+#endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 #ifdef RADIUS_SERVER
 	} else if (os_strncmp(buf, "DAC_REQUEST ", 12) == 0) {
@@ -4182,6 +4187,19 @@ static void hostapd_ctrl_iface_flush(struct hapd_interfaces *interfaces)
 
 #ifdef CONFIG_DPP
 	dpp_global_clear(interfaces->dpp);
+#ifdef CONFIG_DPP3
+	{
+		int i;
+
+		for (i = 0; i < DPP_PB_INFO_COUNT; i++) {
+			struct dpp_pb_info *info;
+
+			info = &interfaces->dpp_pb[i];
+			info->rx_time.sec = 0;
+			info->rx_time.usec = 0;
+		}
+	}
+#endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 }
 

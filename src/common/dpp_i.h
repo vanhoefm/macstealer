@@ -113,17 +113,17 @@ int dpp_derive_pmkid(const struct dpp_curve_params *curve,
 		     struct crypto_ec_key *peer_key, u8 *pmkid);
 struct crypto_ec_point *
 dpp_pkex_derive_Qi(const struct dpp_curve_params *curve, const u8 *mac_init,
-		   const char *code, const char *identifier,
+		   const char *code, size_t code_len, const char *identifier,
 		   struct crypto_ec **ret_ec);
 struct crypto_ec_point *
 dpp_pkex_derive_Qr(const struct dpp_curve_params *curve, const u8 *mac_resp,
-		   const char *code, const char *identifier,
+		   const char *code, size_t code_len, const char *identifier,
 		   struct crypto_ec **ret_ec);
 int dpp_pkex_derive_z(const u8 *mac_init, const u8 *mac_resp,
 		      u8 ver_init, u8 ver_resp,
 		      const u8 *Mx, size_t Mx_len,
 		      const u8 *Nx, size_t Nx_len,
-		      const char *code,
+		      const char *code, size_t code_len,
 		      const u8 *Kx, size_t Kx_len,
 		      u8 *z, unsigned int hash_len);
 int dpp_reconfig_derive_ke_responder(struct dpp_authentication *auth,
