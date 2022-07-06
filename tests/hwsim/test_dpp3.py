@@ -279,3 +279,218 @@ def run_dpp_controller_relay_pkex(dev, apdev, params):
 
     time.sleep(0.5)
     wt.close()
+
+def dpp_pb_ap(apdev):
+    params = {"ssid": "sae",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password"}
+    return hostapd.add_ap(apdev, params)
+
+def test_dpp_push_button(dev, apdev):
+    """DPP push button"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+    dev[0].set("sae_groups", "")
+
+    hapd = dpp_pb_ap(apdev[0])
+    try:
+        dev[0].set("dpp_config_processing", "2")
+        if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the AP")
+        if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the station")
+        ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=30)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on station")
+        ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=1)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on AP")
+        dev[0].wait_connected()
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+
+def test_dpp_push_button_session_overlap_sta(dev, apdev):
+    """DPP push button and session overlap detected by STA"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+    dev[0].set("sae_groups", "")
+
+    hapd = dpp_pb_ap(apdev[0])
+    params = {"ssid": "another",
+              "channel": "6",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password"}
+    hapd2 = hostapd.add_ap(apdev[1], params)
+
+    if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP")
+    if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station")
+    ev = dev[0].wait_event(["DPP-PB-STATUS"], timeout=30)
+    if ev is None:
+        raise Exception("Push button status not reported on station")
+    # Force bootstrap key change since both instances share the same global
+    # DPP state for PB.
+    hapd.request("DPP_STOP_LISTEN")
+    if "OK" not in hapd2.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP2")
+    ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=30)
+    if ev is None:
+        raise Exception("Push button result not reported on station")
+    if "session-overlap" not in ev:
+        raise Exception("Unexpected push button result on station: " + ev)
+    ev = hapd.wait_event(["DPP-CONF-SENT"], timeout=0.1)
+    if ev:
+        raise Exception("AP sent configuration")
+    ev = hapd2.wait_event(["DPP-CONF-SENT"], timeout=0.1)
+    if ev:
+        raise Exception("AP2 sent configuration")
+
+def test_dpp_push_button_session_overlap_ap(dev, apdev):
+    """DPP push button and session overlap detected by AP"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    check_sae_capab(dev[0])
+    check_sae_capab(dev[1])
+    dev[0].set("sae_groups", "")
+
+    hapd = dpp_pb_ap(apdev[0])
+
+    if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP")
+    if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station(0)")
+    if "OK" not in dev[1].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station(1)")
+
+    ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=30)
+    if ev is None:
+        raise Exception("Push button result not reported on AP")
+    if "session-overlap" not in ev:
+        raise Exception("Unexpected push button result on AP: " + ev)
+
+    dev[0].request("DPP_STOP_LISTEN")
+    dev[1].request("DPP_STOP_LISTEN")
+
+def test_dpp_push_button_2sta(dev, apdev):
+    """DPP push button with two STAs"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    check_sae_capab(dev[0])
+    check_sae_capab(dev[1])
+    dev[0].set("sae_groups", "")
+    dev[1].set("sae_groups", "")
+
+    hapd = dpp_pb_ap(apdev[0])
+    try:
+        dev[0].set("dpp_config_processing", "2")
+        if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the AP(0)")
+        if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the station(0)")
+        ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=30)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on station(0)")
+        ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=30)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on AP(0)")
+        dev[0].wait_connected()
+
+        dev[1].set("dpp_config_processing", "2")
+        if "OK" not in dev[1].request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the station(1)")
+        time.sleep(1)
+        if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the AP(1)")
+        ev = dev[1].wait_event(["DPP-PB-RESULT"], timeout=30)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on station(1)")
+        ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=30)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on AP(0)")
+        dev[1].wait_connected()
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+        dev[1].set("dpp_config_processing", "0", allow_fail=True)
+
+def test_dpp_push_button_r_hash_mismatch_sta(dev, apdev):
+    """DPP push button - Responder hash mismatch from STA"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+    dev[0].set("sae_groups", "")
+
+    hapd = dpp_pb_ap(apdev[0])
+    if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP")
+    dev[0].set("dpp_test", "98")
+    if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station")
+    ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=30)
+    if ev is None or "failed" not in ev:
+        raise Exception("Push button bootstrapping did not fail correctly on AP")
+    dev[0].request("DPP_STOP_LISTEN")
+
+def test_dpp_push_button_i_hash_mismatch_ap(dev, apdev):
+    """DPP push button - Initiator hash mismatch from AP"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+    dev[0].set("sae_groups", "")
+
+    hapd = dpp_pb_ap(apdev[0])
+    hapd.set("dpp_test", "99")
+    if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP")
+    if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station")
+    ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=30)
+    if ev is None or "failed" not in ev:
+        raise Exception("Push button bootstrapping did not fail correctly on STA")
+
+def test_dpp_push_button_r_hash_mismatch_ap(dev, apdev):
+    """DPP push button - Responder hash mismatch from AP"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+    dev[0].set("sae_groups", "")
+
+    hapd = dpp_pb_ap(apdev[0])
+    hapd.set("dpp_test", "100")
+    if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP")
+    if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station")
+    ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=30)
+    if ev is None or "session-overlap" not in ev:
+        raise Exception("Push button bootstrapping did not fail correctly on STA")
+
+def test_dpp_push_button_ext_conf(dev, apdev):
+    """DPP push button"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+
+    hapd = dpp_pb_ap(apdev[0])
+    conf_id = hapd.dpp_configurator_add()
+    ssid = "example"
+    ssid_hex = binascii.hexlify(ssid.encode()).decode()
+    cmd = "DPP_PUSH_BUTTON conf=sta-dpp ssid=%s configurator=%d" % (ssid_hex, conf_id)
+    if "OK" not in hapd.request(cmd):
+        raise Exception("Failed to press push button on the AP")
+    if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station")
+    ev = dev[0].wait_event(["DPP-CONFOBJ-AKM"], timeout=30)
+    if ev is None or "dpp" not in ev:
+        raise Exception("Did not receive DPP AKM config")
+    ev = dev[0].wait_event(["DPP-CONFOBJ-SSID"], timeout=1)
+    if ev is None or ssid not in ev:
+        raise Exception("Did not receive correct SSID in config")
+    ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=1)
+    if ev is None or "success" not in ev:
+        raise Exception("Push button bootstrapping did not succeed on station")
+    ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=1)
+    if ev is None or "success" not in ev:
+        raise Exception("Push button bootstrapping did not succeed on AP")
