@@ -413,8 +413,7 @@ static void hostapd_ext_capab_byte(struct hostapd_data *hapd, u8 *pos, int idx)
 			*pos |= 0x01;
 #endif /* CONFIG_FILS */
 #ifdef CONFIG_IEEE80211AX
-		if (hapd->iconf->ieee80211ax &&
-		    hostapd_get_he_twt_responder(hapd, IEEE80211_MODE_AP))
+		if (hostapd_get_he_twt_responder(hapd, IEEE80211_MODE_AP))
 			*pos |= 0x40; /* Bit 78 - TWT responder */
 #endif /* CONFIG_IEEE80211AX */
 		break;

@@ -533,7 +533,8 @@ int hostapd_get_he_twt_responder(struct hostapd_data *hapd,
 	u8 *mac_cap;
 
 	if (!hapd->iface->current_mode ||
-	    !hapd->iface->current_mode->he_capab[mode].he_supported)
+	    !hapd->iface->current_mode->he_capab[mode].he_supported ||
+	    !hapd->iconf->ieee80211ax || hapd->conf->disable_11ax)
 		return 0;
 
 	mac_cap = hapd->iface->current_mode->he_capab[mode].mac_cap;
