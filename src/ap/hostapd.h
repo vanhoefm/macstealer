@@ -92,6 +92,7 @@ struct hapd_interfaces {
 	u8 dpp_pb_resp_hash[SHA256_MAC_LEN];
 	struct os_reltime dpp_pb_last_resp;
 	bool dpp_pb_result_indicated;
+	char *dpp_pb_cmd;
 #endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */
 

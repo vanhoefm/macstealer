@@ -3676,7 +3676,10 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_DPP3
 	} else if (os_strcmp(buf, "DPP_PUSH_BUTTON") == 0) {
-		if (hostapd_dpp_push_button(hapd) < 0)
+		if (hostapd_dpp_push_button(hapd, NULL) < 0)
+			reply_len = -1;
+	} else if (os_strncmp(buf, "DPP_PUSH_BUTTON ", 16) == 0) {
+		if (hostapd_dpp_push_button(hapd, buf + 15) < 0)
 			reply_len = -1;
 #endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */

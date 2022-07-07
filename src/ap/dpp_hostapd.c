@@ -2348,6 +2348,18 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 	pkex->exch_req_wait_time = 2000;
 	pkex->exch_req_tries = 1;
 
+	if (ifaces->dpp_pb_cmd) {
+		/* Use the externally provided configuration */
+		os_free(hapd->dpp_pkex_auth_cmd);
+		hapd->dpp_pkex_auth_cmd = os_strdup(ifaces->dpp_pb_cmd);
+		if (!hapd->dpp_pkex_auth_cmd) {
+			hostapd_dpp_push_button_stop(hapd);
+			return;
+		}
+		return;
+	}
+
+	/* Build config based on the current AP configuration */
 	wpa_snprintf_hex(ssid_hex, sizeof(ssid_hex),
 			 (const u8 *) hapd->conf->ssid.ssid,
 			 hapd->conf->ssid.ssid_len);
@@ -3487,7 +3499,7 @@ static void hostapd_dpp_push_button_expire(void *eloop_ctx, void *timeout_ctx)
 }
 
 
-int hostapd_dpp_push_button(struct hostapd_data *hapd)
+int hostapd_dpp_push_button(struct hostapd_data *hapd, const char *cmd)
 {
 	struct hapd_interfaces *ifaces = hapd->iface->interfaces;
 
@@ -3496,6 +3508,13 @@ int hostapd_dpp_push_button(struct hostapd_data *hapd)
 	os_get_reltime(&ifaces->dpp_pb_time);
 	ifaces->dpp_pb_announce_time.sec = 0;
 	ifaces->dpp_pb_announce_time.usec = 0;
+	str_clear_free(ifaces->dpp_pb_cmd);
+	ifaces->dpp_pb_cmd = NULL;
+	if (cmd) {
+		ifaces->dpp_pb_cmd = os_strdup(cmd);
+		if (!ifaces->dpp_pb_cmd)
+			return -1;
+	}
 	eloop_register_timeout(100, 0, hostapd_dpp_push_button_expire,
 			       hapd, NULL);
 
@@ -3532,6 +3551,9 @@ void hostapd_dpp_push_button_stop(struct hostapd_data *hapd)
 	}
 
 	ifaces->dpp_pb_result_indicated = false;
+
+	str_clear_free(ifaces->dpp_pb_cmd);
+	ifaces->dpp_pb_cmd = NULL;
 }
 
 #endif /* CONFIG_DPP3 */
