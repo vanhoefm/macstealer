@@ -483,6 +483,18 @@ static inline void wpa_sm_store_ptk(struct wpa_sm *sm,
 				   ptk);
 }
 
+#ifdef CONFIG_PASN
+static inline int wpa_sm_set_ltf_keyseed(struct wpa_sm *sm, const u8 *own_addr,
+					 const u8 *peer_addr,
+					 size_t ltf_keyseed_len,
+					 const u8 *ltf_keyseed)
+{
+	WPA_ASSERT(sm->ctx->set_ltf_keyseed);
+	return sm->ctx->set_ltf_keyseed(sm->ctx->ctx, own_addr, peer_addr,
+					ltf_keyseed_len, ltf_keyseed);
+}
+#endif /* CONFIG_PASN */
+
 int wpa_eapol_key_send(struct wpa_sm *sm, struct wpa_ptk *ptk,
 		       int ver, const u8 *dest, u16 proto,
 		       u8 *msg, size_t msg_len, u8 *key_mic);

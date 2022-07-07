@@ -1470,6 +1470,21 @@ static void hostapd_request_radius_psk(void *ctx, const u8 *addr, int key_mgmt,
 #endif /* CONFIG_NO_RADIUS */
 
 
+#ifdef CONFIG_PASN
+static int hostapd_set_ltf_keyseed(void *ctx, const u8 *peer_addr,
+				   const u8 *ltf_keyseed,
+				   size_t ltf_keyseed_len)
+{
+	struct hostapd_data *hapd = ctx;
+
+	return hostapd_drv_set_secure_ranging_ctx(hapd, hapd->own_addr,
+						  peer_addr, 0, 0, NULL,
+						  ltf_keyseed_len,
+						  ltf_keyseed, 0);
+}
+#endif /* CONFIG_PASN */
+
+
 int hostapd_setup_wpa(struct hostapd_data *hapd)
 {
 	struct wpa_auth_config _conf;
@@ -1516,6 +1531,9 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 #ifndef CONFIG_NO_RADIUS
 		.request_radius_psk = hostapd_request_radius_psk,
 #endif /* CONFIG_NO_RADIUS */
+#ifdef CONFIG_PASN
+		.set_ltf_keyseed = hostapd_set_ltf_keyseed,
+#endif /* CONFIG_PASN */
 	};
 	const u8 *wpa_ie;
 	size_t wpa_ie_len;

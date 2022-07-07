@@ -41,6 +41,7 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 	int use_sha384 = wpa_key_mgmt_sha384(sm->key_mgmt);
 	const u8 *mpmk;
 	size_t mpmk_len, kdk_len;
+	int ret = 0;
 
 	if (sm->xxkey_len > 0) {
 		mpmk = sm->xxkey;
@@ -75,10 +76,22 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 	else
 		kdk_len = 0;
 
-	return wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce, anonce,
-				 sm->own_addr, sm->bssid, sm->pmk_r1_name, ptk,
-				 ptk_name, sm->key_mgmt, sm->pairwise_cipher,
-				 kdk_len);
+	ret = wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce,
+				anonce, sm->own_addr, sm->bssid,
+				sm->pmk_r1_name, ptk, ptk_name, sm->key_mgmt,
+				sm->pairwise_cipher, kdk_len);
+	if (ret) {
+		wpa_printf(MSG_ERROR, "FT: PTK derivation failed");
+		return ret;
+	}
+
+#ifdef CONFIG_PASN
+	if (sm->secure_ltf &&
+	    ieee802_11_rsnx_capab(sm->ap_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF))
+		ret = wpa_ltf_keyseed(ptk, sm->key_mgmt, sm->pairwise_cipher);
+#endif /* CONFIG_PASN */
+
+	return ret;
 }
 
 
@@ -687,6 +700,15 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 			      sm->pairwise_cipher,
 			      kdk_len) < 0)
 		return -1;
+
+#ifdef CONFIG_PASN
+	if (sm->secure_ltf &&
+	    ieee802_11_rsnx_capab(sm->ap_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF) &&
+	    wpa_ltf_keyseed(&sm->ptk, sm->key_mgmt, sm->pairwise_cipher)) {
+		wpa_printf(MSG_DEBUG, "FT: Failed to derive LTF keyseed");
+		return -1;
+	}
+#endif /* CONFIG_PASN */
 
 	if (wpa_key_mgmt_fils(sm->key_mgmt)) {
 		kck = sm->ptk.kck2;

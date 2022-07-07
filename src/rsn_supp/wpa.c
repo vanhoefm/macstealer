@@ -585,6 +585,7 @@ int wpa_supplicant_send_2_of_4(struct wpa_sm *sm, const unsigned char *dst,
 static int wpa_derive_ptk(struct wpa_sm *sm, const unsigned char *src_addr,
 			  const struct wpa_eapol_key *key, struct wpa_ptk *ptk)
 {
+	int ret;
 	const u8 *z = NULL;
 	size_t z_len = 0, kdk_len;
 	int akmp;
@@ -618,11 +619,23 @@ static int wpa_derive_ptk(struct wpa_sm *sm, const unsigned char *src_addr,
 	else
 		kdk_len = 0;
 
-	return wpa_pmk_to_ptk(sm->pmk, sm->pmk_len, "Pairwise key expansion",
-			      sm->own_addr, sm->bssid, sm->snonce,
-			      key->key_nonce, ptk, akmp,
-			      sm->pairwise_cipher, z, z_len,
-			      kdk_len);
+	ret = wpa_pmk_to_ptk(sm->pmk, sm->pmk_len, "Pairwise key expansion",
+			     sm->own_addr, sm->bssid, sm->snonce,
+			     key->key_nonce, ptk, akmp,
+			     sm->pairwise_cipher, z, z_len,
+			     kdk_len);
+	if (ret) {
+		wpa_printf(MSG_ERROR, "WPA: PTK derivation failed");
+		return ret;
+	}
+
+#ifdef CONFIG_PASN
+	if (sm->secure_ltf &&
+	    ieee802_11_rsnx_capab(sm->ap_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF))
+		ret = wpa_ltf_keyseed(ptk, akmp, sm->pairwise_cipher);
+#endif /* CONFIG_PASN */
+
+	return ret;
 }
 
 
@@ -975,6 +988,20 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 			sm->keyidx_active, key_flag);
 		return -1;
 	}
+
+#ifdef CONFIG_PASN
+	if (sm->secure_ltf &&
+	    ieee802_11_rsnx_capab(sm->ap_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF) &&
+	    wpa_sm_set_ltf_keyseed(sm, sm->own_addr, sm->bssid,
+				   sm->ptk.ltf_keyseed_len,
+				   sm->ptk.ltf_keyseed) < 0) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"WPA: Failed to set LTF keyseed to the driver (keylen=%zu bssid="
+			MACSTR ")", sm->ptk.ltf_keyseed_len,
+			MAC2STR(sm->bssid));
+		return -1;
+	}
+#endif /* CONFIG_PASN */
 
 	wpa_sm_store_ptk(sm, sm->bssid, sm->pairwise_cipher,
 			 sm->dot11RSNAConfigPMKLifetime, &sm->ptk);
@@ -4451,6 +4478,15 @@ int fils_process_auth(struct wpa_sm *sm, const u8 *bssid, const u8 *data,
 		wpa_printf(MSG_DEBUG, "FILS: Failed to derive PTK");
 		goto fail;
 	}
+
+#ifdef CONFIG_PASN
+	if (sm->secure_ltf &&
+	    ieee802_11_rsnx_capab(sm->ap_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF) &&
+	    wpa_ltf_keyseed(&sm->ptk, sm->key_mgmt, sm->pairwise_cipher)) {
+		wpa_printf(MSG_DEBUG, "FILS: Failed to derive LTF keyseed");
+		goto fail;
+	}
+#endif /* CONFIG_PASN */
 
 	wpabuf_clear_free(dh_ss);
 	dh_ss = NULL;

@@ -1385,6 +1385,21 @@ static void wpa_supplicant_store_ptk(void *ctx, u8 *addr, int cipher,
 #endif /* CONFIG_NO_WPA */
 
 
+#ifdef CONFIG_PASN
+static int wpa_supplicant_set_ltf_keyseed(void *_wpa_s, const u8 *own_addr,
+					  const u8 *peer_addr,
+					  size_t ltf_keyseed_len,
+					  const u8 *ltf_keyseed)
+{
+	struct wpa_supplicant *wpa_s = _wpa_s;
+
+	return wpa_drv_set_secure_ranging_ctx(wpa_s, own_addr, peer_addr, 0, 0,
+					      NULL, ltf_keyseed_len,
+					      ltf_keyseed, 0);
+}
+#endif /* CONFIG_PASN */
+
+
 int wpa_supplicant_init_wpa(struct wpa_supplicant *wpa_s)
 {
 #ifndef CONFIG_NO_WPA
@@ -1447,6 +1462,9 @@ int wpa_supplicant_init_wpa(struct wpa_supplicant *wpa_s)
 	ctx->channel_info = wpa_supplicant_channel_info;
 	ctx->transition_disable = wpa_supplicant_transition_disable;
 	ctx->store_ptk = wpa_supplicant_store_ptk;
+#ifdef CONFIG_PASN
+	ctx->set_ltf_keyseed = wpa_supplicant_set_ltf_keyseed;
+#endif /* CONFIG_PASN */
 
 	wpa_s->wpa = wpa_sm_init(ctx);
 	if (wpa_s->wpa == NULL) {

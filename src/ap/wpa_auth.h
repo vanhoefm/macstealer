@@ -350,6 +350,10 @@ struct wpa_auth_callbacks {
 #ifdef CONFIG_MESH
 	int (*start_ampe)(void *ctx, const u8 *sta_addr);
 #endif /* CONFIG_MESH */
+#ifdef CONFIG_PASN
+	int (*set_ltf_keyseed)(void *ctx, const u8 *addr, const u8 *ltf_keyseed,
+			       size_t ltf_keyseed_len);
+#endif /* CONFIG_PASN */
 };
 
 struct wpa_authenticator * wpa_init(const u8 *addr,

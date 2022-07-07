@@ -2805,6 +2805,20 @@ static inline int wpa_auth_set_key(struct wpa_authenticator *wpa_auth,
 }
 
 
+#ifdef CONFIG_PASN
+static inline int wpa_auth_set_ltf_keyseed(struct wpa_authenticator *wpa_auth,
+					   const u8 *peer_addr,
+					   const u8 *ltf_keyseed,
+					   size_t ltf_keyseed_len)
+{
+	if (!wpa_auth->cb->set_ltf_keyseed)
+		return -1;
+	return wpa_auth->cb->set_ltf_keyseed(wpa_auth->cb_ctx, peer_addr,
+					     ltf_keyseed, ltf_keyseed_len);
+}
+#endif /* CONFIG_PASN */
+
+
 static inline int wpa_auth_add_sta_ft(struct wpa_authenticator *wpa_auth,
 				      const u8 *addr)
 {
@@ -2848,6 +2862,18 @@ void wpa_ft_install_ptk(struct wpa_state_machine *sm, int retry)
 	if (wpa_auth_set_key(sm->wpa_auth, 0, alg, sm->addr, sm->keyidx_active,
 			     sm->PTK.tk, klen, KEY_FLAG_PAIRWISE_RX_TX))
 		return;
+
+#ifdef CONFIG_PASN
+	if (sm->wpa_auth->conf.secure_ltf &&
+	    ieee802_11_rsnx_capab(sm->rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF) &&
+	    wpa_auth_set_ltf_keyseed(sm->wpa_auth, sm->addr,
+				     sm->PTK.ltf_keyseed,
+				     sm->PTK.ltf_keyseed_len)) {
+		wpa_printf(MSG_ERROR,
+			   "FT: Failed to set LTF keyseed to driver");
+		return;
+	}
+#endif /* CONFIG_PASN */
 
 	/* FIX: MLME-SetProtection.Request(TA, Tx_Rx) */
 	sm->pairwise_set = true;
@@ -3209,6 +3235,15 @@ pmk_r1_derived:
 			      &sm->PTK, ptk_name, sm->wpa_key_mgmt,
 			      pairwise, kdk_len) < 0)
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+
+#ifdef CONFIG_PASN
+	if (sm->wpa_auth->conf.secure_ltf &&
+	    ieee802_11_rsnx_capab(sm->rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF) &&
+	    wpa_ltf_keyseed(&sm->PTK, sm->wpa_key_mgmt, pairwise)) {
+		wpa_printf(MSG_DEBUG, "FT: Failed to derive LTF keyseed");
+		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+	}
+#endif /* CONFIG_PASN */
 
 	sm->pairwise = pairwise;
 	sm->PTK_valid = true;
