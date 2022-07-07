@@ -1016,3 +1016,30 @@ int hostapd_drv_dpp_listen(struct hostapd_data *hapd, bool enable)
 		return 0;
 	return hapd->driver->dpp_listen(hapd->drv_priv, enable);
 }
+
+
+#ifdef CONFIG_PASN
+int hostapd_drv_set_secure_ranging_ctx(struct hostapd_data *hapd,
+				       const u8 *own_addr, const u8 *peer_addr,
+				       u32 cipher, u8 tk_len, const u8 *tk,
+				       u8 ltf_keyseed_len,
+				       const u8 *ltf_keyseed, u32 action)
+{
+	struct secure_ranging_params params;
+
+	if (!hapd->driver || !hapd->driver->set_secure_ranging_ctx)
+		return 0;
+
+	os_memset(&params, 0, sizeof(params));
+	params.own_addr = own_addr;
+	params.peer_addr = peer_addr;
+	params.cipher = cipher;
+	params.tk_len = tk_len;
+	params.tk = tk;
+	params.ltf_keyseed_len = ltf_keyseed_len;
+	params.ltf_keyseed = ltf_keyseed;
+	params.action = action;
+
+	return hapd->driver->set_secure_ranging_ctx(hapd->drv_priv, &params);
+}
+#endif /* CONFIG_PASN */

@@ -88,6 +88,7 @@ struct pasn_data {
 	int akmp;
 	int cipher;
 	u16 group;
+	bool secure_ltf;
 	u8 trans_seq;
 	u8 wrapped_data_format;
 	size_t kdk_len;

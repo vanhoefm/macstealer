@@ -138,6 +138,11 @@ int hostapd_drv_do_acs(struct hostapd_data *hapd);
 int hostapd_drv_update_dh_ie(struct hostapd_data *hapd, const u8 *peer,
 			     u16 reason_code, const u8 *ie, size_t ielen);
 int hostapd_drv_dpp_listen(struct hostapd_data *hapd, bool enable);
+int hostapd_drv_set_secure_ranging_ctx(struct hostapd_data *hapd,
+				       const u8 *own_addr, const u8 *addr,
+				       u32 cipher, u8 key_len, const u8 *key,
+				       u8 ltf_keyseed_len,
+				       const u8 *ltf_keyseed, u32 action);
 
 
 #include "drivers/driver.h"
