@@ -3203,12 +3203,21 @@ wpas_dpp_rx_pb_presence_announcement_resp(struct wpa_supplicant *wpa_s,
 	wpa_hexdump(MSG_MSGDUMP, "DPP: Configurator Nonce",
 		    c_nonce, c_nonce_len);
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (dpp_test == DPP_TEST_INVALID_R_BOOTSTRAP_KEY_HASH_PB_REQ &&
+	    os_memcmp(r_hash, wpa_s->dpp_pb_bi->pubkey_hash_chirp,
+		      SHA256_MAC_LEN - 1) == 0)
+		goto skip_hash_check;
+#endif /* CONFIG_TESTING_OPTIONS */
 	if (os_memcmp(r_hash, wpa_s->dpp_pb_bi->pubkey_hash_chirp,
 		      SHA256_MAC_LEN) != 0) {
 		wpa_printf(MSG_INFO,
 			   "DPP: Unexpected push button Responder hash - abort");
 		overlap = true;
 	}
+#ifdef CONFIG_TESTING_OPTIONS
+skip_hash_check:
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	if (wpa_s->dpp_pb_resp_freq &&
 	    os_memcmp(i_hash, wpa_s->dpp_pb_init_hash, SHA256_MAC_LEN) != 0) {

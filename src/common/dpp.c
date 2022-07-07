@@ -4957,6 +4957,10 @@ void dpp_notify_chirp_received(void *msg_ctx, int id, const u8 *src,
 struct wpabuf * dpp_build_pb_announcement(struct dpp_bootstrap_info *bi)
 {
 	struct wpabuf *msg;
+	const u8 *r_hash = bi->pubkey_hash_chirp;
+#ifdef CONFIG_TESTING_OPTIONS
+	u8 test_hash[SHA256_MAC_LEN];
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	wpa_printf(MSG_DEBUG,
 		   "DPP: Build Push Button Presence Announcement frame");
@@ -4966,8 +4970,18 @@ struct wpabuf * dpp_build_pb_announcement(struct dpp_bootstrap_info *bi)
 	if (!msg)
 		return NULL;
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (dpp_test == DPP_TEST_INVALID_R_BOOTSTRAP_KEY_HASH_PB_REQ) {
+		wpa_printf(MSG_INFO,
+			   "DPP: TESTING - invalid R-Bootstrap Key Hash");
+		os_memcpy(test_hash, r_hash, SHA256_MAC_LEN);
+		test_hash[SHA256_MAC_LEN - 1] ^= 0x01;
+		r_hash = test_hash;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
 	/* Responder Bootstrapping Key Hash */
-	dpp_build_attr_r_bootstrap_key_hash(msg, bi->pubkey_hash_chirp);
+	dpp_build_attr_r_bootstrap_key_hash(msg, r_hash);
 	wpa_hexdump_buf(MSG_DEBUG,
 			"DPP: Push Button Presence Announcement frame attributes",
 			msg);
@@ -4981,6 +4995,10 @@ struct wpabuf * dpp_build_pb_announcement_resp(struct dpp_bootstrap_info *bi,
 					       size_t c_nonce_len)
 {
 	struct wpabuf *msg;
+	const u8 *i_hash = bi->pubkey_hash_chirp;
+#ifdef CONFIG_TESTING_OPTIONS
+	u8 test_hash[SHA256_MAC_LEN];
+#endif /* CONFIG_TESTING_OPTIONS */
 
 	wpa_printf(MSG_DEBUG,
 		   "DPP: Build Push Button Presence Announcement Response frame");
@@ -4990,11 +5008,27 @@ struct wpabuf * dpp_build_pb_announcement_resp(struct dpp_bootstrap_info *bi,
 	if (!msg)
 		return NULL;
 
+#ifdef CONFIG_TESTING_OPTIONS
+	if (dpp_test == DPP_TEST_INVALID_I_BOOTSTRAP_KEY_HASH_PB_RESP) {
+		wpa_printf(MSG_INFO,
+			   "DPP: TESTING - invalid I-Bootstrap Key Hash");
+		os_memcpy(test_hash, i_hash, SHA256_MAC_LEN);
+		test_hash[SHA256_MAC_LEN - 1] ^= 0x01;
+		i_hash = test_hash;
+	} else if (dpp_test == DPP_TEST_INVALID_R_BOOTSTRAP_KEY_HASH_PB_RESP) {
+		wpa_printf(MSG_INFO,
+			   "DPP: TESTING - invalid R-Bootstrap Key Hash");
+		os_memcpy(test_hash, e_hash, SHA256_MAC_LEN);
+		test_hash[SHA256_MAC_LEN - 1] ^= 0x01;
+		e_hash = test_hash;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
+
 	/* Initiator Bootstrapping Key Hash */
 	wpa_printf(MSG_DEBUG, "DPP: I-Bootstrap Key Hash");
 	wpabuf_put_le16(msg, DPP_ATTR_I_BOOTSTRAP_KEY_HASH);
 	wpabuf_put_le16(msg, SHA256_MAC_LEN);
-	wpabuf_put_data(msg, bi->pubkey_hash_chirp, SHA256_MAC_LEN);
+	wpabuf_put_data(msg, i_hash, SHA256_MAC_LEN);
 
 	/* Responder Bootstrapping Key Hash */
 	dpp_build_attr_r_bootstrap_key_hash(msg, e_hash);
