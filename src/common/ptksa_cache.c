@@ -51,7 +51,10 @@ static void ptksa_cache_expire(void *eloop_ctx, void *timeout_ctx)
 		wpa_printf(MSG_DEBUG, "Expired PTKSA cache entry for " MACSTR,
 			   MAC2STR(e->addr));
 
-		ptksa_cache_free_entry(ptksa, e);
+		if (e->cb && e->ctx)
+			e->cb(e);
+		else
+			ptksa_cache_free_entry(ptksa, e);
 	}
 
 	ptksa_cache_set_expiration(ptksa);
@@ -259,6 +262,8 @@ void ptksa_cache_flush(struct ptksa_cache *ptksa, const u8 *addr, u32 cipher)
  * @cipher: The cipher used
  * @life_time: The PTK life time in seconds
  * @ptk: The PTK
+ * @life_time_expiry_cb: Callback for alternative expiration handling
+ * @ctx: Context pointer to save into e->ctx for the callback
  * Returns: Pointer to the added PTKSA cache entry or %NULL on error
  *
  * This function creates a PTKSA entry and adds it to the PTKSA cache.
@@ -269,7 +274,10 @@ struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
 					   const u8 *own_addr,
 					   const u8 *addr, u32 cipher,
 					   u32 life_time,
-					   const struct wpa_ptk *ptk)
+					   const struct wpa_ptk *ptk,
+					   void (*life_time_expiry_cb)
+					   (struct ptksa_cache_entry *e),
+					   void *ctx)
 {
 	struct ptksa_cache_entry *entry, *tmp, *tmp2 = NULL;
 	struct os_reltime now;
@@ -291,6 +299,9 @@ struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
 	dl_list_init(&entry->list);
 	os_memcpy(entry->addr, addr, ETH_ALEN);
 	entry->cipher = cipher;
+	entry->cb = life_time_expiry_cb;
+	entry->ctx = ctx;
+
 	if (own_addr)
 		os_memcpy(entry->own_addr, own_addr, ETH_ALEN);
 

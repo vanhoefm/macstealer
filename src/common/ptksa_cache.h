@@ -24,6 +24,8 @@ struct ptksa_cache_entry {
 	u32 cipher;
 	u8 addr[ETH_ALEN];
 	u8 own_addr[ETH_ALEN];
+	void (*cb)(struct ptksa_cache_entry *e);
+	void *ctx;
 };
 
 #ifdef CONFIG_PTKSA_CACHE
@@ -39,7 +41,10 @@ struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
 					   const u8 *own_addr,
 					   const u8 *addr, u32 cipher,
 					   u32 life_time,
-					   const struct wpa_ptk *ptk);
+					   const struct wpa_ptk *ptk,
+					   void (*cb)
+					   (struct ptksa_cache_entry *e),
+					   void *ctx);
 void ptksa_cache_flush(struct ptksa_cache *ptksa, const u8 *addr, u32 cipher);
 
 #else /* CONFIG_PTKSA_CACHE */
@@ -67,7 +72,8 @@ static inline int ptksa_cache_list(struct ptksa_cache *ptksa,
 
 static inline struct ptksa_cache_entry *
 ptksa_cache_add(struct ptksa_cache *ptksa, const u8 *own_addr, const u8 *addr,
-		u32 cipher, u32 life_time, const struct wpa_ptk *ptk)
+		u32 cipher, u32 life_time, const struct wpa_ptk *ptk,
+		void (*cb)(struct ptksa_cache_entry *e), void *ctx)
 {
 	return NULL;
 }

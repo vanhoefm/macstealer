@@ -1584,6 +1584,14 @@ static int wpas_pasn_immediate_retry(struct wpa_supplicant *wpa_s,
 }
 
 
+static void wpas_pasn_deauth_cb(struct ptksa_cache_entry *entry)
+{
+	struct wpa_supplicant *wpa_s = entry->ctx;
+
+	wpas_pasn_deauthenticate(wpa_s, entry->own_addr, entry->addr);
+}
+
+
 int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		      const struct ieee80211_mgmt *mgmt, size_t len)
 {
@@ -1825,7 +1833,9 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 	wpa_printf(MSG_DEBUG, "PASN: Success sending last frame. Store PTK");
 
 	ptksa_cache_add(wpa_s->ptksa, pasn->own_addr, pasn->bssid,
-			pasn->cipher, dot11RSNAConfigPMKLifetime, &pasn->ptk);
+			pasn->cipher, dot11RSNAConfigPMKLifetime, &pasn->ptk,
+			wpa_s->pasn_params ? wpas_pasn_deauth_cb : NULL,
+			wpa_s->pasn_params ? wpa_s : NULL);
 
 	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
 
