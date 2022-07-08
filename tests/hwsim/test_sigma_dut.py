@@ -3799,6 +3799,154 @@ def run_sigma_dut_dpp_reconfig_proto(dev, apdev, dpp_step):
         dev[1].set("dpp_config_processing", "0")
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_pb_sta(dev, apdev):
+    """sigma_dut DPP/PB station"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+
+    params = {"ssid": "sae",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password"}
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    ifname = dev[0].ifname
+    sigma = start_sigma_dut(ifname)
+    try:
+        if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the AP")
+
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" % ifname)
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPProvisioningRole,Enrollee,DPPBS,PBBS,DPPTimeout,50,DPPWaitForConnect,Yes"
+        res = sigma_dut_cmd(cmd, timeout=60)
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK,NetworkConnectResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+        ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=1)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on AP")
+    finally:
+        stop_sigma_dut(sigma)
+        dev[0].set("dpp_config_processing", "0")
+
+def test_sigma_dut_dpp_pb_sta_misbehavior(dev, apdev):
+    """sigma_dut DPP/PB station misbehavior"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+
+    params = {"ssid": "sae",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password"}
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    ifname = dev[0].ifname
+    sigma = start_sigma_dut(ifname)
+    try:
+        if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the AP")
+
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" % ifname)
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPProvisioningRole,Enrollee,DPPBS,PBBS,DPPTimeout,50,DPPWaitForConnect,Yes"
+        cmd += ",DPPStep,InvalidValue,DPPFrameType,PBPresAnnc,DPPIEAttribute,RespBSKeyHash"
+        res = sigma_dut_cmd(cmd, timeout=60)
+        if "BootstrapResult,OK,AuthResult,Timeout" not in res:
+            raise Exception("Unexpected result: " + res)
+        ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=1)
+        if ev is None or "failed" not in ev:
+            raise Exception("Push button bootstrapping did not fail on AP")
+    finally:
+        stop_sigma_dut(sigma)
+        dev[0].set("dpp_config_processing", "0")
+
+def test_sigma_dut_dpp_pb_ap(dev, apdev, params):
+    """sigma_dut DPP/PB AP (own config)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+
+    logdir = params['prefix'] + ".sigma-hostapd"
+    with HWSimRadio() as (radio, iface):
+        sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
+        try:
+            sigma_dut_cmd_check("ap_reset_default,program,DPP")
+
+            sigma_dut_cmd_check("ap_set_wireless,NAME,AP,CHANNEL,1,SSID,test-sae,MODE,11ng")
+            sigma_dut_cmd_check("ap_set_security,NAME,AP,KEYMGNT,WPA2-SAE,PSK,12345678")
+            sigma_dut_cmd_check("ap_config_commit,NAME,AP")
+
+            dev[0].set("dpp_config_processing", "2")
+            if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+                raise Exception("Failed to press push button on the STA")
+
+            cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPBS,PBBS,DPPTimeout,50"
+            res = sigma_dut_cmd(cmd, timeout=60)
+            if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+                raise Exception("Unexpected result: " + res)
+            ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=1)
+            if ev is None or "success" not in ev:
+                raise Exception("Push button bootstrapping did not succeed on STA")
+            dev[0].wait_connected()
+            sigma_dut_cmd_check("ap_reset_default")
+        finally:
+            stop_sigma_dut(sigma)
+            dev[0].set("dpp_config_processing", "0", allow_fail=True)
+
+def test_sigma_dut_dpp_pb_ap2(dev, apdev, params):
+    """sigma_dut DPP/PB AP (DPPConfigIndex)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+
+    logdir = params['prefix'] + ".sigma-hostapd"
+    with HWSimRadio() as (radio, iface):
+        sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
+        try:
+            sigma_dut_cmd_check("ap_reset_default,program,DPP")
+            if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+                raise Exception("Failed to press push button on the STA")
+
+            cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPBS,PBBS,DPPTimeout,50"
+            cmd += ",DPPConfEnrolleeRole,STA,DPPConfIndex,1"
+            res = sigma_dut_cmd(cmd, timeout=60)
+            if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+                raise Exception("Unexpected result: " + res)
+            ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=1)
+            if ev is None or "success" not in ev:
+                raise Exception("Push button bootstrapping did not succeed on STA")
+            sigma_dut_cmd_check("ap_reset_default")
+        finally:
+            stop_sigma_dut(sigma)
+
+def test_sigma_dut_dpp_pb_ap_misbehavior(dev, apdev, params):
+    """sigma_dut DPP/PB AP misbehavior)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+
+    logdir = params['prefix'] + ".sigma-hostapd"
+    with HWSimRadio() as (radio, iface):
+        sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
+        try:
+            sigma_dut_cmd_check("ap_reset_default,program,DPP")
+            if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+                raise Exception("Failed to press push button on the STA")
+
+            cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPBS,PBBS,DPPTimeout,50"
+            cmd += ",DPPConfEnrolleeRole,STA,DPPConfIndex,1"
+            cmd += ",DPPStep,InvalidValue,DPPFrameType,PBPAResponse,DPPIEAttribute,InitBSKeyHash"
+            res = sigma_dut_cmd(cmd, timeout=60)
+            if "BootstrapResult,OK,AuthResult,Timeout" not in res:
+                raise Exception("Unexpected result: " + res)
+            ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=1)
+            if ev is None or "failed" not in ev:
+                raise Exception("Push button bootstrapping did not fail on STA")
+            sigma_dut_cmd_check("ap_reset_default")
+        finally:
+            stop_sigma_dut(sigma)
+
 def test_sigma_dut_preconfigured_profile(dev, apdev):
     """sigma_dut controlled connection using preconfigured profile"""
     ifname = dev[0].ifname
