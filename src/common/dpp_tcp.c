@@ -189,6 +189,26 @@ dpp_relay_controller_get_ctx(struct dpp_global *dpp, void *cb_ctx)
 }
 
 
+static struct dpp_relay_controller *
+dpp_relay_controller_get_addr(struct dpp_global *dpp,
+			      const struct sockaddr_in *addr)
+{
+	struct dpp_relay_controller *ctrl;
+
+	if (!dpp)
+		return NULL;
+
+	dl_list_for_each(ctrl, &dpp->controllers, struct dpp_relay_controller,
+			 list) {
+		if (ctrl->ipaddr.af == AF_INET &&
+		    addr->sin_addr.s_addr == ctrl->ipaddr.u.v4.s_addr)
+			return ctrl;
+	}
+
+	return NULL;
+}
+
+
 static void dpp_controller_gas_done(struct dpp_connection *conn)
 {
 	struct dpp_authentication *auth = conn->auth;
@@ -543,6 +563,17 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 				if (os_memcmp(src, conn->mac_addr,
 					      ETH_ALEN) == 0)
 					return dpp_relay_tx(conn, hdr, buf, len);
+				if (type == DPP_PA_AUTHENTICATION_RESP &&
+				    conn->freq == 0 &&
+				    is_broadcast_ether_addr(conn->mac_addr)) {
+					wpa_printf(MSG_DEBUG,
+						   "DPP: Associate this peer to the new Controller initiated connection");
+					os_memcpy(conn->mac_addr, src,
+						  ETH_ALEN);
+					conn->freq = freq;
+					return dpp_relay_tx(conn, hdr, buf,
+							    len);
+				}
 			}
 		}
 	}
@@ -2237,6 +2268,143 @@ void dpp_relay_flush_controllers(struct dpp_global *dpp)
 		dl_list_del(&ctrl->list);
 		dpp_relay_controller_free(ctrl);
 	}
+}
+
+
+static void dpp_relay_tcp_cb(int sd, void *eloop_ctx, void *sock_ctx)
+{
+	struct dpp_global *dpp = eloop_ctx;
+	struct sockaddr_in addr;
+	socklen_t addr_len = sizeof(addr);
+	int fd;
+	struct dpp_relay_controller *ctrl;
+	struct dpp_connection *conn = NULL;
+
+	wpa_printf(MSG_DEBUG, "DPP: New TCP connection (Relay)");
+
+	fd = accept(dpp->relay_sock, (struct sockaddr *) &addr, &addr_len);
+	if (fd < 0) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Failed to accept new connection: %s",
+			   strerror(errno));
+		return;
+	}
+	wpa_printf(MSG_DEBUG, "DPP: Connection from %s:%d",
+		   inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+
+	ctrl = dpp_relay_controller_get_addr(dpp, &addr);
+	if (!ctrl) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: No Controller found for that address");
+		goto fail;
+	}
+
+	if (dl_list_len(&ctrl->conn) >= 15) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Too many ongoing Relay connections to the Controller - cannot start a new one");
+		goto fail;
+	}
+
+	conn = os_zalloc(sizeof(*conn));
+	if (!conn)
+		goto fail;
+
+	conn->global = ctrl->global;
+	conn->relay = ctrl;
+	conn->msg_ctx = ctrl->msg_ctx;
+	conn->cb_ctx = ctrl->global->cb_ctx;
+	os_memset(conn->mac_addr, 0xff, ETH_ALEN);
+	conn->sock = fd;
+
+	if (fcntl(conn->sock, F_SETFL, O_NONBLOCK) != 0) {
+		wpa_printf(MSG_DEBUG, "DPP: fnctl(O_NONBLOCK) failed: %s",
+			   strerror(errno));
+		goto fail;
+	}
+
+	if (eloop_register_sock(conn->sock, EVENT_TYPE_READ,
+				dpp_controller_rx, conn, NULL) < 0)
+		goto fail;
+	conn->read_eloop = 1;
+
+	/* TODO: eloop timeout to expire connections that do not complete in
+	 * reasonable time */
+	dl_list_add(&ctrl->conn, &conn->list);
+	return;
+
+fail:
+	close(fd);
+	os_free(conn);
+}
+
+
+int dpp_relay_listen(struct dpp_global *dpp, int port)
+{
+	int s;
+	int on = 1;
+	struct sockaddr_in sin;
+
+	if (dpp->relay_sock >= 0) {
+		wpa_printf(MSG_INFO, "DPP: %s(%d) - relay port already opened",
+			   __func__, port);
+		return -1;
+	}
+
+	s = socket(AF_INET, SOCK_STREAM, 0);
+	if (s < 0) {
+		wpa_printf(MSG_INFO,
+			   "DPP: socket(SOCK_STREAM) failed: %s",
+			   strerror(errno));
+		return -1;
+	}
+
+	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: setsockopt(SO_REUSEADDR) failed: %s",
+			   strerror(errno));
+		/* try to continue anyway */
+	}
+
+	if (fcntl(s, F_SETFL, O_NONBLOCK) < 0) {
+		wpa_printf(MSG_INFO, "DPP: fnctl(O_NONBLOCK) failed: %s",
+			   strerror(errno));
+		close(s);
+		return -1;
+	}
+
+	/* TODO: IPv6 */
+	os_memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_port = htons(port);
+	if (bind(s, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+		wpa_printf(MSG_INFO,
+			   "DPP: Failed to bind Relay TCP port: %s",
+			   strerror(errno));
+		close(s);
+		return -1;
+	}
+	if (listen(s, 10 /* max backlog */) < 0 ||
+	    fcntl(s, F_SETFL, O_NONBLOCK) < 0 ||
+	    eloop_register_sock(s, EVENT_TYPE_READ, dpp_relay_tcp_cb, dpp,
+				NULL)) {
+		close(s);
+		return -1;
+	}
+
+	dpp->relay_sock = s;
+	wpa_printf(MSG_DEBUG, "DPP: Relay started on TCP port %d", port);
+	return 0;
+}
+
+
+void dpp_relay_stop_listen(struct dpp_global *dpp)
+{
+	if (!dpp || dpp->relay_sock < 0)
+		return;
+	eloop_unregister_sock(dpp->relay_sock, EVENT_TYPE_READ);
+	close(dpp->relay_sock);
+	dpp->relay_sock = -1;
 }
 
 

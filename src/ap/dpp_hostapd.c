@@ -3017,6 +3017,9 @@ static void hostapd_dpp_relay_tx(void *ctx, const u8 *addr, unsigned int freq,
 	struct hostapd_data *hapd = ctx;
 	u8 *buf;
 
+	if (freq == 0)
+		freq = hapd->iface->freq;
+
 	wpa_printf(MSG_DEBUG, "DPP: Send action frame dst=" MACSTR " freq=%u",
 		   MAC2STR(addr), freq);
 	buf = os_malloc(2 + len);
@@ -3059,6 +3062,10 @@ static int hostapd_dpp_add_controllers(struct hostapd_data *hapd)
 					     &config) < 0)
 			return -1;
 	}
+
+	if (hapd->conf->dpp_relay_port)
+		dpp_relay_listen(hapd->iface->interfaces->dpp,
+				 hapd->conf->dpp_relay_port);
 #endif /* CONFIG_DPP2 */
 
 	return 0;
@@ -3099,8 +3106,10 @@ void hostapd_dpp_deinit(struct hostapd_data *hapd)
 	eloop_cancel_timeout(hostapd_dpp_conn_status_result_wait_timeout, hapd,
 			     NULL);
 	hostapd_dpp_chirp_stop(hapd);
-	if (hapd->iface->interfaces)
+	if (hapd->iface->interfaces) {
+		dpp_relay_stop_listen(hapd->iface->interfaces->dpp);
 		dpp_controller_stop_for_ctx(hapd->iface->interfaces->dpp, hapd);
+	}
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_DPP3
 	eloop_cancel_timeout(hostapd_dpp_build_new_key, hapd, NULL);

@@ -4471,6 +4471,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 	} else if (os_strcmp(buf, "dpp_controller") == 0) {
 		if (hostapd_dpp_controller_parse(bss, pos))
 			return 1;
+	} else if (os_strcmp(buf, "dpp_relay_port") == 0) {
+		bss->dpp_relay_port = atoi(pos);
 	} else if (os_strcmp(buf, "dpp_configurator_connectivity") == 0) {
 		bss->dpp_configurator_connectivity = atoi(pos);
 	} else if (os_strcmp(buf, "dpp_pfs") == 0) {

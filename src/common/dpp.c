@@ -4890,6 +4890,7 @@ struct dpp_global * dpp_global_init(struct dpp_global_config *config)
 #ifdef CONFIG_DPP2
 	dl_list_init(&dpp->controllers);
 	dl_list_init(&dpp->tcp_init);
+	dpp->relay_sock = -1;
 #endif /* CONFIG_DPP2 */
 
 	return dpp;

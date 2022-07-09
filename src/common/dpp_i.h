@@ -21,6 +21,7 @@ struct dpp_global {
 	struct dl_list controllers; /* struct dpp_relay_controller */
 	struct dpp_controller *controller;
 	struct dl_list tcp_init; /* struct dpp_connection */
+	int relay_sock;
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
 	bool (*tcp_msg_sent)(void *ctx, struct dpp_authentication *auth);
