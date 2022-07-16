@@ -2062,6 +2062,16 @@ def test_sigma_dut_dpp_qr_init_configurator_nak_from_uri(dev, apdev):
     run_sigma_dut_dpp_qr_init_configurator(dev, apdev, 1,
                                            net_access_key_curve="URI")
 
+def test_sigma_dut_dpp_qr_init_configurator_3rd_party(dev, apdev):
+    """sigma_dut DPP/QR initiator as Configurator (3rd party info)"""
+    run_sigma_dut_dpp_qr_init_configurator(dev, apdev, 1,
+                                           extra="DPP3rdParty,Yes")
+
+def test_sigma_dut_dpp_qr_init_configurator_3rd_party_psk(dev, apdev):
+    """sigma_dut DPP/QR initiator as Configurator (3rd party info with PSK)"""
+    run_sigma_dut_dpp_qr_init_configurator(dev, apdev, 2,
+                                           extra="DPP3rdParty,Yes")
+
 def run_sigma_dut_dpp_qr_init_configurator(dev, apdev, conf_idx,
                                            prov_role="Configurator",
                                            extra=None, mud_url=None,
@@ -2205,6 +2215,13 @@ def test_sigma_dut_dpp_incompatible_roles_resp(dev, apdev):
 
 def test_sigma_dut_dpp_qr_enrollee_chirp(dev, apdev):
     """sigma_dut DPP/QR as chirping Enrollee"""
+    run_sigma_dut_dpp_qr_enrollee_chirp(dev, apdev)
+
+def test_sigma_dut_dpp_qr_enrollee_chirp_3rd_party_info(dev, apdev):
+    """sigma_dut DPP/QR as chirping Enrollee (3rd party info in request)"""
+    run_sigma_dut_dpp_qr_enrollee_chirp(dev, apdev, extra="DPP3rdParty,Yes")
+
+def run_sigma_dut_dpp_qr_enrollee_chirp(dev, apdev, extra=None):
     check_dpp_capab(dev[0])
     check_dpp_capab(dev[1])
     hapd = start_dpp_ap(apdev[0])
@@ -2226,7 +2243,10 @@ def test_sigma_dut_dpp_qr_enrollee_chirp(dev, apdev):
                                  ssid="DPPNET01")
         dev[1].dpp_listen(2437)
 
-        res = sigma_dut_cmd_check("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,16,DPPWaitForConnect,Yes,DPPChirp,Enable", timeout=20)
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,16,DPPWaitForConnect,Yes,DPPChirp,Enable"
+        if extra:
+            cmd += "," + extra
+        res = sigma_dut_cmd_check(cmd, timeout=20)
         sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" % ifname)
         if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK,NetworkIntroResult,OK,NetworkConnectResult,OK" not in res:
             raise Exception("Unexpected result: " + res)

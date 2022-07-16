@@ -1038,6 +1038,28 @@ def test_dpp_config_dpp_gen_expired_key(dev, apdev):
                                  require_conf_failure=True,
                                  configurator=True)
 
+def test_dpp_config_dpp_gen_3rd_party(dev, apdev):
+    """Generate DPP Config Object for DPP network with 3rd party information"""
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+    try:
+        dev[0].set("dpp_extra_conf_req_name", "org.example")
+        json = '{"c":1,"d":"test"}'
+        dev[0].set("dpp_extra_conf_req_value", json)
+        run_dpp_config_dpp_gen_3rd_party(dev, apdev)
+    finally:
+        dev[0].set("dpp_extra_conf_req_name", "", allow_fail=True)
+        dev[0].set("dpp_extra_conf_req_value", "", allow_fail=True)
+
+def run_dpp_config_dpp_gen_3rd_party(dev, apdev):
+    extra = "conf_extra_name=org.example conf_extra_value="
+    json = '{"a":1,"b":"test"}'
+    extra += binascii.hexlify(json.encode()).decode()
+    run_dpp_qr_code_auth_unicast(dev, apdev, "prime256v1",
+                                 init_extra="conf=sta-dpp " + extra,
+                                 require_conf_success=True,
+                                 configurator=True)
+
 def test_dpp_config_dpp_override_prime256v1(dev, apdev):
     """DPP Config Object override (P-256)"""
     check_dpp_capab(dev[0])
