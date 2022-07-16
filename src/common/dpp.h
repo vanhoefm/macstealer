@@ -257,6 +257,8 @@ struct dpp_configuration {
 	int psk_set;
 
 	char *csrattrs;
+	char *extra_name;
+	char *extra_value;
 };
 
 struct dpp_asymmetric_key {

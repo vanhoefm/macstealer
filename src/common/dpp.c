@@ -1152,6 +1152,8 @@ void dpp_configuration_free(struct dpp_configuration *conf)
 	str_clear_free(conf->passphrase);
 	os_free(conf->group_id);
 	os_free(conf->csrattrs);
+	os_free(conf->extra_name);
+	os_free(conf->extra_value);
 	bin_clear_free(conf, sizeof(*conf));
 }
 
@@ -1276,6 +1278,29 @@ static int dpp_configuration_parse_helper(struct dpp_authentication *auth,
 		if (!conf->csrattrs)
 			goto fail;
 		os_memcpy(conf->csrattrs, pos, len);
+	}
+
+	pos = os_strstr(cmd, " conf_extra_name=");
+	if (pos) {
+		pos += 17;
+		end = os_strchr(pos, ' ');
+		len = end ? (size_t) (end - pos) : os_strlen(pos);
+		conf->extra_name = os_zalloc(len + 1);
+		if (!conf->extra_name)
+			goto fail;
+		os_memcpy(conf->extra_name, pos, len);
+	}
+
+	pos = os_strstr(cmd, " conf_extra_value=");
+	if (pos) {
+		pos += 18;
+		end = os_strchr(pos, ' ');
+		len = end ? (size_t) (end - pos) : os_strlen(pos);
+		len /= 2;
+		conf->extra_value = os_zalloc(len + 1);
+		if (!conf->extra_value ||
+		    hexstr2bin(pos, (u8 *) conf->extra_value, len) < 0)
+			goto fail;
 	}
 
 	if (!dpp_configuration_valid(conf))
@@ -1733,6 +1758,9 @@ skip_groups:
 			tailroom += os_strlen(auth->trusted_eap_server_name);
 		tailroom += 1000;
 	}
+	if (conf->extra_name && conf->extra_value)
+		tailroom += 10 + os_strlen(conf->extra_name) +
+			os_strlen(conf->extra_value);
 	buf = dpp_build_conf_start(auth, conf, tailroom);
 	if (!buf)
 		goto fail;
@@ -1793,6 +1821,11 @@ skip_groups:
 #endif /* CONFIG_DPP2 */
 
 	json_end_object(buf);
+	if (conf->extra_name && conf->extra_value) {
+		json_value_sep(buf);
+		wpabuf_printf(buf, "\"%s\":%s", conf->extra_name,
+			      conf->extra_value);
+	}
 	json_end_object(buf);
 
 	wpa_hexdump_ascii_key(MSG_DEBUG, "DPP: Configuration Object",
@@ -1830,8 +1863,12 @@ dpp_build_conf_obj_legacy(struct dpp_authentication *auth,
 {
 	struct wpabuf *buf;
 	const char *akm_str;
+	size_t len = 1000;
 
-	buf = dpp_build_conf_start(auth, conf, 1000);
+	if (conf->extra_name && conf->extra_value)
+		len += 10 + os_strlen(conf->extra_name) +
+			os_strlen(conf->extra_value);
+	buf = dpp_build_conf_start(auth, conf, len);
 	if (!buf)
 		return NULL;
 
@@ -1844,6 +1881,11 @@ dpp_build_conf_obj_legacy(struct dpp_authentication *auth,
 	json_value_sep(buf);
 	dpp_build_legacy_cred_params(buf, conf);
 	json_end_object(buf);
+	if (conf->extra_name && conf->extra_value) {
+		json_value_sep(buf);
+		wpabuf_printf(buf, "\"%s\":%s", conf->extra_name,
+			      conf->extra_value);
+	}
 	json_end_object(buf);
 
 	wpa_hexdump_ascii_key(MSG_DEBUG, "DPP: Configuration Object (legacy)",
