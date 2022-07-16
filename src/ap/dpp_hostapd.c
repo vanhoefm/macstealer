@@ -343,6 +343,9 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
 
 	return dpp_tcp_auth(hapd->iface->interfaces->dpp, conn, auth,
 			    hapd->conf->dpp_name, DPP_NETROLE_AP,
+			    hapd->conf->dpp_mud_url,
+			    hapd->conf->dpp_extra_conf_req_name,
+			    hapd->conf->dpp_extra_conf_req_value,
 			    hostapd_dpp_process_conf_obj, NULL);
 }
 #endif /* CONFIG_DPP2 */
@@ -928,7 +931,10 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
 	if (tcp)
 		return dpp_tcp_init(hapd->iface->interfaces->dpp, auth,
 				    &ipaddr, tcp_port, hapd->conf->dpp_name,
-				    DPP_NETROLE_AP, hapd->msg_ctx, hapd,
+				    DPP_NETROLE_AP, hapd->conf->dpp_mud_url,
+				    hapd->conf->dpp_extra_conf_req_name,
+				    hapd->conf->dpp_extra_conf_req_value,
+				    hapd->msg_ctx, hapd,
 				    hostapd_dpp_process_conf_obj, NULL);
 #endif /* CONFIG_DPP2 */
 
@@ -1287,7 +1293,9 @@ static void hostapd_dpp_start_gas_client(struct hostapd_data *hapd)
 
 	buf = dpp_build_conf_req_helper(auth, hapd->conf->dpp_name,
 					DPP_NETROLE_AP,
-					hapd->conf->dpp_mud_url, NULL);
+					hapd->conf->dpp_mud_url, NULL,
+					hapd->conf->dpp_extra_conf_req_name,
+					hapd->conf->dpp_extra_conf_req_value);
 	if (!buf) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No configuration request data available");

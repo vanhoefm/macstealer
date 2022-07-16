@@ -48,6 +48,9 @@ struct dpp_connection {
 	unsigned int gas_comeback_in_progress:1;
 	u8 gas_dialog_token;
 	char *name;
+	char *mud_url;
+	char *extra_conf_req_name;
+	char *extra_conf_req_value;
 	enum dpp_netrole netrole;
 };
 
@@ -118,6 +121,9 @@ static void dpp_connection_free(struct dpp_connection *conn)
 	dpp_auth_deinit(conn->auth);
 	dpp_pkex_free(conn->pkex);
 	os_free(conn->name);
+	os_free(conn->mud_url);
+	os_free(conn->extra_conf_req_name);
+	os_free(conn->extra_conf_req_value);
 	os_free(conn);
 }
 
@@ -332,8 +338,10 @@ static void dpp_controller_start_gas_client(struct dpp_connection *conn)
 	const char *dpp_name;
 
 	dpp_name = conn->name ? conn->name : "Test";
-	buf = dpp_build_conf_req_helper(auth, dpp_name, conn->netrole, NULL,
-					NULL);
+	buf = dpp_build_conf_req_helper(auth, dpp_name, conn->netrole,
+					conn->mud_url, NULL,
+					conn->extra_conf_req_name,
+					conn->extra_conf_req_value);
 	if (!buf) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No configuration request data available");
@@ -1943,7 +1951,10 @@ static int dpp_tcp_auth_start(struct dpp_connection *conn,
 
 int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 		 const struct hostapd_ip_addr *addr, int port, const char *name,
-		 enum dpp_netrole netrole, void *msg_ctx, void *cb_ctx,
+		 enum dpp_netrole netrole, const char *mud_url,
+		 const char *extra_conf_req_name,
+		 const char *extra_conf_req_value,
+		 void *msg_ctx, void *cb_ctx,
 		 int (*process_conf_obj)(void *ctx,
 					 struct dpp_authentication *auth),
 		 bool (*tcp_msg_sent)(void *ctx,
@@ -1973,6 +1984,12 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
 	conn->process_conf_obj = process_conf_obj;
 	conn->tcp_msg_sent = tcp_msg_sent;
 	conn->name = os_strdup(name ? name : "Test");
+	if (mud_url)
+		conn->mud_url = os_strdup(mud_url);
+	if (extra_conf_req_name)
+		conn->extra_conf_req_name = os_strdup(extra_conf_req_name);
+	if (extra_conf_req_value)
+		conn->extra_conf_req_value = os_strdup(extra_conf_req_value);
 	conn->netrole = netrole;
 	conn->global = dpp;
 	conn->auth = auth;
@@ -2019,7 +2036,9 @@ fail:
 
 int dpp_tcp_auth(struct dpp_global *dpp, void *_conn,
 		 struct dpp_authentication *auth, const char *name,
-		 enum dpp_netrole netrole,
+		 enum dpp_netrole netrole, const char *mud_url,
+		 const char *extra_conf_req_name,
+		 const char *extra_conf_req_value,
 		 int (*process_conf_obj)(void *ctx,
 					 struct dpp_authentication *auth),
 		 bool (*tcp_msg_sent)(void *ctx,
@@ -2033,6 +2052,13 @@ int dpp_tcp_auth(struct dpp_global *dpp, void *_conn,
 	conn->tcp_msg_sent = tcp_msg_sent;
 	os_free(conn->name);
 	conn->name = os_strdup(name ? name : "Test");
+	os_free(conn->mud_url);
+	conn->mud_url = mud_url ? os_strdup(mud_url) : NULL;
+	os_free(conn->extra_conf_req_name);
+	conn->extra_conf_req_name = extra_conf_req_name ?
+		os_strdup(extra_conf_req_name) : NULL;
+	conn->extra_conf_req_value = extra_conf_req_value ?
+		os_strdup(extra_conf_req_value) : NULL;
 	conn->netrole = netrole;
 	conn->auth = auth;
 

@@ -755,6 +755,8 @@ struct hostapd_bss_config {
 #ifdef CONFIG_DPP
 	char *dpp_name;
 	char *dpp_mud_url;
+	char *dpp_extra_conf_req_name;
+	char *dpp_extra_conf_req_value;
 	char *dpp_connector;
 	struct wpabuf *dpp_netaccesskey;
 	unsigned int dpp_netaccesskey_expiry;

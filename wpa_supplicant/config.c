@@ -2970,6 +2970,8 @@ void wpa_config_free(struct wpa_config *config)
 #endif /* CONFIG_MBO */
 	os_free(config->dpp_name);
 	os_free(config->dpp_mud_url);
+	os_free(config->dpp_extra_conf_req_name);
+	os_free(config->dpp_extra_conf_req_value);
 
 	os_free(config);
 }
@@ -5301,6 +5303,8 @@ static const struct global_parse_data global_fields[] = {
 	{ INT_RANGE(dpp_config_processing, 0, 2), 0 },
 	{ STR(dpp_name), 0 },
 	{ STR(dpp_mud_url), 0 },
+	{ STR(dpp_extra_conf_req_name), 0 },
+	{ STR(dpp_extra_conf_req_value), 0 },
 #endif /* CONFIG_DPP */
 	{ INT_RANGE(coloc_intf_reporting, 0, 1), 0 },
 #ifdef CONFIG_WNM

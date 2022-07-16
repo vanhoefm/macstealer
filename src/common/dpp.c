@@ -969,7 +969,9 @@ struct wpabuf * dpp_build_conf_req(struct dpp_authentication *auth,
 struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
 					  const char *name,
 					  enum dpp_netrole netrole,
-					  const char *mud_url, int *opclasses)
+					  const char *mud_url, int *opclasses,
+					  const char *extra_name,
+					  const char *extra_value)
 {
 	size_t len, name_len;
 	const char *tech = "infra";
@@ -992,6 +994,8 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
 	len = 100 + name_len * 6 + 1 + int_array_len(opclasses) * 4;
 	if (mud_url && mud_url[0])
 		len += 10 + os_strlen(mud_url);
+	if (extra_name && extra_value && extra_name[0] && extra_value[0])
+		len += 10 + os_strlen(extra_name) + os_strlen(extra_value);
 #ifdef CONFIG_DPP2
 	if (auth->csr) {
 		size_t csr_len;
@@ -1030,6 +1034,10 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
 	if (csr) {
 		json_value_sep(json);
 		json_add_string(json, "pkcs10", csr);
+	}
+	if (extra_name && extra_value && extra_name[0] && extra_value[0]) {
+		json_value_sep(json);
+		wpabuf_printf(json, "\"%s\":%s", extra_name, extra_value);
 	}
 	json_end_object(json);
 

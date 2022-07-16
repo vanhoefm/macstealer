@@ -1618,6 +1618,18 @@ struct wpa_config {
 	char *dpp_mud_url;
 
 	/**
+	 * dpp_extra_conf_req_name - JSON node name of additional data for
+	 * Enrollee's DPP Configuration Request
+	 */
+	char *dpp_extra_conf_req_name;
+
+	/**
+	 * dpp_extra_conf_req_value - JSON node data of additional data for
+	 * Enrollee's DPP Configuration Request
+	 */
+	char *dpp_extra_conf_req_value;
+
+	/**
 	 * coloc_intf_reporting - Colocated interference reporting
 	 *
 	 * dot11CoLocIntfReportingActivated

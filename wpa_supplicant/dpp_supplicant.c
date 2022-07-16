@@ -904,6 +904,9 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
 	if (tcp)
 		return dpp_tcp_init(wpa_s->dpp, auth, &ipaddr, tcp_port,
 				    wpa_s->conf->dpp_name, DPP_NETROLE_STA,
+				    wpa_s->conf->dpp_mud_url,
+				    wpa_s->conf->dpp_extra_conf_req_name,
+				    wpa_s->conf->dpp_extra_conf_req_value,
 				    wpa_s, wpa_s, wpas_dpp_process_conf_obj,
 				    wpas_dpp_tcp_msg_sent);
 #endif /* CONFIG_DPP2 */
@@ -1842,7 +1845,9 @@ static void wpas_dpp_start_gas_client(struct wpa_supplicant *wpa_s)
 	buf = dpp_build_conf_req_helper(auth, wpa_s->conf->dpp_name,
 					wpa_s->dpp_netrole,
 					wpa_s->conf->dpp_mud_url,
-					supp_op_classes);
+					supp_op_classes,
+					wpa_s->conf->dpp_extra_conf_req_name,
+					wpa_s->conf->dpp_extra_conf_req_value);
 	os_free(supp_op_classes);
 	if (!buf) {
 		wpa_printf(MSG_DEBUG,
@@ -2764,7 +2769,11 @@ static int wpas_dpp_pkex_done(void *ctx, void *conn,
 	}
 
 	return dpp_tcp_auth(wpa_s->dpp, conn, auth, wpa_s->conf->dpp_name,
-			    DPP_NETROLE_STA, wpas_dpp_process_conf_obj,
+			    DPP_NETROLE_STA,
+			    wpa_s->conf->dpp_mud_url,
+			    wpa_s->conf->dpp_extra_conf_req_name,
+			    wpa_s->conf->dpp_extra_conf_req_value,
+			    wpas_dpp_process_conf_obj,
 			    wpas_dpp_tcp_msg_sent);
 }
 #endif /* CONFIG_DPP2 */
