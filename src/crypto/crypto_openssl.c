@@ -3212,7 +3212,6 @@ crypto_ec_key_set_pub_point(struct crypto_ec *ec,
 	EC_KEY *eckey;
 	EVP_PKEY *pkey = NULL;
 
-	wpa_printf(MSG_INFO, "JKM:%s", __func__);
 	eckey = EC_KEY_new();
 	if (!eckey ||
 	    EC_KEY_set_group(eckey, ec->group) != 1 ||
