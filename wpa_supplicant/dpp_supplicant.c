@@ -1277,6 +1277,9 @@ static struct wpa_ssid * wpas_dpp_add_network(struct wpa_supplicant *wpa_s,
 		ssid->dpp_connector = os_strdup(conf->connector);
 		if (!ssid->dpp_connector)
 			goto fail;
+
+		ssid->dpp_connector_privacy =
+			wpa_s->conf->dpp_connector_privacy_default;
 	}
 
 	if (conf->c_sign_key) {

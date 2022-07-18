@@ -1554,6 +1554,9 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 	if (config->dpp_extra_conf_req_value)
 		fprintf(f, "dpp_extra_conf_req_value=%s\n",
 			config->dpp_extra_conf_req_value);
+	if (config->dpp_connector_privacy_default)
+		fprintf(f, "dpp_connector_privacy_default=%d\n",
+			config->dpp_connector_privacy_default);
 	if (config->coloc_intf_reporting)
 		fprintf(f, "coloc_intf_reporting=%d\n",
 			config->coloc_intf_reporting);

@@ -5306,6 +5306,7 @@ static const struct global_parse_data global_fields[] = {
 	{ STR(dpp_mud_url), 0 },
 	{ STR(dpp_extra_conf_req_name), 0 },
 	{ STR(dpp_extra_conf_req_value), 0 },
+	{ INT_RANGE(dpp_connector_privacy_default, 0, 1), 0 },
 #endif /* CONFIG_DPP */
 	{ INT_RANGE(coloc_intf_reporting, 0, 1), 0 },
 #ifdef CONFIG_WNM

@@ -1629,6 +1629,13 @@ struct wpa_config {
 	 */
 	char *dpp_extra_conf_req_value;
 
+	/* dpp_connector_privacy_default - Default valur for Connector privacy
+	 *
+	 * This value is used as the default for the dpp_connector_privacy
+	 * network parameter for all new networks provisioned using DPP.
+	 */
+	int dpp_connector_privacy_default;
+
 	/**
 	 * coloc_intf_reporting - Colocated interference reporting
 	 *
