@@ -1771,6 +1771,13 @@ def test_sigma_dut_dpp_qr_mutual_resp_enrollee_pending(dev, apdev):
     """sigma_dut DPP/QR (mutual) responder as Enrollee (response pending)"""
     run_sigma_dut_dpp_qr_mutual_resp_enrollee(dev, apdev, ',DPPDelayQRResponse,1')
 
+def test_sigma_dut_dpp_qr_mutual_resp_enrollee_connector_privacy(dev, apdev):
+    """sigma_dut DPP/QR (mutual) responder as Enrollee (Connector Privacy)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    run_sigma_dut_dpp_qr_mutual_resp_enrollee(dev, apdev,
+                                              ",DPPPrivNetIntro,Yes")
+
 def run_sigma_dut_dpp_qr_mutual_resp_enrollee(dev, apdev, extra=None):
     check_dpp_capab(dev[0])
     check_dpp_capab(dev[1])
@@ -3157,6 +3164,20 @@ def test_sigma_dut_ap_dpp_self_config(dev, apdev, params):
         finally:
             stop_sigma_dut(sigma)
             dev[0].set("dpp_config_processing", "0", allow_fail=True)
+
+def test_sigma_dut_ap_dpp_self_config_connector_privacy(dev, apdev, params):
+    """sigma_dut DPP AP Configurator using self-configuration (Connector privacy)"""
+    check_dpp_capab(dev[0], min_ver=3)
+    logdir = params['prefix'] + ".sigma-hostapd"
+    with HWSimRadio() as (radio, iface):
+        sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
+        try:
+            dev[0].set("dpp_connector_privacy_default", "1")
+            run_sigma_dut_ap_dpp_self_config(dev, apdev)
+        finally:
+            stop_sigma_dut(sigma)
+            dev[0].set("dpp_config_processing", "0", allow_fail=True)
+            dev[0].set("dpp_connector_privacy_default", "0", allow_fail=True)
 
 def run_sigma_dut_ap_dpp_self_config(dev, apdev):
     check_dpp_capab(dev[0])
