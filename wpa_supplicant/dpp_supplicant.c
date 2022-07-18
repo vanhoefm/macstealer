@@ -3260,6 +3260,274 @@ skip_hash_check:
 	}
 }
 
+
+static void
+wpas_dpp_tx_priv_intro_status(struct wpa_supplicant *wpa_s,
+			      unsigned int freq, const u8 *dst,
+			      const u8 *src, const u8 *bssid,
+			      const u8 *data, size_t data_len,
+			      enum offchannel_send_action_result result)
+{
+	const char *res_txt;
+
+	res_txt = result == OFFCHANNEL_SEND_ACTION_SUCCESS ? "SUCCESS" :
+		(result == OFFCHANNEL_SEND_ACTION_NO_ACK ? "no-ACK" :
+		 "FAILED");
+	wpa_printf(MSG_DEBUG, "DPP: TX status: freq=%u dst=" MACSTR
+		   " result=%s (DPP Private Peer Introduction Update)",
+		   freq, MAC2STR(dst), res_txt);
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX_STATUS "dst=" MACSTR
+		" freq=%u result=%s", MAC2STR(dst), freq, res_txt);
+
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_INTRO "peer=" MACSTR " version=%u",
+		MAC2STR(src), wpa_s->dpp_intro_peer_version);
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Try connection again after successful network introduction");
+	if (wpa_supplicant_fast_associate(wpa_s) != 1) {
+		wpa_supplicant_cancel_sched_scan(wpa_s);
+		wpa_supplicant_req_scan(wpa_s, 0, 0);
+	}
+}
+
+
+static int
+wpas_dpp_send_private_peer_intro_update(struct wpa_supplicant *wpa_s,
+					struct dpp_introduction *intro,
+					struct wpa_ssid *ssid,
+					const u8 *dst, unsigned int freq)
+{
+	struct wpabuf *pt, *msg, *enc_ct;
+	size_t len;
+	u8 ver = DPP_VERSION;
+	int conn_ver;
+	const u8 *aad;
+	size_t aad_len;
+	unsigned int wait_time;
+
+	wpa_printf(MSG_DEBUG, "HPKE(kem_id=%u kdf_id=%u aead_id=%u)",
+		   intro->kem_id, intro->kdf_id, intro->aead_id);
+
+	/* Plaintext for HPKE */
+	len = 5 + 4 + os_strlen(ssid->dpp_connector);
+	pt = wpabuf_alloc(len);
+	if (!pt)
+		return -1;
+
+	/* Protocol Version */
+	conn_ver = dpp_get_connector_version(ssid->dpp_connector);
+	if (conn_ver > 0 && ver != conn_ver) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Use Connector version %d instead of current protocol version %d",
+			   conn_ver, ver);
+		ver = conn_ver;
+	}
+	wpabuf_put_le16(pt, DPP_ATTR_PROTOCOL_VERSION);
+	wpabuf_put_le16(pt, 1);
+	wpabuf_put_u8(pt, ver);
+
+	/* Connector */
+	wpabuf_put_le16(pt, DPP_ATTR_CONNECTOR);
+	wpabuf_put_le16(pt, os_strlen(ssid->dpp_connector));
+	wpabuf_put_str(pt, ssid->dpp_connector);
+	wpa_hexdump_buf(MSG_MSGDUMP, "DPP: Plaintext for HPKE", pt);
+
+	/* HPKE(pt) using AP's public key (from its Connector) */
+	msg = dpp_alloc_msg(DPP_PA_PRIV_PEER_INTRO_UPDATE, 0);
+	if (!msg) {
+		wpabuf_free(pt);
+		return -1;
+	}
+	aad = wpabuf_head_u8(msg) + 2; /* from the OUI field (inclusive) */
+	aad_len = DPP_HDR_LEN; /* to the DPP Frame Type field (inclusive) */
+	wpa_hexdump(MSG_MSGDUMP, "DPP: AAD for HPKE", aad, aad_len);
+
+	enc_ct = hpke_base_seal(intro->kem_id, intro->kdf_id, intro->aead_id,
+				intro->peer_key, NULL, 0, aad, aad_len,
+				wpabuf_head(pt), wpabuf_len(pt));
+	wpabuf_free(pt);
+	wpabuf_free(msg);
+	if (!enc_ct) {
+		wpa_printf(MSG_INFO, "DPP: HPKE Seal(Connector) failed");
+		return -1;
+	}
+	wpa_hexdump_buf(MSG_MSGDUMP, "DPP: HPKE enc|ct", enc_ct);
+
+	/* HPKE(pt) to generate payload for Wrapped Data */
+	len = 5 + 4 + wpabuf_len(enc_ct);
+	msg = dpp_alloc_msg(DPP_PA_PRIV_PEER_INTRO_UPDATE, len);
+	if (!msg) {
+		wpabuf_free(enc_ct);
+		return -1;
+	}
+
+	/* Transaction ID */
+	wpabuf_put_le16(msg, DPP_ATTR_TRANSACTION_ID);
+	wpabuf_put_le16(msg, 1);
+	wpabuf_put_u8(msg, TRANSACTION_ID);
+
+	/* Wrapped Data */
+	wpabuf_put_le16(msg, DPP_ATTR_WRAPPED_DATA);
+	wpabuf_put_le16(msg, wpabuf_len(enc_ct));
+	wpabuf_put_buf(msg, enc_ct);
+	wpabuf_free(enc_ct);
+
+	wpa_hexdump_buf(MSG_MSGDUMP, "DPP: Private Peer Intro Update", msg);
+
+	/* TODO: Timeout on AP response */
+	wait_time = wpa_s->max_remain_on_chan;
+	if (wait_time > 2000)
+		wait_time = 2000;
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR " freq=%u type=%d",
+		MAC2STR(dst), freq, DPP_PA_PRIV_PEER_INTRO_QUERY);
+	offchannel_send_action(wpa_s, freq, dst, wpa_s->own_addr, broadcast,
+			       wpabuf_head(msg), wpabuf_len(msg),
+			       wait_time, wpas_dpp_tx_priv_intro_status, 0);
+	wpabuf_free(msg);
+
+	return 0;
+}
+
+
+static void
+wpas_dpp_rx_priv_peer_intro_notify(struct wpa_supplicant *wpa_s,
+				   const u8 *src, const u8 *hdr,
+				   const u8 *buf, size_t len,
+				   unsigned int freq)
+{
+	struct wpa_ssid *ssid;
+	const u8 *connector, *trans_id, *version;
+	u16 connector_len, trans_id_len, version_len;
+	u8 peer_version = 1;
+	struct dpp_introduction intro;
+	struct rsn_pmksa_cache_entry *entry;
+	struct os_time now;
+	struct os_reltime rnow;
+	os_time_t expiry;
+	unsigned int seconds;
+	enum dpp_status_error res;
+
+	os_memset(&intro, 0, sizeof(intro));
+
+	wpa_printf(MSG_DEBUG, "DPP: Private Peer Introduction Notify from "
+		   MACSTR, MAC2STR(src));
+	if (is_zero_ether_addr(wpa_s->dpp_intro_bssid) ||
+	    os_memcmp(src, wpa_s->dpp_intro_bssid, ETH_ALEN) != 0) {
+		wpa_printf(MSG_DEBUG, "DPP: Not waiting for response from "
+			   MACSTR " - drop", MAC2STR(src));
+		return;
+	}
+	offchannel_send_action_done(wpa_s);
+
+	for (ssid = wpa_s->conf->ssid; ssid; ssid = ssid->next) {
+		if (ssid == wpa_s->dpp_intro_network)
+			break;
+	}
+	if (!ssid || !ssid->dpp_connector || !ssid->dpp_netaccesskey ||
+	    !ssid->dpp_csign) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Profile not found for network introduction");
+		return;
+	}
+
+	trans_id = dpp_get_attr(buf, len, DPP_ATTR_TRANSACTION_ID,
+			       &trans_id_len);
+	if (!trans_id || trans_id_len != 1) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include Transaction ID");
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_INTRO "peer=" MACSTR
+			" fail=missing_transaction_id", MAC2STR(src));
+		goto fail;
+	}
+	if (trans_id[0] != TRANSACTION_ID) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Ignore frame with unexpected Transaction ID %u",
+			   trans_id[0]);
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_INTRO "peer=" MACSTR
+			" fail=transaction_id_mismatch", MAC2STR(src));
+		goto fail;
+	}
+
+	connector = dpp_get_attr(buf, len, DPP_ATTR_CONNECTOR, &connector_len);
+	if (!connector) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include its Connector");
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_INTRO "peer=" MACSTR
+			" fail=missing_connector", MAC2STR(src));
+		goto fail;
+	}
+
+	version = dpp_get_attr(buf, len, DPP_ATTR_PROTOCOL_VERSION,
+			       &version_len);
+	if (!version || version_len < 1) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include valid Version");
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_INTRO "peer=" MACSTR
+			" fail=missing_version", MAC2STR(src));
+		goto fail;
+	}
+
+	res = dpp_peer_intro(&intro, ssid->dpp_connector,
+			     ssid->dpp_netaccesskey,
+			     ssid->dpp_netaccesskey_len,
+			     ssid->dpp_csign,
+			     ssid->dpp_csign_len,
+			     connector, connector_len, &expiry);
+	if (res != DPP_STATUS_OK) {
+		wpa_printf(MSG_INFO,
+			   "DPP: Network Introduction protocol resulted in failure");
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_INTRO "peer=" MACSTR
+			" fail=peer_connector_validation_failed", MAC2STR(src));
+		wpas_dpp_send_conn_status_result(wpa_s, res);
+		goto fail;
+	}
+
+	peer_version = version[0];
+	if (intro.peer_version && intro.peer_version >= 2 &&
+	    peer_version != intro.peer_version) {
+		wpa_printf(MSG_INFO,
+			   "DPP: Protocol version mismatch (Connector: %d Attribute: %d",
+			   intro.peer_version, peer_version);
+		wpas_dpp_send_conn_status_result(wpa_s, DPP_STATUS_NO_MATCH);
+		goto fail;
+	}
+	wpa_s->dpp_intro_peer_version = peer_version;
+
+	entry = os_zalloc(sizeof(*entry));
+	if (!entry)
+		goto fail;
+	entry->dpp_pfs = peer_version >= 2;
+	os_memcpy(entry->aa, src, ETH_ALEN);
+	os_memcpy(entry->pmkid, intro.pmkid, PMKID_LEN);
+	os_memcpy(entry->pmk, intro.pmk, intro.pmk_len);
+	entry->pmk_len = intro.pmk_len;
+	entry->akmp = WPA_KEY_MGMT_DPP;
+	if (expiry) {
+		os_get_time(&now);
+		seconds = expiry - now.sec;
+	} else {
+		seconds = 86400 * 7;
+	}
+
+	if (wpas_dpp_send_private_peer_intro_update(wpa_s, &intro, ssid, src,
+						    freq) < 0) {
+		os_free(entry);
+		goto fail;
+	}
+
+	os_get_reltime(&rnow);
+	entry->expiration = rnow.sec + seconds;
+	entry->reauth_time = rnow.sec + seconds;
+	entry->network_ctx = ssid;
+	wpa_sm_pmksa_cache_add_entry(wpa_s->wpa, entry);
+
+	/* Association will be initiated from TX status handler for the Private
+	 * Peer Intro Update: wpas_dpp_tx_priv_intro_status() */
+
+fail:
+	dpp_peer_intro_deinit(&intro);
+}
+
 #endif /* CONFIG_DPP3 */
 
 
@@ -3376,6 +3644,10 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 	case DPP_PA_PB_PRESENCE_ANNOUNCEMENT_RESP:
 		wpas_dpp_rx_pb_presence_announcement_resp(wpa_s, src, hdr,
 							  buf, len, freq);
+		break;
+	case DPP_PA_PRIV_PEER_INTRO_NOTIFY:
+		wpas_dpp_rx_priv_peer_intro_notify(wpa_s, src, hdr,
+						   buf, len, freq);
 		break;
 #endif /* CONFIG_DPP3 */
 	default:
@@ -3635,6 +3907,63 @@ wpas_dpp_tx_introduction_status(struct wpa_supplicant *wpa_s,
 }
 
 
+#ifdef CONFIG_DPP3
+static int wpas_dpp_start_private_peer_intro(struct wpa_supplicant *wpa_s,
+					     struct wpa_ssid *ssid,
+					     struct wpa_bss *bss)
+{
+	struct wpabuf *msg;
+	unsigned int wait_time;
+	size_t len;
+	u8 ver = DPP_VERSION;
+	int conn_ver;
+
+	len = 5 + 5;
+	msg = dpp_alloc_msg(DPP_PA_PRIV_PEER_INTRO_QUERY, len);
+	if (!msg)
+		return -1;
+
+	/* Transaction ID */
+	wpabuf_put_le16(msg, DPP_ATTR_TRANSACTION_ID);
+	wpabuf_put_le16(msg, 1);
+	wpabuf_put_u8(msg, TRANSACTION_ID);
+
+	conn_ver = dpp_get_connector_version(ssid->dpp_connector);
+	if (conn_ver > 0 && ver != conn_ver) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Use Connector version %d instead of current protocol version %d",
+			   conn_ver, ver);
+		ver = conn_ver;
+	}
+
+	/* Protocol Version */
+	wpabuf_put_le16(msg, DPP_ATTR_PROTOCOL_VERSION);
+	wpabuf_put_le16(msg, 1);
+	wpabuf_put_u8(msg, ver);
+
+	wpa_hexdump_buf(MSG_MSGDUMP, "DPP: Private Peer Intro Query", msg);
+
+	/* TODO: Timeout on AP response */
+	wait_time = wpa_s->max_remain_on_chan;
+	if (wait_time > 2000)
+		wait_time = 2000;
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR " freq=%u type=%d",
+		MAC2STR(bss->bssid), bss->freq, DPP_PA_PRIV_PEER_INTRO_QUERY);
+	offchannel_send_action(wpa_s, bss->freq, bss->bssid, wpa_s->own_addr,
+			       broadcast,
+			       wpabuf_head(msg), wpabuf_len(msg),
+			       wait_time, wpas_dpp_tx_introduction_status, 0);
+	wpabuf_free(msg);
+
+	/* Request this connection attempt to terminate - new one will be
+	 * started when network introduction protocol completes */
+	os_memcpy(wpa_s->dpp_intro_bssid, bss->bssid, ETH_ALEN);
+	wpa_s->dpp_intro_network = ssid;
+	return 1;
+}
+#endif /* CONFIG_DPP3 */
+
+
 int wpas_dpp_check_connect(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 			   struct wpa_bss *bss)
 {
@@ -3674,10 +4003,17 @@ int wpas_dpp_check_connect(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 	}
 
 	wpa_printf(MSG_DEBUG,
-		   "DPP: Starting network introduction protocol to derive PMKSA for "
-		   MACSTR, MAC2STR(bss->bssid));
+		   "DPP: Starting %snetwork introduction protocol to derive PMKSA for "
+		   MACSTR,
+		   ssid->dpp_connector_privacy ? "private " : "",
+		   MAC2STR(bss->bssid));
 	if (wpa_s->wpa_state == WPA_SCANNING)
 		wpa_supplicant_set_state(wpa_s, wpa_s->scan_prev_wpa_state);
+
+#ifdef CONFIG_DPP3
+	if (ssid->dpp_connector_privacy)
+		return wpas_dpp_start_private_peer_intro(wpa_s, ssid, bss);
+#endif /* CONFIG_DPP3 */
 
 	len = 5 + 4 + os_strlen(ssid->dpp_connector);
 #ifdef CONFIG_DPP2

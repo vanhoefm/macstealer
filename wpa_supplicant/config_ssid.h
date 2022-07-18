@@ -1065,6 +1065,14 @@ struct wpa_ssid {
 	int dpp_pfs_fallback;
 
 	/**
+	 * dpp_connector_privacy - Network introduction type
+	 * 0: unprotected variant from DPP R1
+	 * 1: privacy protecting (station Connector encrypted) variant from
+	 *    DPP R3
+	 */
+	int dpp_connector_privacy;
+
+	/**
 	 * owe_group - OWE DH Group
 	 *
 	 * 0 = use default (19) first and then try all supported groups one by

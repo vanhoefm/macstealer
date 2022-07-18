@@ -2630,6 +2630,7 @@ static const struct parse_data ssid_fields[] = {
 	{ STR_LEN(dpp_csign) },
 	{ STR_LEN(dpp_pp_key) },
 	{ INT_RANGE(dpp_pfs, 0, 2) },
+	{ INT_RANGE(dpp_connector_privacy, 0, 1) },
 #endif /* CONFIG_DPP */
 	{ INT_RANGE(owe_group, 0, 65535) },
 	{ INT_RANGE(owe_only, 0, 1) },

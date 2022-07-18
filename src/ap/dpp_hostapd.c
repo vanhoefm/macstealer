@@ -1958,6 +1958,25 @@ skip_proto_ver:
 }
 
 
+static bool hapd_dpp_connector_available(struct hostapd_data *hapd)
+{
+	if (!hapd->wpa_auth ||
+	    !(hapd->conf->wpa_key_mgmt & WPA_KEY_MGMT_DPP) ||
+	    !(hapd->conf->wpa & WPA_PROTO_RSN)) {
+		wpa_printf(MSG_DEBUG, "DPP: DPP AKM not in use");
+		return false;
+	}
+
+	if (!hapd->conf->dpp_connector || !hapd->conf->dpp_netaccesskey ||
+	    !hapd->conf->dpp_csign) {
+		wpa_printf(MSG_DEBUG, "DPP: No own Connector/keys set");
+		return false;
+	}
+
+	return true;
+}
+
+
 static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 					 const u8 *src,
 					 const u8 *buf, size_t len,
@@ -1971,20 +1990,12 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 	int expiration;
 	enum dpp_status_error res;
 
+	os_memset(&intro, 0, sizeof(intro));
+
 	wpa_printf(MSG_DEBUG, "DPP: Peer Discovery Request from " MACSTR,
 		   MAC2STR(src));
-	if (!hapd->wpa_auth ||
-	    !(hapd->conf->wpa_key_mgmt & WPA_KEY_MGMT_DPP) ||
-	    !(hapd->conf->wpa & WPA_PROTO_RSN)) {
-		wpa_printf(MSG_DEBUG, "DPP: DPP AKM not in use");
+	if (!hapd_dpp_connector_available(hapd))
 		return;
-	}
-
-	if (!hapd->conf->dpp_connector || !hapd->conf->dpp_netaccesskey ||
-	    !hapd->conf->dpp_csign) {
-		wpa_printf(MSG_DEBUG, "DPP: No own Connector/keys set");
-		return;
-	}
 
 	os_get_time(&now);
 
@@ -2019,7 +2030,7 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 		wpa_printf(MSG_INFO,
 			   "DPP: Network Introduction protocol resulted in internal failure (peer "
 			   MACSTR ")", MAC2STR(src));
-		return;
+		goto done;
 	}
 	if (res != DPP_STATUS_OK) {
 		wpa_printf(MSG_INFO,
@@ -2027,7 +2038,7 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 			   MACSTR " status %d)", MAC2STR(src), res);
 		hostapd_dpp_send_peer_disc_resp(hapd, src, freq, trans_id[0],
 						res);
-		return;
+		goto done;
 	}
 
 #ifdef CONFIG_DPP3
@@ -2047,7 +2058,7 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 			hostapd_dpp_send_peer_disc_resp(hapd, src, freq,
 							trans_id[0],
 							DPP_STATUS_NO_MATCH);
-			return;
+			goto done;
 		}
 	}
 #endif /* CONFIG_DPP3 */
@@ -2063,11 +2074,13 @@ static void hostapd_dpp_rx_peer_disc_req(struct hostapd_data *hapd,
 				intro.pmkid, expiration,
 				WPA_KEY_MGMT_DPP) < 0) {
 		wpa_printf(MSG_ERROR, "DPP: Failed to add PMKSA cache entry");
-		return;
+		goto done;
 	}
 
 	hostapd_dpp_send_peer_disc_resp(hapd, src, freq, trans_id[0],
 					DPP_STATUS_OK);
+done:
+	dpp_peer_intro_deinit(&intro);
 }
 
 
@@ -2599,6 +2612,227 @@ hostapd_dpp_rx_pb_presence_announcement(struct hostapd_data *hapd,
 		hostapd_dpp_pb_pkex_init(hapd, freq, src, r_hash);
 }
 
+
+static void
+hostapd_dpp_rx_priv_peer_intro_query(struct hostapd_data *hapd, const u8 *src,
+				     const u8 *hdr, const u8 *buf, size_t len,
+				     unsigned int freq)
+{
+	const u8 *trans_id, *version;
+	u16 trans_id_len, version_len;
+	struct wpabuf *msg;
+	u8 ver = DPP_VERSION;
+	int conn_ver;
+
+	wpa_printf(MSG_DEBUG, "DPP: Private Peer Introduction Query from "
+		   MACSTR, MAC2STR(src));
+
+	if (!hapd_dpp_connector_available(hapd))
+		return;
+
+	trans_id = dpp_get_attr(buf, len, DPP_ATTR_TRANSACTION_ID,
+			       &trans_id_len);
+	if (!trans_id || trans_id_len != 1) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include Transaction ID");
+		return;
+	}
+
+	version = dpp_get_attr(buf, len, DPP_ATTR_PROTOCOL_VERSION,
+			       &version_len);
+	if (!version || version_len != 1) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include Protocol Version");
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "DPP: Transaction ID %u, Version %u",
+		   trans_id[0], version[0]);
+
+	len = 5 + 5 + 4 + os_strlen(hapd->conf->dpp_connector);
+	msg = dpp_alloc_msg(DPP_PA_PRIV_PEER_INTRO_NOTIFY, len);
+	if (!msg)
+		return;
+
+	/* Transaction ID */
+	wpabuf_put_le16(msg, DPP_ATTR_TRANSACTION_ID);
+	wpabuf_put_le16(msg, 1);
+	wpabuf_put_u8(msg, trans_id[0]);
+
+	/* Protocol Version */
+	conn_ver = dpp_get_connector_version(hapd->conf->dpp_connector);
+	if (conn_ver > 0 && ver != conn_ver) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Use Connector version %d instead of current protocol version %d",
+			   conn_ver, ver);
+		ver = conn_ver;
+	}
+	wpabuf_put_le16(msg, DPP_ATTR_PROTOCOL_VERSION);
+	wpabuf_put_le16(msg, 1);
+	wpabuf_put_u8(msg, ver);
+
+	/* DPP Connector */
+	wpabuf_put_le16(msg, DPP_ATTR_CONNECTOR);
+	wpabuf_put_le16(msg, os_strlen(hapd->conf->dpp_connector));
+	wpabuf_put_str(msg, hapd->conf->dpp_connector);
+
+	wpa_printf(MSG_DEBUG, "DPP: Send Private Peer Introduction Notify to "
+		   MACSTR, MAC2STR(src));
+	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
+		" freq=%u type=%d", MAC2STR(src), freq,
+		DPP_PA_PRIV_PEER_INTRO_NOTIFY);
+	hostapd_drv_send_action(hapd, freq, 0, src,
+				wpabuf_head(msg), wpabuf_len(msg));
+	wpabuf_free(msg);
+}
+
+
+static void
+hostapd_dpp_rx_priv_peer_intro_update(struct hostapd_data *hapd, const u8 *src,
+				      const u8 *hdr, const u8 *buf, size_t len,
+				      unsigned int freq)
+{
+	struct crypto_ec_key *own_key;
+	const struct dpp_curve_params *curve;
+	enum hpke_kem_id kem_id;
+	enum hpke_kdf_id kdf_id;
+	enum hpke_aead_id aead_id;
+	const u8 *aad = hdr;
+	size_t aad_len = DPP_HDR_LEN;
+	struct wpabuf *pt;
+	const u8 *trans_id, *wrapped, *version, *connector;
+	u16 trans_id_len, wrapped_len, version_len, connector_len;
+	struct os_time now;
+	struct dpp_introduction intro;
+	os_time_t expire;
+	int expiration;
+	enum dpp_status_error res;
+
+	os_memset(&intro, 0, sizeof(intro));
+
+	wpa_printf(MSG_DEBUG, "DPP: Private Peer Introduction Update from "
+		   MACSTR, MAC2STR(src));
+
+	if (!hapd_dpp_connector_available(hapd))
+		return;
+
+	os_get_time(&now);
+
+	if (hapd->conf->dpp_netaccesskey_expiry &&
+	    (os_time_t) hapd->conf->dpp_netaccesskey_expiry < now.sec) {
+		wpa_printf(MSG_INFO, "DPP: Own netAccessKey expired");
+		return;
+	}
+
+	trans_id = dpp_get_attr(buf, len, DPP_ATTR_TRANSACTION_ID,
+			       &trans_id_len);
+	if (!trans_id || trans_id_len != 1) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include Transaction ID");
+		return;
+	}
+
+	wrapped = dpp_get_attr(buf, len, DPP_ATTR_WRAPPED_DATA,
+			       &wrapped_len);
+	if (!wrapped) {
+		wpa_printf(MSG_DEBUG, "DPP: Peer did not include Wrapped Data");
+		return;
+	}
+
+	own_key = dpp_set_keypair(&curve,
+				  wpabuf_head(hapd->conf->dpp_netaccesskey),
+				  wpabuf_len(hapd->conf->dpp_netaccesskey));
+	if (!own_key) {
+		wpa_printf(MSG_ERROR, "DPP: Failed to parse own netAccessKey");
+		return;
+	}
+
+	if (dpp_hpke_suite(curve->ike_group, &kem_id, &kdf_id, &aead_id) < 0) {
+		wpa_printf(MSG_ERROR, "DPP: Unsupported curve %d",
+			   curve->ike_group);
+		crypto_ec_key_deinit(own_key);
+		return;
+	}
+
+	pt = hpke_base_open(kem_id, kdf_id, aead_id, own_key, NULL, 0,
+			    aad, aad_len, wrapped, wrapped_len);
+	crypto_ec_key_deinit(own_key);
+	if (!pt) {
+		wpa_printf(MSG_INFO, "DPP: Failed to decrypt Connector");
+		return;
+	}
+	wpa_hexdump_buf(MSG_MSGDUMP, "DPP: HPKE-Decrypted Wrapped Data", pt);
+
+	connector = dpp_get_attr(wpabuf_head(pt), wpabuf_len(pt),
+				 DPP_ATTR_CONNECTOR, &connector_len);
+	if (!connector) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include its Connector");
+		goto done;
+	}
+
+	version = dpp_get_attr(wpabuf_head(pt), wpabuf_len(pt),
+			       DPP_ATTR_PROTOCOL_VERSION, &version_len);
+	if (!version || version_len < 1) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Peer did not include Protocol Version");
+		goto done;
+	}
+
+	res = dpp_peer_intro(&intro, hapd->conf->dpp_connector,
+			     wpabuf_head(hapd->conf->dpp_netaccesskey),
+			     wpabuf_len(hapd->conf->dpp_netaccesskey),
+			     wpabuf_head(hapd->conf->dpp_csign),
+			     wpabuf_len(hapd->conf->dpp_csign),
+			     connector, connector_len, &expire);
+	if (res == 255) {
+		wpa_printf(MSG_INFO,
+			   "DPP: Network Introduction protocol resulted in internal failure (peer "
+			   MACSTR ")", MAC2STR(src));
+		goto done;
+	}
+	if (res != DPP_STATUS_OK) {
+		wpa_printf(MSG_INFO,
+			   "DPP: Network Introduction protocol resulted in failure (peer "
+			   MACSTR " status %d)", MAC2STR(src), res);
+		goto done;
+	}
+
+	if (intro.peer_version && intro.peer_version >= 2) {
+		u8 attr_version = 1;
+
+		if (version && version_len >= 1)
+			attr_version = version[0];
+		if (attr_version != intro.peer_version) {
+			wpa_printf(MSG_INFO,
+				   "DPP: Protocol version mismatch (Connector: %d Attribute: %d",
+				   intro.peer_version, attr_version);
+			goto done;
+		}
+	}
+
+	if (!expire || (os_time_t) hapd->conf->dpp_netaccesskey_expiry < expire)
+		expire = hapd->conf->dpp_netaccesskey_expiry;
+	if (expire)
+		expiration = expire - now.sec;
+	else
+		expiration = 0;
+
+	if (wpa_auth_pmksa_add2(hapd->wpa_auth, src, intro.pmk, intro.pmk_len,
+				intro.pmkid, expiration,
+				WPA_KEY_MGMT_DPP) < 0) {
+		wpa_printf(MSG_ERROR, "DPP: Failed to add PMKSA cache entry");
+		goto done;
+	}
+
+	wpa_printf(MSG_DEBUG, "DPP: Private Peer Introduction completed with "
+		   MACSTR, MAC2STR(src));
+
+done:
+	dpp_peer_intro_deinit(&intro);
+	wpabuf_free(pt);
+}
+
 #endif /* CONFIG_DPP3 */
 
 
@@ -2711,6 +2945,14 @@ void hostapd_dpp_rx_action(struct hostapd_data *hapd, const u8 *src,
 	case DPP_PA_PB_PRESENCE_ANNOUNCEMENT:
 		hostapd_dpp_rx_pb_presence_announcement(hapd, src, hdr,
 							buf, len, freq);
+		break;
+	case DPP_PA_PRIV_PEER_INTRO_QUERY:
+		hostapd_dpp_rx_priv_peer_intro_query(hapd, src, hdr,
+						     buf, len, freq);
+		break;
+	case DPP_PA_PRIV_PEER_INTRO_UPDATE:
+		hostapd_dpp_rx_priv_peer_intro_update(hapd, src, hdr,
+						      buf, len, freq);
 		break;
 #endif /* CONFIG_DPP3 */
 	default:

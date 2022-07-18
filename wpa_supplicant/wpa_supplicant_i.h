@@ -1459,6 +1459,7 @@ struct wpa_supplicant {
 	int dpp_gas_dialog_token;
 	u8 dpp_intro_bssid[ETH_ALEN];
 	void *dpp_intro_network;
+	u8 dpp_intro_peer_version;
 	struct dpp_pkex *dpp_pkex;
 	struct dpp_bootstrap_info *dpp_pkex_bi;
 	char *dpp_pkex_code;

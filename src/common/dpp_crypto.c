@@ -2367,6 +2367,7 @@ fail:
 
 
 #ifdef CONFIG_DPP3
+
 int dpp_derive_auth_i(struct dpp_authentication *auth, u8 *auth_i)
 {
 	int ret = -1, res;
@@ -2454,6 +2455,47 @@ fail:
 	wpabuf_free(pex);
 	return ret;
 }
+
+
+int dpp_hpke_suite(int iana_group, enum hpke_kem_id *kem_id,
+		   enum hpke_kdf_id *kdf_id, enum hpke_aead_id *aead_id)
+{
+	switch (iana_group) {
+	case 19:
+		*kem_id = HPKE_DHKEM_P256_HKDF_SHA256;
+		*kdf_id = HPKE_KDF_HKDF_SHA256;
+		*aead_id = HPKE_AEAD_AES_128_GCM;
+		return 0;
+	case 20:
+		*kem_id = HPKE_DHKEM_P384_HKDF_SHA384;
+		*kdf_id = HPKE_KDF_HKDF_SHA384;
+		*aead_id = HPKE_AEAD_AES_256_GCM;
+		return 0;
+	case 21:
+		*kem_id = HPKE_DHKEM_P521_HKDF_SHA512;
+		*kdf_id = HPKE_KDF_HKDF_SHA512;
+		*aead_id = HPKE_AEAD_AES_256_GCM;
+		return 0;
+	case 28:
+		*kem_id = HPKE_DHKEM_P256_HKDF_SHA256;
+		*kdf_id = HPKE_KDF_HKDF_SHA256;
+		*aead_id = HPKE_AEAD_AES_128_GCM;
+		return 0;
+	case 29:
+		*kem_id = HPKE_DHKEM_P384_HKDF_SHA384;
+		*kdf_id = HPKE_KDF_HKDF_SHA384;
+		*aead_id = HPKE_AEAD_AES_256_GCM;
+		return 0;
+	case 30:
+		*kem_id = HPKE_DHKEM_P521_HKDF_SHA512;
+		*kdf_id = HPKE_KDF_HKDF_SHA512;
+		*aead_id = HPKE_AEAD_AES_256_GCM;
+		return 0;
+	}
+
+	return -1;
+}
+
 #endif /* CONFIG_DPP3 */
 
 

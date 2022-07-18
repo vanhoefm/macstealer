@@ -833,6 +833,7 @@ static void wpa_config_write_network(FILE *f, struct wpa_ssid *ssid)
 	STR(dpp_csign);
 	STR(dpp_pp_key);
 	INT(dpp_pfs);
+	INT(dpp_connector_privacy);
 #endif /* CONFIG_DPP */
 	INT(owe_group);
 	INT(owe_only);

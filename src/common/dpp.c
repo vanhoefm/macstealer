@@ -4100,7 +4100,7 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 	struct json_token *root = NULL, *netkey, *token;
 	struct json_token *own_root = NULL;
 	enum dpp_status_error ret = 255, res;
-	struct crypto_ec_key *own_key = NULL, *peer_key = NULL;
+	struct crypto_ec_key *own_key = NULL;
 	struct wpabuf *own_key_pub = NULL;
 	const struct dpp_curve_params *curve, *own_curve;
 	struct dpp_signed_connector_info info;
@@ -4173,12 +4173,12 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 		goto fail;
 	}
 
-	peer_key = dpp_parse_jwk(netkey, &curve);
-	if (!peer_key) {
+	intro->peer_key = dpp_parse_jwk(netkey, &curve);
+	if (!intro->peer_key) {
 		ret = DPP_STATUS_INVALID_CONNECTOR;
 		goto fail;
 	}
-	dpp_debug_print_key("DPP: Received netAccessKey", peer_key);
+	dpp_debug_print_key("DPP: Received netAccessKey", intro->peer_key);
 
 	if (own_curve != curve) {
 		wpa_printf(MSG_DEBUG,
@@ -4189,7 +4189,7 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 	}
 
 	/* ECDH: N = nk * PK */
-	if (dpp_ecdh(own_key, peer_key, Nx, &Nx_len) < 0)
+	if (dpp_ecdh(own_key, intro->peer_key, Nx, &Nx_len) < 0)
 		goto fail;
 
 	wpa_hexdump_key(MSG_DEBUG, "DPP: ECDH shared secret (N.x)",
@@ -4203,23 +4203,42 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 	intro->pmk_len = curve->hash_len;
 
 	/* PMKID = Truncate-128(H(min(NK.x, PK.x) | max(NK.x, PK.x))) */
-	if (dpp_derive_pmkid(curve, own_key, peer_key, intro->pmkid) < 0) {
+	if (dpp_derive_pmkid(curve, own_key, intro->peer_key, intro->pmkid) <
+	    0) {
 		wpa_printf(MSG_ERROR, "DPP: Failed to derive PMKID");
 		goto fail;
 	}
 
+#ifdef CONFIG_DPP3
+	if (dpp_hpke_suite(curve->ike_group, &intro->kem_id, &intro->kdf_id,
+			   &intro->aead_id) < 0) {
+		wpa_printf(MSG_ERROR, "DPP: Unsupported group %d",
+			   curve->ike_group);
+		goto fail;
+	}
+#endif /* CONFIG_DPP3 */
+
 	ret = DPP_STATUS_OK;
 fail:
 	if (ret != DPP_STATUS_OK)
-		os_memset(intro, 0, sizeof(*intro));
+		dpp_peer_intro_deinit(intro);
 	os_memset(Nx, 0, sizeof(Nx));
 	os_free(info.payload);
 	crypto_ec_key_deinit(own_key);
 	wpabuf_free(own_key_pub);
-	crypto_ec_key_deinit(peer_key);
 	json_free(root);
 	json_free(own_root);
 	return ret;
+}
+
+
+void dpp_peer_intro_deinit(struct dpp_introduction *intro)
+{
+	if (!intro)
+		return;
+
+	crypto_ec_key_deinit(intro->peer_key);
+	os_memset(intro, 0, sizeof(*intro));
 }
 
 

@@ -98,8 +98,6 @@ int dpp_get_subject_public_key(struct dpp_bootstrap_info *bi,
 int dpp_bootstrap_key_hash(struct dpp_bootstrap_info *bi);
 int dpp_keygen(struct dpp_bootstrap_info *bi, const char *curve,
 	       const u8 *privkey, size_t privkey_len);
-struct crypto_ec_key * dpp_set_keypair(const struct dpp_curve_params **curve,
-				       const u8 *privkey, size_t privkey_len);
 struct crypto_ec_key * dpp_gen_keypair(const struct dpp_curve_params *curve);
 int dpp_derive_k1(const u8 *Mx, size_t Mx_len, u8 *k1, unsigned int hash_len);
 int dpp_derive_k2(const u8 *Nx, size_t Nx_len, u8 *k2, unsigned int hash_len);

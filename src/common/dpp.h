@@ -58,6 +58,9 @@ enum dpp_public_action_frame_type {
 	DPP_PA_PKEX_EXCHANGE_REQ = 18,
 	DPP_PA_PB_PRESENCE_ANNOUNCEMENT = 19,
 	DPP_PA_PB_PRESENCE_ANNOUNCEMENT_RESP = 20,
+	DPP_PA_PRIV_PEER_INTRO_QUERY = 21,
+	DPP_PA_PRIV_PEER_INTRO_NOTIFY = 22,
+	DPP_PA_PRIV_PEER_INTRO_UPDATE = 23,
 };
 
 enum dpp_attribute_id {
@@ -413,6 +416,10 @@ struct dpp_introduction {
 	u8 pmk[PMK_LEN_MAX];
 	size_t pmk_len;
 	int peer_version;
+	struct crypto_ec_key *peer_key;
+	enum hpke_kem_id kem_id;
+	enum hpke_kdf_id kdf_id;
+	enum hpke_aead_id aead_id;
 };
 
 struct dpp_relay_config {
@@ -650,6 +657,7 @@ dpp_peer_intro(struct dpp_introduction *intro, const char *own_connector,
 	       const u8 *csign_key, size_t csign_key_len,
 	       const u8 *peer_connector, size_t peer_connector_len,
 	       os_time_t *expiry);
+void dpp_peer_intro_deinit(struct dpp_introduction *intro);
 int dpp_get_connector_version(const char *connector);
 struct dpp_pkex * dpp_pkex_init(void *msg_ctx, struct dpp_bootstrap_info *bi,
 				const u8 *own_mac,
@@ -686,6 +694,11 @@ struct dpp_pfs * dpp_pfs_init(const u8 *net_access_key,
 			      size_t net_access_key_len);
 int dpp_pfs_process(struct dpp_pfs *pfs, const u8 *peer_ie, size_t peer_ie_len);
 void dpp_pfs_free(struct dpp_pfs *pfs);
+
+struct crypto_ec_key * dpp_set_keypair(const struct dpp_curve_params **curve,
+				       const u8 *privkey, size_t privkey_len);
+int dpp_hpke_suite(int iana_group, enum hpke_kem_id *kem_id,
+		   enum hpke_kdf_id *kdf_id, enum hpke_aead_id *aead_id);
 
 struct wpabuf * dpp_build_csr(struct dpp_authentication *auth,
 			      const char *name);
