@@ -10,7 +10,7 @@ import time
 
 import hostapd
 from wlantest import WlantestCapture
-from test_dpp import check_dpp_capab, run_dpp_auto_connect, wait_auth_success, update_hapd_config
+from test_dpp import check_dpp_capab, run_dpp_auto_connect, wait_auth_success, update_hapd_config, params1_ap_connector, params1_csign, params1_ap_netaccesskey, params1_sta_connector, params1_sta_connector, params1_sta_netaccesskey
 from utils import *
 
 def test_dpp_network_intro_version(dev, apdev):
@@ -494,3 +494,31 @@ def test_dpp_push_button_ext_conf(dev, apdev):
     ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=1)
     if ev is None or "success" not in ev:
         raise Exception("Push button bootstrapping did not succeed on AP")
+
+def test_dpp_private_peer_introduction(dev, apdev):
+    """DPP private peer introduction"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+
+    params = {"ssid": "dpp",
+              "wpa": "2",
+              "wpa_key_mgmt": "DPP",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "dpp_connector": params1_ap_connector,
+              "dpp_csign": params1_csign,
+              "dpp_netaccesskey": params1_ap_netaccesskey}
+    try:
+        hapd = hostapd.add_ap(apdev[0], params)
+    except:
+        raise HwsimSkip("DPP not supported")
+
+    id = dev[0].connect("dpp", key_mgmt="DPP", scan_freq="2412",
+                        ieee80211w="2",
+                        dpp_csign=params1_csign,
+                        dpp_connector=params1_sta_connector,
+                        dpp_netaccesskey=params1_sta_netaccesskey,
+                        dpp_connector_privacy="1")
+    val = dev[0].get_status_field("key_mgmt")
+    if val != "DPP":
+        raise Exception("Unexpected key_mgmt: " + val)
