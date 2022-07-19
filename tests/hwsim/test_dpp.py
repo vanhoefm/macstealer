@@ -2747,8 +2747,7 @@ def test_dpp_pkex_hostapd_errors(dev, apdev):
         raise Exception("Failed to add PKEX responder")
     if "OK" not in hapd.request("DPP_PKEX_REMOVE " + res):
         raise Exception("Failed to remove PKEX responder")
-    if "FAIL" not in hapd.request("DPP_PKEX_REMOVE " + res):
-        raise Exception("Unknown PKEX responder removal accepted")
+    hapd.request("DPP_PKEX_REMOVE " + res)
 
     res = hapd.request("DPP_PKEX_ADD own=%d code=foo" % id0)
     if "FAIL" in res:
