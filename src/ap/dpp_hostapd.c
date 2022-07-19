@@ -279,6 +279,22 @@ static int hostapd_dpp_pkex_next_channel(struct hostapd_data *hapd,
 }
 
 
+static void hostapd_dpp_pkex_clear_code(struct hostapd_data *hapd)
+{
+	if (!hapd->dpp_pkex_code && !hapd->dpp_pkex_identifier)
+		return;
+
+	/* Delete PKEX code and identifier on successful completion of
+	 * PKEX. We are not supposed to reuse these without being
+	 * explicitly requested to perform PKEX again. */
+	wpa_printf(MSG_DEBUG, "DPP: Delete PKEX code/identifier");
+	os_free(hapd->dpp_pkex_code);
+	hapd->dpp_pkex_code = NULL;
+	os_free(hapd->dpp_pkex_identifier);
+	hapd->dpp_pkex_identifier = NULL;
+}
+
+
 #ifdef CONFIG_DPP2
 static int hostapd_dpp_pkex_done(void *ctx, void *conn,
 				 struct dpp_bootstrap_info *peer_bi)
@@ -289,6 +305,8 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
 	u8 allowed_roles = DPP_CAPAB_CONFIGURATOR;
 	struct dpp_bootstrap_info *own_bi = NULL;
 	struct dpp_authentication *auth;
+
+	hostapd_dpp_pkex_clear_code(hapd);
 
 	if (!cmd)
 		cmd = "";
@@ -2244,6 +2262,7 @@ hostapd_dpp_rx_pkex_commit_reveal_req(struct hostapd_data *hapd, const u8 *src,
 				wpabuf_head(msg), wpabuf_len(msg));
 	wpabuf_free(msg);
 
+	hostapd_dpp_pkex_clear_code(hapd);
 	bi = dpp_pkex_finish(hapd->iface->interfaces->dpp, pkex, src, freq);
 	if (!bi)
 		return;
@@ -2276,6 +2295,7 @@ hostapd_dpp_rx_pkex_commit_reveal_resp(struct hostapd_data *hapd, const u8 *src,
 		return;
 	}
 
+	hostapd_dpp_pkex_clear_code(hapd);
 	bi = dpp_pkex_finish(ifaces->dpp, pkex, src, freq);
 	if (!bi)
 		return;
@@ -3229,7 +3249,7 @@ int hostapd_dpp_pkex_remove(struct hostapd_data *hapd, const char *id)
 			return -1;
 	}
 
-	if ((id_val != 0 && id_val != 1) || !hapd->dpp_pkex_code)
+	if ((id_val != 0 && id_val != 1))
 		return -1;
 
 	/* TODO: Support multiple PKEX entries */

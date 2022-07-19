@@ -2712,6 +2712,22 @@ static int wpas_dpp_pkex_next_channel(struct wpa_supplicant *wpa_s,
 }
 
 
+static void wpas_dpp_pkex_clear_code(struct wpa_supplicant *wpa_s)
+{
+	if (!wpa_s->dpp_pkex_code && !wpa_s->dpp_pkex_identifier)
+		return;
+
+	/* Delete PKEX code and identifier on successful completion of
+	 * PKEX. We are not supposed to reuse these without being
+	 * explicitly requested to perform PKEX again. */
+	os_free(wpa_s->dpp_pkex_code);
+	wpa_s->dpp_pkex_code = NULL;
+	os_free(wpa_s->dpp_pkex_identifier);
+	wpa_s->dpp_pkex_identifier = NULL;
+
+}
+
+
 #ifdef CONFIG_DPP2
 static int wpas_dpp_pkex_done(void *ctx, void *conn,
 			      struct dpp_bootstrap_info *peer_bi)
@@ -2722,6 +2738,8 @@ static int wpas_dpp_pkex_done(void *ctx, void *conn,
 	u8 allowed_roles = DPP_CAPAB_CONFIGURATOR;
 	struct dpp_bootstrap_info *own_bi = NULL;
 	struct dpp_authentication *auth;
+
+	wpas_dpp_pkex_clear_code(wpa_s);
 
 	if (!cmd)
 		cmd = "";
@@ -3048,6 +3066,7 @@ wpas_dpp_pkex_finish(struct wpa_supplicant *wpa_s, const u8 *peer,
 {
 	struct dpp_bootstrap_info *bi;
 
+	wpas_dpp_pkex_clear_code(wpa_s);
 	bi = dpp_pkex_finish(wpa_s->dpp, wpa_s->dpp_pkex, peer, freq);
 	if (!bi)
 		return NULL;
@@ -4256,7 +4275,7 @@ int wpas_dpp_pkex_remove(struct wpa_supplicant *wpa_s, const char *id)
 			return -1;
 	}
 
-	if ((id_val != 0 && id_val != 1) || !wpa_s->dpp_pkex_code)
+	if ((id_val != 0 && id_val != 1))
 		return -1;
 
 	/* TODO: Support multiple PKEX entries */
