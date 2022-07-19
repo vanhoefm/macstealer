@@ -2382,6 +2382,52 @@ def test_sigma_dut_dpp_pkex_init_configurator_tcp(dev, apdev):
     finally:
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_pkex_init_configurator_tcp_through_relay(dev, apdev):
+    """sigma_dut DPP/PKEX initiator as Configurator (TCP) through Relay"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured", "channel": "6"})
+    check_dpp_capab(hapd)
+
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        # PKEX init (AP Enrollee) over air
+        id1 = hapd.dpp_bootstrap_gen(type="pkex")
+        cmd = "DPP_PKEX_ADD own=%d identifier=test code=secret" % (id1)
+        res =  hapd.request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to set PKEX data (responder AP)")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,AP,DPPBS,PKEX,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,6")
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+        #update_hapd_config(hapd)
+
+        # Relay
+        port = 8908
+        pkhash = "05be01e0eb79ae5d2a174d9fc83548638d325f25ee9c5840dfe6dfe8b1ae6517"
+        params = {"ssid": "unconfigured",
+                  "channel": "6",
+                  "dpp_controller": "ipaddr=127.0.0.1 pkhash=" + pkhash,
+                  "dpp_relay_port": str(port)}
+        relay = hostapd.add_ap(apdev[1], params)
+        check_dpp_capab(relay)
+
+        # PKEX init (STA Enrollee) through Relay
+        dev[1].dpp_listen(2437)
+        id1 = dev[1].dpp_bootstrap_gen(type="pkex")
+        cmd = "DPP_PKEX_ADD own=%d identifier=test code=secret" % (id1)
+        res = dev[1].request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to set PKEX data (responder)")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,PKEX,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,6,DPPOverTCP,127.0.0.1")
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+
 def dpp_pkex_resp_start_on_v1(dev):
     while True:
         ev = dev.wait_event(["DPP-RX"], timeout=5)
