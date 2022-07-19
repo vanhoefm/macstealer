@@ -571,7 +571,8 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 				if (os_memcmp(src, conn->mac_addr,
 					      ETH_ALEN) == 0)
 					return dpp_relay_tx(conn, hdr, buf, len);
-				if (type == DPP_PA_AUTHENTICATION_RESP &&
+				if ((type == DPP_PA_PKEX_EXCHANGE_RESP ||
+				     type == DPP_PA_AUTHENTICATION_RESP) &&
 				    conn->freq == 0 &&
 				    is_broadcast_ether_addr(conn->mac_addr)) {
 					wpa_printf(MSG_DEBUG,
