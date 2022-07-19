@@ -1330,6 +1330,9 @@ enum qca_roam_reason {
 
 enum qca_wlan_vendor_attr_roam_auth {
 	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_INVALID = 0,
+	/* Indicates BSSID of the roamed AP for non-MLO roaming and MLD address
+	 * of the roamed AP for MLO roaming.
+	 */
 	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_BSSID,
 	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_REQ_IE,
 	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_RESP_IE,
@@ -1374,6 +1377,11 @@ enum qca_wlan_vendor_attr_roam_auth {
 	 * Defined by enum qca_roam_reason.
 	 */
 	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_REASON = 14,
+	/* A nested attribute containing per-link information of all the links
+	 * of MLO connection done while roaming. The attributes used inside this
+	 * nested attribute are defined in enum qca_wlan_vendor_attr_mlo_links.
+	 */
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_MLO_LINKS = 15,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_AFTER_LAST,
@@ -13156,6 +13164,26 @@ enum qca_wlan_vendor_attr_scs_rule_config {
 	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_MAX =
 	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_mlo_links - Definition of attributes used inside
+ * nested attribute QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_MLO_LINKS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_MLO_LINK_ID: u8 attribute, link ID of this MLO link.
+ * @QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAC_ADDR: Own MAC address of this MLO link.
+ * @QCA_WLAN_VENDOR_ATTR_MLO_LINK_BSSID: AP link MAC address of this MLO link.
+ */
+enum qca_wlan_vendor_attr_mlo_links {
+	QCA_WLAN_VENDOR_ATTR_MLO_LINK_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_MLO_LINK_ID = 1,
+	QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAC_ADDR = 2,
+	QCA_WLAN_VENDOR_ATTR_MLO_LINK_BSSID = 3,
+
+	/* Keep last */
+	QCA_WLAN_VENDOR_ATTR_MLO_LINK_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAX =
+	QCA_WLAN_VENDOR_ATTR_MLO_LINK_AFTER_LAST - 1,
 };
 
 #endif /* QCA_VENDOR_H */
