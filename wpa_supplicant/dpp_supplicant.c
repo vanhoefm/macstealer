@@ -2720,6 +2720,7 @@ static void wpas_dpp_pkex_clear_code(struct wpa_supplicant *wpa_s)
 	/* Delete PKEX code and identifier on successful completion of
 	 * PKEX. We are not supposed to reuse these without being
 	 * explicitly requested to perform PKEX again. */
+	wpa_printf(MSG_DEBUG, "DPP: Delete PKEX code/identifier");
 	os_free(wpa_s->dpp_pkex_code);
 	wpa_s->dpp_pkex_code = NULL;
 	os_free(wpa_s->dpp_pkex_identifier);
