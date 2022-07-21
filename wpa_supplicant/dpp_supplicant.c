@@ -2976,6 +2976,14 @@ wpas_dpp_rx_pkex_exchange_req(struct wpa_supplicant *wpa_s, const u8 *src,
 		return;
 	}
 
+#ifdef CONFIG_DPP2
+	if (dpp_controller_is_own_pkex_req(wpa_s->dpp, buf, len)) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: PKEX Exchange Request is from local Controller - ignore request");
+		return;
+	}
+#endif /* CONFIG_DPP2 */
+
 	if (wpa_s->dpp_pkex) {
 		/* TODO: Support parallel operations */
 		wpa_printf(MSG_DEBUG,

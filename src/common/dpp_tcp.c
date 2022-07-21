@@ -2264,6 +2264,35 @@ void dpp_controller_pkex_add(struct dpp_global *dpp,
 }
 
 
+bool dpp_controller_is_own_pkex_req(struct dpp_global *dpp,
+				    const u8 *buf, size_t len)
+{
+	struct dpp_connection *conn;
+	const u8 *attr_key = NULL;
+	u16 attr_key_len = 0;
+
+	dl_list_for_each(conn, &dpp->tcp_init, struct dpp_connection, list) {
+		if (!conn->pkex || !conn->pkex->enc_key)
+			continue;
+
+		if (!attr_key) {
+			attr_key = dpp_get_attr(buf, len,
+						DPP_ATTR_ENCRYPTED_KEY,
+						&attr_key_len);
+			if (!attr_key)
+				return false;
+		}
+
+		if (attr_key_len == wpabuf_len(conn->pkex->enc_key) &&
+		    os_memcmp(attr_key, wpabuf_head(conn->pkex->enc_key),
+			      attr_key_len) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+
 void dpp_tcp_init_flush(struct dpp_global *dpp)
 {
 	struct dpp_connection *conn, *tmp;

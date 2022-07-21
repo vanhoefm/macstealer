@@ -222,6 +222,7 @@ struct dpp_pkex {
 	unsigned int exch_req_tries;
 	unsigned int freq;
 	u8 peer_version;
+	struct wpabuf *enc_key;
 };
 
 enum dpp_akm {
@@ -605,6 +606,8 @@ int dpp_notify_new_qr_code(struct dpp_authentication *auth,
 void dpp_controller_pkex_add(struct dpp_global *dpp,
 			     struct dpp_bootstrap_info *bi,
 			     const char *code, const char *identifier);
+bool dpp_controller_is_own_pkex_req(struct dpp_global *dpp,
+				    const u8 *buf, size_t len);
 struct dpp_configuration * dpp_configuration_alloc(const char *type);
 int dpp_akm_psk(enum dpp_akm akm);
 int dpp_akm_sae(enum dpp_akm akm);

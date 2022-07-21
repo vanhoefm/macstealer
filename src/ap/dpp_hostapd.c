@@ -2132,6 +2132,15 @@ hostapd_dpp_rx_pkex_exchange_req(struct hostapd_data *hapd, const u8 *src,
 		goto try_relay;
 	}
 
+#ifdef CONFIG_DPP2
+	if (dpp_controller_is_own_pkex_req(hapd->iface->interfaces->dpp,
+					   buf, len)) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: PKEX Exchange Request is from local Controller - ignore request");
+		return;
+	}
+#endif /* CONFIG_DPP2 */
+
 	if (hapd->dpp_pkex) {
 		/* TODO: Support parallel operations */
 		wpa_printf(MSG_DEBUG,

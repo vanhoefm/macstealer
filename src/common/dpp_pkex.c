@@ -145,6 +145,8 @@ skip_finite_cyclic_group:
 	My = wpabuf_put(msg, curve->prime_len);
 	if (crypto_ec_point_to_bin(ec, M, Mx, My))
 		goto fail;
+	wpabuf_free(pkex->enc_key);
+	pkex->enc_key = wpabuf_alloc_copy(Mx, 2 * curve->prime_len);
 
 	os_memcpy(pkex->Mx, Mx, curve->prime_len);
 
@@ -1379,5 +1381,6 @@ void dpp_pkex_free(struct dpp_pkex *pkex)
 	crypto_ec_key_deinit(pkex->peer_bootstrap_key);
 	wpabuf_free(pkex->exchange_req);
 	wpabuf_free(pkex->exchange_resp);
+	wpabuf_free(pkex->enc_key);
 	os_free(pkex);
 }
