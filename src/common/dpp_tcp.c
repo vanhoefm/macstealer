@@ -1348,6 +1348,8 @@ static int dpp_controller_rx_gas_req(struct dpp_connection *conn, const u8 *msg,
 		return -1;
 	}
 
+	wpa_msg(conn->msg_ctx, MSG_INFO, DPP_EVENT_CONF_REQ_RX);
+
 	pos = msg;
 	end = msg + len;
 
