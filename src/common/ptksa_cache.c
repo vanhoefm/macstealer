@@ -281,6 +281,7 @@ struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
 {
 	struct ptksa_cache_entry *entry, *tmp, *tmp2 = NULL;
 	struct os_reltime now;
+	bool set_expiry = false;
 
 	if (!ptksa || !ptk || !addr || !life_time || cipher == WPA_CIPHER_NONE)
 		return NULL;
@@ -317,6 +318,8 @@ struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
 		}
 	}
 
+	if (dl_list_empty(&entry->list))
+		set_expiry = true;
 	/*
 	 * If the expiration is later then all other or the list is empty
 	 * entries, add it to the end of the list;
@@ -331,6 +334,9 @@ struct ptksa_cache_entry * ptksa_cache_add(struct ptksa_cache *ptksa,
 	wpa_printf(MSG_DEBUG,
 		   "Added PTKSA cache entry addr=" MACSTR " cipher=%u",
 		   MAC2STR(addr), cipher);
+
+	if (set_expiry)
+		ptksa_cache_set_expiration(ptksa);
 
 	return entry;
 }
