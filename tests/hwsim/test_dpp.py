@@ -5595,6 +5595,19 @@ def run_dpp_controller_init_through_relay(dev, apdev, params):
     network = int(ev.split(' ')[1])
     dev[0].wait_connected()
     dev[0].dump_monitor()
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    dev[0].dump_monitor()
+
+    if "OK" not in dev[0].request("DPP_RECONFIG %s" % network):
+        raise Exception("Failed to start reconfiguration")
+    ev = dev[0].wait_event(["DPP-NETWORK-ID"], timeout=15)
+    if ev is None:
+        raise Exception("DPP network id not reported for reconfiguration")
+    network2 = int(ev.split(' ')[1])
+    if network == network2:
+        raise Exception("Network ID did not change")
+    dev[0].wait_connected()
 
     time.sleep(0.5)
     wt.close()

@@ -2402,10 +2402,10 @@ def test_sigma_dut_dpp_pkex_init_configurator_tcp_through_relay(dev, apdev):
         res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,AP,DPPBS,PKEX,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,6")
         if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
             raise Exception("Unexpected result: " + res)
-        #update_hapd_config(hapd)
+        update_hapd_config(hapd)
 
         # Relay
-        port = 8908
+        port = 8909
         pkhash = "05be01e0eb79ae5d2a174d9fc83548638d325f25ee9c5840dfe6dfe8b1ae6517"
         params = {"ssid": "unconfigured",
                   "channel": "6",
@@ -2415,6 +2415,7 @@ def test_sigma_dut_dpp_pkex_init_configurator_tcp_through_relay(dev, apdev):
         check_dpp_capab(relay)
 
         # PKEX init (STA Enrollee) through Relay
+        dev[1].set("dpp_config_processing", "2")
         dev[1].dpp_listen(2437)
         id1 = dev[1].dpp_bootstrap_gen(type="pkex")
         cmd = "DPP_PKEX_ADD own=%d identifier=test code=secret" % (id1)
@@ -2422,11 +2423,36 @@ def test_sigma_dut_dpp_pkex_init_configurator_tcp_through_relay(dev, apdev):
         if "FAIL" in res:
             raise Exception("Failed to set PKEX data (responder)")
 
-        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,PKEX,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,6,DPPOverTCP,127.0.0.1")
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPConfEnrolleeRole,STA,DPPBS,PKEX,DPPPKEXCodeIdentifier,test,DPPPKEXCode,secret,DPPTimeout,6,DPPOverTCP,127.0.0.1 tcp_port=8909")
         if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
             raise Exception("Unexpected result: " + res)
+
+        ev = dev[1].wait_event(["DPP-NETWORK-ID"], timeout=1)
+        if ev is None:
+            raise Exception("DPP network id not reported")
+        network = int(ev.split(' ')[1])
+        dev[1].wait_connected()
+        dev[1].dump_monitor()
+        dev[1].request("DISCONNECT")
+        dev[1].wait_disconnected()
+        dev[1].dump_monitor()
+        if "OK" not in dev[1].request("DPP_RECONFIG %s" % network):
+            raise Exception("Failed to start reconfiguration")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,DPPReconfigure,DPPCryptoIdentifier,P-256,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPConfEnrolleeRole,STA,DPPTimeout,6,DPPSigningKeyECC,P-256,DPPOverTCP,yes", timeout=10)
+        if "ReconfigAuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected reconfiguration result: " + res)
+
+        ev = dev[1].wait_event(["DPP-NETWORK-ID"], timeout=15)
+        if ev is None:
+            raise Exception("DPP network id not reported for reconfiguration")
+        network2 = int(ev.split(' ')[1])
+        if network == network2:
+            raise Exception("Network ID did not change")
+        dev[1].wait_connected()
     finally:
         stop_sigma_dut(sigma)
+        dev[1].set("dpp_config_processing", "0", allow_fail=True)
 
 def dpp_pkex_resp_start_on_v1(dev):
     while True:
