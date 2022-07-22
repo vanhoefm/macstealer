@@ -4038,6 +4038,29 @@ def test_sigma_dut_dpp_pb_sta(dev, apdev):
         stop_sigma_dut(sigma)
         dev[0].set("dpp_config_processing", "0")
 
+def test_sigma_dut_dpp_pb_configurator(dev, apdev):
+    """sigma_dut DPP/PB Configurator"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+
+    ifname = dev[0].ifname
+    sigma = start_sigma_dut(ifname)
+    try:
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" % ifname)
+
+        if "OK" not in dev[1].request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the STA/Enrollee")
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPBS,PBBS,DPPConfEnrolleeRole,STA,DPPConfIndex,1,DPPTimeout,50"
+        res = sigma_dut_cmd(cmd, timeout=60)
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+        ev = dev[1].wait_event(["DPP-PB-RESULT"], timeout=1)
+        if ev is None or "success" not in ev:
+            raise Exception("Push button bootstrapping did not succeed on STA/Enrollee")
+    finally:
+        stop_sigma_dut(sigma)
+
 def test_sigma_dut_dpp_pb_sta_misbehavior(dev, apdev):
     """sigma_dut DPP/PB station misbehavior"""
     check_dpp_capab(dev[0], min_ver=3)
