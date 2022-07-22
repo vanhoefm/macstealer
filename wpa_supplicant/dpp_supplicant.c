@@ -3282,6 +3282,7 @@ static void wpas_dpp_pb_pkex_init(struct wpa_supplicant *wpa_s,
 	struct dpp_pkex *pkex;
 	struct wpabuf *msg;
 	unsigned int wait_time;
+	size_t len;
 
 	if (wpa_s->dpp_pkex) {
 		wpa_printf(MSG_DEBUG,
@@ -3338,8 +3339,12 @@ static void wpas_dpp_pb_pkex_init(struct wpa_supplicant *wpa_s,
 
 	/* Use the externally provided configuration */
 	os_free(wpa_s->dpp_pkex_auth_cmd);
-	wpa_s->dpp_pkex_auth_cmd = os_strdup(wpa_s->dpp_pb_cmd);
-	if (!wpa_s->dpp_pkex_auth_cmd)
+	len = 30 + os_strlen(wpa_s->dpp_pb_cmd);
+	wpa_s->dpp_pkex_auth_cmd = os_malloc(len);
+	if (wpa_s->dpp_pkex_auth_cmd)
+		os_snprintf(wpa_s->dpp_pkex_auth_cmd, len, " own=%d %s",
+			    wpa_s->dpp_pkex_bi->id, wpa_s->dpp_pb_cmd);
+	else
 		wpas_dpp_push_button_stop(wpa_s);
 }
 

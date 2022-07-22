@@ -2361,6 +2361,7 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 	struct sae_password_entry *e;
 	int conf_id = -1;
 	bool sae = false, psk = false;
+	size_t len;
 
 	if (hapd->dpp_pkex) {
 		wpa_printf(MSG_DEBUG,
@@ -2401,11 +2402,14 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 	if (ifaces->dpp_pb_cmd) {
 		/* Use the externally provided configuration */
 		os_free(hapd->dpp_pkex_auth_cmd);
-		hapd->dpp_pkex_auth_cmd = os_strdup(ifaces->dpp_pb_cmd);
+		len = 30 + os_strlen(ifaces->dpp_pb_cmd);
+		hapd->dpp_pkex_auth_cmd = os_malloc(len);
 		if (!hapd->dpp_pkex_auth_cmd) {
 			hostapd_dpp_push_button_stop(hapd);
 			return;
 		}
+		os_snprintf(hapd->dpp_pkex_auth_cmd, len, " own=%d %s",
+			    hapd->dpp_pkex_bi->id, ifaces->dpp_pb_cmd);
 		return;
 	}
 
@@ -2439,8 +2443,7 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 	    hapd->conf->ssid.wpa_passphrase)
 		password = hapd->conf->ssid.wpa_passphrase;
 	if (password) {
-		size_t len = 2 * os_strlen(password) + 1;
-
+		len = 2 * os_strlen(password) + 1;
 		pass_hex = os_malloc(len);
 		if (!pass_hex) {
 			hostapd_dpp_push_button_stop(hapd);
@@ -2484,7 +2487,11 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 	str_clear_free(pass_hex);
 
 	os_free(hapd->dpp_pkex_auth_cmd);
-	hapd->dpp_pkex_auth_cmd = os_strdup(cmd);
+	len = 30 + os_strlen(cmd);
+	hapd->dpp_pkex_auth_cmd = os_malloc(len);
+	if (hapd->dpp_pkex_auth_cmd)
+		os_snprintf(hapd->dpp_pkex_auth_cmd, len, " own=%d %s",
+			    hapd->dpp_pkex_bi->id, cmd);
 	forced_memzero(cmd, sizeof(cmd));
 	if (!hapd->dpp_pkex_auth_cmd) {
 		hostapd_dpp_push_button_stop(hapd);
