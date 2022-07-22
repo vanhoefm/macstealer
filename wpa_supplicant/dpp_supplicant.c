@@ -2785,7 +2785,7 @@ static int wpas_dpp_pkex_done(void *ctx, void *conn,
 			      struct dpp_bootstrap_info *peer_bi)
 {
 	struct wpa_supplicant *wpa_s = ctx;
-	const char *cmd = wpa_s->dpp_pkex_auth_cmd;
+	char cmd[500];
 	const char *pos;
 	u8 allowed_roles = DPP_CAPAB_CONFIGURATOR;
 	struct dpp_bootstrap_info *own_bi = NULL;
@@ -2793,8 +2793,8 @@ static int wpas_dpp_pkex_done(void *ctx, void *conn,
 
 	wpas_dpp_pkex_clear_code(wpa_s);
 
-	if (!cmd)
-		cmd = "";
+	os_snprintf(cmd, sizeof(cmd), " peer=%u %s", peer_bi->id,
+		    wpa_s->dpp_pkex_auth_cmd ? wpa_s->dpp_pkex_auth_cmd : "");
 	wpa_printf(MSG_DEBUG, "DPP: Start authentication after PKEX (cmd: %s)",
 		   cmd);
 

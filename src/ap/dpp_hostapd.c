@@ -300,7 +300,7 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
 				 struct dpp_bootstrap_info *peer_bi)
 {
 	struct hostapd_data *hapd = ctx;
-	const char *cmd = hapd->dpp_pkex_auth_cmd;
+	char cmd[500];
 	const char *pos;
 	u8 allowed_roles = DPP_CAPAB_CONFIGURATOR;
 	struct dpp_bootstrap_info *own_bi = NULL;
@@ -308,8 +308,8 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
 
 	hostapd_dpp_pkex_clear_code(hapd);
 
-	if (!cmd)
-		cmd = "";
+	os_snprintf(cmd, sizeof(cmd), " peer=%u %s", peer_bi->id,
+		    hapd->dpp_pkex_auth_cmd ? hapd->dpp_pkex_auth_cmd : "");
 	wpa_printf(MSG_DEBUG, "DPP: Start authentication after PKEX (cmd: %s)",
 		   cmd);
 
