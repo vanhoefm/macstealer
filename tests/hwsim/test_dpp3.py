@@ -378,6 +378,34 @@ def test_dpp_push_button_session_overlap_ap(dev, apdev):
     dev[0].request("DPP_STOP_LISTEN")
     dev[1].request("DPP_STOP_LISTEN")
 
+def test_dpp_push_button_session_overlap_configurator(dev, apdev):
+    """DPP push button and session overlap detected by Configurator"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    check_dpp_capab(dev[2], min_ver=3)
+
+    dev[0].dpp_listen(2412)
+    conf_id = dev[1].dpp_configurator_add()
+    ssid = "example"
+    ssid_hex = binascii.hexlify(ssid.encode()).decode()
+    cmd = "DPP_PUSH_BUTTON role=configurator conf=sta-dpp ssid=%s configurator=%d" % (ssid_hex, conf_id)
+    if "OK" not in dev[0].request(cmd):
+        raise Exception("Failed to press push button on the Configurator")
+
+    if "OK" not in dev[1].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station(1)")
+    if "OK" not in dev[2].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station(2)")
+
+    ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=30)
+    if ev is None:
+        raise Exception("Push button result not reported on Configurator")
+    if "session-overlap" not in ev:
+        raise Exception("Unexpected push button result on Configurator: " + ev)
+
+    dev[1].request("DPP_STOP_LISTEN")
+    dev[2].request("DPP_STOP_LISTEN")
+
 def test_dpp_push_button_2sta(dev, apdev):
     """DPP push button with two STAs"""
     check_dpp_capab(dev[0], min_ver=3)
@@ -494,6 +522,35 @@ def test_dpp_push_button_ext_conf(dev, apdev):
     ev = hapd.wait_event(["DPP-PB-RESULT"], timeout=1)
     if ev is None or "success" not in ev:
         raise Exception("Push button bootstrapping did not succeed on AP")
+
+def test_dpp_push_button_wpas_conf(dev, apdev):
+    """DPP push button with wpa_supplicant as Configurator"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+
+    dev[1].dpp_listen(2412)
+    conf_id = dev[1].dpp_configurator_add()
+    ssid = "example"
+    ssid_hex = binascii.hexlify(ssid.encode()).decode()
+    cmd = "DPP_PUSH_BUTTON role=configurator conf=sta-dpp ssid=%s configurator=%d" % (ssid_hex, conf_id)
+    if "OK" not in dev[1].request(cmd):
+        raise Exception("Failed to press push button on the Configurator")
+
+    if "OK" not in dev[0].request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the station")
+    ev = dev[0].wait_event(["DPP-CONFOBJ-AKM"], timeout=30)
+    if ev is None or "dpp" not in ev:
+        raise Exception("Did not receive DPP AKM config")
+    ev = dev[0].wait_event(["DPP-CONFOBJ-SSID"], timeout=1)
+    if ev is None or ssid not in ev:
+        raise Exception("Did not receive correct SSID in config")
+    ev = dev[0].wait_event(["DPP-PB-RESULT"], timeout=1)
+    if ev is None or "success" not in ev:
+        raise Exception("Push button bootstrapping did not succeed on station")
+
+    ev = dev[1].wait_event(["DPP-PB-RESULT"], timeout=1)
+    if ev is None or "success" not in ev:
+        raise Exception("Push button bootstrapping did not succeed on Configurator")
 
 def test_dpp_private_peer_introduction(dev, apdev):
     """DPP private peer introduction"""
