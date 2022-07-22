@@ -12455,7 +12455,10 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_DPP3
 	} else if (os_strcmp(buf, "DPP_PUSH_BUTTON") == 0) {
-		if (wpas_dpp_push_button(wpa_s) < 0)
+		if (wpas_dpp_push_button(wpa_s, NULL) < 0)
+			reply_len = -1;
+	} else if (os_strncmp(buf, "DPP_PUSH_BUTTON ", 16) == 0) {
+		if (wpas_dpp_push_button(wpa_s, buf + 15) < 0)
 			reply_len = -1;
 #endif /* CONFIG_DPP3 */
 #endif /* CONFIG_DPP */

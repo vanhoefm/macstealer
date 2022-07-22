@@ -44,7 +44,7 @@ void wpas_dpp_chirp_stop(struct wpa_supplicant *wpa_s);
 int wpas_dpp_reconfig(struct wpa_supplicant *wpa_s, const char *cmd);
 int wpas_dpp_ca_set(struct wpa_supplicant *wpa_s, const char *cmd);
 int wpas_dpp_conf_set(struct wpa_supplicant *wpa_s, const char *cmd);
-int wpas_dpp_push_button(struct wpa_supplicant *wpa_s);
+int wpas_dpp_push_button(struct wpa_supplicant *wpa_s, const char *cmd);
 void wpas_dpp_push_button_stop(struct wpa_supplicant *wpa_s);
 
 #endif /* DPP_SUPPLICANT_H */

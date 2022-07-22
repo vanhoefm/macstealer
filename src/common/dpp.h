@@ -447,6 +447,13 @@ struct dpp_controller_config {
 	bool (*tcp_msg_sent)(void *ctx, struct dpp_authentication *auth);
 };
 
+#define DPP_PB_INFO_COUNT 2
+
+struct dpp_pb_info {
+	u8 hash[SHA256_MAC_LEN];
+	struct os_reltime rx_time;
+};
+
 #ifdef CONFIG_TESTING_OPTIONS
 enum dpp_test_behavior {
 	DPP_TEST_DISABLED = 0,

@@ -17,6 +17,7 @@
 #include "common/dpp.h"
 #include "common/gas.h"
 #include "common/gas_server.h"
+#include "crypto/random.h"
 #include "rsn_supp/wpa.h"
 #include "rsn_supp/pmksa_cache.h"
 #include "wpa_supplicant_i.h"
@@ -2032,6 +2033,42 @@ static void wpas_dpp_conn_status_result_wait_timeout(void *eloop_ctx,
 }
 
 
+#ifdef CONFIG_DPP3
+
+static bool wpas_dpp_pb_active(struct wpa_supplicant *wpa_s)
+{
+	return (wpa_s->dpp_pb_time.sec || wpa_s->dpp_pb_time.usec) &&
+		wpa_s->dpp_pb_configurator;
+}
+
+
+static void wpas_dpp_remove_pb_hash(struct wpa_supplicant *wpa_s)
+{
+	int i;
+
+	if (!wpa_s->dpp_pb_bi)
+		return;
+	for (i = 0; i < DPP_PB_INFO_COUNT; i++) {
+		struct dpp_pb_info *info = &wpa_s->dpp_pb[i];
+
+		if (info->rx_time.sec == 0 && info->rx_time.usec == 0)
+			continue;
+		if (os_memcmp(info->hash, wpa_s->dpp_pb_resp_hash,
+			      SHA256_MAC_LEN) == 0) {
+			/* Allow a new push button session to be established
+			 * immediately without the successfully completed
+			 * session triggering session overlap. */
+			info->rx_time.sec = 0;
+			info->rx_time.usec = 0;
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Removed PB hash from session overlap detection due to successfully completed provisioning");
+		}
+	}
+}
+
+#endif /* CONFIG_DPP3 */
+
+
 static void wpas_dpp_rx_conf_result(struct wpa_supplicant *wpa_s, const u8 *src,
 				    const u8 *hdr, const u8 *buf, size_t len)
 {
@@ -2098,6 +2135,20 @@ static void wpas_dpp_rx_conf_result(struct wpa_supplicant *wpa_s, const u8 *src,
 	dpp_auth_deinit(auth);
 	wpa_s->dpp_auth = NULL;
 	eloop_cancel_timeout(wpas_dpp_config_result_wait_timeout, wpa_s, NULL);
+#ifdef CONFIG_DPP3
+	if (!wpa_s->dpp_pb_result_indicated && wpas_dpp_pb_active(wpa_s)) {
+		if (status == DPP_STATUS_OK)
+			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_PB_RESULT
+				"success");
+		else
+			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_PB_RESULT
+				"no-configuration-available");
+		wpa_s->dpp_pb_result_indicated = true;
+		if (status == DPP_STATUS_OK)
+			wpas_dpp_remove_pb_hash(wpa_s);
+		wpas_dpp_push_button_stop(wpa_s);
+	}
+#endif /* CONFIG_DPP3 */
 }
 
 
@@ -3083,7 +3134,7 @@ wpas_dpp_pkex_finish(struct wpa_supplicant *wpa_s, const u8 *peer,
 	wpa_s->dpp_pkex = NULL;
 
 #ifdef CONFIG_DPP3
-	if (wpa_s->dpp_pb_bi &&
+	if (wpa_s->dpp_pb_bi && !wpa_s->dpp_pb_configurator &&
 	    os_memcmp(bi->pubkey_hash_chirp, wpa_s->dpp_pb_init_hash,
 		      SHA256_MAC_LEN) != 0) {
 		char id[20];
@@ -3185,6 +3236,28 @@ wpas_dpp_rx_pkex_commit_reveal_resp(struct wpa_supplicant *wpa_s, const u8 *src,
 	if (!bi)
 		return;
 
+#ifdef CONFIG_DPP3
+	if (wpa_s->dpp_pb_bi && wpa_s->dpp_pb_configurator &&
+	    os_memcmp(bi->pubkey_hash_chirp, wpa_s->dpp_pb_resp_hash,
+		      SHA256_MAC_LEN) != 0) {
+		char id[20];
+
+		wpa_printf(MSG_INFO,
+			   "DPP: Peer bootstrap key from PKEX does not match PB announcement hash");
+		wpa_hexdump(MSG_DEBUG,
+			    "DPP: Peer provided bootstrap key hash(chirp) from PB PKEX",
+			    bi->pubkey_hash_chirp, SHA256_MAC_LEN);
+		wpa_hexdump(MSG_DEBUG,
+			    "DPP: Peer provided bootstrap key hash(chirp) from PB announcement",
+			    wpa_s->dpp_pb_resp_hash, SHA256_MAC_LEN);
+
+		os_snprintf(id, sizeof(id), "%u", bi->id);
+		dpp_bootstrap_remove(wpa_s->dpp, id);
+		wpas_dpp_push_button_stop(wpa_s);
+		return;
+	}
+#endif /* CONFIG_DPP3 */
+
 	os_snprintf(cmd, sizeof(cmd), " peer=%u %s",
 		    bi->id,
 		    wpa_s->dpp_pkex_auth_cmd ? wpa_s->dpp_pkex_auth_cmd : "");
@@ -3202,6 +3275,220 @@ wpas_dpp_rx_pkex_commit_reveal_resp(struct wpa_supplicant *wpa_s, const u8 *src,
 
 #ifdef CONFIG_DPP3
 
+static void wpas_dpp_pb_pkex_init(struct wpa_supplicant *wpa_s,
+				  unsigned int freq, const u8 *src,
+				  const u8 *r_hash)
+{
+	struct dpp_pkex *pkex;
+	struct wpabuf *msg;
+	unsigned int wait_time;
+
+	if (wpa_s->dpp_pkex) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Sending previously generated PKEX Exchange Request to "
+			   MACSTR, MAC2STR(src));
+		msg = wpa_s->dpp_pkex->exchange_req;
+		wait_time = wpa_s->max_remain_on_chan;
+		if (wait_time > 2000)
+			wait_time = 2000;
+		offchannel_send_action(wpa_s, freq, src,
+				       wpa_s->own_addr, broadcast,
+				       wpabuf_head(msg), wpabuf_len(msg),
+				       wait_time, wpas_dpp_tx_pkex_status, 0);
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG, "DPP: Initiate PKEX for push button with "
+		   MACSTR, MAC2STR(src));
+
+	if (!wpa_s->dpp_pb_cmd) {
+		wpa_printf(MSG_INFO,
+			   "DPP: No configuration to provision as push button Configurator");
+		wpas_dpp_push_button_stop(wpa_s);
+		return;
+	}
+
+	wpa_s->dpp_pkex_bi = wpa_s->dpp_pb_bi;
+	os_memcpy(wpa_s->dpp_pb_resp_hash, r_hash, SHA256_MAC_LEN);
+
+	pkex = dpp_pkex_init(wpa_s, wpa_s->dpp_pkex_bi, wpa_s->own_addr,
+			     "PBPKEX", (const char *) wpa_s->dpp_pb_c_nonce,
+			     wpa_s->dpp_pb_bi->curve->nonce_len,
+			     true);
+	if (!pkex) {
+		wpas_dpp_push_button_stop(wpa_s);
+		return;
+	}
+	pkex->freq = freq;
+
+	wpa_s->dpp_pkex = pkex;
+	msg = wpa_s->dpp_pkex->exchange_req;
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
+		" freq=%u type=%d", MAC2STR(src), freq,
+		DPP_PA_PKEX_EXCHANGE_REQ);
+	wait_time = wpa_s->max_remain_on_chan;
+	if (wait_time > 2000)
+		wait_time = 2000;
+	offchannel_send_action(wpa_s, pkex->freq, src,
+			       wpa_s->own_addr, broadcast,
+			       wpabuf_head(msg), wpabuf_len(msg),
+			       wait_time, wpas_dpp_tx_pkex_status, 0);
+	pkex->exch_req_wait_time = 2000;
+	pkex->exch_req_tries = 1;
+
+	/* Use the externally provided configuration */
+	os_free(wpa_s->dpp_pkex_auth_cmd);
+	wpa_s->dpp_pkex_auth_cmd = os_strdup(wpa_s->dpp_pb_cmd);
+	if (!wpa_s->dpp_pkex_auth_cmd)
+		wpas_dpp_push_button_stop(wpa_s);
+}
+
+
+static void
+wpas_dpp_rx_pb_presence_announcement(struct wpa_supplicant *wpa_s,
+				     const u8 *src, const u8 *hdr,
+				     const u8 *buf, size_t len,
+				     unsigned int freq)
+{
+	const u8 *r_hash;
+	u16 r_hash_len;
+	unsigned int i;
+	bool found = false;
+	struct dpp_pb_info *info, *tmp;
+	struct os_reltime now, age;
+	struct wpabuf *msg;
+
+	os_get_reltime(&now);
+	wpa_printf(MSG_DEBUG, "DPP: Push Button Presence Announcement from "
+		   MACSTR, MAC2STR(src));
+
+	r_hash = dpp_get_attr(buf, len, DPP_ATTR_R_BOOTSTRAP_KEY_HASH,
+			      &r_hash_len);
+	if (!r_hash || r_hash_len != SHA256_MAC_LEN) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Missing or invalid required Responder Bootstrapping Key Hash attribute");
+		return;
+	}
+	wpa_hexdump(MSG_MSGDUMP, "DPP: Responder Bootstrapping Key Hash",
+		    r_hash, r_hash_len);
+
+	for (i = 0; i < DPP_PB_INFO_COUNT; i++) {
+		info = &wpa_s->dpp_pb[i];
+		if ((info->rx_time.sec == 0 && info->rx_time.usec == 0) ||
+		    os_memcmp(r_hash, info->hash, SHA256_MAC_LEN) != 0)
+			continue;
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Active push button Enrollee already known");
+		found = true;
+		info->rx_time = now;
+	}
+
+	if (!found) {
+		for (i = 0; i < DPP_PB_INFO_COUNT; i++) {
+			tmp = &wpa_s->dpp_pb[i];
+			if (tmp->rx_time.sec == 0 && tmp->rx_time.usec == 0)
+				continue;
+
+			if (os_reltime_expired(&now, &tmp->rx_time, 120)) {
+				wpa_hexdump(MSG_DEBUG,
+					    "DPP: Push button Enrollee hash expired",
+					    tmp->hash, SHA256_MAC_LEN);
+				tmp->rx_time.sec = 0;
+				tmp->rx_time.usec = 0;
+				continue;
+			}
+
+			wpa_hexdump(MSG_DEBUG,
+				    "DPP: Push button session overlap with hash",
+				    tmp->hash, SHA256_MAC_LEN);
+			if (!wpa_s->dpp_pb_result_indicated &&
+			    wpas_dpp_pb_active(wpa_s)) {
+				wpa_msg(wpa_s, MSG_INFO,
+					DPP_EVENT_PB_RESULT "session-overlap");
+				wpa_s->dpp_pb_result_indicated = true;
+			}
+			wpas_dpp_push_button_stop(wpa_s);
+			return;
+		}
+
+		/* Replace the oldest entry */
+		info = &wpa_s->dpp_pb[0];
+		for (i = 1; i < DPP_PB_INFO_COUNT; i++) {
+			tmp = &wpa_s->dpp_pb[i];
+			if (os_reltime_before(&tmp->rx_time, &info->rx_time))
+				info = tmp;
+		}
+		wpa_printf(MSG_DEBUG, "DPP: New active push button Enrollee");
+		os_memcpy(info->hash, r_hash, SHA256_MAC_LEN);
+		info->rx_time = now;
+	}
+
+	if (!wpas_dpp_pb_active(wpa_s)) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Discard message since own push button has not been pressed");
+		return;
+	}
+
+	if (wpa_s->dpp_pb_announce_time.sec == 0 &&
+	    wpa_s->dpp_pb_announce_time.usec == 0) {
+		/* Start a wait before allowing PKEX to be initiated */
+		wpa_s->dpp_pb_announce_time = now;
+	}
+
+	if (!wpa_s->dpp_pb_bi) {
+		int res;
+
+		res = dpp_bootstrap_gen(wpa_s->dpp, "type=pkex");
+		if (res < 0)
+			return;
+		wpa_s->dpp_pb_bi = dpp_bootstrap_get_id(wpa_s->dpp, res);
+		if (!wpa_s->dpp_pb_bi)
+			return;
+
+		if (random_get_bytes(wpa_s->dpp_pb_c_nonce,
+				     wpa_s->dpp_pb_bi->curve->nonce_len)) {
+			wpa_printf(MSG_ERROR,
+				   "DPP: Failed to generate C-nonce");
+			wpas_dpp_push_button_stop(wpa_s);
+			return;
+		}
+	}
+
+	/* Skip the response if one was sent within last 50 ms since the
+	 * Enrollee is going to send out at least three announcement messages.
+	 */
+	os_reltime_sub(&now, &wpa_s->dpp_pb_last_resp, &age);
+	if (age.sec == 0 && age.usec < 50000) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Skip Push Button Presence Announcement Response frame immediately after having sent one");
+		return;
+	}
+
+	msg = dpp_build_pb_announcement_resp(
+		wpa_s->dpp_pb_bi, r_hash, wpa_s->dpp_pb_c_nonce,
+		wpa_s->dpp_pb_bi->curve->nonce_len);
+	if (!msg) {
+		wpas_dpp_push_button_stop(wpa_s);
+		return;
+	}
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Send Push Button Presence Announcement Response to "
+		   MACSTR, MAC2STR(src));
+	wpa_s->dpp_pb_last_resp = now;
+
+	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR " freq=%u type=%d",
+		MAC2STR(src), freq, DPP_PA_PB_PRESENCE_ANNOUNCEMENT_RESP);
+	offchannel_send_action(wpa_s, freq, src, wpa_s->own_addr, broadcast,
+			       wpabuf_head(msg), wpabuf_len(msg),
+			       0, NULL, 0);
+	wpabuf_free(msg);
+
+	if (os_reltime_expired(&now, &wpa_s->dpp_pb_announce_time, 15))
+		wpas_dpp_pb_pkex_init(wpa_s, freq, src, r_hash);
+}
+
+
 static void
 wpas_dpp_rx_pb_presence_announcement_resp(struct wpa_supplicant *wpa_s,
 					  const u8 *src, const u8 *hdr,
@@ -3212,9 +3499,10 @@ wpas_dpp_rx_pb_presence_announcement_resp(struct wpa_supplicant *wpa_s,
 	u16 i_hash_len, r_hash_len, c_nonce_len;
 	bool overlap = false;
 
-	if (!wpa_s->dpp_pb_announcement || !wpa_s->dpp_pb_bi) {
+	if (!wpa_s->dpp_pb_announcement || !wpa_s->dpp_pb_bi ||
+	    wpa_s->dpp_pb_configurator) {
 		wpa_printf(MSG_INFO,
-			   "DPP: Not in active push button mode - discard Push Button Presence Announcement Response from "
+			   "DPP: Not in active push button Enrollee mode - discard Push Button Presence Announcement Response from "
 			   MACSTR, MAC2STR(src));
 		return;
 	}
@@ -3672,6 +3960,10 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 		break;
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_DPP3
+	case DPP_PA_PB_PRESENCE_ANNOUNCEMENT:
+		wpas_dpp_rx_pb_presence_announcement(wpa_s, src, hdr,
+						     buf, len, freq);
+		break;
 	case DPP_PA_PB_PRESENCE_ANNOUNCEMENT_RESP:
 		wpas_dpp_rx_pb_presence_announcement_resp(wpa_s, src, hdr,
 							  buf, len, freq);
@@ -3888,6 +4180,20 @@ wpas_dpp_gas_status_handler(void *ctx, struct wpabuf *resp, int ok)
 	dpp_auth_deinit(wpa_s->dpp_auth);
 	wpa_s->dpp_auth = NULL;
 	wpabuf_free(resp);
+#ifdef CONFIG_DPP3
+	if (!wpa_s->dpp_pb_result_indicated && wpas_dpp_pb_active(wpa_s)) {
+		if (ok)
+			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_PB_RESULT
+				"success");
+		else
+			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_PB_RESULT
+				"could-not-connect");
+		wpa_s->dpp_pb_result_indicated = true;
+		if (ok)
+			wpas_dpp_remove_pb_hash(wpa_s);
+		wpas_dpp_push_button_stop(wpa_s);
+	}
+#endif /* CONFIG_DPP3 */
 }
 
 
@@ -5170,7 +5476,37 @@ static void wpas_dpp_pb_next(void *eloop_ctx, void *timeout_ctx)
 }
 
 
-int wpas_dpp_push_button(struct wpa_supplicant *wpa_s)
+static void wpas_dpp_push_button_expire(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Active push button Configurator mode expired");
+	wpas_dpp_push_button_stop(wpa_s);
+}
+
+
+static int wpas_dpp_push_button_configurator(struct wpa_supplicant *wpa_s,
+					     const char *cmd)
+{
+	wpa_s->dpp_pb_configurator = true;
+	wpa_s->dpp_pb_announce_time.sec = 0;
+	wpa_s->dpp_pb_announce_time.usec = 0;
+	str_clear_free(wpa_s->dpp_pb_cmd);
+	wpa_s->dpp_pb_cmd = NULL;
+	if (cmd) {
+		wpa_s->dpp_pb_cmd = os_strdup(cmd);
+		if (!wpa_s->dpp_pb_cmd)
+			return -1;
+	}
+	eloop_register_timeout(100, 0, wpas_dpp_push_button_expire,
+			       wpa_s, NULL);
+
+	return 0;
+}
+
+
+int wpas_dpp_push_button(struct wpa_supplicant *wpa_s, const char *cmd)
 {
 	int res;
 
@@ -5181,6 +5517,13 @@ int wpas_dpp_push_button(struct wpa_supplicant *wpa_s)
 	wpas_dpp_chirp_stop(wpa_s);
 
 	os_get_reltime(&wpa_s->dpp_pb_time);
+
+	if (cmd &&
+	    (os_strstr(cmd, " role=configurator") ||
+	     os_strstr(cmd, " conf=")))
+		return wpas_dpp_push_button_configurator(wpa_s, cmd);
+
+	wpa_s->dpp_pb_configurator = false;
 
 	if (wpas_dpp_pb_channels(wpa_s) < 0)
 		return -1;
@@ -5219,16 +5562,36 @@ void wpas_dpp_push_button_stop(struct wpa_supplicant *wpa_s)
 		os_snprintf(id, sizeof(id), "%u", wpa_s->dpp_pb_bi->id);
 		dpp_bootstrap_remove(wpa_s->dpp, id);
 		wpa_s->dpp_pb_bi = NULL;
-		if (!wpa_s->dpp_pb_result_indicated)
+		if (!wpa_s->dpp_pb_result_indicated) {
 			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_PB_RESULT "failed");
+			wpa_s->dpp_pb_result_indicated = true;
+		}
 	}
 
 	wpa_s->dpp_pb_resp_freq = 0;
 	wpa_s->dpp_pb_stop_iter = 0;
 	wpa_s->dpp_pb_discovery_done = false;
-	wpa_s->dpp_pb_result_indicated = false;
+	os_free(wpa_s->dpp_pb_cmd);
+	wpa_s->dpp_pb_cmd = NULL;
 
 	eloop_cancel_timeout(wpas_dpp_pb_next, wpa_s, NULL);
+	eloop_cancel_timeout(wpas_dpp_push_button_expire, wpa_s, NULL);
+	if (wpas_dpp_pb_active(wpa_s)) {
+		wpa_printf(MSG_DEBUG, "DPP: Stop active push button mode");
+		if (!wpa_s->dpp_pb_result_indicated)
+			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_PB_RESULT "failed");
+	}
+	wpa_s->dpp_pb_time.sec = 0;
+	wpa_s->dpp_pb_time.usec = 0;
+	dpp_pkex_free(wpa_s->dpp_pkex);
+	wpa_s->dpp_pkex = NULL;
+	os_free(wpa_s->dpp_pkex_auth_cmd);
+	wpa_s->dpp_pkex_auth_cmd = NULL;
+
+	wpa_s->dpp_pb_result_indicated = false;
+
+	str_clear_free(wpa_s->dpp_pb_cmd);
+	wpa_s->dpp_pb_cmd = NULL;
 }
 
 #endif /* CONFIG_DPP3 */

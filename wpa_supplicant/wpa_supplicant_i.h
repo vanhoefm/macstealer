@@ -1496,6 +1496,7 @@ struct wpa_supplicant {
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_DPP3
 	struct os_reltime dpp_pb_time;
+	bool dpp_pb_configurator;
 	int *dpp_pb_freqs;
 	unsigned int dpp_pb_freq_idx;
 	unsigned int dpp_pb_announce_count;
@@ -1508,6 +1509,11 @@ struct wpa_supplicant {
 	u8 dpp_pb_c_nonce[DPP_MAX_NONCE_LEN];
 	size_t dpp_pb_c_nonce_len;
 	bool dpp_pb_result_indicated;
+	struct os_reltime dpp_pb_announce_time;
+	struct dpp_pb_info dpp_pb[DPP_PB_INFO_COUNT];
+	u8 dpp_pb_resp_hash[SHA256_MAC_LEN];
+	struct os_reltime dpp_pb_last_resp;
+	char *dpp_pb_cmd;
 #endif /* CONFIG_DPP3 */
 #ifdef CONFIG_TESTING_OPTIONS
 	char *dpp_config_obj_override;

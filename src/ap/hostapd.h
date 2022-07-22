@@ -43,13 +43,6 @@ struct mesh_conf;
 #define CTRL_IFACE_COOKIE_LEN 8
 #endif /* CONFIG_CTRL_IFACE_UDP */
 
-#define DPP_PB_INFO_COUNT 2
-
-struct dpp_pb_info {
-	u8 hash[SHA256_MAC_LEN];
-	struct os_reltime rx_time;
-};
-
 struct hostapd_iface;
 
 struct hapd_interfaces {
