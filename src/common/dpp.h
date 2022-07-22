@@ -186,6 +186,9 @@ struct dpp_bootstrap_info {
 	int nfc_negotiated; /* whether this has been used in NFC negotiated
 			     * connection handover */
 	char *configurator_params;
+	u8 peer_pubkey_hash[SHA256_MAC_LEN]; /* for enforcing a specific
+					      * peer bootstrapping key with
+					      * PKEX */
 };
 
 #define PKEX_COUNTER_T_LIMIT 5

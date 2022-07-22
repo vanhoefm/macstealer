@@ -1363,6 +1363,8 @@ dpp_pkex_finish(struct dpp_global *dpp, struct dpp_pkex *pkex, const u8 *peer,
 		dpp_bootstrap_info_free(bi);
 		return NULL;
 	}
+	os_memcpy(pkex->own_bi->peer_pubkey_hash, bi->pubkey_hash,
+		  SHA256_MAC_LEN);
 	dpp_pkex_free(pkex);
 	dl_list_add(&dpp->bootstrap, &bi->list);
 	return bi;

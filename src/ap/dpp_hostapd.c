@@ -1056,6 +1056,21 @@ static void hostapd_dpp_rx_auth_req(struct hostapd_data *hapd, const u8 *src,
 		return;
 	}
 
+	if (own_bi->type == DPP_BOOTSTRAP_PKEX) {
+		if (!peer_bi || peer_bi->type != DPP_BOOTSTRAP_PKEX) {
+			wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_FAIL
+				"No matching peer bootstrapping key found for PKEX - ignore message");
+			return;
+		}
+
+		if (os_memcmp(peer_bi->pubkey_hash, own_bi->peer_pubkey_hash,
+			      SHA256_MAC_LEN) != 0) {
+			wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_FAIL
+				"Mismatching peer PKEX bootstrapping key - ignore message");
+			return;
+		}
+	}
+
 	if (hapd->dpp_auth) {
 		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_FAIL
 			"Already in DPP authentication exchange - ignore new one");
