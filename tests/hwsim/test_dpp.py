@@ -5434,13 +5434,18 @@ def test_dpp_controller_relay_chirp(dev, apdev, params):
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
         dev[1].request("DPP_CONTROLLER_STOP")
 
-def run_dpp_controller_relay(dev, apdev, params, chirp=False):
+def test_dpp_controller_relay_discover(dev, apdev, params):
+    """DPP Controller/Relay with need to discover Controller"""
+    try:
+        run_dpp_controller_relay(dev, apdev, params, chirp=True, discover=True)
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+        dev[1].request("DPP_CONTROLLER_STOP")
+
+def run_dpp_controller_relay(dev, apdev, params, chirp=False, discover=False):
     check_dpp_capab(dev[0], min_ver=2)
     check_dpp_capab(dev[1], min_ver=2)
-    prefix = "dpp_controller_relay"
-    if chirp:
-        prefix += "_chirp"
-    cap_lo = os.path.join(params['logdir'], prefix + ".lo.pcap")
+    cap_lo = params['prefix'] + ".lo.pcap"
 
     wt = WlantestCapture('lo', cap_lo)
 
@@ -5464,8 +5469,11 @@ def run_dpp_controller_relay(dev, apdev, params, chirp=False):
 
     # Relay
     params = {"ssid": "unconfigured",
-              "channel": "6",
-              "dpp_controller": "ipaddr=127.0.0.1 pkhash=" + pkhash}
+              "channel": "6"}
+    if discover:
+        params["dpp_relay_port"] = "11111"
+    else:
+        params["dpp_controller"] = "ipaddr=127.0.0.1 pkhash=" + pkhash
     if chirp:
         params["channel"] = "11"
         params["dpp_configurator_connectivity"] = "1"
@@ -5502,9 +5510,18 @@ def run_dpp_controller_relay(dev, apdev, params, chirp=False):
             raise Exception("Unexpected DPP frame received: " + ev)
     else:
         dev[0].dpp_auth_init(uri=uri_c, role="enrollee")
+    if discover:
+        ev = relay.wait_event(["DPP-RELAY-NEEDS-CONTROLLER"], timeout=30)
+        if ev is None:
+            raise Exception("Relay did not indicate need for a Controller")
+        cmd = "DPP_RELAY_ADD_CONTROLLER 127.0.0.1 " + pkhash
+        if "OK" not in relay.request(cmd):
+            raise Exception("Could not add Controller to Relay")
+
     wait_auth_success(dev[1], dev[0], configurator=dev[1], enrollee=dev[0],
                       allow_enrollee_failure=True,
-                      allow_configurator_failure=True)
+                      allow_configurator_failure=True,
+                      timeout=100 if discover else 5)
     ev = dev[0].wait_event(["DPP-NETWORK-ID"], timeout=1)
     if ev is None:
         raise Exception("DPP network id not reported")
