@@ -3353,6 +3353,7 @@ static int hostapd_dpp_add_controllers(struct hostapd_data *hapd)
 	struct dpp_relay_config config;
 
 	os_memset(&config, 0, sizeof(config));
+	config.msg_ctx = hapd->msg_ctx;
 	config.cb_ctx = hapd;
 	config.tx = hostapd_dpp_relay_tx;
 	config.gas_resp_tx = hostapd_dpp_relay_gas_resp_tx;
@@ -3366,7 +3367,8 @@ static int hostapd_dpp_add_controllers(struct hostapd_data *hapd)
 
 	if (hapd->conf->dpp_relay_port)
 		dpp_relay_listen(hapd->iface->interfaces->dpp,
-				 hapd->conf->dpp_relay_port);
+				 hapd->conf->dpp_relay_port,
+				 &config);
 #endif /* CONFIG_DPP2 */
 
 	return 0;

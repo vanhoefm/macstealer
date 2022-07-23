@@ -211,6 +211,11 @@ dpp_relay_controller_get_addr(struct dpp_global *dpp,
 			return ctrl;
 	}
 
+	if (dpp->tmp_controller &&
+	    dpp->tmp_controller->ipaddr.af == AF_INET &&
+	    addr->sin_addr.s_addr == dpp->tmp_controller->ipaddr.u.v4.s_addr)
+		return dpp->tmp_controller;
+
 	return NULL;
 }
 
@@ -548,6 +553,31 @@ static int dpp_relay_tx(struct dpp_connection *conn, const u8 *hdr,
 }
 
 
+static struct dpp_connection *
+dpp_relay_match_ctrl(struct dpp_relay_controller *ctrl, const u8 *src,
+		     unsigned int freq, u8 type)
+{
+	struct dpp_connection *conn;
+
+	dl_list_for_each(conn, &ctrl->conn, struct dpp_connection, list) {
+		if (os_memcmp(src, conn->mac_addr, ETH_ALEN) == 0)
+			return conn;
+		if ((type == DPP_PA_PKEX_EXCHANGE_RESP ||
+		     type == DPP_PA_AUTHENTICATION_RESP) &&
+		    conn->freq == 0 &&
+		    is_broadcast_ether_addr(conn->mac_addr)) {
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Associate this peer to the new Controller initiated connection");
+			os_memcpy(conn->mac_addr, src, ETH_ALEN);
+			conn->freq = freq;
+			return conn;
+		}
+	}
+
+	return NULL;
+}
+
+
 int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 			const u8 *buf, size_t len, unsigned int freq,
 			const u8 *i_bootstrap, const u8 *r_bootstrap,
@@ -566,24 +596,16 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 	    type != DPP_PA_RECONFIG_ANNOUNCEMENT) {
 		dl_list_for_each(ctrl, &dpp->controllers,
 				 struct dpp_relay_controller, list) {
-			dl_list_for_each(conn, &ctrl->conn,
-					 struct dpp_connection, list) {
-				if (os_memcmp(src, conn->mac_addr,
-					      ETH_ALEN) == 0)
-					return dpp_relay_tx(conn, hdr, buf, len);
-				if ((type == DPP_PA_PKEX_EXCHANGE_RESP ||
-				     type == DPP_PA_AUTHENTICATION_RESP) &&
-				    conn->freq == 0 &&
-				    is_broadcast_ether_addr(conn->mac_addr)) {
-					wpa_printf(MSG_DEBUG,
-						   "DPP: Associate this peer to the new Controller initiated connection");
-					os_memcpy(conn->mac_addr, src,
-						  ETH_ALEN);
-					conn->freq = freq;
-					return dpp_relay_tx(conn, hdr, buf,
-							    len);
-				}
-			}
+			conn = dpp_relay_match_ctrl(ctrl, src, freq, type);
+			if (conn)
+				return dpp_relay_tx(conn, hdr, buf, len);
+		}
+
+		if (dpp->tmp_controller) {
+			conn = dpp_relay_match_ctrl(dpp->tmp_controller, src,
+						    freq, type);
+			if (conn)
+				return dpp_relay_tx(conn, hdr, buf, len);
 		}
 	}
 
@@ -619,11 +641,25 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 }
 
 
+static struct dpp_connection *
+dpp_relay_find_conn(struct dpp_relay_controller *ctrl, const u8 *src)
+{
+	struct dpp_connection *conn;
+
+	dl_list_for_each(conn, &ctrl->conn, struct dpp_connection, list) {
+		if (os_memcmp(src, conn->mac_addr, ETH_ALEN) == 0)
+			return conn;
+	}
+
+	return NULL;
+}
+
+
 int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
 			 size_t data_len)
 {
 	struct dpp_relay_controller *ctrl;
-	struct dpp_connection *conn, *found = NULL;
+	struct dpp_connection *conn = NULL;
 	struct wpabuf *msg;
 
 	/* Check if there is a successfully completed authentication for this
@@ -631,19 +667,15 @@ int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
 	 */
 	dl_list_for_each(ctrl, &dpp->controllers,
 			 struct dpp_relay_controller, list) {
-		if (found)
+		conn = dpp_relay_find_conn(ctrl, src);
+		if (conn)
 			break;
-		dl_list_for_each(conn, &ctrl->conn,
-				 struct dpp_connection, list) {
-			if (os_memcmp(src, conn->mac_addr,
-				      ETH_ALEN) == 0) {
-				found = conn;
-				break;
-			}
-		}
 	}
 
-	if (!found)
+	if (!conn && dpp->tmp_controller)
+		conn = dpp_relay_find_conn(dpp->tmp_controller, src);
+
+	if (!conn)
 		return -1;
 
 	msg = wpabuf_alloc(4 + 1 + data_len);
@@ -2326,6 +2358,11 @@ void dpp_relay_flush_controllers(struct dpp_global *dpp)
 		dl_list_del(&ctrl->list);
 		dpp_relay_controller_free(ctrl);
 	}
+
+	if (dpp->tmp_controller) {
+		dpp_relay_controller_free(dpp->tmp_controller);
+		dpp->tmp_controller = NULL;
+	}
 }
 
 
@@ -2351,6 +2388,32 @@ static void dpp_relay_tcp_cb(int sd, void *eloop_ctx, void *sock_ctx)
 		   inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
 	ctrl = dpp_relay_controller_get_addr(dpp, &addr);
+	if (!ctrl && dpp->tmp_controller &&
+	    dl_list_len(&dpp->tmp_controller->conn)) {
+		char txt[100];
+
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Remove a temporaty Controller entry for %s",
+			   hostapd_ip_txt(&dpp->tmp_controller->ipaddr,
+					  txt, sizeof(txt)));
+		dpp_relay_controller_free(dpp->tmp_controller);
+		dpp->tmp_controller = NULL;
+	}
+	if (!ctrl && !dpp->tmp_controller) {
+		wpa_printf(MSG_DEBUG, "DPP: Add a temporary Controller entry");
+		ctrl = os_zalloc(sizeof(*ctrl));
+		if (!ctrl)
+			goto fail;
+		dl_list_init(&ctrl->conn);
+		ctrl->global = dpp;
+		ctrl->ipaddr.af = AF_INET;
+		ctrl->ipaddr.u.v4.s_addr = addr.sin_addr.s_addr;
+		ctrl->msg_ctx = dpp->relay_msg_ctx;
+		ctrl->cb_ctx = dpp->relay_cb_ctx;
+		ctrl->tx = dpp->relay_tx;
+		ctrl->gas_resp_tx = dpp->relay_gas_resp_tx;
+		dpp->tmp_controller = ctrl;
+	}
 	if (!ctrl) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No Controller found for that address");
@@ -2396,7 +2459,8 @@ fail:
 }
 
 
-int dpp_relay_listen(struct dpp_global *dpp, int port)
+int dpp_relay_listen(struct dpp_global *dpp, int port,
+		     struct dpp_relay_config *config)
 {
 	int s;
 	int on = 1;
@@ -2451,6 +2515,10 @@ int dpp_relay_listen(struct dpp_global *dpp, int port)
 	}
 
 	dpp->relay_sock = s;
+	dpp->relay_msg_ctx = config->msg_ctx;
+	dpp->relay_cb_ctx = config->cb_ctx;
+	dpp->relay_tx = config->tx;
+	dpp->relay_gas_resp_tx = config->gas_resp_tx;
 	wpa_printf(MSG_DEBUG, "DPP: Relay started on TCP port %d", port);
 	return 0;
 }

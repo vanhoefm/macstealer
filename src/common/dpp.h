@@ -749,7 +749,8 @@ struct dpp_configurator * dpp_configurator_find_kid(struct dpp_global *dpp,
 						    const u8 *kid);
 int dpp_relay_add_controller(struct dpp_global *dpp,
 			     struct dpp_relay_config *config);
-int dpp_relay_listen(struct dpp_global *dpp, int port);
+int dpp_relay_listen(struct dpp_global *dpp, int port,
+		     struct dpp_relay_config *config);
 void dpp_relay_stop_listen(struct dpp_global *dpp);
 int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 			const u8 *buf, size_t len, unsigned int freq,

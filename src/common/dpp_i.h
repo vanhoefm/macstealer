@@ -19,9 +19,16 @@ struct dpp_global {
 	struct dl_list configurator; /* struct dpp_configurator */
 #ifdef CONFIG_DPP2
 	struct dl_list controllers; /* struct dpp_relay_controller */
+	struct dpp_relay_controller *tmp_controller;
 	struct dpp_controller *controller;
 	struct dl_list tcp_init; /* struct dpp_connection */
 	int relay_sock;
+	void *relay_msg_ctx;
+	void *relay_cb_ctx;
+	void (*relay_tx)(void *ctx, const u8 *addr, unsigned int freq,
+			 const u8 *msg, size_t len);
+	void (*relay_gas_resp_tx)(void *ctx, const u8 *addr, u8 dialog_token,
+				  int prot, struct wpabuf *buf);
 	void *cb_ctx;
 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
 	bool (*tcp_msg_sent)(void *ctx, struct dpp_authentication *auth);
