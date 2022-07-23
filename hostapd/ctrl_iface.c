@@ -3673,6 +3673,11 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 			reply_len = -1;
 	} else if (os_strcmp(buf, "DPP_STOP_CHIRP") == 0) {
 		hostapd_dpp_chirp_stop(hapd);
+	} else if (os_strncmp(buf, "DPP_RELAY_ADD_CONTROLLER ", 25) == 0) {
+		if (hostapd_dpp_add_controller(hapd, buf + 25) < 0)
+			reply_len = -1;
+	} else if (os_strncmp(buf, "DPP_RELAY_REMOVE_CONTROLLER ", 28) == 0) {
+		hostapd_dpp_remove_controller(hapd, buf + 28);
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_DPP3
 	} else if (os_strcmp(buf, "DPP_PUSH_BUTTON") == 0) {

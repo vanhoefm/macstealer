@@ -48,5 +48,7 @@ void hostapd_dpp_remove_bi(void *ctx, struct dpp_bootstrap_info *bi);
 int hostapd_dpp_push_button(struct hostapd_data *hapd, const char *cmd);
 void hostapd_dpp_push_button_stop(struct hostapd_data *hapd);
 bool hostapd_dpp_configurator_connectivity(struct hostapd_data *hapd);
+int hostapd_dpp_add_controller(struct hostapd_data *hapd, const char *cmd);
+void hostapd_dpp_remove_controller(struct hostapd_data *hapd, const char *cmd);
 
 #endif /* DPP_HOSTAPD_H */

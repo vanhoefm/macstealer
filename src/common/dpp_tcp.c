@@ -139,6 +139,7 @@ int dpp_relay_add_controller(struct dpp_global *dpp,
 			     struct dpp_relay_config *config)
 {
 	struct dpp_relay_controller *ctrl;
+	char txt[100];
 
 	if (!dpp)
 		return -1;
@@ -154,6 +155,8 @@ int dpp_relay_add_controller(struct dpp_global *dpp,
 	ctrl->cb_ctx = config->cb_ctx;
 	ctrl->tx = config->tx;
 	ctrl->gas_resp_tx = config->gas_resp_tx;
+	wpa_printf(MSG_DEBUG, "DPP: Add Relay connection to Controller %s",
+		   hostapd_ip_txt(&ctrl->ipaddr, txt, sizeof(txt)));
 	dl_list_add(&dpp->controllers, &ctrl->list);
 	return 0;
 }
@@ -2344,6 +2347,10 @@ void dpp_tcp_init_flush(struct dpp_global *dpp)
 static void dpp_relay_controller_free(struct dpp_relay_controller *ctrl)
 {
 	struct dpp_connection *conn, *tmp;
+	char txt[100];
+
+	wpa_printf(MSG_DEBUG, "DPP: Remove Relay connection to Controller %s",
+		   hostapd_ip_txt(&ctrl->ipaddr, txt, sizeof(txt)));
 
 	dl_list_for_each_safe(conn, tmp, &ctrl->conn, struct dpp_connection,
 			      list)
@@ -2366,6 +2373,31 @@ void dpp_relay_flush_controllers(struct dpp_global *dpp)
 	}
 
 	if (dpp->tmp_controller) {
+		dpp_relay_controller_free(dpp->tmp_controller);
+		dpp->tmp_controller = NULL;
+	}
+}
+
+
+void dpp_relay_remove_controller(struct dpp_global *dpp,
+				 const struct hostapd_ip_addr *addr)
+{
+	struct dpp_relay_controller *ctrl;
+
+	if (!dpp)
+		return;
+
+	dl_list_for_each(ctrl, &dpp->controllers, struct dpp_relay_controller,
+			 list) {
+		if (hostapd_ip_equal(&ctrl->ipaddr, addr)) {
+			dl_list_del(&ctrl->list);
+			dpp_relay_controller_free(ctrl);
+			return;
+		}
+	}
+
+	if (dpp->tmp_controller &&
+	    hostapd_ip_equal(&dpp->tmp_controller->ipaddr, addr)) {
 		dpp_relay_controller_free(dpp->tmp_controller);
 		dpp->tmp_controller = NULL;
 	}

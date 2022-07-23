@@ -749,6 +749,8 @@ struct dpp_configurator * dpp_configurator_find_kid(struct dpp_global *dpp,
 						    const u8 *kid);
 int dpp_relay_add_controller(struct dpp_global *dpp,
 			     struct dpp_relay_config *config);
+void dpp_relay_remove_controller(struct dpp_global *dpp,
+				 const struct hostapd_ip_addr *addr);
 int dpp_relay_listen(struct dpp_global *dpp, int port,
 		     struct dpp_relay_config *config);
 void dpp_relay_stop_listen(struct dpp_global *dpp);

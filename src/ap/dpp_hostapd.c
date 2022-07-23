@@ -21,6 +21,7 @@
 #include "gas_query_ap.h"
 #include "gas_serv.h"
 #include "wpa_auth.h"
+#include "beacon.h"
 #include "dpp_hostapd.h"
 
 
@@ -3373,6 +3374,65 @@ static int hostapd_dpp_add_controllers(struct hostapd_data *hapd)
 
 	return 0;
 }
+
+
+#ifdef CONFIG_DPP2
+
+int hostapd_dpp_add_controller(struct hostapd_data *hapd, const char *cmd)
+{
+	struct dpp_relay_config config;
+	struct hostapd_ip_addr addr;
+	u8 pkhash[SHA256_MAC_LEN];
+	char *pos, *tmp;
+	int ret = -1;
+	bool prev_state, new_state;
+	struct dpp_global *dpp = hapd->iface->interfaces->dpp;
+
+	tmp = os_strdup(cmd);
+	if (!tmp)
+		goto fail;
+	pos = os_strchr(tmp, ' ');
+	if (!pos)
+		goto fail;
+	pos++;
+	if (hostapd_parse_ip_addr(tmp, &addr) < 0 ||
+	    hexstr2bin(pos, pkhash, SHA256_MAC_LEN) < 0)
+		goto fail;
+
+	os_memset(&config, 0, sizeof(config));
+	config.msg_ctx = hapd->msg_ctx;
+	config.cb_ctx = hapd;
+	config.tx = hostapd_dpp_relay_tx;
+	config.gas_resp_tx = hostapd_dpp_relay_gas_resp_tx;
+	config.ipaddr = &addr;
+	config.pkhash = pkhash;
+	prev_state = dpp_relay_controller_available(dpp);
+	ret = dpp_relay_add_controller(dpp, &config);
+	new_state = dpp_relay_controller_available(dpp);
+	if (new_state != prev_state)
+		ieee802_11_update_beacons(hapd->iface);
+fail:
+	os_free(tmp);
+	return ret;
+}
+
+
+void hostapd_dpp_remove_controller(struct hostapd_data *hapd, const char *cmd)
+{
+	struct hostapd_ip_addr addr;
+	bool prev_state, new_state;
+	struct dpp_global *dpp = hapd->iface->interfaces->dpp;
+
+	if (hostapd_parse_ip_addr(cmd, &addr) < 0)
+		return;
+	prev_state = dpp_relay_controller_available(dpp);
+	dpp_relay_remove_controller(dpp, &addr);
+	new_state = dpp_relay_controller_available(dpp);
+	if (new_state != prev_state)
+		ieee802_11_update_beacons(hapd->iface);
+}
+
+#endif /* CONFIG_DPP2 */
 
 
 int hostapd_dpp_init(struct hostapd_data *hapd)
