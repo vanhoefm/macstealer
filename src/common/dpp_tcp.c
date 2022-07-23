@@ -694,6 +694,12 @@ int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
 }
 
 
+bool dpp_relay_controller_available(struct dpp_global *dpp)
+{
+	return dpp && dl_list_len(&dpp->controllers) > 0;
+}
+
+
 static void dpp_controller_free(struct dpp_controller *ctrl)
 {
 	struct dpp_connection *conn, *tmp;

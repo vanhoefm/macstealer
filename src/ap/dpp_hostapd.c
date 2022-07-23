@@ -3869,3 +3869,13 @@ void hostapd_dpp_push_button_stop(struct hostapd_data *hapd)
 }
 
 #endif /* CONFIG_DPP3 */
+
+
+#ifdef CONFIG_DPP2
+bool hostapd_dpp_configurator_connectivity(struct hostapd_data *hapd)
+{
+	return hapd->conf->dpp_configurator_connectivity ||
+		(hapd->iface->interfaces &&
+		 dpp_relay_controller_available(hapd->iface->interfaces->dpp));
+}
+#endif /* CONFIG_DPP2 */

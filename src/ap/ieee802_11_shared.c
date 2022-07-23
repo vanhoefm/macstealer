@@ -17,6 +17,7 @@
 #include "ap_config.h"
 #include "ap_drv_ops.h"
 #include "wpa_auth.h"
+#include "dpp_hostapd.h"
 #include "ieee802_11.h"
 
 
@@ -873,7 +874,7 @@ u8 * hostapd_eid_owe_trans(struct hostapd_data *hapd, u8 *eid,
 size_t hostapd_eid_dpp_cc_len(struct hostapd_data *hapd)
 {
 #ifdef CONFIG_DPP2
-	if (hapd->conf->dpp_configurator_connectivity)
+	if (hostapd_dpp_configurator_connectivity(hapd))
 		return 6;
 #endif /* CONFIG_DPP2 */
 	return 0;
@@ -885,7 +886,7 @@ u8 * hostapd_eid_dpp_cc(struct hostapd_data *hapd, u8 *eid, size_t len)
 	u8 *pos = eid;
 
 #ifdef CONFIG_DPP2
-	if (!hapd->conf->dpp_configurator_connectivity || len < 6)
+	if (!hostapd_dpp_configurator_connectivity(hapd) || len < 6)
 		return pos;
 
 	*pos++ = WLAN_EID_VENDOR_SPECIFIC;

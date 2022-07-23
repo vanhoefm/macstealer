@@ -758,6 +758,7 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 			void *cb_ctx);
 int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
 			 size_t data_len);
+bool dpp_relay_controller_available(struct dpp_global *dpp);
 int dpp_controller_start(struct dpp_global *dpp,
 			 struct dpp_controller_config *config);
 int dpp_controller_set_params(struct dpp_global *dpp,
