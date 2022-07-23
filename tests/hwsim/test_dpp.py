@@ -5536,7 +5536,15 @@ def test_dpp_controller_init_through_relay(dev, apdev, params):
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
         dev[1].request("DPP_CONTROLLER_STOP")
 
-def run_dpp_controller_init_through_relay(dev, apdev, params):
+def test_dpp_controller_init_through_relay_dynamic(dev, apdev, params):
+    """DPP Controller initiating through Relay (dynamic addition)"""
+    try:
+        run_dpp_controller_init_through_relay(dev, apdev, params, dynamic=True)
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+        dev[1].request("DPP_CONTROLLER_STOP")
+
+def run_dpp_controller_init_through_relay(dev, apdev, params, dynamic=False):
     check_dpp_capab(dev[0], min_ver=2)
     check_dpp_capab(dev[1], min_ver=2)
     cap_lo = os.path.join(params['prefix'], ".lo.pcap")
@@ -5547,16 +5555,17 @@ def run_dpp_controller_init_through_relay(dev, apdev, params):
     conf_id = dev[1].dpp_configurator_add()
     dev[1].set("dpp_configurator_params",
                "conf=sta-dpp configurator=%d" % conf_id)
-    id_c = dev[1].dpp_bootstrap_gen()
-    res = dev[1].request("DPP_BOOTSTRAP_INFO %d" % id_c)
-    pkhash = None
-    for line in res.splitlines():
-        name, value = line.split('=')
-        if name == "pkhash":
-            pkhash = value
-            break
-    if not pkhash:
-        raise Exception("Could not fetch public key hash from Controller")
+    if not dynamic:
+        id_c = dev[1].dpp_bootstrap_gen()
+        res = dev[1].request("DPP_BOOTSTRAP_INFO %d" % id_c)
+        pkhash = None
+        for line in res.splitlines():
+            name, value = line.split('=')
+            if name == "pkhash":
+                pkhash = value
+                break
+        if not pkhash:
+            raise Exception("Could not fetch public key hash from Controller")
     if "OK" not in dev[1].request("DPP_CONTROLLER_START"):
         raise Exception("Failed to start Controller")
 
@@ -5564,8 +5573,9 @@ def run_dpp_controller_init_through_relay(dev, apdev, params):
     port = 11111
     params = {"ssid": "unconfigured",
               "channel": "6",
-              "dpp_controller": "ipaddr=127.0.0.1 pkhash=" + pkhash,
               "dpp_relay_port": str(port)}
+    if not dynamic:
+        params["dpp_controller"] = "ipaddr=127.0.0.1 pkhash=" + pkhash
     relay = hostapd.add_ap(apdev[0], params)
     check_dpp_capab(relay)
 
@@ -5599,15 +5609,16 @@ def run_dpp_controller_init_through_relay(dev, apdev, params):
     dev[0].wait_disconnected()
     dev[0].dump_monitor()
 
-    if "OK" not in dev[0].request("DPP_RECONFIG %s" % network):
-        raise Exception("Failed to start reconfiguration")
-    ev = dev[0].wait_event(["DPP-NETWORK-ID"], timeout=15)
-    if ev is None:
-        raise Exception("DPP network id not reported for reconfiguration")
-    network2 = int(ev.split(' ')[1])
-    if network == network2:
-        raise Exception("Network ID did not change")
-    dev[0].wait_connected()
+    if not dynamic:
+        if "OK" not in dev[0].request("DPP_RECONFIG %s" % network):
+            raise Exception("Failed to start reconfiguration")
+        ev = dev[0].wait_event(["DPP-NETWORK-ID"], timeout=15)
+        if ev is None:
+            raise Exception("DPP network id not reported for reconfiguration")
+        network2 = int(ev.split(' ')[1])
+        if network == network2:
+            raise Exception("Network ID did not change")
+        dev[0].wait_connected()
 
     time.sleep(0.5)
     wt.close()
