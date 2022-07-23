@@ -5544,7 +5544,16 @@ def test_dpp_controller_init_through_relay_dynamic(dev, apdev, params):
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
         dev[1].request("DPP_CONTROLLER_STOP")
 
-def run_dpp_controller_init_through_relay(dev, apdev, params, dynamic=False):
+def test_dpp_controller_init_through_relay_add(dev, apdev, params):
+    """DPP Controller initiating through Relay (add Controller connection)"""
+    try:
+        run_dpp_controller_init_through_relay(dev, apdev, params, add=True)
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+        dev[1].request("DPP_CONTROLLER_STOP")
+
+def run_dpp_controller_init_through_relay(dev, apdev, params, dynamic=False,
+                                          add=False):
     check_dpp_capab(dev[0], min_ver=2)
     check_dpp_capab(dev[1], min_ver=2)
     cap_lo = os.path.join(params['prefix'], ".lo.pcap")
@@ -5574,7 +5583,7 @@ def run_dpp_controller_init_through_relay(dev, apdev, params, dynamic=False):
     params = {"ssid": "unconfigured",
               "channel": "6",
               "dpp_relay_port": str(port)}
-    if not dynamic:
+    if not dynamic and not add:
         params["dpp_controller"] = "ipaddr=127.0.0.1 pkhash=" + pkhash
     relay = hostapd.add_ap(apdev[0], params)
     check_dpp_capab(relay)
@@ -5609,6 +5618,10 @@ def run_dpp_controller_init_through_relay(dev, apdev, params, dynamic=False):
     dev[0].wait_disconnected()
     dev[0].dump_monitor()
 
+    if add:
+        cmd = "DPP_RELAY_ADD_CONTROLLER 127.0.0.1 " + pkhash
+        if "OK" not in relay.request(cmd):
+            raise Exception("Could not add Controller to Relay")
     if not dynamic:
         if "OK" not in dev[0].request("DPP_RECONFIG %s" % network):
             raise Exception("Failed to start reconfiguration")
@@ -5619,6 +5632,8 @@ def run_dpp_controller_init_through_relay(dev, apdev, params, dynamic=False):
         if network == network2:
             raise Exception("Network ID did not change")
         dev[0].wait_connected()
+    if add:
+        relay.request("DPP_RELAY_REMOVE_CONTROLLER 127.0.0.1")
 
     time.sleep(0.5)
     wt.close()
