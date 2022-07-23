@@ -1001,6 +1001,27 @@ void hostapd_dpp_listen_stop(struct hostapd_data *hapd)
 }
 
 
+#ifdef CONFIG_DPP2
+static void
+hostapd_dpp_relay_needs_controller(struct hostapd_data *hapd, const u8 *src,
+				   enum dpp_public_action_frame_type type)
+{
+	struct os_reltime now;
+
+	if (!hapd->conf->dpp_relay_port)
+		return;
+
+	os_get_reltime(&now);
+	if (hapd->dpp_relay_last_needs_ctrl.sec &&
+	    !os_reltime_expired(&now, &hapd->dpp_relay_last_needs_ctrl, 60))
+		return;
+	hapd->dpp_relay_last_needs_ctrl = now;
+	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_RELAY_NEEDS_CONTROLLER
+		MACSTR " %u", MAC2STR(src), type);
+}
+#endif /* CONFIG_DPP2 */
+
+
 static void hostapd_dpp_rx_auth_req(struct hostapd_data *hapd, const u8 *src,
 				    const u8 *hdr, const u8 *buf, size_t len,
 				    unsigned int freq)
@@ -1049,6 +1070,8 @@ static void hostapd_dpp_rx_auth_req(struct hostapd_data *hapd, const u8 *src,
 					src, hdr, buf, len, freq, i_bootstrap,
 					r_bootstrap, hapd) == 0)
 			return;
+		hostapd_dpp_relay_needs_controller(hapd, src,
+						   DPP_PA_AUTHENTICATION_REQ);
 	}
 #endif /* CONFIG_DPP2 */
 	if (!own_bi) {
@@ -1668,6 +1691,8 @@ hostapd_dpp_rx_presence_announcement(struct hostapd_data *hapd, const u8 *src,
 			return;
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No matching bootstrapping information found");
+		hostapd_dpp_relay_needs_controller(
+			hapd, src, DPP_PA_PRESENCE_ANNOUNCEMENT);
 		return;
 	}
 
@@ -1758,6 +1783,8 @@ hostapd_dpp_rx_reconfig_announcement(struct hostapd_data *hapd, const u8 *src,
 			return;
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No matching Configurator information found");
+		hostapd_dpp_relay_needs_controller(
+			hapd, src, DPP_PA_RECONFIG_ANNOUNCEMENT);
 		return;
 	}
 
@@ -2198,9 +2225,12 @@ try_relay:
 #ifdef CONFIG_DPP2
 	if (v2 && dpp_relay_rx_action(hapd->iface->interfaces->dpp,
 				      src, hdr, buf, len, freq, NULL, NULL,
-				      hapd) != 0)
+				      hapd) != 0) {
 		wpa_printf(MSG_DEBUG,
 			   "DPP: No Relay available for the message");
+		hostapd_dpp_relay_needs_controller(hapd, src,
+						   DPP_PA_PKEX_EXCHANGE_REQ);
+	}
 #else /* CONFIG_DPP2 */
 	wpa_printf(MSG_DEBUG, "DPP: No relay functionality included - skip");
 #endif /* CONFIG_DPP2 */

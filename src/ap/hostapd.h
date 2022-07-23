@@ -433,6 +433,7 @@ struct hostapd_data {
 	int dpp_chirp_round;
 	int dpp_chirp_scan_done;
 	int dpp_chirp_listen;
+	struct os_reltime dpp_relay_last_needs_ctrl;
 #endif /* CONFIG_DPP2 */
 #ifdef CONFIG_TESTING_OPTIONS
 	char *dpp_config_obj_override;
