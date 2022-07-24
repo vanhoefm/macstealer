@@ -36,6 +36,9 @@ static unsigned int wpa_kck_len(int akmp, size_t pmk_len)
 		return pmk_len / 2;
 	case WPA_KEY_MGMT_OWE:
 		return pmk_len / 2;
+	case WPA_KEY_MGMT_SAE_EXT_KEY:
+	case WPA_KEY_MGMT_FT_SAE_EXT_KEY:
+		return pmk_len / 2;
 	default:
 		return 16;
 	}
@@ -71,6 +74,9 @@ static unsigned int wpa_kek_len(int akmp, size_t pmk_len)
 	case WPA_KEY_MGMT_DPP:
 		return pmk_len <= 32 ? 16 : 32;
 	case WPA_KEY_MGMT_OWE:
+		return pmk_len <= 32 ? 16 : 32;
+	case WPA_KEY_MGMT_SAE_EXT_KEY:
+	case WPA_KEY_MGMT_FT_SAE_EXT_KEY:
 		return pmk_len <= 32 ? 16 : 32;
 	default:
 		return 16;
@@ -108,6 +114,9 @@ unsigned int wpa_mic_len(int akmp, size_t pmk_len)
 		return pmk_len / 2;
 	case WPA_KEY_MGMT_OWE:
 		return pmk_len / 2;
+	case WPA_KEY_MGMT_SAE_EXT_KEY:
+	case WPA_KEY_MGMT_FT_SAE_EXT_KEY:
+		return pmk_len / 2;
 	default:
 		return 16;
 	}
@@ -143,7 +152,8 @@ int wpa_use_cmac(int akmp)
 		akmp == WPA_KEY_MGMT_DPP ||
 		wpa_key_mgmt_ft(akmp) ||
 		wpa_key_mgmt_sha256(akmp) ||
-		wpa_key_mgmt_sae(akmp) ||
+		(wpa_key_mgmt_sae(akmp) &&
+		 !wpa_key_mgmt_sae_ext_key(akmp)) ||
 		wpa_key_mgmt_suite_b(akmp);
 }
 
@@ -223,6 +233,32 @@ int wpa_eapol_key_mic(const u8 *key, size_t key_len, int akmp, int ver,
 			wpa_printf(MSG_DEBUG,
 				   "WPA: EAPOL-Key MIC using AES-CMAC (AKM-defined - SAE)");
 			return omac1_aes_128(key, buf, len, mic);
+		case WPA_KEY_MGMT_SAE_EXT_KEY:
+		case WPA_KEY_MGMT_FT_SAE_EXT_KEY:
+			wpa_printf(MSG_DEBUG,
+				   "WPA: EAPOL-Key MIC using HMAC-SHA%u (AKM-defined - SAE-EXT-KEY)",
+				   (unsigned int) key_len * 8 * 2);
+			if (key_len == 128 / 8) {
+				if (hmac_sha256(key, key_len, buf, len, hash))
+					return -1;
+#ifdef CONFIG_SHA384
+			} else if (key_len == 192 / 8) {
+				if (hmac_sha384(key, key_len, buf, len, hash))
+					return -1;
+#endif /* CONFIG_SHA384 */
+#ifdef CONFIG_SHA512
+			} else if (key_len == 256 / 8) {
+				if (hmac_sha512(key, key_len, buf, len, hash))
+					return -1;
+#endif /* CONFIG_SHA512 */
+			} else {
+				wpa_printf(MSG_INFO,
+					   "SAE: Unsupported KCK length: %u",
+					   (unsigned int) key_len);
+				return -1;
+			}
+			os_memcpy(mic, hash, key_len);
+			break;
 #endif /* CONFIG_SAE */
 #ifdef CONFIG_HS20
 		case WPA_KEY_MGMT_OSEN:
@@ -473,6 +509,36 @@ int wpa_pmk_to_ptk(const u8 *pmk, size_t pmk_len, const char *label,
 			   (unsigned int) pmk_len);
 		return -1;
 #endif /* CONFIG_DPP */
+#ifdef CONFIG_SAE
+	} else if (wpa_key_mgmt_sae_ext_key(akmp)) {
+		if (pmk_len == 32) {
+			wpa_printf(MSG_DEBUG,
+				   "SAE: PTK derivation using PRF(SHA256)");
+			if (sha256_prf(pmk, pmk_len, label, data, data_len,
+				       tmp, ptk_len) < 0)
+				return -1;
+#ifdef CONFIG_SHA384
+		} else if (pmk_len == 48) {
+			wpa_printf(MSG_DEBUG,
+				   "SAE: PTK derivation using PRF(SHA384)");
+			if (sha384_prf(pmk, pmk_len, label, data, data_len,
+				       tmp, ptk_len) < 0)
+				return -1;
+#endif /* CONFIG_SHA384 */
+#ifdef CONFIG_SHA512
+		} else if (pmk_len == 64) {
+			wpa_printf(MSG_DEBUG,
+				   "SAE: PTK derivation using PRF(SHA512)");
+			if (sha512_prf(pmk, pmk_len, label, data, data_len,
+				       tmp, ptk_len) < 0)
+				return -1;
+#endif /* CONFIG_SHA512 */
+		} else {
+			wpa_printf(MSG_INFO, "SAE: Unknown PMK length %u",
+				   (unsigned int) pmk_len);
+			return -1;
+		}
+#endif /* CONFIG_SAE */
 	} else {
 		wpa_printf(MSG_DEBUG, "WPA: PTK derivation using PRF(SHA1)");
 		if (sha1_prf(pmk, pmk_len, label, data, data_len, tmp,
