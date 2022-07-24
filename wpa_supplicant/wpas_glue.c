@@ -1312,7 +1312,7 @@ static void wpa_supplicant_transition_disable(void *_wpa_s, u8 bitmap)
 #ifdef CONFIG_SAE
 	if ((bitmap & TRANSITION_DISABLE_WPA3_PERSONAL) &&
 	    wpa_key_mgmt_sae(wpa_s->key_mgmt) &&
-	    (ssid->key_mgmt & (WPA_KEY_MGMT_SAE | WPA_KEY_MGMT_FT_SAE)) &&
+	    wpa_key_mgmt_sae(ssid->key_mgmt) &&
 	    (ssid->ieee80211w != MGMT_FRAME_PROTECTION_REQUIRED ||
 	     (ssid->group_cipher & WPA_CIPHER_TKIP))) {
 		wpa_printf(MSG_DEBUG,
@@ -1327,7 +1327,7 @@ static void wpa_supplicant_transition_disable(void *_wpa_s, u8 bitmap)
 	    wpa_s->sme.sae.state == SAE_ACCEPTED &&
 	    wpa_s->sme.sae.pk &&
 #endif /* CONFIG_SME */
-	    (ssid->key_mgmt & (WPA_KEY_MGMT_SAE | WPA_KEY_MGMT_FT_SAE)) &&
+	    wpa_key_mgmt_sae(ssid->key_mgmt) &&
 	    (ssid->sae_pk != SAE_PK_MODE_ONLY ||
 	     ssid->ieee80211w != MGMT_FRAME_PROTECTION_REQUIRED ||
 	     (ssid->group_cipher & WPA_CIPHER_TKIP))) {

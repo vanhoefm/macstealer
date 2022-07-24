@@ -4834,8 +4834,7 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_SAE
-	if (((params->key_mgmt_suites & WPA_KEY_MGMT_SAE) ||
-	     (params->key_mgmt_suites & WPA_KEY_MGMT_FT_SAE)) &&
+	if (wpa_key_mgmt_sae(params->key_mgmt_suites) &&
 	    nl80211_put_sae_pwe(msg, params->sae_pwe) < 0)
 		goto fail;
 #endif /* CONFIG_SAE */
@@ -6389,8 +6388,7 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
 	    nl80211_put_fils_connect_params(drv, params, msg) != 0)
 		return -1;
 
-	if ((params->key_mgmt_suite == WPA_KEY_MGMT_SAE ||
-	     params->key_mgmt_suite == WPA_KEY_MGMT_FT_SAE) &&
+	if (wpa_key_mgmt_sae(params->key_mgmt_suite) &&
 	    (!(drv->capa.flags & WPA_DRIVER_FLAGS_SME)) &&
 	    nla_put_flag(msg, NL80211_ATTR_EXTERNAL_AUTH_SUPPORT))
 		return -1;
@@ -6440,8 +6438,7 @@ static int wpa_driver_nl80211_try_connect(
 		goto fail;
 
 #ifdef CONFIG_SAE
-	if ((params->key_mgmt_suite == WPA_KEY_MGMT_SAE ||
-	     params->key_mgmt_suite == WPA_KEY_MGMT_FT_SAE) &&
+	if (wpa_key_mgmt_sae(params->key_mgmt_suite) &&
 	    nl80211_put_sae_pwe(msg, params->sae_pwe) < 0)
 		goto fail;
 #endif /* CONFIG_SAE */
@@ -6549,8 +6546,7 @@ static int wpa_driver_nl80211_associate(
 
 		if (wpa_driver_nl80211_set_mode(priv, nlmode) < 0)
 			return -1;
-		if (params->key_mgmt_suite == WPA_KEY_MGMT_SAE ||
-		    params->key_mgmt_suite == WPA_KEY_MGMT_FT_SAE)
+		if (wpa_key_mgmt_sae(params->key_mgmt_suite))
 			bss->use_nl_connect = 1;
 		else
 			bss->use_nl_connect = 0;
