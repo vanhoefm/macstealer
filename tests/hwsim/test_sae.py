@@ -135,8 +135,9 @@ def run_sae_pmksa_caching(dev, apdev):
     dev[0].wait_disconnected()
     dev[0].request("RECONNECT")
     dev[0].wait_connected(timeout=15, error="Reconnect timed out")
-    if dev[0].get_status_field('sae_group') is not None:
-            raise Exception("SAE group claimed to have been used")
+    val = dev[0].get_status_field('sae_group')
+    if val is not None:
+        raise Exception("SAE group claimed to have been used: " + val)
     sta0 = hapd.get_sta(dev[0].own_addr())
     if sta0['wpa'] != '2' or sta0['AKMSuiteSelector'] != '00-0f-ac-8':
         raise Exception("SAE STA(0) AKM suite selector reported incorrectly after PMKSA caching")
