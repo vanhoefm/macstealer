@@ -8014,6 +8014,7 @@ int wpas_network_disabled(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 	    !ssid->mem_only_psk)
 		return 1;
 
+#ifdef IEEE8021X_EAPOL
 #ifdef CRYPTO_RSA_OAEP_SHA256
 	if (ssid->eap.imsi_privacy_cert) {
 		struct crypto_rsa_key *key;
@@ -8031,6 +8032,7 @@ int wpas_network_disabled(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 		}
 	}
 #endif /* CRYPTO_RSA_OAEP_SHA256 */
+#endif /* IEEE8021X_EAPOL */
 
 	return 0;
 }
