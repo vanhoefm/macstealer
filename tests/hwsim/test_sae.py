@@ -2789,3 +2789,96 @@ def test_sae_reject(dev, apdev):
         raise Exception("Authentication rejection not reported")
     dev[0].request("REMOVE_NETWORK all")
     dev[0].dump_monitor()
+
+def test_sae_ext_key_19(dev, apdev):
+    """SAE with extended key AKM (group 19)"""
+    run_sae_ext_key(dev, apdev, 19)
+
+def test_sae_ext_key_20(dev, apdev):
+    """SAE with extended key AKM (group 20)"""
+    run_sae_ext_key(dev, apdev, 20)
+
+def test_sae_ext_key_21(dev, apdev):
+    """SAE with extended key AKM (group 21)"""
+    run_sae_ext_key(dev, apdev, 21)
+
+def run_sae_ext_key(dev, apdev, group):
+    check_sae_capab(dev[0])
+    params = hostapd.wpa2_params(ssid="test-sae", passphrase="12345678")
+    params['wpa_key_mgmt'] = 'SAE-EXT-KEY'
+    params['sae_groups'] = str(group)
+    params['ieee80211w'] = '2'
+    hapd = hostapd.add_ap(apdev[0], params)
+    key_mgmt = hapd.get_config()['key_mgmt']
+    if key_mgmt.split(' ')[0] != "SAE-EXT-KEY":
+        raise Exception("Unexpected GET_CONFIG(key_mgmt): " + key_mgmt)
+
+    dev[0].set("sae_groups", str(group))
+    id = dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE-EXT-KEY",
+                        ieee80211w="2", scan_freq="2412")
+    hapd.wait_sta()
+    if dev[0].get_status_field('sae_group') != str(group):
+            raise Exception("Expected SAE group not used")
+    bss = dev[0].get_bss(apdev[0]['bssid'])
+    if 'flags' not in bss:
+        raise Exception("Could not get BSS flags from BSS table")
+    if "[WPA2-SAE-EXT-KEY-CCMP]" not in bss['flags']:
+        raise Exception("Unexpected BSS flags: " + bss['flags'])
+
+    res = hapd.request("STA-FIRST")
+    if ("sae_group=%d" % group) not in res.splitlines():
+        raise Exception("hostapd STA output did not specify SAE group")
+
+    sta0 = hapd.get_sta(dev[0].own_addr())
+    if sta0['wpa'] != '2' or sta0['AKMSuiteSelector'] != '00-0f-ac-24':
+        raise Exception("SAE STA(0) AKM suite selector reported incorrectly")
+
+    pmk_h = hapd.request("GET_PMK " + dev[0].own_addr())
+    pmk_w = dev[0].get_pmk(id)
+    if pmk_h != pmk_w:
+        raise Exception("Fetched PMK does not match: hostapd %s, wpa_supplicant %s" % (pmk_h, pmk_w))
+    if group == 19:
+        pmk_len = 32
+    elif group == 20:
+        pmk_len = 48
+    elif group == 21:
+        pmk_len = 64
+    if len(pmk_h) != 2 * pmk_len:
+        raise Exception("Unexpected SAE PMK length: %d" % (len(pmk_h) / 2))
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    pmk_h2 = hapd.request("GET_PMK " + dev[0].own_addr())
+    if pmk_h != pmk_h2:
+        raise Exception("Fetched PMK from PMKSA cache does not match: %s, %s" % (pmk_h, pmk_h2))
+
+    dev[0].request("RECONNECT")
+    dev[0].wait_connected(timeout=15, error="Reconnect timed out")
+    val = dev[0].get_status_field('sae_group')
+    if val is not None:
+        raise Exception("SAE group claimed to have been used: " + val)
+    sta0 = hapd.get_sta(dev[0].own_addr())
+    if sta0['wpa'] != '2' or sta0['AKMSuiteSelector'] != '00-0f-ac-24':
+        raise Exception("SAE STA(0) AKM suite selector reported incorrectly after PMKSA caching")
+
+def test_sae_akms(dev, apdev):
+    """SAE with both AKMs)"""
+    check_sae_capab(dev[0])
+    check_sae_capab(dev[1])
+    check_sae_capab(dev[2])
+    params = hostapd.wpa2_params(ssid="test-sae", passphrase="12345678")
+    params['wpa_key_mgmt'] = 'SAE SAE-EXT-KEY'
+    params['sae_groups'] = "19 20"
+    params['ieee80211w'] = '2'
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].set("sae_groups", "20")
+    dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE-EXT-KEY",
+                   ieee80211w="2", scan_freq="2412")
+
+    dev[1].set("sae_groups", "20")
+    dev[1].connect("test-sae", psk="12345678", key_mgmt="SAE",
+                   ieee80211w="2", scan_freq="2412")
+
+    dev[2].set("sae_groups", "19")
+    dev[2].connect("test-sae", psk="12345678", key_mgmt="SAE",
+                   ieee80211w="2", scan_freq="2412")
