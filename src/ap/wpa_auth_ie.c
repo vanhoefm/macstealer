@@ -405,7 +405,8 @@ int wpa_write_rsnxe(struct wpa_auth_config *conf, u8 *buf, size_t len)
 	size_t flen;
 
 	if (wpa_key_mgmt_sae(conf->wpa_key_mgmt) &&
-	    (conf->sae_pwe == 1 || conf->sae_pwe == 2 || conf->sae_pk)) {
+	    (conf->sae_pwe == 1 || conf->sae_pwe == 2 || conf->sae_pk ||
+	     wpa_key_mgmt_sae_ext_key(conf->wpa_key_mgmt))) {
 		capab |= BIT(WLAN_RSNX_CAPAB_SAE_H2E);
 #ifdef CONFIG_SAE_PK
 		if (conf->sae_pk)

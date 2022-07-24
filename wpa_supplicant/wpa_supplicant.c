@@ -1687,7 +1687,9 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 		wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_OCV, ssid->ocv);
 #endif /* CONFIG_OCV */
 	sae_pwe = wpa_s->conf->sae_pwe;
-	if (ssid->sae_password_id && sae_pwe != 3)
+	if ((ssid->sae_password_id ||
+	     wpa_key_mgmt_sae_ext_key(wpa_s->key_mgmt)) &&
+	    sae_pwe != 3)
 		sae_pwe = 1;
 	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_SAE_PWE, sae_pwe);
 #ifdef CONFIG_SAE_PK
@@ -2159,6 +2161,7 @@ static void wpa_s_setup_sae_pt(struct wpa_config *conf, struct wpa_ssid *ssid)
 
 	if (!password ||
 	    (conf->sae_pwe == 0 && !ssid->sae_password_id &&
+	     !wpa_key_mgmt_sae_ext_key(ssid->key_mgmt) &
 	     !sae_pk_valid_password(password)) ||
 	    conf->sae_pwe == 3) {
 		/* PT derivation not needed */

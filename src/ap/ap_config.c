@@ -480,6 +480,7 @@ int hostapd_setup_sae_pt(struct hostapd_bss_config *conf)
 	struct sae_password_entry *pw;
 
 	if ((conf->sae_pwe == 0 && !hostapd_sae_pw_id_in_use(conf) &&
+	     !wpa_key_mgmt_sae_ext_key(conf->wpa_key_mgmt) &&
 	     !hostapd_sae_pk_in_use(conf)) ||
 	    conf->sae_pwe == 3 ||
 	    !wpa_key_mgmt_sae(conf->wpa_key_mgmt))

@@ -154,6 +154,9 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 
 	if (ssid->sae_password_id && wpa_s->conf->sae_pwe != 3)
 		use_pt = 1;
+	if (wpa_key_mgmt_sae_ext_key(wpa_s->key_mgmt) &&
+	    wpa_s->conf->sae_pwe != 3)
+		use_pt = 1;
 #ifdef CONFIG_SAE_PK
 	if ((rsnxe_capa & BIT(WLAN_RSNX_CAPAB_SAE_PK)) &&
 	    ssid->sae_pk != SAE_PK_MODE_DISABLED &&
@@ -175,7 +178,8 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	if (use_pt || wpa_s->conf->sae_pwe == 1 || wpa_s->conf->sae_pwe == 2) {
 		use_pt = !!(rsnxe_capa & BIT(WLAN_RSNX_CAPAB_SAE_H2E));
 
-		if ((wpa_s->conf->sae_pwe == 1 || ssid->sae_password_id) &&
+		if ((wpa_s->conf->sae_pwe == 1 || ssid->sae_password_id ||
+		     wpa_key_mgmt_sae_ext_key(wpa_s->key_mgmt)) &&
 		    wpa_s->conf->sae_pwe != 3 &&
 		    !use_pt) {
 			wpa_printf(MSG_DEBUG,

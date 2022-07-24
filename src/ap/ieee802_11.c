@@ -1234,6 +1234,10 @@ static int sae_status_success(struct hostapd_data *hapd, u16 status_code)
 	if (sae_pwe == 0 && sae_pk)
 		sae_pwe = 2;
 #endif /* CONFIG_SAE_PK */
+	if (sae_pwe == 0 &&
+	    (hapd->conf->wpa_key_mgmt &
+	     (WPA_KEY_MGMT_SAE_EXT_KEY | WPA_KEY_MGMT_FT_SAE_EXT_KEY)))
+		sae_pwe = 2;
 
 	return ((sae_pwe == 0 || sae_pwe == 3) &&
 		status_code == WLAN_STATUS_SUCCESS) ||
