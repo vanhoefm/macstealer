@@ -1060,7 +1060,8 @@ void * hostapd_ctrl_iface_pmksa_create_entry(const u8 *aa, char *cmd)
 	if (sscanf(pos, "%d", &expiration) != 1)
 		return NULL;
 
-	return wpa_auth_pmksa_create_entry(aa, spa, pmk, pmkid, expiration);
+	return wpa_auth_pmksa_create_entry(aa, spa, pmk, PMK_LEN,
+					   WPA_KEY_MGMT_SAE, pmkid, expiration);
 }
 
 #endif /* CONFIG_MESH */

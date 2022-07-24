@@ -4860,16 +4860,17 @@ int wpa_auth_pmksa_add_preauth(struct wpa_authenticator *wpa_auth,
 
 
 int wpa_auth_pmksa_add_sae(struct wpa_authenticator *wpa_auth, const u8 *addr,
-			   const u8 *pmk, const u8 *pmkid)
+			   const u8 *pmk, size_t pmk_len, const u8 *pmkid,
+			   int akmp)
 {
 	if (wpa_auth->conf.disable_pmksa_caching)
 		return -1;
 
-	wpa_hexdump_key(MSG_DEBUG, "RSN: Cache PMK from SAE", pmk, PMK_LEN);
-	if (pmksa_cache_auth_add(wpa_auth->pmksa, pmk, PMK_LEN, pmkid,
-				 NULL, 0,
-				 wpa_auth->addr, addr, 0, NULL,
-				 WPA_KEY_MGMT_SAE))
+	wpa_hexdump_key(MSG_DEBUG, "RSN: Cache PMK from SAE", pmk, pmk_len);
+	if (!akmp)
+		akmp = WPA_KEY_MGMT_SAE;
+	if (pmksa_cache_auth_add(wpa_auth->pmksa, pmk, pmk_len, pmkid,
+				 NULL, 0, wpa_auth->addr, addr, 0, NULL, akmp))
 		return 0;
 
 	return -1;
@@ -4947,13 +4948,14 @@ int wpa_auth_pmksa_list_mesh(struct wpa_authenticator *wpa_auth, const u8 *addr,
 
 struct rsn_pmksa_cache_entry *
 wpa_auth_pmksa_create_entry(const u8 *aa, const u8 *spa, const u8 *pmk,
+			    size_t pmk_len, int akmp,
 			    const u8 *pmkid, int expiration)
 {
 	struct rsn_pmksa_cache_entry *entry;
 	struct os_reltime now;
 
-	entry = pmksa_cache_auth_create_entry(pmk, PMK_LEN, pmkid, NULL, 0, aa,
-					      spa, 0, NULL, WPA_KEY_MGMT_SAE);
+	entry = pmksa_cache_auth_create_entry(pmk, pmk_len, pmkid, NULL, 0, aa,
+					      spa, 0, NULL, akmp);
 	if (!entry)
 		return NULL;
 

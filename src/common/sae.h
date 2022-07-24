@@ -105,6 +105,8 @@ struct sae_data {
 	enum sae_state state;
 	u16 send_confirm;
 	u8 pmk[SAE_PMK_LEN];
+	size_t pmk_len;
+	int akmp; /* WPA_KEY_MGMT_* used in key derivation */
 	u8 pmkid[SAE_PMKID_LEN];
 	struct crypto_bignum *peer_commit_scalar;
 	struct crypto_bignum *peer_commit_scalar_accepted;

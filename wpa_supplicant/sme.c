@@ -72,6 +72,7 @@ static int sme_set_sae_group(struct wpa_supplicant *wpa_s)
 		if (sae_set_group(&wpa_s->sme.sae, group) == 0) {
 			wpa_dbg(wpa_s, MSG_DEBUG, "SME: Selected SAE group %d",
 				wpa_s->sme.sae.group);
+			wpa_s->sme.sae.akmp = wpa_s->key_mgmt;
 			return 0;
 		}
 		wpa_s->sme.sae_group_index++;
@@ -1462,7 +1463,7 @@ static int sme_sae_set_pmk(struct wpa_supplicant *wpa_s, const u8 *bssid)
 {
 	wpa_printf(MSG_DEBUG,
 		   "SME: SAE completed - setting PMK for 4-way handshake");
-	wpa_sm_set_pmk(wpa_s->wpa, wpa_s->sme.sae.pmk, PMK_LEN,
+	wpa_sm_set_pmk(wpa_s->wpa, wpa_s->sme.sae.pmk, wpa_s->sme.sae.pmk_len,
 		       wpa_s->sme.sae.pmkid, bssid);
 	if (wpa_s->conf->sae_pmkid_in_assoc) {
 		/* Update the own RSNE contents now that we have set the PMK

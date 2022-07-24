@@ -425,7 +425,8 @@ int wpa_auth_pmksa_add_preauth(struct wpa_authenticator *wpa_auth,
 			       int session_timeout,
 			       struct eapol_state_machine *eapol);
 int wpa_auth_pmksa_add_sae(struct wpa_authenticator *wpa_auth, const u8 *addr,
-			   const u8 *pmk, const u8 *pmkid);
+			   const u8 *pmk, size_t pmk_len, const u8 *pmkid,
+			   int akmp);
 void wpa_auth_add_sae_pmkid(struct wpa_state_machine *sm, const u8 *pmkid);
 int wpa_auth_pmksa_add2(struct wpa_authenticator *wpa_auth, const u8 *addr,
 			const u8 *pmk, size_t pmk_len, const u8 *pmkid,
@@ -439,6 +440,7 @@ int wpa_auth_pmksa_list_mesh(struct wpa_authenticator *wpa_auth, const u8 *addr,
 			     char *buf, size_t len);
 struct rsn_pmksa_cache_entry *
 wpa_auth_pmksa_create_entry(const u8 *aa, const u8 *spa, const u8 *pmk,
+			    size_t pmk_len, int akmp,
 			    const u8 *pmkid, int expiration);
 int wpa_auth_pmksa_add_entry(struct wpa_authenticator *wpa_auth,
 			     struct rsn_pmksa_cache_entry *entry);

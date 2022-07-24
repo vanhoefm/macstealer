@@ -348,6 +348,8 @@ static const u8 * hostapd_wpa_auth_get_psk(void *ctx, const u8 *addr,
 	if (sta && sta->auth_alg == WLAN_AUTH_SAE) {
 		if (!sta->sae || prev_psk)
 			return NULL;
+		if (psk_len)
+			*psk_len = sta->sae->pmk_len;
 		return sta->sae->pmk;
 	}
 	if (sta && wpa_auth_uses_sae(sta->wpa_sm)) {
