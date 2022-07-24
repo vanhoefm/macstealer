@@ -4333,6 +4333,12 @@ static int ctrl_iface_get_capability_key_mgmt(int res, bool strict,
 			return pos - buf;
 		pos += ret;
 	}
+	if (key_mgmt & WPA_DRIVER_CAPA_KEY_MGMT_FT_SAE_EXT_KEY) {
+		ret = os_snprintf(pos, end - pos, " FT-SAE-EXT-KEY");
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+	}
 #endif /* CONFIG_SAE */
 #ifdef CONFIG_SHA384
 	if (key_mgmt & WPA_DRIVER_CAPA_KEY_MGMT_FT_802_1X_SHA384) {
@@ -4346,6 +4352,12 @@ static int ctrl_iface_get_capability_key_mgmt(int res, bool strict,
 #ifdef CONFIG_SAE
 	if (key_mgmt & WPA_DRIVER_CAPA_KEY_MGMT_SAE) {
 		ret = os_snprintf(pos, end - pos, " SAE");
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+	}
+	if (key_mgmt & WPA_DRIVER_CAPA_KEY_MGMT_SAE_EXT_KEY) {
+		ret = os_snprintf(pos, end - pos, " SAE-EXT-KEY");
 		if (os_snprintf_error(end - pos, ret))
 			return pos - buf;
 		pos += ret;
