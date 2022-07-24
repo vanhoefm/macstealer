@@ -5267,7 +5267,8 @@ int wpa_auth_uses_ft_sae(struct wpa_state_machine *sm)
 {
 	if (!sm)
 		return 0;
-	return sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE;
+	return sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE ||
+		sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY;
 }
 
 

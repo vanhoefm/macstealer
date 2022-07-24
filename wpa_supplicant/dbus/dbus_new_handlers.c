@@ -5095,7 +5095,7 @@ static dbus_bool_t wpas_dbus_get_bss_security_prop(
 	DBusMessageIter iter_dict, variant_iter;
 	const char *group;
 	const char *pairwise[5]; /* max 5 pairwise ciphers is supported */
-	const char *key_mgmt[16]; /* max 16 key managements may be supported */
+	const char *key_mgmt[18]; /* max 18 key managements may be supported */
 	int n;
 
 	if (!dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
@@ -5145,8 +5145,12 @@ static dbus_bool_t wpas_dbus_get_bss_security_prop(
 #ifdef CONFIG_SAE
 	if (ie_data->key_mgmt & WPA_KEY_MGMT_SAE)
 		key_mgmt[n++] = "sae";
+	if (ie_data->key_mgmt & WPA_KEY_MGMT_SAE_EXT_KEY)
+		key_mgmt[n++] = "sae-ext-key";
 	if (ie_data->key_mgmt & WPA_KEY_MGMT_FT_SAE)
 		key_mgmt[n++] = "ft-sae";
+	if (ie_data->key_mgmt & WPA_KEY_MGMT_FT_SAE_EXT_KEY)
+		key_mgmt[n++] = "ft-sae-ext-key";
 #endif /* CONFIG_SAE */
 #ifdef CONFIG_OWE
 	if (ie_data->key_mgmt & WPA_KEY_MGMT_OWE)

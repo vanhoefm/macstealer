@@ -745,9 +745,9 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 	if (!skip_auth && params.auth_alg == WPA_AUTH_ALG_SAE &&
 	    pmksa_cache_set_current(wpa_s->wpa, NULL, bss->bssid, ssid, 0,
 				    NULL,
-				    wpa_s->key_mgmt == WPA_KEY_MGMT_FT_SAE ?
-				    WPA_KEY_MGMT_FT_SAE :
-				    WPA_KEY_MGMT_SAE) == 0) {
+				    wpa_key_mgmt_sae(wpa_s->key_mgmt) ?
+				    wpa_s->key_mgmt :
+				    (int) WPA_KEY_MGMT_SAE) == 0) {
 		wpa_dbg(wpa_s, MSG_DEBUG,
 			"PMKSA cache entry found - try to use PMKSA caching instead of new SAE authentication");
 		wpa_sm_set_pmk_from_pmksa(wpa_s->wpa);

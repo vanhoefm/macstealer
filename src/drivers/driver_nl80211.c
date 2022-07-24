@@ -3171,7 +3171,9 @@ static int wpa_key_mgmt_to_suites(unsigned int key_mgmt_suites, u32 suites[],
 	__AKM(IEEE8021X_SHA256, 802_1X_SHA256);
 	__AKM(PSK_SHA256, PSK_SHA256);
 	__AKM(SAE, SAE);
+	__AKM(SAE_EXT_KEY, SAE_EXT_KEY);
 	__AKM(FT_SAE, FT_SAE);
+	__AKM(FT_SAE_EXT_KEY, FT_SAE_EXT_KEY);
 	__AKM(CCKM, CCKM);
 	__AKM(OSEN, OSEN);
 	__AKM(IEEE8021X_SUITE_B, 802_1X_SUITE_B);
@@ -4663,7 +4665,8 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 	if (drv->device_ap_sme) {
 		u32 flags = 0;
 
-		if (params->key_mgmt_suites & WPA_KEY_MGMT_SAE) {
+		if (params->key_mgmt_suites & (WPA_KEY_MGMT_SAE |
+					       WPA_KEY_MGMT_SAE_EXT_KEY)) {
 			/* Add the previously used flag attribute to support
 			 * older kernel versions and the newer flag bit for
 			 * newer kernels. */
@@ -6249,7 +6252,9 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
 	    params->key_mgmt_suite == WPA_KEY_MGMT_IEEE8021X_SHA256 ||
 	    params->key_mgmt_suite == WPA_KEY_MGMT_PSK_SHA256 ||
 	    params->key_mgmt_suite == WPA_KEY_MGMT_SAE ||
+	    params->key_mgmt_suite == WPA_KEY_MGMT_SAE_EXT_KEY ||
 	    params->key_mgmt_suite == WPA_KEY_MGMT_FT_SAE ||
+	    params->key_mgmt_suite == WPA_KEY_MGMT_FT_SAE_EXT_KEY ||
 	    params->key_mgmt_suite == WPA_KEY_MGMT_IEEE8021X_SUITE_B ||
 	    params->key_mgmt_suite == WPA_KEY_MGMT_IEEE8021X_SUITE_B_192 ||
 	    params->key_mgmt_suite == WPA_KEY_MGMT_FT_IEEE8021X_SHA384 ||
@@ -6286,8 +6291,14 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
 		case WPA_KEY_MGMT_SAE:
 			mgmt = RSN_AUTH_KEY_MGMT_SAE;
 			break;
+		case WPA_KEY_MGMT_SAE_EXT_KEY:
+			mgmt = RSN_AUTH_KEY_MGMT_SAE_EXT_KEY;
+			break;
 		case WPA_KEY_MGMT_FT_SAE:
 			mgmt = RSN_AUTH_KEY_MGMT_FT_SAE;
+			break;
+		case WPA_KEY_MGMT_FT_SAE_EXT_KEY:
+			mgmt = RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY;
 			break;
 		case WPA_KEY_MGMT_IEEE8021X_SUITE_B:
 			mgmt = RSN_AUTH_KEY_MGMT_802_1X_SUITE_B;

@@ -301,7 +301,8 @@ static int wpa_supplicant_get_pmk(struct wpa_sm *sm,
 #ifdef CONFIG_IEEE80211R
 		sm->xxkey_len = 0;
 #ifdef CONFIG_SAE
-		if (sm->key_mgmt == WPA_KEY_MGMT_FT_SAE &&
+		if ((sm->key_mgmt == WPA_KEY_MGMT_FT_SAE ||
+		     sm->key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY) &&
 		    sm->pmk_len == PMK_LEN) {
 			/* Need to allow FT key derivation to proceed with
 			 * PMK from SAE being used as the XXKey in cases where

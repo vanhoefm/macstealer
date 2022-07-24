@@ -1479,8 +1479,12 @@ static int rsn_key_mgmt_to_bitfield(const u8 *s)
 #ifdef CONFIG_SAE
 	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_SAE)
 		return WPA_KEY_MGMT_SAE;
+	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_SAE_EXT_KEY)
+		return WPA_KEY_MGMT_SAE_EXT_KEY;
 	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_FT_SAE)
 		return WPA_KEY_MGMT_FT_SAE;
+	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY)
+		return WPA_KEY_MGMT_FT_SAE_EXT_KEY;
 #endif /* CONFIG_SAE */
 	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_802_1X_SUITE_B)
 		return WPA_KEY_MGMT_IEEE8021X_SUITE_B;
@@ -2379,8 +2383,12 @@ const char * wpa_key_mgmt_txt(int key_mgmt, int proto)
 		return "WPS";
 	case WPA_KEY_MGMT_SAE:
 		return "SAE";
+	case WPA_KEY_MGMT_SAE_EXT_KEY:
+		return "SAE-EXT-KEY";
 	case WPA_KEY_MGMT_FT_SAE:
 		return "FT-SAE";
+	case WPA_KEY_MGMT_FT_SAE_EXT_KEY:
+		return "FT-SAE-EXT-KEY";
 	case WPA_KEY_MGMT_OSEN:
 		return "OSEN";
 	case WPA_KEY_MGMT_IEEE8021X_SUITE_B:
@@ -2441,8 +2449,12 @@ u32 wpa_akm_to_suite(int akm)
 		return RSN_AUTH_KEY_MGMT_FT_FILS_SHA384;
 	if (akm & WPA_KEY_MGMT_SAE)
 		return RSN_AUTH_KEY_MGMT_SAE;
+	if (akm & WPA_KEY_MGMT_SAE_EXT_KEY)
+		return RSN_AUTH_KEY_MGMT_SAE_EXT_KEY;
 	if (akm & WPA_KEY_MGMT_FT_SAE)
 		return RSN_AUTH_KEY_MGMT_FT_SAE;
+	if (akm & WPA_KEY_MGMT_FT_SAE_EXT_KEY)
+		return RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY;
 	if (akm & WPA_KEY_MGMT_OWE)
 		return RSN_AUTH_KEY_MGMT_OWE;
 	if (akm & WPA_KEY_MGMT_DPP)
@@ -3373,6 +3385,9 @@ int wpa_pasn_add_rsne(struct wpabuf *buf, const u8 *pmkid, int akmp, int cipher)
 	case WPA_KEY_MGMT_SAE:
 		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_SAE);
 		break;
+	case WPA_KEY_MGMT_SAE_EXT_KEY:
+		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_SAE_EXT_KEY);
+		break;
 #endif /* CONFIG_SAE */
 #ifdef CONFIG_FILS
 	case WPA_KEY_MGMT_FILS_SHA256:
@@ -3586,6 +3601,7 @@ int wpa_pasn_validate_rsne(const struct wpa_ie_data *data)
 	switch (data->key_mgmt) {
 #ifdef CONFIG_SAE
 	case WPA_KEY_MGMT_SAE:
+	case WPA_KEY_MGMT_SAE_EXT_KEY:
 	/* fall through */
 #endif /* CONFIG_SAE */
 #ifdef CONFIG_FILS
