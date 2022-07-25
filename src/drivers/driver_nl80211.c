@@ -270,6 +270,10 @@ void nl80211_mark_disconnected(struct wpa_driver_nl80211_data *drv)
 	drv->associated = 0;
 	os_memset(drv->bssid, 0, ETH_ALEN);
 	drv->first_bss->freq = 0;
+#ifdef CONFIG_DRIVER_NL80211_QCA
+	os_free(drv->pending_roam_data);
+	drv->pending_roam_data = NULL;
+#endif /* CONFIG_DRIVER_NL80211_QCA */
 }
 
 

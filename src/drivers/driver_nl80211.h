@@ -232,7 +232,6 @@ struct wpa_driver_nl80211_data {
 	bool roam_indication_done;
 	u8 *pending_roam_data;
 	size_t pending_roam_data_len;
-	struct os_reltime pending_roam_ind_time;
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 };
 
