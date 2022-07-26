@@ -446,6 +446,38 @@ static int wpas_pasn_get_params_from_bss(struct wpa_supplicant *wpa_s,
 }
 
 
+static int wpas_pasn_set_keys_from_cache(struct wpa_supplicant *wpa_s,
+					 const u8 *own_addr, const u8 *bssid,
+					 int cipher, int akmp)
+{
+	struct ptksa_cache_entry *entry;
+
+	entry = ptksa_cache_get(wpa_s->ptksa, bssid, cipher);
+	if (!entry) {
+		wpa_printf(MSG_DEBUG, "PASN: peer " MACSTR
+			   " not present in PTKSA cache", MAC2STR(bssid));
+		return -1;
+	}
+
+	if (os_memcmp(entry->own_addr, own_addr, ETH_ALEN) != 0) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: own addr " MACSTR " and PTKSA entry own addr "
+			   MACSTR " differ",
+			   MAC2STR(own_addr), MAC2STR(entry->own_addr));
+		return -1;
+	}
+
+	wpa_printf(MSG_DEBUG, "PASN: " MACSTR " present in PTKSA cache",
+		   MAC2STR(bssid));
+	wpa_drv_set_secure_ranging_ctx(wpa_s, own_addr, bssid, cipher,
+				       entry->ptk.tk_len,
+				       entry->ptk.tk,
+				       entry->ptk.ltf_keyseed_len,
+				       entry->ptk.ltf_keyseed, 0);
+	return 0;
+}
+
+
 static void wpas_pasn_configure_next_peer(struct wpa_supplicant *wpa_s,
 					  struct pasn_auth *pasn_params)
 {
@@ -463,6 +495,15 @@ static void wpas_pasn_configure_next_peer(struct wpa_supplicant *wpa_s,
 			wpa_printf(MSG_DEBUG,
 				   "PASN: Associated peer is not expected");
 			peer->status = PASN_STATUS_FAILURE;
+			wpa_s->pasn_count++;
+			continue;
+		}
+
+		if (wpas_pasn_set_keys_from_cache(wpa_s, peer->own_addr,
+						  peer->peer_addr,
+						  peer->cipher,
+						  peer->akmp) == 0) {
+			peer->status = PASN_STATUS_SUCCESS;
 			wpa_s->pasn_count++;
 			continue;
 		}
@@ -1980,6 +2021,9 @@ int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 			return 0;
 		}
 
+		wpas_pasn_set_keys_from_cache(wpa_s, pasn->own_addr,
+					      pasn->bssid, pasn->cipher,
+					      pasn->akmp);
 		wpas_pasn_auth_stop(wpa_s);
 
 		wpas_pasn_auth_work_done(wpa_s, PASN_STATUS_SUCCESS);
