@@ -1384,6 +1384,62 @@ u8 pasn_mic_len(int akmp, int cipher)
 
 
 /**
+ * wpa_ltf_keyseed - Compute LTF keyseed from KDK
+ * @ptk: Buffer that holds pairwise transient key
+ * @akmp: Negotiated AKM
+ * @cipher: Negotiated pairwise cipher
+ * Returns: 0 on success, -1 on failure
+ */
+int wpa_ltf_keyseed(struct wpa_ptk *ptk, int akmp, int cipher)
+{
+	u8 *buf;
+	size_t buf_len;
+	u8 hash[SHA384_MAC_LEN];
+	const u8 *kdk = ptk->kdk;
+	size_t kdk_len = ptk->kdk_len;
+	const char *label = "Secure LTF key seed";
+
+	if (!kdk || !kdk_len) {
+		wpa_printf(MSG_ERROR, "WPA: No KDK for LTF keyseed generation");
+		return -1;
+	}
+
+	buf = (u8 *)label;
+	buf_len = os_strlen(label);
+
+	if (pasn_use_sha384(akmp, cipher)) {
+		wpa_printf(MSG_DEBUG,
+			   "WPA: Secure LTF keyseed using HMAC-SHA384");
+
+		if (hmac_sha384(kdk, kdk_len, buf, buf_len, hash)) {
+			wpa_printf(MSG_ERROR,
+				   "WPA: HMAC-SHA384 compute failed");
+			return -1;
+		}
+		os_memcpy(ptk->ltf_keyseed, hash, SHA384_MAC_LEN);
+		ptk->ltf_keyseed_len = SHA384_MAC_LEN;
+		wpa_hexdump_key(MSG_DEBUG, "WPA: Secure LTF keyseed: ",
+				ptk->ltf_keyseed, ptk->ltf_keyseed_len);
+
+	} else {
+		wpa_printf(MSG_DEBUG, "WPA: LTF keyseed using HMAC-SHA256");
+
+		if (hmac_sha256(kdk, kdk_len, buf, buf_len, hash)) {
+			wpa_printf(MSG_ERROR,
+				   "WPA: HMAC-SHA256 compute failed");
+			return -1;
+		}
+		os_memcpy(ptk->ltf_keyseed, hash, SHA256_MAC_LEN);
+		ptk->ltf_keyseed_len = SHA256_MAC_LEN;
+		wpa_hexdump_key(MSG_DEBUG, "WPA: Secure LTF keyseed: ",
+				ptk->ltf_keyseed, ptk->ltf_keyseed_len);
+	}
+
+	return 0;
+}
+
+
+/**
  * pasn_mic - Calculate PASN MIC
  * @kck: The key confirmation key for the PASN PTKSA
  * @akmp: Negotiated AKM

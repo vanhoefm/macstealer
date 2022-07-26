@@ -228,6 +228,7 @@ struct wpa_eapol_key {
 #define FILS_FT_MAX_LEN 48
 #define WPA_PASN_KCK_LEN 32
 #define WPA_PASN_MIC_MAX_LEN 24
+#define WPA_LTF_KEYSEED_MAX_LEN 48
 
 /**
  * struct wpa_ptk - WPA Pairwise Transient Key
@@ -240,12 +241,14 @@ struct wpa_ptk {
 	u8 kck2[WPA_KCK_MAX_LEN]; /* FT reasoc Key Confirmation Key (KCK2) */
 	u8 kek2[WPA_KEK_MAX_LEN]; /* FT reassoc Key Encryption Key (KEK2) */
 	u8 kdk[WPA_KDK_MAX_LEN]; /* Key Derivation Key */
+	u8 ltf_keyseed[WPA_LTF_KEYSEED_MAX_LEN]; /* LTF Key seed */
 	size_t kck_len;
 	size_t kek_len;
 	size_t tk_len;
 	size_t kck2_len;
 	size_t kek2_len;
 	size_t kdk_len;
+	size_t ltf_keyseed_len;
 	int installed; /* 1 if key has already been installed to driver */
 };
 
@@ -656,6 +659,8 @@ int pasn_mic(const u8 *kck, int akmp, int cipher,
 	     const u8 *addr1, const u8 *addr2,
 	     const u8 *data, size_t data_len,
 	     const u8 *frame, size_t frame_len, u8 *mic);
+
+int wpa_ltf_keyseed(struct wpa_ptk *ptk, int akmp, int cipher);
 
 int pasn_auth_frame_hash(int akmp, int cipher, const u8 *data, size_t len,
 			 u8 *hash);
