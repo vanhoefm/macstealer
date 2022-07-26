@@ -1089,6 +1089,7 @@ static void mlme_event(struct i802_bss *bss,
 		       struct nlattr *wmm, struct nlattr *req_ie)
 {
 	struct wpa_driver_nl80211_data *drv = bss->drv;
+	u16 stype = 0, auth_type = 0;
 	const u8 *data;
 	size_t len;
 
@@ -1118,11 +1119,31 @@ static void mlme_event(struct i802_bss *bss,
 		   nl80211_command_to_string(cmd), bss->ifname,
 		   MAC2STR(bss->addr), MAC2STR(data + 4),
 		   MAC2STR(data + 4 + ETH_ALEN));
-	if (cmd != NL80211_CMD_FRAME_TX_STATUS && !(data[4] & 0x01) &&
-	    os_memcmp(bss->addr, data + 4, ETH_ALEN) != 0 &&
-	    (is_zero_ether_addr(bss->rand_addr) ||
-	     os_memcmp(bss->rand_addr, data + 4, ETH_ALEN) != 0) &&
-	    os_memcmp(bss->addr, data + 4 + ETH_ALEN, ETH_ALEN) != 0) {
+
+	/* PASN Authentication frame can be received with a different source MAC
+	 * address. Allow NL80211_CMD_FRAME event with foreign addresses also.
+	 */
+	if (cmd == NL80211_CMD_FRAME && len >= 24) {
+		const struct ieee80211_mgmt *mgmt;
+		u16 fc;
+
+		mgmt = (const struct ieee80211_mgmt *) data;
+		fc = le_to_host16(mgmt->frame_control);
+		stype = WLAN_FC_GET_STYPE(fc);
+		auth_type = le_to_host16(mgmt->u.auth.auth_alg);
+	}
+
+	if (cmd == NL80211_CMD_FRAME && stype == WLAN_FC_STYPE_AUTH &&
+	    auth_type == host_to_le16(WLAN_AUTH_PASN)) {
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: %s: Allow PASN frame for foreign address",
+			   bss->ifname);
+	} else if (cmd != NL80211_CMD_FRAME_TX_STATUS  &&
+		   !(data[4] & 0x01) &&
+		   os_memcmp(bss->addr, data + 4, ETH_ALEN) != 0 &&
+		   (is_zero_ether_addr(bss->rand_addr) ||
+		    os_memcmp(bss->rand_addr, data + 4, ETH_ALEN) != 0) &&
+		   os_memcmp(bss->addr, data + 4 + ETH_ALEN, ETH_ALEN) != 0) {
 		wpa_printf(MSG_MSGDUMP, "nl80211: %s: Ignore MLME frame event "
 			   "for foreign address", bss->ifname);
 		return;
