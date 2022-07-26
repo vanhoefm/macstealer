@@ -5806,6 +5806,11 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		sme_external_auth_trigger(wpa_s, data);
 #endif /* CONFIG_SAE */
 		break;
+#ifdef CONFIG_PASN
+	case EVENT_PASN_AUTH:
+		wpas_pasn_auth_trigger(wpa_s, &data->pasn_auth);
+		break;
+#endif /* CONFIG_PASN */
 	case EVENT_PORT_AUTHORIZED:
 		wpa_supplicant_event_port_authorized(wpa_s);
 		break;
