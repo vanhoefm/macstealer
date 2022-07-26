@@ -2384,8 +2384,7 @@ static int nl80211_mgmt_subscribe_non_ap(struct i802_bss *bss)
 
 #ifdef CONFIG_PASN
 	/* register for PASN Authentication frames */
-	if ((drv->capa.flags & WPA_DRIVER_FLAGS_SME) &&
-	    nl80211_register_frame(bss, bss->nl_mgmt, type,
+	if (nl80211_register_frame(bss, bss->nl_mgmt, type,
 				   (u8 *) "\x07\x00", 2, false))
 		ret = -1;
 #endif /* CONFIG_PASN */
