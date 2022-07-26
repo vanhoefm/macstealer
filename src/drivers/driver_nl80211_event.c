@@ -2401,6 +2401,82 @@ static void qca_nl80211_p2p_lo_stop_event(struct wpa_driver_nl80211_data *drv,
 	wpa_supplicant_event(drv->ctx, EVENT_P2P_LO_STOP, &event);
 }
 
+
+#ifdef CONFIG_PASN
+
+static void qca_nl80211_pasn_auth(struct wpa_driver_nl80211_data *drv,
+				  u8 *data, size_t len)
+{
+	int ret = -EINVAL;
+	struct nlattr *attr;
+	struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_MAX + 1];
+	struct nlattr *cfg[QCA_WLAN_VENDOR_ATTR_PASN_PEER_MAX + 1];
+	unsigned int n_peers = 0, idx = 0;
+	int rem_conf;
+	enum qca_wlan_vendor_pasn_action action;
+	union wpa_event_data event;
+
+	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_PASN_MAX,
+		      (struct nlattr *) data, len, NULL) ||
+	    !tb[QCA_WLAN_VENDOR_ATTR_PASN_PEERS] ||
+	    !tb[QCA_WLAN_VENDOR_ATTR_PASN_ACTION]) {
+		return;
+	}
+
+	os_memset(&event, 0, sizeof(event));
+	action = nla_get_u32(tb[QCA_WLAN_VENDOR_ATTR_PASN_ACTION]);
+	switch (action) {
+	case QCA_WLAN_VENDOR_PASN_ACTION_AUTH:
+		event.pasn_auth.action = PASN_ACTION_AUTH;
+		break;
+	case QCA_WLAN_VENDOR_PASN_ACTION_DELETE_SECURE_RANGING_CONTEXT:
+		event.pasn_auth.action =
+			PASN_ACTION_DELETE_SECURE_RANGING_CONTEXT;
+		break;
+	default:
+		return;
+	}
+
+	nla_for_each_nested(attr, tb[QCA_WLAN_VENDOR_ATTR_PASN_PEERS], rem_conf)
+		n_peers++;
+
+	if (n_peers > WPAS_MAX_PASN_PEERS) {
+		wpa_printf(MSG_DEBUG, "nl80211: PASN auth: too many peers (%d)",
+			    n_peers);
+		return;
+	}
+
+	nla_for_each_nested(attr, tb[QCA_WLAN_VENDOR_ATTR_PASN_PEERS],
+			    rem_conf) {
+		struct nlattr *nl_src, *nl_peer;
+
+		ret = nla_parse_nested(cfg, QCA_WLAN_VENDOR_ATTR_PASN_PEER_MAX,
+				       attr, NULL);
+		if (ret)
+			return;
+		nl_src = cfg[QCA_WLAN_VENDOR_ATTR_PASN_PEER_SRC_ADDR];
+		nl_peer = cfg[QCA_WLAN_VENDOR_ATTR_PASN_PEER_MAC_ADDR];
+		if (nl_src)
+			os_memcpy(event.pasn_auth.peer[idx].own_addr, nl_src,
+				  ETH_ALEN);
+		if (nl_peer)
+			os_memcpy(event.pasn_auth.peer[idx].peer_addr, nl_peer,
+				  ETH_ALEN);
+		if (cfg[QCA_WLAN_VENDOR_ATTR_PASN_PEER_LTF_KEYSEED_REQUIRED])
+			event.pasn_auth.peer[idx].ltf_keyseed_required = true;
+		idx++;
+	}
+	event.pasn_auth.num_peers = n_peers;
+
+	wpa_printf(MSG_DEBUG,
+		   "nl80211: PASN auth action: %u, num_bssids: %d",
+		   event.pasn_auth.action,
+		   event.pasn_auth.num_peers);
+	wpa_supplicant_event(drv->ctx, EVENT_PASN_AUTH, &event);
+}
+
+#endif /* CONFIG_PASN */
+
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 
 
@@ -2437,6 +2513,11 @@ static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
 	case QCA_NL80211_VENDOR_SUBCMD_P2P_LISTEN_OFFLOAD_STOP:
 		qca_nl80211_p2p_lo_stop_event(drv, data, len);
 		break;
+#ifdef CONFIG_PASN
+	case QCA_NL80211_VENDOR_SUBCMD_PASN:
+		qca_nl80211_pasn_auth(drv, data, len);
+		break;
+#endif /* CONFIG_PASN */
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 	default:
 		wpa_printf(MSG_DEBUG,

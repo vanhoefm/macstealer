@@ -31,6 +31,8 @@
 #include "common/ieee802_11_defs.h"
 #include "common/ieee802_11_common.h"
 #include "common/wpa_common.h"
+#include "crypto/sha256.h"
+#include "crypto/sha384.h"
 #include "netlink.h"
 #include "linux_defines.h"
 #include "linux_ioctl.h"
@@ -11957,6 +11959,169 @@ fail:
 
 #endif /* CONFIG_MBO */
 
+
+#ifdef CONFIG_PASN
+
+static int nl80211_send_pasn_resp(void *priv, struct pasn_auth *params)
+{
+	unsigned int i;
+	struct i802_bss *bss = priv;
+	struct nl_msg *msg = NULL;
+	struct nlattr *nlpeers, *attr, *attr1;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+
+	wpa_dbg(drv->ctx, MSG_DEBUG,
+		"nl80211: PASN authentication response for %d entries",
+		params->num_peers);
+	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR);
+	if (!msg ||
+	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_QCA) ||
+	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
+			QCA_NL80211_VENDOR_SUBCMD_PASN))
+		goto fail;
+
+	attr = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
+	if (!attr)
+		goto fail;
+
+	nlpeers = nla_nest_start(msg, QCA_WLAN_VENDOR_ATTR_PASN_PEERS);
+	if (!nlpeers)
+		goto fail;
+
+	for (i = 0; i < params->num_peers; i++) {
+		attr1 = nla_nest_start(msg, i);
+		if (!attr1 ||
+		    nla_put(msg, QCA_WLAN_VENDOR_ATTR_PASN_PEER_SRC_ADDR,
+			    ETH_ALEN, params->peer[i].own_addr) ||
+		    nla_put(msg, QCA_WLAN_VENDOR_ATTR_PASN_PEER_MAC_ADDR,
+			    ETH_ALEN, params->peer[i].peer_addr))
+			goto fail;
+
+		if (params->peer[i].status == 0)
+			nla_put_flag(msg,
+				     QCA_WLAN_VENDOR_ATTR_PASN_PEER_STATUS_SUCCESS);
+
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: Own address[%u]: " MACSTR
+			   " Peer address[%u]: " MACSTR " Status: %s",
+			   i, MAC2STR(params->peer[i].own_addr), i,
+			   MAC2STR(params->peer[i].peer_addr),
+			   params->peer[i].status ? "Fail" : "Success");
+		nla_nest_end(msg, attr1);
+	}
+
+	nla_nest_end(msg, nlpeers);
+	nla_nest_end(msg, attr);
+
+	return send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
+
+fail:
+	nlmsg_free(msg);
+	return -1;
+}
+
+
+static u32 wpa_ltf_keyseed_len_to_sha_type(size_t len)
+{
+	if (len == SHA384_MAC_LEN)
+		return QCA_WLAN_VENDOR_SHA_384;
+	if (len == SHA256_MAC_LEN)
+		return QCA_WLAN_VENDOR_SHA_256;
+
+	wpa_printf(MSG_ERROR, "nl80211: Unexpected LTF keyseed len %zu", len);
+	return (u32) -1;
+}
+
+
+static int nl80211_set_secure_ranging_ctx(void *priv,
+					  struct secure_ranging_params *params)
+{
+	int ret;
+	u32 suite;
+	struct nlattr *attr;
+	struct nl_msg *msg = NULL;
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+
+	/* Configure secure ranging context only to the drivers that support it.
+	 */
+	if (!drv->secure_ranging_ctx_vendor_cmd_avail)
+		return 0;
+
+	if (!params->peer_addr || !params->own_addr)
+		return -1;
+
+	wpa_dbg(drv->ctx, MSG_DEBUG,
+		"nl80211: Secure ranging context for " MACSTR,
+		MAC2STR(params->peer_addr));
+
+	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR);
+	if (!msg ||
+	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_QCA) ||
+	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
+			QCA_NL80211_VENDOR_SUBCMD_SECURE_RANGING_CONTEXT))
+		goto fail;
+
+	attr = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
+	if (!attr)
+		goto fail;
+
+	if (nla_put(msg, QCA_WLAN_VENDOR_ATTR_SECURE_RANGING_CTX_PEER_MAC_ADDR,
+		    ETH_ALEN, params->peer_addr) ||
+	    nla_put(msg, QCA_WLAN_VENDOR_ATTR_SECURE_RANGING_CTX_SRC_ADDR,
+		    ETH_ALEN, params->own_addr) ||
+	    nla_put_u32(msg, QCA_WLAN_VENDOR_ATTR_SECURE_RANGING_CTX_ACTION,
+			params->action))
+		goto fail;
+
+	if (params->cipher) {
+		suite = wpa_cipher_to_cipher_suite(params->cipher);
+		if (!suite ||
+		    nla_put_u32(msg,
+				QCA_WLAN_VENDOR_ATTR_SECURE_RANGING_CTX_CIPHER,
+				suite))
+			goto fail;
+	}
+
+	if (params->tk_len && params->tk) {
+		if (nla_put(msg, QCA_WLAN_VENDOR_ATTR_SECURE_RANGING_CTX_TK,
+			    params->tk_len, params->tk))
+			goto fail;
+		wpa_hexdump_key(MSG_DEBUG, "nl80211: TK",
+				params->tk, params->tk_len);
+	}
+
+	if (params->ltf_keyseed_len && params->ltf_keyseed) {
+		u32 sha_type = wpa_ltf_keyseed_len_to_sha_type(
+			params->ltf_keyseed_len);
+
+		if (sha_type == (u32) -1 ||
+		    nla_put_u32(
+			    msg,
+			    QCA_WLAN_VENDOR_ATTR_SECURE_RANGING_CTX_SHA_TYPE,
+			    sha_type) ||
+		    nla_put(msg,
+			    QCA_WLAN_VENDOR_ATTR_SECURE_RANGING_CTX_LTF_KEYSEED,
+			    params->ltf_keyseed_len, params->ltf_keyseed))
+			goto fail;
+		wpa_hexdump_key(MSG_DEBUG, "nl80211: LTF keyseed",
+				params->ltf_keyseed, params->ltf_keyseed_len);
+	}
+	nla_nest_end(msg, attr);
+
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
+	if (ret)
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: Set secure ranging context failed: ret=%d (%s)",
+			   ret, strerror(-ret));
+	return ret;
+fail:
+	nlmsg_free(msg);
+	return -1;
+}
+
+#endif /* CONFIG_PASN */
+
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 
 
@@ -12525,6 +12690,10 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #endif /* CONFIG_MBO */
 	.set_bssid_tmp_disallow = nl80211_set_bssid_tmp_disallow,
 	.add_sta_node = nl80211_add_sta_node,
+#ifdef CONFIG_PASN
+	.send_pasn_resp = nl80211_send_pasn_resp,
+	.set_secure_ranging_ctx = nl80211_set_secure_ranging_ctx,
+#endif /* CONFIG_PASN */
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 	.do_acs = nl80211_do_acs,
 	.configure_data_frame_filters = nl80211_configure_data_frame_filters,
