@@ -2428,5 +2428,6 @@ bool p2p_wfd_enabled(struct p2p_data *p2p);
 bool is_p2p_allow_6ghz(struct p2p_data *p2p);
 void set_p2p_allow_6ghz(struct p2p_data *p2p, bool value);
 int p2p_remove_6ghz_channels(struct weighted_pcl *pref_freq_list, int size);
+int p2p_channel_to_freq(int op_class, int channel);
 
 #endif /* P2P_H */

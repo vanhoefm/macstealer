@@ -3802,6 +3802,10 @@ static enum chan_allowed wpas_p2p_verify_channel(struct wpa_supplicant *wpa_s,
 	int flag = 0;
 	enum chan_allowed res, res2;
 
+	if (is_6ghz_op_class(op_class) && !is_6ghz_psc_frequency(
+			p2p_channel_to_freq(op_class, channel)))
+		return NOT_ALLOWED;
+
 	res2 = res = has_channel(wpa_s->global, mode, op_class, channel, &flag);
 	if (bw == BW40MINUS) {
 		if (!(flag & HOSTAPD_CHAN_HT40MINUS))
