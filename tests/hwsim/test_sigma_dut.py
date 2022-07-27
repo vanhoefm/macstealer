@@ -2663,9 +2663,15 @@ def test_sigma_dut_ap_dpp_qr_legacy_psk(dev, apdev, params):
     run_sigma_dut_ap_dpp_qr(dev, apdev, params, "ap-psk", "sta-psk",
                             extra="psk=%s" % (32*"12"))
 
-def run_sigma_dut_ap_dpp_qr(dev, apdev, params, ap_conf, sta_conf, extra=""):
+def test_sigma_dut_ap_dpp_qr_mud_url(dev, apdev, params):
+    """sigma_dut controlled AP (DPP) with MUD URL"""
+    run_sigma_dut_ap_dpp_qr(dev, apdev, params, "ap-dpp", "sta-dpp",
+                            mud_url=True)
+
+def run_sigma_dut_ap_dpp_qr(dev, apdev, params, ap_conf, sta_conf, extra="",
+                            mud_url=False):
     check_dpp_capab(dev[0])
-    logdir = os.path.join(params['logdir'], "sigma_dut_ap_dpp_qr.sigma-hostapd")
+    logdir = params['prefix'] + ".sigma-hostapd"
     with HWSimRadio() as (radio, iface):
         sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
         try:
@@ -2688,7 +2694,10 @@ def run_sigma_dut_ap_dpp_qr(dev, apdev, params, ap_conf, sta_conf, extra=""):
             t = threading.Thread(target=dpp_init_conf,
                                  args=(dev[0], id1, ap_conf, conf_id, extra))
             t.start()
-            res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,6")
+            cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,6"
+            if mud_url:
+                cmd += ",MUDURL,https://example.com/mud"
+            res = sigma_dut_cmd(cmd)
             t.join()
             if "ConfResult,OK" not in res:
                 raise Exception("Unexpected result: " + res)
@@ -2747,6 +2756,61 @@ def test_sigma_dut_ap_dpp_offchannel(dev, apdev, params):
             res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,6")
             if "ConfResult,OK" not in res:
                 raise Exception("Unexpected result: " + res)
+
+            id1 = dev[1].dpp_bootstrap_gen(chan="81/1", mac=True)
+            uri1 = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id1)
+
+            id0b = dev[0].dpp_qr_code(uri1)
+
+            dev[1].set("dpp_config_processing", "2")
+            cmd = "DPP_LISTEN 2412"
+            if "OK" not in dev[1].request(cmd):
+                raise Exception("Failed to start listen operation")
+            cmd = "DPP_AUTH_INIT peer=%d conf=sta-dpp ssid=%s configurator=%d" % (id0b, to_hex("DPPNET01"), conf_id)
+            if "OK" not in dev[0].request(cmd):
+                raise Exception("Failed to initiate DPP Authentication")
+            dev[1].wait_connected(timeout=20)
+
+            sigma_dut_cmd_check("ap_reset_default")
+        finally:
+            dev[1].set("dpp_config_processing", "0")
+            stop_sigma_dut(sigma)
+
+def test_sigma_dut_ap_dpp_init_mud_url(dev, apdev, params):
+    """sigma_dut controlled AP doing DPP init with MUD URL"""
+    check_dpp_capab(dev[0])
+    logdir = params['prefix'] + ".sigma-hostapd"
+    with HWSimRadio() as (radio, iface):
+        sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
+        try:
+            cmd = "DPP_CONFIGURATOR_ADD"
+            res = dev[0].request(cmd)
+            if "FAIL" in res:
+                raise Exception("Failed to add configurator")
+            conf_id = int(res)
+
+            id0 = dev[0].dpp_bootstrap_gen(chan="81/7", mac=True)
+            uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+            dev[0].set("dpp_configurator_params",
+                       "conf=ap-dpp ssid=%s configurator=%d" % (to_hex("DPPNET01"), conf_id))
+            dev[0].dpp_listen(2442)
+
+            sigma_dut_cmd_check("ap_reset_default,program,DPP")
+            res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,SetPeerBootstrap,DPPBootstrappingdata,%s,DPPBS,QR" % to_hex(uri0))
+            if "status,COMPLETE" not in res:
+                raise Exception("dev_exec_action did not succeed: " + res)
+
+            cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Enrollee,DPPBS,QR,DPPTimeout,6"
+            mud_url = "https://example.com/mud"
+            cmd += ",MUDURL," + mud_url
+            res = sigma_dut_cmd(cmd)
+            if "ConfResult,OK" not in res:
+                raise Exception("Unexpected result: " + res)
+            ev = dev[0].wait_event(["DPP-MUD-URL"], timeout=10)
+            if ev is None:
+                raise Exception("No DPP-MUD-URL reported")
+            if ev.split(' ')[1] != mud_url:
+                raise Exception("Incorrect MUD URL reported")
 
             id1 = dev[1].dpp_bootstrap_gen(chan="81/1", mac=True)
             uri1 = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id1)
