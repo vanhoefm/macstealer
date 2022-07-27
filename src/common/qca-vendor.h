@@ -10803,13 +10803,20 @@ enum qca_wlan_vendor_attr_add_sta_node_params {
  * These values are used by attribute %QCA_VENDOR_ATTR_BTC_CHAIN_MODE of
  * %QCA_NL80211_VENDOR_SUBCMD_BTC_CHAIN_MODE.
  *
- * @QCA_BTC_CHAIN_SHARED: chains of BT and WLAN 2.4G are shared.
- * @QCA_BTC_CHAIN_SEPARATED: chains of BT and WLAN 2.4G are separated.
+ * @QCA_BTC_CHAIN_SHARED: chains of BT and WLAN 2.4 GHz are shared.
+ * @QCA_BTC_CHAIN_SEPARATED_HYBRID: chains of BT and WLAN 2.4 GHz are
+ * separated, hybrid mode.
+ * @QCA_BTC_CHAIN_SEPARATED_FDD: chains of BT and WLAN 2.4 GHz are
+ * separated, fixed FDD mode.
  */
 enum qca_btc_chain_mode {
 	QCA_BTC_CHAIN_SHARED = 0,
-	QCA_BTC_CHAIN_SEPARATED = 1,
+	QCA_BTC_CHAIN_SEPARATED_HYBRID = 1,
+	QCA_BTC_CHAIN_SEPARATED_FDD = 2,
 };
+
+/* deprecated legacy name */
+#define QCA_BTC_CHAIN_SEPARATED QCA_BTC_CHAIN_SEPARATED_HYBRID
 
 /**
  * enum qca_vendor_attr_btc_chain_mode - Specifies attributes for BT coex
