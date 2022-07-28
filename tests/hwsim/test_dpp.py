@@ -6602,6 +6602,10 @@ def test_dpp_chirp_ap_5g(dev, apdev):
         idc = dev[0].dpp_qr_code(uri)
         dev[0].dpp_bootstrap_set(idc, conf="ap-dpp", configurator=conf_id)
         dev[0].dpp_listen(5200)
+        # Workaround for some strange issues in the Authentication Request frame
+        # not getting transmitted. An extra wait of one second here seems to
+        # avoid that?!
+        time.sleep(1)
         if "OK" not in hapd.request("DPP_CHIRP own=%d iter=5" % id_h):
             raise Exception("DPP_CHIRP failed")
         wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd,
