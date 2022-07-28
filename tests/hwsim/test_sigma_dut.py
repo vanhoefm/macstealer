@@ -2175,6 +2175,62 @@ def test_sigma_dut_dpp_curves_list(dev, apdev):
     finally:
         stop_sigma_dut(sigma)
 
+def test_sigma_dut_dpp_enrollee_does_not_support_signing_curve(dev, apdev):
+    """sigma_dut DPP and Enrollee URI curves list does not include the curve for C-sign-key"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        id1 = dev[1].dpp_bootstrap_gen(chan="81/6", mac=True,
+                                       supported_curves="P-256:P-384")
+        uri = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id1)
+        dev[1].dpp_listen(2437)
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,SetPeerBootstrap,DPPBootstrappingdata,%s,DPPBS,QR" % to_hex(uri))
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-521,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPTimeout,6"
+        res = sigma_dut_cmd(cmd, timeout=10)
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+        ev = dev[1].wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"],
+                               timeout=20)
+        if not ev:
+            raise Exception("Enrollee did not report configuration result")
+        if "DPP-CONF-RECEIVED" in ev:
+            raise Exception("Enrollee reported configuration success")
+    finally:
+        stop_sigma_dut(sigma)
+
+def test_sigma_dut_dpp_enrollee_does_not_support_nak_curve(dev, apdev):
+    """sigma_dut DPP and Enrollee URI curves list does not include the curve for C-sign-key"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        id1 = dev[1].dpp_bootstrap_gen(chan="81/6", mac=True,
+                                       supported_curves="P-256:P-384")
+        uri = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id1)
+        dev[1].dpp_listen(2437)
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,SetPeerBootstrap,DPPBootstrappingdata,%s,DPPBS,QR" % to_hex(uri))
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Single,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPSigningKeyECC,P-256,DPPNAKECC,P-521,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPTimeout,6"
+        res = sigma_dut_cmd(cmd, timeout=10)
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+        ev = dev[1].wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"],
+                               timeout=20)
+        if not ev:
+            raise Exception("Enrollee did not report configuration result")
+        if "DPP-CONF-RECEIVED" in ev:
+            raise Exception("Enrollee reported configuration success")
+    finally:
+        stop_sigma_dut(sigma)
+
 def dpp_init_enrollee_mutual(dev, id1, own_id):
     logger.info("Starting DPP initiator/enrollee in a thread")
     time.sleep(1)
@@ -3695,6 +3751,41 @@ def test_sigma_dut_dpp_tcp_configurator_init_mutual(dev, apdev):
         res = sigma_dut_cmd(cmd, timeout=10)
         if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
             raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+        dev[1].request("DPP_CONTROLLER_STOP")
+
+def test_sigma_dut_dpp_tcp_configurator_init_mutual_unsupported_curve(dev, apdev):
+    """sigma_dut DPP TCP Configurator as initiator with mutual authentication (unsupported curve)"""
+    check_dpp_capab(dev[0], min_ver=2)
+    check_dpp_capab(dev[1], min_ver=2)
+    sigma = start_sigma_dut(dev[0].ifname)
+    try:
+        id_c = dev[1].dpp_bootstrap_gen(supported_curves="P-256:P-384")
+        uri_c = dev[1].request("DPP_BOOTSTRAP_GET_URI %d" % id_c)
+        if "OK" not in dev[1].request("DPP_CONTROLLER_START role=enrollee"):
+            raise Exception("Failed to start Controller")
+
+        res = sigma_dut_cmd("dev_exec_action,program,DPP,DPPActionType,SetPeerBootstrap,DPPBootstrappingdata,%s,DPPBS,QR" % to_hex(uri_c))
+        if "status,COMPLETE" not in res:
+            raise Exception("dev_exec_action did not succeed: " + res)
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,GetLocalBootstrap,DPPCryptoIdentifier,P-256,DPPBS,QR"
+        res = sigma_dut_cmd_check(cmd)
+        hex = res.split(',')[3]
+        uri = from_hex(hex)
+        logger.info("URI from sigma_dut: " + uri)
+        id1 = dev[1].dpp_qr_code(uri)
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Mutual,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPNAKECC,P-521,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPOverTCP,127.0.0.1,DPPTimeout,6"
+        res = sigma_dut_cmd(cmd, timeout=10)
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+            raise Exception("Unexpected result: " + res)
+        ev = dev[1].wait_event(["DPP-FAIL"], timeout=20)
+        if not ev:
+            raise Exception("Enrollee did not report configuration result")
+        if "Configurator rejected configuration" not in ev:
+            raise Exception("Enrollee did not report configuration rejection")
     finally:
         stop_sigma_dut(sigma)
         dev[1].request("DPP_CONTROLLER_STOP")
