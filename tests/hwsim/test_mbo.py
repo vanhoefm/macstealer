@@ -88,7 +88,7 @@ def run_mbo_supp_oper_classes(dev, apdev, hapd, hapd2, country, freq_list=None,
 
 def run_mbo_supp_oper_class(dev, apdev, country, expected, inc5,
                             freq_list=None, disable_ht=False,
-                            disable_vht=False):
+                            disable_vht=False, alt_expected=None):
     if inc5:
         params = {'ssid': "test-wnm-mbo",
                   'mbo': '1',
@@ -146,9 +146,9 @@ def run_mbo_supp_oper_class(dev, apdev, country, expected, inc5,
     # since they were added only recently in regdb.
     if country == "FI":
         expected3 = expected3.replace("7b7c7d7e7f80", "7b80")
-    if res2 != expected and res2 != expected2 and res2 != expected3:
+    if res2 != expected and res2 != expected2 and res2 != expected3 and res2 != alt_expected:
         raise Exception("Unexpected supp_op_class string (country=%s, 2.4 GHz): %s (expected: %s)" % (country, res2, expected))
-    if inc5 and res5 != expected and res5 != expected2 and res5 != expected3:
+    if inc5 and res5 != expected and res5 != expected2 and res5 != expected3 and res5 != alt_expected:
         raise Exception("Unexpected supp_op_class string (country=%s, 5 GHz): %s (expected: %s)" % (country, res5, expected))
 
 def test_mbo_supp_oper_classes_za(dev, apdev):
@@ -159,12 +159,14 @@ def test_mbo_supp_oper_classes_za(dev, apdev):
 def test_mbo_supp_oper_classes_fi(dev, apdev):
     """MBO and supported operating classes (FI)"""
     run_mbo_supp_oper_class(dev, apdev, "FI",
-                            "515354737475767778797a7b7c7d7e7f808182", True)
+                            "515354737475767778797a7b7c7d7e7f808182", True,
+                            alt_expected="515354737475767778797a7b7c7d7e7f8081838482")
 
 def test_mbo_supp_oper_classes_us(dev, apdev):
     """MBO and supported operating classes (US)"""
     run_mbo_supp_oper_class(dev, apdev, "US",
-                            "515354737475767778797a7b7c7d7e7f808182", True)
+                            "515354737475767778797a7b7c7d7e7f808182", True,
+                            alt_expected="515354737475767778797a7b7c7d7e7f8081838482")
 
 def test_mbo_supp_oper_classes_jp(dev, apdev):
     """MBO and supported operating classes (JP)"""
@@ -184,18 +186,20 @@ def test_mbo_supp_oper_classes_sy(dev, apdev):
 def test_mbo_supp_oper_classes_us_freq_list(dev, apdev):
     """MBO and supported operating classes (US) - freq_list"""
     run_mbo_supp_oper_class(dev, apdev, "US", "515354", False,
-                            freq_list="2412 2437 2462")
+                            freq_list="2412 2437 2462",
+                            alt_expected="5153548384")
 
 def test_mbo_supp_oper_classes_us_disable_ht(dev, apdev):
     """MBO and supported operating classes (US) - disable_ht"""
     run_mbo_supp_oper_class(dev, apdev, "US", "517376797c7d", False,
-                            disable_ht=True)
+                            disable_ht=True, alt_expected="517376797c7d8384")
 
 def test_mbo_supp_oper_classes_us_disable_vht(dev, apdev):
     """MBO and supported operating classes (US) - disable_vht"""
     run_mbo_supp_oper_class(dev, apdev, "US",
                             "515354737475767778797a7b7c7d7e7f", False,
-                            disable_vht=True)
+                            disable_vht=True,
+                            alt_expected="515354737475767778797a7b7c7d7e7f8384")
 
 def test_mbo_assoc_disallow(dev, apdev, params):
     """MBO and association disallowed"""
