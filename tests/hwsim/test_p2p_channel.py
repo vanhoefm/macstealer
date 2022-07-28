@@ -227,13 +227,13 @@ def test_p2p_channel_avoid3(dev):
     """P2P and avoid frequencies driver event on 5 GHz"""
     try:
         dev[0].global_request("SET p2p_pref_chan 128:44")
-        set_country("CN", dev[0])
+        set_country("CO", dev[0])
         form(dev[0], dev[1])
-        set_country("CN", dev[0])
+        set_country("CO", dev[0])
         [i_res, r_res] = invite_from_go(dev[0], dev[1], terminate=False,
                                         extra="ht40 vht")
         freq = int(i_res['freq'])
-        if freq < 5000:
+        if freq != 5220:
             raise Exception("Unexpected channel %d MHz" % freq)
 
         if "OK" not in dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES 5180-5320,5500-5640"):
