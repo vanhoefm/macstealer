@@ -412,6 +412,40 @@ static dbus_bool_t set_cred_properties(struct wpa_supplicant *wpa_s,
 					  entry.int32_value);
 			if (os_snprintf_error(size, ret))
 				goto error;
+		} else if (entry.type == DBUS_TYPE_ARRAY &&
+			   entry.array_type == DBUS_TYPE_STRING) {
+			dbus_uint32_t i;
+
+			if (entry.array_len <= 0)
+				goto error;
+
+			for (i = 0; i < entry.array_len; i++) {
+				if (should_quote_opt(entry.key)) {
+					size = os_strlen(entry.strarray_value[i]);
+
+					size += 3;
+					value = os_zalloc(size);
+					if (!value)
+						goto error;
+
+					ret = os_snprintf(value, size, "\"%s\"",
+							  entry.strarray_value[i]);
+					if (os_snprintf_error(size, ret))
+						goto error;
+				} else {
+					value = os_strdup(entry.strarray_value[i]);
+					if (!value)
+						goto error;
+				}
+
+				ret = wpa_config_set_cred(cred, entry.key, value, 0);
+				if (ret < 0)
+					goto error;
+				os_free(value);
+				value = NULL;
+			}
+			wpa_dbus_dict_entry_clear(&entry);
+			continue;
 		} else {
 			goto error;
 		}
