@@ -2475,7 +2475,8 @@ static const char * modestr(enum hostapd_hw_mode mode)
 }
 
 
-static void nl80211_dump_chan_list(struct hostapd_hw_modes *modes,
+static void nl80211_dump_chan_list(struct wpa_driver_nl80211_data *drv,
+				   struct hostapd_hw_modes *modes,
 				   u16 num_modes)
 {
 	int i;
@@ -2493,6 +2494,9 @@ static void nl80211_dump_chan_list(struct hostapd_hw_modes *modes,
 		for (j = 0; j < mode->num_channels; j++) {
 			struct hostapd_channel_data *chan = &mode->channels[j];
 
+			if (chan->freq >= 5925 && chan->freq <= 7125 &&
+			    !(chan->flag & HOSTAPD_CHAN_DISABLED))
+				drv->uses_6ghz = true;
 			res = os_snprintf(pos, end - pos, " %d%s%s%s",
 					  chan->freq,
 					  (chan->flag & HOSTAPD_CHAN_DISABLED) ?
@@ -2564,7 +2568,7 @@ nl80211_get_hw_feature_data(void *priv, u16 *num_modes, u16 *flags,
 
 		modes = wpa_driver_nl80211_postprocess_modes(result.modes,
 							     num_modes);
-		nl80211_dump_chan_list(modes, *num_modes);
+		nl80211_dump_chan_list(drv, modes, *num_modes);
 		return modes;
 	}
 

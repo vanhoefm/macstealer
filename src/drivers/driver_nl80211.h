@@ -180,6 +180,7 @@ struct wpa_driver_nl80211_data {
 	unsigned int unsol_bcast_probe_resp:1;
 	unsigned int qca_do_acs:1;
 	unsigned int brcm_do_acs:1;
+	unsigned int uses_6ghz:1;
 
 	u64 vendor_scan_cookie;
 	u64 remain_on_chan_cookie;
