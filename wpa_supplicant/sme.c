@@ -1027,6 +1027,7 @@ static void sme_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	wpa_s->rsnxe_len = 0;
 
 	sme_send_authentication(wpa_s, cwork->bss, cwork->ssid, 1);
+	wpas_notify_auth_changed(wpa_s);
 }
 
 

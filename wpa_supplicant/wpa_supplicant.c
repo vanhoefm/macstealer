@@ -4254,6 +4254,8 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 	wpa_supplicant_initiate_eapol(wpa_s);
 	if (old_ssid != wpa_s->current_ssid)
 		wpas_notify_network_changed(wpa_s);
+	if (!(wpa_s->drv_flags & WPA_DRIVER_FLAGS_SME))
+		wpas_notify_auth_changed(wpa_s);
 }
 
 
