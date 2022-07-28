@@ -1615,6 +1615,32 @@ const char * dpp_netrole_str(enum dpp_netrole netrole)
 }
 
 
+static bool dpp_supports_curve(const char *curve, struct dpp_bootstrap_info *bi)
+{
+	enum dpp_bootstrap_supported_curves idx;
+
+	if (!bi || !bi->supported_curves)
+		return true; /* no support indication available */
+
+	if (os_strcmp(curve, "prime256v1") == 0)
+		idx = DPP_BOOTSTRAP_CURVE_P_256;
+	else if (os_strcmp(curve, "secp384r1") == 0)
+		idx = DPP_BOOTSTRAP_CURVE_P_384;
+	else if (os_strcmp(curve, "secp521r1") == 0)
+		idx = DPP_BOOTSTRAP_CURVE_P_521;
+	else if (os_strcmp(curve, "brainpoolP256r1") == 0)
+		idx = DPP_BOOTSTRAP_CURVE_BP_256;
+	else if (os_strcmp(curve, "brainpoolP384r1") == 0)
+		idx = DPP_BOOTSTRAP_CURVE_BP_384;
+	else if (os_strcmp(curve, "brainpoolP512r1") == 0)
+		idx = DPP_BOOTSTRAP_CURVE_BP_512;
+	else
+		return true;
+
+	return bi->supported_curves & BIT(idx);
+}
+
+
 static struct wpabuf *
 dpp_build_conf_obj_dpp(struct dpp_authentication *auth,
 		       struct dpp_configuration *conf)
@@ -1636,10 +1662,23 @@ dpp_build_conf_obj_dpp(struct dpp_authentication *auth,
 		goto fail;
 	}
 	curve = auth->conf->curve;
+	if (dpp_akm_dpp(conf->akm) &&
+	    !dpp_supports_curve(curve->name, auth->peer_bi)) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Enrollee does not support C-sign-key curve (%s) - cannot generate config object",
+			   curve->name);
+		goto fail;
+	}
 	if (auth->new_curve && auth->new_key_received)
 		nak_curve = auth->new_curve;
 	else
 		nak_curve = auth->curve;
+	if (!dpp_supports_curve(nak_curve->name, auth->peer_bi)) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Enrollee does not support netAccessKey curve (%s) - cannot generate config object",
+			   nak_curve->name);
+		goto fail;
+	}
 
 	akm = conf->akm;
 	if (dpp_akm_ver2(akm) && auth->peer_version < 2) {
@@ -1696,6 +1735,13 @@ skip_groups:
 	if (auth->conf->net_access_key_curve &&
 	    auth->curve != auth->conf->net_access_key_curve &&
 	    !auth->new_key_received) {
+		if (!dpp_supports_curve(auth->conf->net_access_key_curve->name,
+					auth->peer_bi)) {
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Enrollee does not support the required netAccessKey curve (%s) - cannot generate config object",
+				   auth->conf->net_access_key_curve->name);
+			goto fail;
+		}
 		wpa_printf(MSG_DEBUG,
 			   "DPP: Peer protocol key curve (%s) does not match the required netAccessKey curve (%s) - %s",
 			   auth->curve->name,
