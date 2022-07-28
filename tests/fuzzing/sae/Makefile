@@ -9,6 +9,7 @@ LIBS += $(SRC)/utils/libutils.a
 
 OBJS += $(SRC)/crypto/crypto_openssl.o
 OBJS += $(SRC)/crypto/dh_groups.o
+OBJS += $(SRC)/crypto/sha1-prf.o
 OBJS += $(SRC)/crypto/sha256-prf.o
 OBJS += $(SRC)/crypto/sha256-kdf.o
 OBJS += $(SRC)/common/dragonfly.o
