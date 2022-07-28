@@ -4193,6 +4193,56 @@ def test_sigma_dut_dpp_pb_sta(dev, apdev):
         stop_sigma_dut(sigma)
         dev[0].set("dpp_config_processing", "0")
 
+def dpp_ap_pb_overlap(hapd, hapd2, dev0):
+    if "OK" not in hapd.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP")
+    ev = dev0.wait_event(["DPP-PB-STATUS"], timeout=30)
+    if ev is None:
+        raise Exception("Push button status not reported on station")
+    # Force bootstrap key change since both instances share the same global
+    # DPP state for PB.
+    hapd.request("DPP_STOP_LISTEN")
+    if "OK" not in hapd2.request("DPP_PUSH_BUTTON"):
+        raise Exception("Failed to press push button on the AP2")
+
+def test_sigma_dut_dpp_pb_sta_session_overlap(dev, apdev):
+    """sigma_dut DPP/PB station session overlap"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_sae_capab(dev[0])
+
+    params = {"ssid": "sae",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password"}
+    hapd = hostapd.add_ap(apdev[0], params)
+    params = {"ssid": "another sae",
+              "channel": "11",
+              "wpa": "2",
+              "wpa_key_mgmt": "SAE",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "sae_password": "sae-password-other"}
+    hapd2 = hostapd.add_ap(apdev[1], params)
+
+    ifname = dev[0].ifname
+    sigma = start_sigma_dut(ifname)
+    try:
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" % ifname)
+
+        t = threading.Thread(target=dpp_ap_pb_overlap,
+                             args=(hapd, hapd2, dev[0]))
+        t.start()
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Responder,DPPProvisioningRole,Enrollee,DPPBS,PBBS,DPPTimeout,50,DPPWaitForConnect,Yes"
+        res = sigma_dut_cmd(cmd, timeout=60)
+        t.join()
+        if "BootstrapResult,Failed" not in res:
+            raise Exception("Unexpected result: " + res)
+    finally:
+        stop_sigma_dut(sigma)
+        dev[0].set("dpp_config_processing", "0")
+
 def test_sigma_dut_dpp_pb_configurator(dev, apdev):
     """sigma_dut DPP/PB Configurator"""
     check_dpp_capab(dev[0], min_ver=3)
@@ -4213,6 +4263,29 @@ def test_sigma_dut_dpp_pb_configurator(dev, apdev):
         ev = dev[1].wait_event(["DPP-PB-RESULT"], timeout=1)
         if ev is None or "success" not in ev:
             raise Exception("Push button bootstrapping did not succeed on STA/Enrollee")
+    finally:
+        stop_sigma_dut(sigma)
+
+def test_sigma_dut_dpp_pb_configurator_session_overlap(dev, apdev):
+    """sigma_dut DPP/PB Configurator session overlap"""
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
+    check_dpp_capab(dev[2], min_ver=3)
+
+    ifname = dev[0].ifname
+    sigma = start_sigma_dut(ifname)
+    try:
+        sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,DPP" % ifname)
+
+        if "OK" not in dev[1].request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the STA/Enrollee")
+        if "OK" not in dev[2].request("DPP_PUSH_BUTTON"):
+            raise Exception("Failed to press push button on the STA2/Enrollee")
+
+        cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPProvisioningRole,Configurator,DPPBS,PBBS,DPPConfEnrolleeRole,STA,DPPConfIndex,1,DPPTimeout,50"
+        res = sigma_dut_cmd(cmd, timeout=60)
+        if "BootstrapResult,Failed" not in res:
+            raise Exception("Unexpected result: " + res)
     finally:
         stop_sigma_dut(sigma)
 
