@@ -1031,7 +1031,7 @@ def _test_scan_dfs(dev, apdev, params):
 
     if "OK" not in dev[0].request("SCAN"):
         raise Exception("SCAN command failed")
-    ev = dev[0].wait_event(["CTRL-EVENT-SCAN-RESULTS"])
+    ev = dev[0].wait_event(["CTRL-EVENT-SCAN-RESULTS"], timeout=15)
     if ev is None:
         raise Exception("Scan did not complete")
 

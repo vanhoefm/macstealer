@@ -1142,7 +1142,7 @@ class WpaSupplicant:
             if "eap" in kwargs:
                 self.connect_network(id, timeout=20)
             else:
-                self.connect_network(id)
+                self.connect_network(id, timeout=15)
         else:
             self.dump_monitor()
             self.select_network(id)
