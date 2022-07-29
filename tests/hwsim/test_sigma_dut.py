@@ -2194,6 +2194,8 @@ def test_sigma_dut_dpp_enrollee_does_not_support_signing_curve(dev, apdev):
         res = sigma_dut_cmd(cmd, timeout=10)
         if "status,COMPLETE" not in res:
             raise Exception("dev_exec_action did not succeed: " + res)
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,FAILED" not in res:
+            raise Exception("Unexpected result: " + res)
         ev = dev[1].wait_event(["DPP-CONF-RECEIVED", "DPP-CONF-FAILED"],
                                timeout=20)
         if not ev:
@@ -3779,7 +3781,7 @@ def test_sigma_dut_dpp_tcp_configurator_init_mutual_unsupported_curve(dev, apdev
 
         cmd = "dev_exec_action,program,DPP,DPPActionType,AutomaticDPP,DPPAuthRole,Initiator,DPPAuthDirection,Mutual,DPPProvisioningRole,Configurator,DPPConfIndex,1,DPPNAKECC,P-521,DPPConfEnrolleeRole,STA,DPPBS,QR,DPPOverTCP,127.0.0.1,DPPTimeout,6"
         res = sigma_dut_cmd(cmd, timeout=10)
-        if "BootstrapResult,OK,AuthResult,OK,ConfResult,OK" not in res:
+        if "BootstrapResult,OK,AuthResult,OK,ConfResult,FAILED" not in res:
             raise Exception("Unexpected result: " + res)
         ev = dev[1].wait_event(["DPP-FAIL"], timeout=20)
         if not ev:
