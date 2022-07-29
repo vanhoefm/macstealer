@@ -5313,11 +5313,17 @@ static int wpas_dpp_pb_announce(struct wpa_supplicant *wpa_s, int freq);
 static void wpas_dpp_pb_next(void *eloop_ctx, void *timeout_ctx);
 
 
-static bool wpas_dpp_pb_chan_ok(int flags)
+static bool wpas_dpp_pb_chan_ok(struct hostapd_channel_data *chan)
 {
-	return !(flags & (HOSTAPD_CHAN_DISABLED |
-			  HOSTAPD_CHAN_NO_IR |
-			  HOSTAPD_CHAN_RADAR));
+	/* For now, do not include 6 GHz channels since finding a Configurator
+	 * from a large number of channels would take excessive amount of time.
+	 */
+	if (is_6ghz_freq(chan->freq))
+		return false;
+
+	return !(chan->flag & (HOSTAPD_CHAN_DISABLED |
+			       HOSTAPD_CHAN_NO_IR |
+			       HOSTAPD_CHAN_RADAR));
 }
 
 
@@ -5331,7 +5337,7 @@ static int wpas_dpp_pb_channels(struct wpa_supplicant *wpa_s)
 		for (c = 0; c < mode->num_channels; c++) {
 			struct hostapd_channel_data *chan = &mode->channels[c];
 
-			if (!wpas_dpp_pb_chan_ok(chan->flag))
+			if (!wpas_dpp_pb_chan_ok(chan))
 				continue;
 			int_array_add_unique(&wpa_s->dpp_pb_freqs, chan->freq);
 		}
