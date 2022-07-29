@@ -248,7 +248,8 @@ static void dpp_controller_gas_done(struct dpp_connection *conn)
 		return;
 	}
 
-	wpa_msg(conn->msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT);
+	wpa_msg(conn->msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT "conf_status=%d",
+		auth->conf_resp_status);
 	dpp_connection_remove(conn);
 }
 
@@ -880,8 +881,9 @@ static int dpp_controller_rx_conf_result(struct dpp_connection *conn,
 
 	status = dpp_conf_result_rx(auth, hdr, buf, len);
 	if (status == DPP_STATUS_OK && auth->send_conn_status) {
-		wpa_msg(msg_ctx, MSG_INFO,
-			DPP_EVENT_CONF_SENT "wait_conn_status=1");
+		wpa_msg(msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT
+			"wait_conn_status=1 conf_resp_status=%d",
+			auth->conf_resp_status);
 		wpa_printf(MSG_DEBUG, "DPP: Wait for Connection Status Result");
 		auth->waiting_conn_status_result = 1;
 		eloop_cancel_timeout(
@@ -893,7 +895,8 @@ static int dpp_controller_rx_conf_result(struct dpp_connection *conn,
 		return 0;
 	}
 	if (status == DPP_STATUS_OK)
-		wpa_msg(msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT);
+		wpa_msg(msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT
+			"conf_resp_status=%d", auth->conf_resp_status);
 	else
 		wpa_msg(msg_ctx, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	return -1; /* to remove the completed connection */

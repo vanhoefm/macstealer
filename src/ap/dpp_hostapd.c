@@ -1583,7 +1583,8 @@ static void hostapd_dpp_rx_conf_result(struct hostapd_data *hapd, const u8 *src,
 
 	if (status == DPP_STATUS_OK && auth->send_conn_status) {
 		wpa_msg(hapd->msg_ctx, MSG_INFO,
-			DPP_EVENT_CONF_SENT "wait_conn_status=1");
+			DPP_EVENT_CONF_SENT "wait_conn_status=1 conf_status=%d",
+			auth->conf_resp_status);
 		wpa_printf(MSG_DEBUG, "DPP: Wait for Connection Status Result");
 		eloop_cancel_timeout(hostapd_dpp_config_result_wait_timeout,
 				     hapd, NULL);
@@ -1599,7 +1600,8 @@ static void hostapd_dpp_rx_conf_result(struct hostapd_data *hapd, const u8 *src,
 	hostapd_drv_send_action_cancel_wait(hapd);
 	hostapd_dpp_listen_stop(hapd);
 	if (status == DPP_STATUS_OK)
-		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT);
+		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT
+			"conf_status=%d", auth->conf_resp_status);
 	else
 		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	dpp_auth_deinit(auth);
@@ -3142,7 +3144,8 @@ void hostapd_dpp_gas_status_handler(struct hostapd_data *hapd, int ok)
 	hostapd_drv_send_action_cancel_wait(hapd);
 
 	if (ok)
-		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT);
+		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_CONF_SENT
+			"conf_status=%d", auth->conf_resp_status);
 	else
 		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	dpp_auth_deinit(hapd->dpp_auth);
