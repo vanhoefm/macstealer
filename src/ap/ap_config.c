@@ -796,6 +796,7 @@ void hostapd_config_free_bss(struct hostapd_bss_config *conf)
 	os_free(conf->radius_req_attr_sqlite);
 	os_free(conf->rsn_preauth_interfaces);
 	os_free(conf->ctrl_interface);
+	os_free(conf->config_id);
 	os_free(conf->ca_cert);
 	os_free(conf->server_cert);
 	os_free(conf->server_cert2);

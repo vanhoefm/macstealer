@@ -174,6 +174,9 @@ static void hostapd_reload_bss(struct hostapd_data *hapd)
 
 static void hostapd_clear_old_bss(struct hostapd_data *bss)
 {
+	wpa_printf(MSG_DEBUG, "BSS %s changed - clear old state",
+		   bss->conf->iface);
+
 	/*
 	 * Deauthenticate all stations since the new configuration may not
 	 * allow them to use the BSS anymore.
@@ -240,12 +243,12 @@ int hostapd_reload_config(struct hostapd_iface *iface)
 	if (newconf == NULL)
 		return -1;
 
-	hostapd_clear_old(iface);
-
 	oldconf = hapd->iconf;
 	if (hostapd_iface_conf_changed(newconf, oldconf)) {
 		char *fname;
 		int res;
+
+		hostapd_clear_old(iface);
 
 		wpa_printf(MSG_DEBUG,
 			   "Configuration changes include interface/BSS modification - force full disable+enable sequence");
@@ -276,6 +279,10 @@ int hostapd_reload_config(struct hostapd_iface *iface)
 
 	for (j = 0; j < iface->num_bss; j++) {
 		hapd = iface->bss[j];
+		if (!hapd->conf->config_id || !newconf->bss[j]->config_id ||
+		    os_strcmp(hapd->conf->config_id,
+			      newconf->bss[j]->config_id) != 0)
+			hostapd_clear_old_bss(hapd);
 		hapd->iconf = newconf;
 		hapd->iconf->channel = oldconf->channel;
 		hapd->iconf->acs = oldconf->acs;
