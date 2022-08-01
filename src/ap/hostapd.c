@@ -172,27 +172,31 @@ static void hostapd_reload_bss(struct hostapd_data *hapd)
 }
 
 
-static void hostapd_clear_old(struct hostapd_iface *iface)
+static void hostapd_clear_old_bss(struct hostapd_data *bss)
 {
-	size_t j;
-
 	/*
 	 * Deauthenticate all stations since the new configuration may not
 	 * allow them to use the BSS anymore.
 	 */
-	for (j = 0; j < iface->num_bss; j++) {
-		hostapd_flush_old_stations(iface->bss[j],
-					   WLAN_REASON_PREV_AUTH_NOT_VALID);
+	hostapd_flush_old_stations(bss, WLAN_REASON_PREV_AUTH_NOT_VALID);
 #ifdef CONFIG_WEP
-		hostapd_broadcast_wep_clear(iface->bss[j]);
+	hostapd_broadcast_wep_clear(bss);
 #endif /* CONFIG_WEP */
 
 #ifndef CONFIG_NO_RADIUS
-		/* TODO: update dynamic data based on changed configuration
-		 * items (e.g., open/close sockets, etc.) */
-		radius_client_flush(iface->bss[j]->radius, 0);
+	/* TODO: update dynamic data based on changed configuration
+	 * items (e.g., open/close sockets, etc.) */
+	radius_client_flush(bss->radius, 0);
 #endif /* CONFIG_NO_RADIUS */
-	}
+}
+
+
+static void hostapd_clear_old(struct hostapd_iface *iface)
+{
+	size_t j;
+
+	for (j = 0; j < iface->num_bss; j++)
+		hostapd_clear_old_bss(iface->bss[j]);
 }
 
 
