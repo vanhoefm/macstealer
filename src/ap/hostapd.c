@@ -2813,6 +2813,21 @@ int hostapd_reload_iface(struct hostapd_iface *hapd_iface)
 }
 
 
+int hostapd_reload_bss_only(struct hostapd_data *bss)
+{
+
+	wpa_printf(MSG_DEBUG, "Reload BSS %s", bss->conf->iface);
+	hostapd_set_security_params(bss->conf, 1);
+	if (hostapd_config_check(bss->iconf, 1) < 0) {
+		wpa_printf(MSG_ERROR, "Updated BSS configuration is invalid");
+		return -1;
+	}
+	hostapd_clear_old_bss(bss);
+	hostapd_reload_bss(bss);
+	return 0;
+}
+
+
 int hostapd_disable_iface(struct hostapd_iface *hapd_iface)
 {
 	size_t j;
