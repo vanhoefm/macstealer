@@ -270,6 +270,43 @@ def test_ap_config_reload_on_sighup_bss_changes(dev, apdev, params):
 
     os.kill(pid, signal.SIGTERM)
 
+def test_ap_config_reload_on_sighup_config_id(dev, apdev, params):
+    """hostapd configuration reload when a config_id is provided"""
+    pidfile = params['prefix'] + ".hostapd.pid"
+    logfile = params['prefix'] + ".hostapd.log"
+    conffile = os.path.abspath(params['prefix'] + ".hostapd.conf")
+    prg = os.path.join(params['logdir'], 'alt-hostapd/hostapd/hostapd')
+    if not os.path.exists(prg):
+        prg = '../../hostapd/hostapd'
+    write_hostapd_config(conffile, apdev[0]['ifname'], "test", bss2=False,
+                         iface_params=["config_id=if1"],
+                         bss_params=[f"bss={apdev[0]['ifname']}_2",
+                                     "ssid=test-2", "config_id=bss2"])
+    cmd = [prg, '-B', '-dddt', '-P', pidfile, '-f', logfile, conffile]
+    res = subprocess.check_call(cmd)
+    if res != 0:
+        raise Exception("Could not start hostapd: %s" % str(res))
+    dev[0].connect("test-2", key_mgmt="NONE", scan_freq="2412")
+
+    write_hostapd_config(conffile, apdev[0]['ifname'], "test-a", bss2=False,
+                         iface_params=["config_id=if1-new"],
+                         bss_params=[f"bss={apdev[0]['ifname']}_2",
+                                     "ssid=test-2", "config_id=bss2"])
+
+    with open(pidfile, "r") as f:
+        pid = int(f.read())
+    os.kill(pid, signal.SIGHUP)
+    ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
+    if ev is not None:
+        raise Exception("Unexpected disconnection when config_id was not changed")
+
+    dev[0].request("REMOVE_NETWORK all")
+    dev[0].wait_disconnected()
+    dev[0].dump_monitor()
+    dev[0].connect("test-a", key_mgmt="NONE", scan_freq="2412")
+
+    os.kill(pid, signal.SIGTERM)
+
 def test_ap_config_reload_before_enable(dev, apdev, params):
     """hostapd configuration reload before enable"""
     hapd = hostapd.add_iface(apdev[0], "bss-1.conf")
