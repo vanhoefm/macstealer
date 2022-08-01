@@ -983,6 +983,14 @@ static int hostapd_ctrl_iface_get_config(struct hostapd_data *hapd,
 		return pos - buf;
 	pos += ret;
 
+	if ((hapd->conf->config_id)) {
+		ret = os_snprintf(pos, end - pos, "config_id=%s\n",
+				  hapd->conf->config_id);
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+	}
+
 #ifdef CONFIG_WPS
 	ret = os_snprintf(pos, end - pos, "wps_state=%s\n",
 			  hapd->conf->wps_state == 0 ? "disabled" :
