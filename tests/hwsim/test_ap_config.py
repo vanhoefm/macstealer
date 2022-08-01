@@ -136,7 +136,8 @@ def test_ap_config_reload_file_while_disabled(dev, apdev, params):
     hapd.enable()
     dev[0].connect("foobar", key_mgmt="NONE", scan_freq="2412")
 
-def write_hostapd_config(conffile, ifname, ssid, ht=True, bss2=False):
+def write_hostapd_config(conffile, ifname, ssid, ht=True, bss2=False,
+                         iface_params=None, bss_params=None):
     with open(conffile, "w") as f:
         f.write("driver=nl80211\n")
         f.write("hw_mode=g\n")
@@ -145,9 +146,15 @@ def write_hostapd_config(conffile, ifname, ssid, ht=True, bss2=False):
             f.write("ieee80211n=1\n")
         f.write("interface=" + ifname + "\n")
         f.write("ssid=" + ssid + "\n")
+        if iface_params:
+            for l in iface_params:
+                f.write(l + "\n")
         if bss2:
             f.write("bss=" + ifname + "_2\n")
             f.write("ssid=" + ssid + "-2\n")
+        if bss_params:
+            for l in bss_params:
+                f.write(l + "\n")
 
 def test_ap_config_reload_on_sighup(dev, apdev, params):
     """hostapd configuration reload modification from file on SIGHUP"""
