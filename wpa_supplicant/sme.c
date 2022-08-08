@@ -1136,8 +1136,12 @@ static int sme_handle_external_auth_start(struct wpa_supplicant *wpa_s,
 		if (!wpas_network_disabled(wpa_s, ssid) &&
 		    ssid_str_len == ssid->ssid_len &&
 		    os_memcmp(ssid_str, ssid->ssid, ssid_str_len) == 0 &&
-		    (ssid->key_mgmt & (WPA_KEY_MGMT_SAE | WPA_KEY_MGMT_FT_SAE)))
+		    (ssid->key_mgmt & (WPA_KEY_MGMT_SAE |
+				       WPA_KEY_MGMT_FT_SAE))) {
+			/* Make sure PT is derived */
+			wpa_s_setup_sae_pt(wpa_s->conf, ssid);
 			break;
+		}
 	}
 	if (!ssid ||
 	    sme_external_auth_send_sae_commit(wpa_s, data->external_auth.bssid,

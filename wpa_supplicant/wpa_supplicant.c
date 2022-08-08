@@ -2257,7 +2257,7 @@ int wpas_update_random_addr_disassoc(struct wpa_supplicant *wpa_s)
 }
 
 
-static void wpa_s_setup_sae_pt(struct wpa_config *conf, struct wpa_ssid *ssid)
+void wpa_s_setup_sae_pt(struct wpa_config *conf, struct wpa_ssid *ssid)
 {
 #ifdef CONFIG_SAE
 	int *groups = conf->sae_groups;
