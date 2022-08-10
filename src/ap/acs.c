@@ -1007,6 +1007,15 @@ static void acs_study(struct hostapd_iface *iface)
 	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax)
 		acs_adjust_center_freq(iface);
 
+	err = hostapd_select_hw_mode(iface);
+	if (err) {
+		wpa_printf(MSG_ERROR,
+			   "ACS: Could not (err: %d) select hw_mode for freq=%d channel=%d",
+			err, iface->freq, iface->conf->channel);
+		err = -1;
+		goto fail;
+	}
+
 	err = 0;
 fail:
 	/*
