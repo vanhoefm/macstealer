@@ -835,6 +835,12 @@ enum qca_radiotap_vendor_ids {
  *
  *      The attributes used with this event are defined in
  *      enum qca_wlan_vendor_attr_scs_rule_config.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_GET_SAR_CAPABILITY: Fetch SAR capabilities
+ *	supported by the WLAN firmware.
+ *
+ *	The attributes used with this command are defined in
+ *	enum qca_wlan_vendor_attr_sar_capability.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -1037,6 +1043,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_SECURE_RANGING_CONTEXT = 216,
 	QCA_NL80211_VENDOR_SUBCMD_COAP_OFFLOAD = 217,
 	QCA_NL80211_VENDOR_SUBCMD_SCS_RULE_CONFIG = 218,
+	QCA_NL80211_VENDOR_SUBCMD_GET_SAR_CAPABILITY = 219,
 };
 
 /* Compatibility defines for previously used subcmd names.
@@ -13184,6 +13191,77 @@ enum qca_wlan_vendor_attr_mlo_links {
 	QCA_WLAN_VENDOR_ATTR_MLO_LINK_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAX =
 	QCA_WLAN_VENDOR_ATTR_MLO_LINK_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_sar_version - This describes the current SAR version
+ * used in the firmware.
+ *
+ * @QCA_WLAN_VENDOR_SAR_VERSION_1: The firmware supports legacy SAR.
+ * In legacy SAR, the firmware supports 5 static and 1 user defined SAR limits.
+ *
+ * @QCA_WLAN_VENDOR_SAR_VERSION_2: The firmware supports SAR version 2,
+ * i.e., SAR Non DBS mode. In SAR version 2, the firmware has 6 SAR tables for
+ * each CTL group. So user can select up to 6 SAR indexes from the current CTL
+ * groups.
+ *
+ * @QCA_WLAN_VENDOR_SAR_VERSION_3: The firmware supports SAR version 3,
+ * i.e., SAR DBS mode. In SAR version 3, the firmware has 6 SAR tables for each
+ * CTL group but user can choose up to 3 SAR set index only, as the top half
+ * of the SAR index (0 to 2) is used for non DBS purpose and the bottom half of
+ * the SAR index (3 to 5) is used for DBS mode.
+ */
+enum qca_wlan_vendor_sar_version {
+	QCA_WLAN_VENDOR_SAR_VERSION_INVALID = 0,
+	QCA_WLAN_VENDOR_SAR_VERSION_1 = 1,
+	QCA_WLAN_VENDOR_SAR_VERSION_2 = 2,
+	QCA_WLAN_VENDOR_SAR_VERSION_3 = 3,
+};
+
+/**
+ * enum qca_wlan_vendor_sar_ctl_group_state - This describes whether
+ * CTL grouping is enabled or disabled in the firmware.
+ *
+ * @QCA_WLAN_VENDOR_SAR_CTL_GROUP_STATE_ENABLED: CTL grouping
+ * is enabled in firmware.
+ *
+ * @QCA_WLAN_VENDOR_SAR_CTL_GROUP_STATE_DISABLED: CTL grouping
+ * is disabled in firmware.
+ *
+ */
+enum qca_wlan_vendor_sar_ctl_group_state {
+	QCA_WLAN_VENDOR_SAR_CTL_GROUP_STATE_INVALID = 0,
+	QCA_WLAN_VENDOR_SAR_CTL_GROUP_STATE_ENABLED = 1,
+	QCA_WLAN_VENDOR_SAR_CTL_GROUP_STATE_DISABLED = 2,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_sar_capability - Used by the vendor command
+ * QCA_NL80211_VENDOR_SUBCMD_GET_SAR_CAPABILITY to get SAR capabilities
+ * supported by the firmware.
+
+ * @QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_VERSION:
+ * u32 attribute. This field describes current SAR version supported by the
+ * firmware.
+ * See enum qca_wlan_vendor_sar_version for more information.
+ * This attribute is mandatory.
+
+ * @QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_CTL_GROUP_STATE:
+ * u32 attribute. This field describes whether CTL groups are enabled
+ * or disabled in the firmware.
+ * See enum qca_wlan_vendor_sar_ctl_group_state for more information.
+ * This attribute is optional.
+ */
+
+enum qca_wlan_vendor_attr_sar_capability {
+	QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_VERSION = 1,
+	QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_CTL_GROUP_STATE = 2,
+
+	/* Keep last */
+	QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_MAX =
+	QCA_WLAN_VENDOR_ATTR_SAR_CAPABILITY_AFTER_LAST - 1,
 };
 
 #endif /* QCA_VENDOR_H */
