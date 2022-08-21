@@ -79,6 +79,18 @@ static void wpas_wps_assoc_with_cred_cancel(struct wpa_supplicant *wpa_s)
 }
 
 
+static struct wpabuf * wpas_wps_get_wps_ie(struct wpa_bss *bss)
+{
+	/* Return the latest receive WPS IE from the AP regardless of whether
+	 * it was from a Beacon frame or Probe Response frame to avoid using
+	 * stale information. */
+	if (bss->beacon_newer)
+		return wpa_bss_get_vendor_ie_multi_beacon(bss,
+							  WPS_IE_VENDOR_TYPE);
+	return wpa_bss_get_vendor_ie_multi(bss, WPS_IE_VENDOR_TYPE);
+}
+
+
 int wpas_wps_eapol_cb(struct wpa_supplicant *wpa_s)
 {
 	if (wpas_p2p_wps_eapol_cb(wpa_s) > 0)
@@ -141,8 +153,7 @@ int wpas_wps_eapol_cb(struct wpa_supplicant *wpa_s)
 			struct wpabuf *wps;
 			struct wps_parse_attr attr;
 
-			wps = wpa_bss_get_vendor_ie_multi(bss,
-							  WPS_IE_VENDOR_TYPE);
+			wps = wpas_wps_get_wps_ie(bss);
 			if (wps && wps_parse_msg(wps, &attr) == 0 &&
 			    attr.wps_state &&
 			    *attr.wps_state == WPS_STATE_CONFIGURED)
@@ -1705,7 +1716,7 @@ int wpas_wps_ssid_bss_match(struct wpa_supplicant *wpa_s,
 	if (!(ssid->key_mgmt & WPA_KEY_MGMT_WPS))
 		return -1;
 
-	wps_ie = wpa_bss_get_vendor_ie_multi(bss, WPS_IE_VENDOR_TYPE);
+	wps_ie = wpas_wps_get_wps_ie(bss);
 	if (eap_is_wps_pbc_enrollee(&ssid->eap)) {
 		if (!wps_ie) {
 			wpa_printf(MSG_DEBUG, "   skip - non-WPS AP");
@@ -1779,13 +1790,13 @@ int wpas_wps_ssid_wildcard_ok(struct wpa_supplicant *wpa_s,
 	int ret = 0;
 
 	if (eap_is_wps_pbc_enrollee(&ssid->eap)) {
-		wps_ie = wpa_bss_get_vendor_ie_multi(bss, WPS_IE_VENDOR_TYPE);
+		wps_ie = wpas_wps_get_wps_ie(bss);
 		if (wps_ie && wps_is_selected_pbc_registrar(wps_ie)) {
 			/* allow wildcard SSID for WPS PBC */
 			ret = 1;
 		}
 	} else if (eap_is_wps_pin_enrollee(&ssid->eap)) {
-		wps_ie = wpa_bss_get_vendor_ie_multi(bss, WPS_IE_VENDOR_TYPE);
+		wps_ie = wpas_wps_get_wps_ie(bss);
 		if (wps_ie &&
 		    (wps_is_addr_authorized(wps_ie, wpa_s->own_addr, 1) ||
 		     wpa_s->scan_runs >= WPS_PIN_SCAN_IGNORE_SEL_REG)) {
@@ -1907,7 +1918,8 @@ void wpas_wps_notify_scan_results(struct wpa_supplicant *wpa_s)
 
 	dl_list_for_each(bss, &wpa_s->bss, struct wpa_bss, list) {
 		struct wpabuf *ie;
-		ie = wpa_bss_get_vendor_ie_multi(bss, WPS_IE_VENDOR_TYPE);
+
+		ie = wpas_wps_get_wps_ie(bss);
 		if (!ie)
 			continue;
 		if (wps_is_selected_pbc_registrar(ie))
