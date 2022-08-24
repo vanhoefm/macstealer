@@ -3884,13 +3884,6 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 		return;
 	if (WPA_GET_BE24(buf) != OUI_WFA || buf[3] != DPP_OUI_TYPE)
 		return;
-#ifdef CONFIG_TESTING_OPTIONS
-	if (wpa_s->dpp_discard_public_action) {
-		wpa_printf(MSG_DEBUG,
-			   "TESTING: Discard received DPP Public Action frame");
-		return;
-	}
-#endif /* CONFIG_TESTING_OPTIONS */
 	hdr = buf;
 	buf += 4;
 	len -= 4;
@@ -3902,6 +3895,15 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 		   "DPP: Received DPP Public Action frame crypto suite %u type %d from "
 		   MACSTR " freq=%u",
 		   crypto_suite, type, MAC2STR(src), freq);
+#ifdef CONFIG_TESTING_OPTIONS
+	if (wpa_s->dpp_discard_public_action &&
+	    type != DPP_PA_PEER_DISCOVERY_RESP &&
+	    type != DPP_PA_PRIV_PEER_INTRO_NOTIFY) {
+		wpa_printf(MSG_DEBUG,
+			   "TESTING: Discard received DPP Public Action frame");
+		return;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
 	if (crypto_suite != 1) {
 		wpa_printf(MSG_DEBUG, "DPP: Unsupported crypto suite %u",
 			   crypto_suite);
