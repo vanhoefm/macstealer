@@ -5020,7 +5020,7 @@ static int hpke_encap(struct hpke_context *ctx, struct crypto_ec_key *pk_r,
 	EVP_PKEY_CTX *pctx = NULL;
 	struct crypto_ec_key *sk_e;
 	int res = -1;
-	u8 dhss[HPKE_MAX_SHARED_SECRET_LEN];
+	u8 dhss[HPKE_MAX_SHARED_SECRET_LEN + 16];
 	size_t dhss_len;
 	struct wpabuf *enc_buf = NULL, *pk_rm = NULL;
 
@@ -5033,13 +5033,13 @@ static int hpke_encap(struct hpke_context *ctx, struct crypto_ec_key *pk_r,
 	}
 
 	/* dh = DH(skE, pkR) */
+	dhss_len = sizeof(dhss);
 	pctx = EVP_PKEY_CTX_new((EVP_PKEY *) sk_e, NULL);
 	if (!pctx ||
 	    EVP_PKEY_derive_init(pctx) != 1 ||
 	    EVP_PKEY_derive_set_peer(pctx, (EVP_PKEY *) pk_r) != 1 ||
-	    EVP_PKEY_derive(pctx, NULL, &dhss_len) != 1 ||
-	    dhss_len > HPKE_MAX_SHARED_SECRET_LEN ||
-	    EVP_PKEY_derive(pctx, dhss, &dhss_len) != 1) {
+	    EVP_PKEY_derive(pctx, dhss, &dhss_len) != 1 ||
+	    dhss_len > HPKE_MAX_SHARED_SECRET_LEN) {
 		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_derive failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
@@ -5184,7 +5184,7 @@ static int hpke_decap(struct hpke_context *ctx, const u8 *enc,
 	size_t len;
 	int res = -1;
 	struct crypto_ec_key *pk_e = NULL;
-	u8 dhss[HPKE_MAX_SHARED_SECRET_LEN];
+	u8 dhss[HPKE_MAX_SHARED_SECRET_LEN + 16];
 	size_t dhss_len;
 
 	/* pkE = DeserializePublicKey(enc) */
@@ -5198,13 +5198,13 @@ static int hpke_decap(struct hpke_context *ctx, const u8 *enc,
 	if (!pk_e)
 		return -1; /* invalid public key point */
 	/* dh = DH(skR, pkE) */
+	dhss_len = sizeof(dhss);
 	pctx = EVP_PKEY_CTX_new((EVP_PKEY *) sk_r, NULL);
 	if (!pctx ||
 	    EVP_PKEY_derive_init(pctx) != 1 ||
 	    EVP_PKEY_derive_set_peer(pctx, (EVP_PKEY *) pk_e) != 1 ||
-	    EVP_PKEY_derive(pctx, NULL, &dhss_len) != 1 ||
-	    dhss_len > HPKE_MAX_SHARED_SECRET_LEN ||
-	    EVP_PKEY_derive(pctx, dhss, &dhss_len) != 1) {
+	    EVP_PKEY_derive(pctx, dhss, &dhss_len) != 1 ||
+	    dhss_len > HPKE_MAX_SHARED_SECRET_LEN) {
 		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_derive failed: %s",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
