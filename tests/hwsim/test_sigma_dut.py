@@ -3776,8 +3776,8 @@ def test_sigma_dut_dpp_tcp_configurator_init_mutual(dev, apdev):
 
 def test_sigma_dut_dpp_tcp_configurator_init_mutual_unsupported_curve(dev, apdev):
     """sigma_dut DPP TCP Configurator as initiator with mutual authentication (unsupported curve)"""
-    check_dpp_capab(dev[0], min_ver=2)
-    check_dpp_capab(dev[1], min_ver=2)
+    check_dpp_capab(dev[0], min_ver=3)
+    check_dpp_capab(dev[1], min_ver=3)
     sigma = start_sigma_dut(dev[0].ifname)
     try:
         id_c = dev[1].dpp_bootstrap_gen(supported_curves="P-256:P-384")
