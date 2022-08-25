@@ -4921,29 +4921,20 @@ static void wpas_dpp_chirp_start(struct wpa_supplicant *wpa_s)
 }
 
 
-static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
-					    struct wpa_scan_results *scan_res)
+static int * wpas_dpp_presence_ann_channels(struct wpa_supplicant *wpa_s,
+					    struct dpp_bootstrap_info *bi)
 {
-	struct dpp_bootstrap_info *bi = wpa_s->dpp_chirp_bi;
 	unsigned int i;
 	struct hostapd_hw_modes *mode;
 	int c;
 	struct wpa_bss *bss;
 	bool chan6 = wpa_s->hw.modes == NULL;
-
-	if (!bi && !wpa_s->dpp_reconfig_ssid)
-		return;
-
-	wpa_s->dpp_chirp_scan_done = 1;
-
-	os_free(wpa_s->dpp_chirp_freqs);
-	wpa_s->dpp_chirp_freqs = NULL;
+	int *freqs = NULL;
 
 	/* Channels from own bootstrapping info */
 	if (bi) {
 		for (i = 0; i < bi->num_freq; i++)
-			int_array_add_unique(&wpa_s->dpp_chirp_freqs,
-					     bi->freq[i]);
+			int_array_add_unique(&freqs, bi->freq[i]);
 	}
 
 	/* Preferred chirping channels */
@@ -4961,7 +4952,7 @@ static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
 		}
 	}
 	if (chan6)
-		int_array_add_unique(&wpa_s->dpp_chirp_freqs, 2437);
+		int_array_add_unique(&freqs, 2437);
 
 	mode = get_mode(wpa_s->hw.modes, wpa_s->hw.num_modes,
 			HOSTAPD_MODE_IEEE80211A, false);
@@ -4980,9 +4971,9 @@ static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
 				chan149 = 1;
 		}
 		if (chan149)
-			int_array_add_unique(&wpa_s->dpp_chirp_freqs, 5745);
+			int_array_add_unique(&freqs, 5745);
 		else if (chan44)
-			int_array_add_unique(&wpa_s->dpp_chirp_freqs, 5220);
+			int_array_add_unique(&freqs, 5220);
 	}
 
 	mode = get_mode(wpa_s->hw.modes, wpa_s->hw.num_modes,
@@ -4995,7 +4986,7 @@ static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
 					   HOSTAPD_CHAN_RADAR)) ||
 			    chan->freq != 60480)
 				continue;
-			int_array_add_unique(&wpa_s->dpp_chirp_freqs, 60480);
+			int_array_add_unique(&freqs, 60480);
 			break;
 		}
 	}
@@ -5004,9 +4995,25 @@ static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
 	 * Connectivity element */
 	dl_list_for_each(bss, &wpa_s->bss, struct wpa_bss, list) {
 		if (wpa_bss_get_vendor_ie(bss, DPP_CC_IE_VENDOR_TYPE))
-			int_array_add_unique(&wpa_s->dpp_chirp_freqs,
-					     bss->freq);
+			int_array_add_unique(&freqs, bss->freq);
 	}
+
+	return freqs;
+}
+
+
+static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
+					    struct wpa_scan_results *scan_res)
+{
+	struct dpp_bootstrap_info *bi = wpa_s->dpp_chirp_bi;
+
+	if (!bi && !wpa_s->dpp_reconfig_ssid)
+		return;
+
+	wpa_s->dpp_chirp_scan_done = 1;
+
+	os_free(wpa_s->dpp_chirp_freqs);
+	wpa_s->dpp_chirp_freqs = wpas_dpp_presence_ann_channels(wpa_s, bi);
 
 	if (!wpa_s->dpp_chirp_freqs ||
 	    eloop_register_timeout(0, 0, wpas_dpp_chirp_next, wpa_s, NULL) < 0)
