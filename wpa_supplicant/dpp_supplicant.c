@@ -5322,40 +5322,6 @@ static int wpas_dpp_pb_announce(struct wpa_supplicant *wpa_s, int freq);
 static void wpas_dpp_pb_next(void *eloop_ctx, void *timeout_ctx);
 
 
-static bool wpas_dpp_pb_chan_ok(struct hostapd_channel_data *chan)
-{
-	/* For now, do not include 6 GHz channels since finding a Configurator
-	 * from a large number of channels would take excessive amount of time.
-	 */
-	if (is_6ghz_freq(chan->freq))
-		return false;
-
-	return !(chan->flag & (HOSTAPD_CHAN_DISABLED |
-			       HOSTAPD_CHAN_NO_IR |
-			       HOSTAPD_CHAN_RADAR));
-}
-
-
-static int wpas_dpp_pb_channels(struct wpa_supplicant *wpa_s)
-{
-	struct hostapd_hw_modes *mode;
-	int m, c;
-
-	for (m = 0; m < wpa_s->hw.num_modes; m++) {
-		mode = &wpa_s->hw.modes[m];
-		for (c = 0; c < mode->num_channels; c++) {
-			struct hostapd_channel_data *chan = &mode->channels[c];
-
-			if (!wpas_dpp_pb_chan_ok(chan))
-				continue;
-			int_array_add_unique(&wpa_s->dpp_pb_freqs, chan->freq);
-		}
-	}
-
-	return wpa_s->dpp_pb_freqs ? 0 : -1;
-}
-
-
 static void wpas_dpp_pb_tx_status(struct wpa_supplicant *wpa_s,
 				  unsigned int freq, const u8 *dst,
 				  const u8 *src, const u8 *bssid,
@@ -5544,6 +5510,22 @@ static int wpas_dpp_push_button_configurator(struct wpa_supplicant *wpa_s,
 }
 
 
+static void wpas_dpp_pb_scan_res_handler(struct wpa_supplicant *wpa_s,
+					 struct wpa_scan_results *scan_res)
+{
+	if (!wpa_s->dpp_pb_time.sec && !wpa_s->dpp_pb_time.usec)
+		return;
+
+	os_free(wpa_s->dpp_pb_freqs);
+	wpa_s->dpp_pb_freqs = wpas_dpp_presence_ann_channels(wpa_s, NULL);
+
+	wpa_printf(MSG_DEBUG, "DPP: Scan completed for PB discovery");
+	if (!wpa_s->dpp_pb_freqs ||
+	    eloop_register_timeout(0, 0, wpas_dpp_pb_next, wpa_s, NULL) < 0)
+		wpas_dpp_push_button_stop(wpa_s);
+}
+
+
 int wpas_dpp_push_button(struct wpa_supplicant *wpa_s, const char *cmd)
 {
 	int res;
@@ -5563,8 +5545,6 @@ int wpas_dpp_push_button(struct wpa_supplicant *wpa_s, const char *cmd)
 
 	wpa_s->dpp_pb_configurator = false;
 
-	if (wpas_dpp_pb_channels(wpa_s) < 0)
-		return -1;
 	wpa_s->dpp_pb_freq_idx = 0;
 
 	res = dpp_bootstrap_gen(wpa_s->dpp, "type=pkex");
@@ -5582,7 +5562,12 @@ int wpas_dpp_push_button(struct wpa_supplicant *wpa_s, const char *cmd)
 	if (!wpa_s->dpp_pb_announcement)
 		return -1;
 
-	return eloop_register_timeout(0, 0, wpas_dpp_pb_next, wpa_s, NULL);
+	wpa_printf(MSG_DEBUG,
+		   "DPP: Scan to create channel list for PB discovery");
+	wpa_s->scan_req = MANUAL_SCAN_REQ;
+	wpa_s->scan_res_handler = wpas_dpp_pb_scan_res_handler;
+	wpa_supplicant_req_scan(wpa_s, 0, 0);
+	return 0;
 }
 
 
@@ -5630,6 +5615,11 @@ void wpas_dpp_push_button_stop(struct wpa_supplicant *wpa_s)
 
 	str_clear_free(wpa_s->dpp_pb_cmd);
 	wpa_s->dpp_pb_cmd = NULL;
+
+	if (wpa_s->scan_res_handler == wpas_dpp_pb_scan_res_handler) {
+		wpas_abort_ongoing_scan(wpa_s);
+		wpa_s->scan_res_handler = NULL;
+	}
 }
 
 #endif /* CONFIG_DPP3 */
