@@ -282,6 +282,7 @@ def run_dpp_controller_relay_pkex(dev, apdev, params):
 
 def dpp_pb_ap(apdev):
     params = {"ssid": "sae",
+              "dpp_configurator_connectivity": "1",
               "wpa": "2",
               "wpa_key_mgmt": "SAE",
               "ieee80211w": "2",
@@ -384,7 +385,7 @@ def test_dpp_push_button_session_overlap_configurator(dev, apdev):
     check_dpp_capab(dev[1], min_ver=3)
     check_dpp_capab(dev[2], min_ver=3)
 
-    dev[0].dpp_listen(2412)
+    dev[0].dpp_listen(2437)
     conf_id = dev[1].dpp_configurator_add()
     ssid = "example"
     ssid_hex = binascii.hexlify(ssid.encode()).decode()
@@ -528,7 +529,7 @@ def test_dpp_push_button_wpas_conf(dev, apdev):
     check_dpp_capab(dev[0], min_ver=3)
     check_dpp_capab(dev[1], min_ver=3)
 
-    dev[1].dpp_listen(2412)
+    dev[1].dpp_listen(2437)
     conf_id = dev[1].dpp_configurator_add()
     ssid = "example"
     ssid_hex = binascii.hexlify(ssid.encode()).decode()

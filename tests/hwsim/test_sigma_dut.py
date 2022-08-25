@@ -4186,6 +4186,7 @@ def test_sigma_dut_dpp_pb_sta(dev, apdev):
     check_sae_capab(dev[0])
 
     params = {"ssid": "sae",
+              "dpp_configurator_connectivity": "1",
               "wpa": "2",
               "wpa_key_mgmt": "SAE",
               "ieee80211w": "2",
@@ -4223,6 +4224,7 @@ def test_sigma_dut_dpp_pb_sta_first(dev, apdev):
     check_sae_capab(dev[0])
 
     params = {"ssid": "sae",
+              "dpp_configurator_connectivity": "1",
               "wpa": "2",
               "wpa_key_mgmt": "SAE",
               "ieee80211w": "2",
@@ -4268,6 +4270,7 @@ def test_sigma_dut_dpp_pb_sta_session_overlap(dev, apdev):
     check_sae_capab(dev[0])
 
     params = {"ssid": "sae",
+              "dpp_configurator_connectivity": "1",
               "wpa": "2",
               "wpa_key_mgmt": "SAE",
               "ieee80211w": "2",
@@ -4275,6 +4278,7 @@ def test_sigma_dut_dpp_pb_sta_session_overlap(dev, apdev):
               "sae_password": "sae-password"}
     hapd = hostapd.add_ap(apdev[0], params)
     params = {"ssid": "another sae",
+              "dpp_configurator_connectivity": "1",
               "channel": "11",
               "wpa": "2",
               "wpa_key_mgmt": "SAE",
@@ -4352,6 +4356,7 @@ def test_sigma_dut_dpp_pb_sta_misbehavior(dev, apdev):
     check_sae_capab(dev[0])
 
     params = {"ssid": "sae",
+              "dpp_configurator_connectivity": "1",
               "wpa": "2",
               "wpa_key_mgmt": "SAE",
               "ieee80211w": "2",
@@ -4390,7 +4395,7 @@ def test_sigma_dut_dpp_pb_ap(dev, apdev, params):
         try:
             sigma_dut_cmd_check("ap_reset_default,program,DPP")
 
-            sigma_dut_cmd_check("ap_set_wireless,NAME,AP,CHANNEL,1,SSID,test-sae,MODE,11ng")
+            sigma_dut_cmd_check("ap_set_wireless,NAME,AP,CHANNEL,6,SSID,test-sae,MODE,11ng")
             sigma_dut_cmd_check("ap_set_security,NAME,AP,KEYMGNT,WPA2-SAE,PSK,12345678")
             sigma_dut_cmd_check("ap_config_commit,NAME,AP")
 
