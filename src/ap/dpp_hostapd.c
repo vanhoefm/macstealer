@@ -3427,7 +3427,7 @@ int hostapd_dpp_add_controller(struct hostapd_data *hapd, const char *cmd)
 	pos = os_strchr(tmp, ' ');
 	if (!pos)
 		goto fail;
-	pos++;
+	*pos++ = '\0';
 	if (hostapd_parse_ip_addr(tmp, &addr) < 0 ||
 	    hexstr2bin(pos, pkhash, SHA256_MAC_LEN) < 0)
 		goto fail;
