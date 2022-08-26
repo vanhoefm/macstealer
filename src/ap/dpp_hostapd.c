@@ -2439,13 +2439,6 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 
 	hapd->dpp_pkex = pkex;
 	msg = hapd->dpp_pkex->exchange_req;
-	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
-		" freq=%u type=%d", MAC2STR(src), freq,
-		DPP_PA_PKEX_EXCHANGE_REQ);
-	hostapd_drv_send_action(hapd, pkex->freq, 0, src,
-				wpabuf_head(msg), wpabuf_len(msg));
-	pkex->exch_req_wait_time = 2000;
-	pkex->exch_req_tries = 1;
 
 	if (ifaces->dpp_pb_cmd) {
 		/* Use the externally provided configuration */
@@ -2458,7 +2451,7 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 		}
 		os_snprintf(hapd->dpp_pkex_auth_cmd, len, " own=%d %s",
 			    hapd->dpp_pkex_bi->id, ifaces->dpp_pb_cmd);
-		return;
+		goto send_frame;
 	}
 
 	/* Build config based on the current AP configuration */
@@ -2545,6 +2538,15 @@ static void hostapd_dpp_pb_pkex_init(struct hostapd_data *hapd,
 		hostapd_dpp_push_button_stop(hapd);
 		return;
 	}
+
+send_frame:
+	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
+		" freq=%u type=%d", MAC2STR(src), freq,
+		DPP_PA_PKEX_EXCHANGE_REQ);
+	hostapd_drv_send_action(hapd, pkex->freq, 0, src,
+				wpabuf_head(msg), wpabuf_len(msg));
+	pkex->exch_req_wait_time = 2000;
+	pkex->exch_req_tries = 1;
 }
 
 
