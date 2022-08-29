@@ -507,9 +507,11 @@ static void rx_data_bss_prot(struct wlantest *wt,
 
 	if (sta == NULL)
 		return;
-	if (sta->pairwise_cipher & (WPA_CIPHER_TKIP | WPA_CIPHER_CCMP) &&
+	if (sta->pairwise_cipher & (WPA_CIPHER_TKIP | WPA_CIPHER_CCMP |
+				    WPA_CIPHER_GCMP | WPA_CIPHER_GCMP_256 |
+				    WPA_CIPHER_CCMP_256) &&
 	    !(data[3] & 0x20)) {
-		add_note(wt, MSG_INFO, "Expected TKIP/CCMP frame from "
+		add_note(wt, MSG_INFO, "Expected TKIP/CCMP/GCMP frame from "
 			 MACSTR " did not have ExtIV bit set to 1",
 			 MAC2STR(src));
 		return;
@@ -528,9 +530,12 @@ static void rx_data_bss_prot(struct wlantest *wt,
 				 MAC2STR(hdr->addr2), data[1],
 				 (data[0] | 0x20) & 0x7f);
 		}
-	} else if (tk || sta->pairwise_cipher == WPA_CIPHER_CCMP) {
+	} else if (tk || sta->pairwise_cipher == WPA_CIPHER_CCMP ||
+		   sta->pairwise_cipher == WPA_CIPHER_GCMP ||
+		   sta->pairwise_cipher == WPA_CIPHER_GCMP_256 ||
+		   sta->pairwise_cipher == WPA_CIPHER_CCMP_256) {
 		if (data[2] != 0 || (data[3] & 0x1f) != 0) {
-			add_note(wt, MSG_INFO, "CCMP frame from " MACSTR
+			add_note(wt, MSG_INFO, "CCMP/GCMP frame from " MACSTR
 				 " used non-zero reserved bit",
 				 MAC2STR(hdr->addr2));
 		}
