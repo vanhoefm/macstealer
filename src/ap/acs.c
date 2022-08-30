@@ -420,19 +420,24 @@ static int acs_usable_bw160_chan(const struct hostapd_channel_data *chan)
 static int acs_survey_is_sufficient(struct freq_survey *survey)
 {
 	if (!(survey->filled & SURVEY_HAS_NF)) {
-		wpa_printf(MSG_INFO, "ACS: Survey is missing noise floor");
+		wpa_printf(MSG_INFO,
+			   "ACS: Survey for freq %d is missing noise floor",
+			   survey->freq);
 		return 0;
 	}
 
 	if (!(survey->filled & SURVEY_HAS_CHAN_TIME)) {
-		wpa_printf(MSG_INFO, "ACS: Survey is missing channel time");
+		wpa_printf(MSG_INFO,
+			   "ACS: Survey for freq %d is missing channel time",
+			   survey->freq);
 		return 0;
 	}
 
 	if (!(survey->filled & SURVEY_HAS_CHAN_TIME_BUSY) &&
 	    !(survey->filled & SURVEY_HAS_CHAN_TIME_RX)) {
 		wpa_printf(MSG_INFO,
-			   "ACS: Survey is missing RX and busy time (at least one is required)");
+			   "ACS: Survey for freq %d is missing RX and busy time (at least one is required)",
+			   survey->freq);
 		return 0;
 	}
 
