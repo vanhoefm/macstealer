@@ -75,6 +75,14 @@ int hostapd_build_ap_extra_ies(struct hostapd_data *hapd,
 
 	*beacon_ret = *proberesp_ret = *assocresp_ret = NULL;
 
+#ifdef NEED_AP_MLME
+	pos = buf;
+	pos = hostapd_eid_rm_enabled_capab(hapd, pos, sizeof(buf));
+	if (add_buf_data(&assocresp, buf, pos - buf) < 0 ||
+	    add_buf_data(&proberesp, buf, pos - buf) < 0)
+		goto fail;
+#endif /* NEED_AP_MLME */
+
 	pos = buf;
 	pos = hostapd_eid_time_adv(hapd, pos);
 	if (add_buf_data(&beacon, buf, pos - buf) < 0)
