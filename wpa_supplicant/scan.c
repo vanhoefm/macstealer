@@ -1373,7 +1373,7 @@ scan:
 	    is_6ghz_supported(wpa_s)) {
 		int i;
 
-		/* Exclude 5 GHz channels from the full scan for P2P connection
+		/* Exclude 6 GHz channels from the full scan for P2P connection
 		 * since the 6 GHz band is disabled for P2P uses. */
 		wpa_printf(MSG_DEBUG,
 			   "P2P: 6 GHz disabled - update the scan frequency list");
