@@ -2443,20 +2443,37 @@ static u8 * mgmt_decrypt(struct wlantest *wt, const u8 *data, size_t len,
 }
 
 
+static bool is_robust_action_category(u8 category)
+{
+	return category != WLAN_ACTION_PUBLIC &&
+		category != WLAN_ACTION_HT &&
+		category != WLAN_ACTION_UNPROTECTED_WNM &&
+		category != WLAN_ACTION_SELF_PROTECTED &&
+		category != WLAN_ACTION_UNPROTECTED_DMG &&
+		category != WLAN_ACTION_VHT &&
+		category != WLAN_ACTION_UNPROTECTED_S1G &&
+		category != WLAN_ACTION_HE &&
+		category != WLAN_ACTION_EHT &&
+		category != WLAN_ACTION_VENDOR_SPECIFIC;
+}
+
+
 static int check_mgmt_ccmp_gcmp(struct wlantest *wt, const u8 *data, size_t len)
 {
 	const struct ieee80211_mgmt *mgmt;
 	u16 fc;
 	struct wlantest_bss *bss;
 	struct wlantest_sta *sta;
+	int category = -1;
 
 	mgmt = (const struct ieee80211_mgmt *) data;
 	fc = le_to_host16(mgmt->frame_control);
 
-	if (WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION ||
-	    WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION_NO_ACK) {
-		if (len > 24 &&
-		    mgmt->u.action.category == WLAN_ACTION_PUBLIC)
+	if ((WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION ||
+	     WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION_NO_ACK) &&
+	    len > 24) {
+		category = mgmt->u.action.category;
+		if (!is_robust_action_category(category))
 			return 0; /* Not a robust management frame */
 	}
 
@@ -2476,8 +2493,9 @@ static int check_mgmt_ccmp_gcmp(struct wlantest *wt, const u8 *data, size_t len)
 	     WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION ||
 	     WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_ACTION_NO_ACK)) {
 		add_note(wt, MSG_INFO,
-			 "Robust individually-addressed management frame sent without CCMP/GCMP by "
-			 MACSTR, MAC2STR(mgmt->sa));
+			 "Robust individually-addressed management frame (stype=%u category=%d) sent without CCMP/GCMP by "
+			 MACSTR, WLAN_FC_GET_STYPE(fc), category,
+			 MAC2STR(mgmt->sa));
 		return -1;
 	}
 
