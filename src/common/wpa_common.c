@@ -3209,11 +3209,10 @@ static int wpa_parse_generic(const u8 *pos, struct wpa_eapol_ie_parse *ie)
 		return 0;
 	}
 
-	if (left > 2 && selector == RSN_KEY_DATA_MAC_ADDR) {
+	if (left >= ETH_ALEN && selector == RSN_KEY_DATA_MAC_ADDR) {
 		ie->mac_addr = p;
-		ie->mac_addr_len = left;
-		wpa_hexdump(MSG_DEBUG, "WPA: MAC Address in EAPOL-Key",
-			    pos, dlen);
+		wpa_printf(MSG_DEBUG, "WPA: MAC Address in EAPOL-Key: " MACSTR,
+			   MAC2STR(ie->mac_addr));
 		return 0;
 	}
 

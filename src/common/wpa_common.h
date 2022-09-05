@@ -573,7 +573,6 @@ struct wpa_eapol_ie_parse {
 	const u8 *gtk;
 	size_t gtk_len;
 	const u8 *mac_addr;
-	size_t mac_addr_len;
 	const u8 *igtk;
 	size_t igtk_len;
 	const u8 *bigtk;
