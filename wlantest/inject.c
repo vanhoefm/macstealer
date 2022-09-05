@@ -143,7 +143,7 @@ static int wlantest_inject_prot_bc(struct wlantest *wt,
 	else
 		crypt = ccmp_encrypt(incorrect_key ? stub :
 				     bss->gtk[bss->gtk_idx],
-				     frame, len, hdrlen, NULL, pn,
+				     frame, len, hdrlen, NULL, NULL, NULL, pn,
 				     bss->gtk_idx, &crypt_len);
 
 	if (crypt == NULL)
@@ -246,7 +246,7 @@ static int wlantest_inject_prot(struct wlantest *wt, struct wlantest_bss *bss,
 	os_memset(stub, 0x11, sizeof(stub));
 	if (tk)
 		crypt = ccmp_encrypt(incorrect_key ? stub : tk,
-				     frame, len, hdrlen, qos, pn, 0,
+				     frame, len, hdrlen, qos, NULL, NULL, pn, 0,
 				     &crypt_len);
 	else if (sta->pairwise_cipher == WPA_CIPHER_TKIP)
 		crypt = tkip_encrypt(incorrect_key ? stub : sta->ptk.tk,
@@ -254,7 +254,7 @@ static int wlantest_inject_prot(struct wlantest *wt, struct wlantest_bss *bss,
 				     &crypt_len);
 	else
 		crypt = ccmp_encrypt(incorrect_key ? stub : sta->ptk.tk,
-				     frame, len, hdrlen, qos, pn, 0,
+				     frame, len, hdrlen, qos, NULL, NULL, pn, 0,
 				     &crypt_len);
 
 	if (crypt == NULL) {

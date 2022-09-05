@@ -107,7 +107,8 @@ static void test_vector_ccmp(void)
 	wpa_hexdump(MSG_INFO, "802.11 Header", frame, 24);
 	wpa_hexdump(MSG_INFO, "Plaintext Data", frame + 24, sizeof(frame) - 24);
 
-	enc = ccmp_encrypt(tk, frame, sizeof(frame), 24, NULL, pn, 0, &enc_len);
+	enc = ccmp_encrypt(tk, frame, sizeof(frame), 24, NULL, NULL, NULL, pn,
+			   0, &enc_len);
 	if (enc == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to encrypt CCMP frame");
 		return;
@@ -119,7 +120,7 @@ static void test_vector_ccmp(void)
 
 	wpa_debug_level = MSG_INFO;
 	plain = ccmp_decrypt(tk, (const struct ieee80211_hdr *) enc,
-			     enc + 24, enc_len - 24, &plain_len);
+			     enc + 24, NULL, NULL, enc_len - 24, &plain_len);
 	wpa_debug_level = MSG_EXCESSIVE;
 	os_free(enc);
 
@@ -401,7 +402,8 @@ static void test_vector_ccmp_mgmt(void)
 	wpa_hexdump(MSG_INFO, "802.11 Header", frame, 24);
 	wpa_hexdump(MSG_INFO, "Plaintext Data", frame + 24, sizeof(frame) - 24);
 
-	enc = ccmp_encrypt(tk, frame, sizeof(frame), 24, NULL, pn, 0, &enc_len);
+	enc = ccmp_encrypt(tk, frame, sizeof(frame), 24, NULL, NULL, NULL, pn,
+			   0, &enc_len);
 	if (enc == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to encrypt CCMP frame");
 		return;
@@ -411,7 +413,7 @@ static void test_vector_ccmp_mgmt(void)
 
 	wpa_debug_level = MSG_INFO;
 	plain = ccmp_decrypt(tk, (const struct ieee80211_hdr *) enc,
-			     enc + 24, enc_len - 24, &plain_len);
+			     enc + 24, NULL, NULL, enc_len - 24, &plain_len);
 	wpa_debug_level = MSG_EXCESSIVE;
 	os_free(enc);
 
@@ -580,6 +582,7 @@ static int run_gcmp(int idx, const struct gcmp_test *vector)
 			   vector->hdr_len,
 			   vector->hdr_len == 26 ?
 			   vector->frame + vector->hdr_len - 2 : NULL,
+			   NULL, NULL,
 			   vector->pn, 0, &enc_len);
 	if (enc == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to encrypt GCMP frame");
@@ -603,7 +606,7 @@ static int run_gcmp(int idx, const struct gcmp_test *vector)
 
 	wpa_debug_level = MSG_INFO;
 	plain = gcmp_decrypt(vector->tk, sizeof(vector->tk),
-			     (const struct ieee80211_hdr *) enc,
+			     (const struct ieee80211_hdr *) enc, NULL, NULL,
 			     enc + vector->hdr_len,
 			     enc_len - vector->hdr_len, &plain_len);
 	wpa_debug_level = MSG_EXCESSIVE;
@@ -689,7 +692,7 @@ static int test_vector_gcmp_256(void)
 	wpa_hexdump(MSG_INFO, "Plaintext Data", frame + 26, sizeof(frame) - 26);
 
 	enc = gcmp_encrypt(tk, sizeof(tk), frame, sizeof(frame), 26, frame + 24,
-			   pn, 0, &enc_len);
+			   NULL, NULL, pn, 0, &enc_len);
 	if (enc == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to encrypt GCMP frame");
 		return 1;
@@ -705,7 +708,7 @@ static int test_vector_gcmp_256(void)
 
 	wpa_debug_level = MSG_INFO;
 	plain = gcmp_decrypt(tk, sizeof(tk), (const struct ieee80211_hdr *) enc,
-			     enc + 26, enc_len - 26, &plain_len);
+			     NULL, NULL, enc + 26, enc_len - 26, &plain_len);
 	wpa_debug_level = MSG_EXCESSIVE;
 	os_free(enc);
 
@@ -766,8 +769,8 @@ static int test_vector_ccmp_256(void)
 	wpa_hexdump(MSG_INFO, "802.11 Header", frame, 24);
 	wpa_hexdump(MSG_INFO, "Plaintext Data", frame + 24, sizeof(frame) - 24);
 
-	enc = ccmp_256_encrypt(tk, frame, sizeof(frame), 24, NULL, pn, 0,
-			       &enc_len);
+	enc = ccmp_256_encrypt(tk, frame, sizeof(frame), 24, NULL, NULL, NULL,
+			       pn, 0, &enc_len);
 	if (enc == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to encrypt CCMP frame");
 		return 1;
@@ -783,7 +786,8 @@ static int test_vector_ccmp_256(void)
 
 	wpa_debug_level = MSG_INFO;
 	plain = ccmp_256_decrypt(tk, (const struct ieee80211_hdr *) enc,
-				 enc + 24, enc_len - 24, &plain_len);
+				 enc + 24, NULL, NULL, enc_len - 24,
+				 &plain_len);
 	wpa_debug_level = MSG_EXCESSIVE;
 	os_free(enc);
 
