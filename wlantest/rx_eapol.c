@@ -68,6 +68,10 @@ static void rx_data_eapol_key_1_of_4(struct wlantest *wt, const u8 *dst,
 	struct wlantest_sta *sta;
 	const struct ieee802_1x_hdr *eapol;
 	const struct wpa_eapol_key *hdr;
+	const u8 *key_data, *mic;
+	size_t mic_len;
+	u16 key_data_len;
+	struct wpa_eapol_ie_parse ie;
 
 	wpa_printf(MSG_DEBUG, "EAPOL-Key 1/4 " MACSTR " -> " MACSTR,
 		   MAC2STR(src), MAC2STR(dst));
@@ -80,6 +84,8 @@ static void rx_data_eapol_key_1_of_4(struct wlantest *wt, const u8 *dst,
 
 	eapol = (const struct ieee802_1x_hdr *) data;
 	hdr = (const struct wpa_eapol_key *) (eapol + 1);
+	mic_len = wpa_mic_len(sta->key_mgmt, PMK_LEN);
+	mic = (const u8 *) (hdr + 1);
 	if (is_zero(hdr->key_nonce, WPA_NONCE_LEN)) {
 		add_note(wt, MSG_INFO, "EAPOL-Key 1/4 from " MACSTR
 			 " used zero nonce", MAC2STR(src));
@@ -89,6 +95,28 @@ static void rx_data_eapol_key_1_of_4(struct wlantest *wt, const u8 *dst,
 			 " used non-zero Key RSC", MAC2STR(src));
 	}
 	os_memcpy(sta->anonce, hdr->key_nonce, WPA_NONCE_LEN);
+	key_data = mic + mic_len + 2;
+	key_data_len = WPA_GET_BE16(mic + mic_len);
+
+	if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0) {
+		add_note(wt, MSG_INFO, "Failed to parse EAPOL-Key Key Data");
+		return;
+	}
+
+	if (ie.mac_addr) {
+		if (is_zero_ether_addr(bss->mld_mac_addr)) {
+			wpa_printf(MSG_DEBUG,
+				   "Learned AP MLD MAC Address from EAPOL-Key 1/4: "
+				   MACSTR, MAC2STR(ie.mac_addr));
+		} else {
+			wpa_printf(MSG_DEBUG,
+				   "Updated AP MLD MAC Address from EAPOL-Key 1/4: "
+				   MACSTR " --> " MACSTR,
+				   MAC2STR(bss->mld_mac_addr),
+				   MAC2STR(ie.mac_addr));
+		}
+		os_memcpy(bss->mld_mac_addr, ie.mac_addr, ETH_ALEN);
+	}
 }
 
 
@@ -287,6 +315,21 @@ static void rx_data_eapol_key_2_of_4(struct wlantest *wt, const u8 *dst,
 		wpa_printf(MSG_DEBUG,
 			   "Update STA data based on IEs in EAPOL-Key 2/4");
 		sta_update_assoc(sta, &elems);
+	}
+
+	if (ie.mac_addr) {
+		if (is_zero_ether_addr(sta->mld_mac_addr)) {
+			wpa_printf(MSG_DEBUG,
+				   "Learned non-AP STA MLD MAC Address from EAPOL-Key 2/4: "
+				   MACSTR, MAC2STR(ie.mac_addr));
+		} else {
+			wpa_printf(MSG_DEBUG,
+				   "Updated non-AP STA MLD MAC Address from EAPOL-Key 2/4: "
+				   MACSTR " --> " MACSTR,
+				   MAC2STR(sta->mld_mac_addr),
+				   MAC2STR(ie.mac_addr));
+		}
+		os_memcpy(sta->mld_mac_addr, ie.mac_addr, ETH_ALEN);
 	}
 
 	derive_ptk(wt, bss, sta, key_info & WPA_KEY_INFO_TYPE_MASK, data, len);

@@ -55,6 +55,7 @@ struct wlantest_sta {
 	struct dl_list list;
 	struct wlantest_bss *bss;
 	u8 addr[ETH_ALEN];
+	u8 mld_mac_addr[ETH_ALEN];
 	enum {
 		STATE1 /* not authenticated */,
 		STATE2 /* authenticated */,
@@ -136,6 +137,7 @@ struct wlantest_tdls {
 struct wlantest_bss {
 	struct dl_list list;
 	u8 bssid[ETH_ALEN];
+	u8 mld_mac_addr[ETH_ALEN];
 	u16 capab_info;
 	u16 prev_capab_info;
 	u8 ssid[32];
