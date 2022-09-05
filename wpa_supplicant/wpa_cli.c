@@ -3262,18 +3262,17 @@ static int wpa_cli_cmd_all_bss(struct wpa_ctrl *ctrl, int argc, char *argv[])
 
 #ifdef CONFIG_PASN
 
-static int wpa_cli_cmd_pasn_auth_start(struct wpa_ctrl *ctrl, int argc,
-				       char *argv[])
+static int wpa_cli_cmd_pasn_start(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
-	return wpa_cli_cmd(ctrl, "PASN_AUTH_START", 4, argc, argv);
+	return wpa_cli_cmd(ctrl, "PASN_START", 4, argc, argv);
 }
 
 
-static int wpa_cli_cmd_pasn_auth_stop(struct wpa_ctrl *ctrl, int argc,
-				      char *argv[])
+static int wpa_cli_cmd_pasn_stop(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
-	return wpa_cli_cmd(ctrl, "PASN_AUTH_STOP", 0, argc, argv);
+	return wpa_cli_cmd(ctrl, "PASN_STOP", 0, argc, argv);
 }
+
 
 static int wpa_cli_cmd_ptksa_cache_list(struct wpa_ctrl *ctrl, int argc,
 					char *argv[])
@@ -4026,10 +4025,10 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	{ "all_bss", wpa_cli_cmd_all_bss, NULL, cli_cmd_flag_none,
 	  "= list all BSS entries (scan results)" },
 #ifdef CONFIG_PASN
-	{ "pasn_auth_start", wpa_cli_cmd_pasn_auth_start, NULL,
+	{ "pasn_start", wpa_cli_cmd_pasn_start, NULL,
 	  cli_cmd_flag_none,
 	  "bssid=<BSSID> akmp=<WPA key mgmt> cipher=<WPA cipher> group=<group> nid=<network id> = Start PASN authentication" },
-	{ "pasn_auth_stop", wpa_cli_cmd_pasn_auth_stop, NULL,
+	{ "pasn_stop", wpa_cli_cmd_pasn_stop, NULL,
 	  cli_cmd_flag_none,
 	  "= Stop PASN authentication" },
 	{ "ptksa_cache_list", wpa_cli_cmd_ptksa_cache_list, NULL,
