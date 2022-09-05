@@ -136,7 +136,7 @@ int hostapd_neighbor_set(struct hostapd_data *hapd, const u8 *bssid,
 
 	os_memcpy(entry->bssid, bssid, ETH_ALEN);
 	os_memcpy(&entry->ssid, ssid, sizeof(entry->ssid));
-	entry->short_ssid = crc32(ssid->ssid, ssid->ssid_len);
+	entry->short_ssid = ieee80211_crc32(ssid->ssid, ssid->ssid_len);
 
 	entry->nr = wpabuf_dup(nr);
 	if (!entry->nr)

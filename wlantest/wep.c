@@ -59,7 +59,7 @@ static int try_wep(const u8 *key, size_t key_len, const u8 *data,
 
 	os_memcpy(plain, data, data_len);
 	wep_crypt(k, plain, data_len);
-	icv = crc32(plain, data_len - 4);
+	icv = ieee80211_crc32(plain, data_len - 4);
 	rx_icv = WPA_GET_LE32(plain + data_len - 4);
 	if (icv != rx_icv)
 		return -1;

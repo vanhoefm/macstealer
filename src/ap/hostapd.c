@@ -1238,7 +1238,8 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 	 * Short SSID calculation is identical to FCS and it is defined in
 	 * IEEE P802.11-REVmd/D3.0, 9.4.2.170.3 (Calculating the Short-SSID).
 	 */
-	conf->ssid.short_ssid = crc32(conf->ssid.ssid, conf->ssid.ssid_len);
+	conf->ssid.short_ssid = ieee80211_crc32(conf->ssid.ssid,
+						conf->ssid.ssid_len);
 
 	if (!hostapd_drv_none(hapd)) {
 		wpa_printf(MSG_DEBUG, "Using interface %s with hwaddr " MACSTR

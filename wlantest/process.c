@@ -264,7 +264,7 @@ static void tx_status(struct wlantest *wt, const u8 *data, size_t len, int ack)
 
 static int check_fcs(const u8 *frame, size_t frame_len, const u8 *fcs)
 {
-	if (WPA_GET_LE32(fcs) != crc32(frame, frame_len))
+	if (WPA_GET_LE32(fcs) != ieee80211_crc32(frame, frame_len))
 		return -1;
 	return 0;
 }

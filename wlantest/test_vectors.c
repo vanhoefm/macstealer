@@ -115,7 +115,7 @@ static void test_vector_ccmp(void)
 	}
 
 	wpa_hexdump(MSG_INFO, "Encrypted MPDU (without FCS)", enc, enc_len);
-	WPA_PUT_LE32(fcs, crc32(enc, enc_len));
+	WPA_PUT_LE32(fcs, ieee80211_crc32(enc, enc_len));
 	wpa_hexdump(MSG_INFO, "FCS", fcs, sizeof(fcs));
 
 	wpa_debug_level = MSG_INFO;
@@ -244,7 +244,7 @@ static void test_vector_ccmp_pv1(void)
 	wpa_hexdump(MSG_INFO, "Encrypted Frame Header", enc, 12);
 	wpa_hexdump(MSG_INFO, "Encrypted Frame Frame Body",
 		    enc + 12, enc_len - 12);
-	WPA_PUT_LE32(fcs, crc32(enc, enc_len));
+	WPA_PUT_LE32(fcs, ieee80211_crc32(enc, enc_len));
 	wpa_hexdump(MSG_INFO, "Encrypted Frame FCS", fcs, sizeof(fcs));
 
 	wpa_printf(MSG_INFO,
@@ -294,7 +294,7 @@ static void test_vector_ccmp_pv1(void)
 	wpa_hexdump(MSG_INFO, "Encrypted Frame Header", enc, 18);
 	wpa_hexdump(MSG_INFO, "Encrypted Frame Frame Body",
 		    enc + 18, enc_len - 18);
-	WPA_PUT_LE32(fcs, crc32(enc, enc_len));
+	WPA_PUT_LE32(fcs, ieee80211_crc32(enc, enc_len));
 	wpa_hexdump(MSG_INFO, "Encrypted Frame FCS", fcs, sizeof(fcs));
 
 	wpa_printf(MSG_INFO,
@@ -338,7 +338,7 @@ static void test_vector_ccmp_pv1(void)
 	wpa_hexdump(MSG_INFO, "Encrypted Frame Header", enc, 16);
 	wpa_hexdump(MSG_INFO, "Encrypted Frame Frame Body",
 		    enc + 16, enc_len - 16);
-	WPA_PUT_LE32(fcs, crc32(enc, enc_len));
+	WPA_PUT_LE32(fcs, ieee80211_crc32(enc, enc_len));
 	wpa_hexdump(MSG_INFO, "Encrypted Frame FCS", fcs, sizeof(fcs));
 
 	wpa_debug_level = MSG_INFO;
@@ -601,7 +601,7 @@ static int run_gcmp(int idx, const struct gcmp_test *vector)
 		wpa_printf(MSG_ERROR, "GCMP test mpdu #%d MIC mismatch", idx);
 		err++;
 	}
-	WPA_PUT_LE32(fcs, crc32(enc, enc_len));
+	WPA_PUT_LE32(fcs, ieee80211_crc32(enc, enc_len));
 	wpa_hexdump(MSG_INFO, "FCS", fcs, sizeof(fcs));
 
 	wpa_debug_level = MSG_INFO;
@@ -703,7 +703,7 @@ static int test_vector_gcmp_256(void)
 		wpa_printf(MSG_ERROR, "GCMP-256 test vector mismatch");
 		err++;
 	}
-	WPA_PUT_LE32(fcs, crc32(enc, enc_len));
+	WPA_PUT_LE32(fcs, ieee80211_crc32(enc, enc_len));
 	wpa_hexdump(MSG_INFO, "FCS", fcs, sizeof(fcs));
 
 	wpa_debug_level = MSG_INFO;
@@ -781,7 +781,7 @@ static int test_vector_ccmp_256(void)
 		wpa_printf(MSG_ERROR, "CCMP-256 test vector mismatch");
 		err++;
 	}
-	WPA_PUT_LE32(fcs, crc32(enc, enc_len));
+	WPA_PUT_LE32(fcs, ieee80211_crc32(enc, enc_len));
 	wpa_hexdump(MSG_INFO, "FCS", fcs, sizeof(fcs));
 
 	wpa_debug_level = MSG_INFO;

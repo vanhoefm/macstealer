@@ -2365,7 +2365,7 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		}
 		os_memcpy(ssid->ssid, pos, ssid->ssid_len);
 		ssid->ssid_set = 1;
-		ssid->short_ssid = crc32(ssid->ssid, ssid->ssid_len);
+		ssid->short_ssid = ieee80211_crc32(ssid->ssid, ssid->ssid_len);
 	} else if (os_strcmp(buf, "ssid2") == 0) {
 		struct hostapd_ssid *ssid = &bss->ssid;
 		size_t slen;
@@ -2379,7 +2379,7 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		os_memcpy(ssid->ssid, str, slen);
 		ssid->ssid_len = slen;
 		ssid->ssid_set = 1;
-		ssid->short_ssid = crc32(ssid->ssid, ssid->ssid_len);
+		ssid->short_ssid = ieee80211_crc32(ssid->ssid, ssid->ssid_len);
 		os_free(str);
 	} else if (os_strcmp(buf, "utf8_ssid") == 0) {
 		bss->ssid.utf8_ssid = atoi(pos) > 0;

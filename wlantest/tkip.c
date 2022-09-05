@@ -329,7 +329,7 @@ u8 * tkip_decrypt(const u8 *tk, const struct ieee80211_hdr *hdr,
 		return NULL;
 	wep_crypt(rc4key, plain, plain_len);
 
-	icv = crc32(plain, plain_len - 4);
+	icv = ieee80211_crc32(plain, plain_len - 4);
 	rx_icv = WPA_GET_LE32(plain + plain_len - 4);
 	if (icv != rx_icv) {
 		wpa_printf(MSG_INFO, "TKIP ICV mismatch in frame from " MACSTR,
@@ -482,7 +482,7 @@ u8 * tkip_encrypt(const u8 *tk, u8 *frame, size_t len, size_t hdrlen, u8 *qos,
 	os_memcpy(pos, frame + hdrlen, len - hdrlen);
 	os_memcpy(pos + len - hdrlen, mic, sizeof(mic));
 	WPA_PUT_LE32(pos + len - hdrlen + sizeof(mic),
-		     crc32(pos, len - hdrlen + sizeof(mic)));
+		     ieee80211_crc32(pos, len - hdrlen + sizeof(mic)));
 	wep_crypt(rc4key, pos, len - hdrlen + sizeof(mic) + 4);
 
 	*encrypted_len = len + 8 + sizeof(mic) + 4;
