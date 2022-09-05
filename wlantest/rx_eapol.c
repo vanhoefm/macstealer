@@ -306,10 +306,6 @@ static void rx_data_eapol_key_2_of_4(struct wlantest *wt, const u8 *dst,
 	hdr = (const struct wpa_eapol_key *) (eapol + 1);
 	mic_len = wpa_mic_len(sta->key_mgmt, PMK_LEN);
 	mic = (const u8 *) (hdr + 1);
-	if (is_zero(hdr->key_nonce, WPA_NONCE_LEN)) {
-		add_note(wt, MSG_INFO, "EAPOL-Key 2/4 from " MACSTR
-			 " used zero nonce", MAC2STR(src));
-	}
 	if (!is_zero(hdr->key_rsc, 8)) {
 		add_note(wt, MSG_INFO, "EAPOL-Key 2/4 from " MACSTR
 			 " used non-zero Key RSC", MAC2STR(src));
@@ -1261,7 +1257,8 @@ static void rx_data_eapol_key(struct wlantest *wt, const u8 *bssid,
 			rx_data_eapol_key_1_of_4(wt, dst, src, data, len);
 			break;
 		case WPA_KEY_INFO_MIC:
-			if (key_data_length == 0)
+			if (key_data_length == 0 ||
+			    is_zero(hdr->key_nonce, WPA_NONCE_LEN))
 				rx_data_eapol_key_4_of_4(wt, dst, src, data,
 							 len);
 			else
@@ -1281,7 +1278,8 @@ static void rx_data_eapol_key(struct wlantest *wt, const u8 *bssid,
 			break;
 		case WPA_KEY_INFO_SECURE | WPA_KEY_INFO_MIC:
 		case WPA_KEY_INFO_SECURE:
-			if (key_data_length == 0)
+			if (key_data_length == 0 ||
+			    is_zero(hdr->key_nonce, WPA_NONCE_LEN))
 				rx_data_eapol_key_4_of_4(wt, dst, src, data,
 							 len);
 			else
