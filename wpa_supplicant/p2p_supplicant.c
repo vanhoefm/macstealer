@@ -9600,9 +9600,6 @@ static void wpas_p2p_optimize_listen_channel(struct wpa_supplicant *wpa_s,
 	if (!wpa_s->conf->p2p_optimize_listen_chan)
 		return;
 
-	if (!wpa_s->current_ssid || wpa_s->wpa_state != WPA_COMPLETED)
-		return;
-
 	curr_chan = p2p_get_listen_channel(wpa_s->global->p2p);
 	for (i = 0, cand = 0; i < num; i++) {
 		ieee80211_freq_to_chan(freqs[i].freq, &chan);
