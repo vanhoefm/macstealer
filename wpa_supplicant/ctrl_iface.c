@@ -11540,6 +11540,37 @@ static int wpas_ctrl_iface_send_dscp_query(struct wpa_supplicant *wpa_s,
 }
 
 
+static int wpas_ctrl_iface_mlo_status(struct wpa_supplicant *wpa_s,
+				      char *buf, size_t buflen)
+{
+	int ret, i;
+	char *pos, *end;
+
+	if (!wpa_s->valid_links)
+		return -1;
+
+	pos = buf;
+	end = buf + buflen;
+
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		if (!(wpa_s->valid_links & BIT(i)))
+			continue;
+
+		ret = os_snprintf(pos, end - pos, "link_id=%d\nfreq=%u\n"
+				  "ap_link_addr=" MACSTR
+				  "\nsta_link_addr=" MACSTR "\n",
+				  i, wpa_s->links[i].freq,
+				  MAC2STR(wpa_s->links[i].bssid),
+				  MAC2STR(wpa_s->links[i].addr));
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+	}
+
+	return pos - buf;
+}
+
+
 char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 					 char *buf, size_t *resp_len)
 {
@@ -12554,6 +12585,9 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	} else if (os_strncmp(buf, "DSCP_QUERY ", 11) == 0) {
 		if (wpas_ctrl_iface_send_dscp_query(wpa_s, buf + 11))
 			reply_len = -1;
+	} else if (os_strcmp(buf, "MLO_STATUS") == 0) {
+		reply_len = wpas_ctrl_iface_mlo_status(wpa_s, reply,
+						       reply_size);
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
 		reply_len = 16;

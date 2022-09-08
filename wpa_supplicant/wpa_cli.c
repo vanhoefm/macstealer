@@ -413,6 +413,12 @@ static int wpa_cli_cmd_quit(struct wpa_ctrl *ctrl, int argc, char *argv[])
 }
 
 
+static int wpa_cli_cmd_mlo_status(struct wpa_ctrl *ctrl, int argc, char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "MLO_STATUS");
+}
+
+
 static int wpa_cli_cmd_set(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
 	char cmd[256];
@@ -4037,6 +4043,9 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	{ "dscp_query", wpa_cli_cmd_dscp_query, NULL,
 	  cli_cmd_flag_none,
 	  "wildcard/domain_name=<string> = Send DSCP Query" },
+	{ "mlo_status", wpa_cli_cmd_mlo_status, NULL,
+	  cli_cmd_flag_none,
+	  "= get MLO status" },
 	{ NULL, NULL, NULL, cli_cmd_flag_none, NULL }
 };
 
