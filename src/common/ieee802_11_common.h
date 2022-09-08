@@ -344,5 +344,6 @@ struct wpabuf * ieee802_11_defrag_data(struct ieee802_11_elems *elems,
 struct wpabuf * ieee802_11_defrag(struct ieee802_11_elems *elems,
 				  u8 eid, u8 eid_ext);
 const u8 * get_ml_ie(const u8 *ies, size_t len, u8 type);
+const u8 * get_basic_mle_mld_addr(const u8 *buf, size_t len);
 
 #endif /* IEEE802_11_COMMON_H */
