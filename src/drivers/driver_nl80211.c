@@ -8775,6 +8775,163 @@ static int nl80211_signal_poll(void *priv, struct wpa_signal_info *si)
 }
 
 
+static int get_links_noise(struct nl_msg *msg, void *arg)
+{
+	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct nlattr *sinfo[NL80211_SURVEY_INFO_MAX + 1];
+	static struct nla_policy survey_policy[NL80211_SURVEY_INFO_MAX + 1] = {
+		[NL80211_SURVEY_INFO_FREQUENCY] = { .type = NLA_U32 },
+		[NL80211_SURVEY_INFO_NOISE] = { .type = NLA_U8 },
+	};
+	struct wpa_mlo_signal_info *mlo_sig = arg;
+	int i;
+
+	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+		  genlmsg_attrlen(gnlh, 0), NULL);
+
+	if (!tb[NL80211_ATTR_SURVEY_INFO]) {
+		wpa_printf(MSG_DEBUG, "nl80211: Survey data missing");
+		return NL_SKIP;
+	}
+
+	if (nla_parse_nested(sinfo, NL80211_SURVEY_INFO_MAX,
+			     tb[NL80211_ATTR_SURVEY_INFO],
+			     survey_policy)) {
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: Failed to parse nested attributes");
+		return NL_SKIP;
+	}
+
+	if (!sinfo[NL80211_SURVEY_INFO_FREQUENCY])
+		return NL_SKIP;
+
+	if (!sinfo[NL80211_SURVEY_INFO_NOISE])
+		return NL_SKIP;
+
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		if (!(mlo_sig->valid_links & BIT(i)))
+			continue;
+
+		if (nla_get_u32(sinfo[NL80211_SURVEY_INFO_FREQUENCY]) !=
+		    mlo_sig->links[i].frequency)
+			continue;
+
+		mlo_sig->links[i].current_noise =
+			(s8) nla_get_u8(sinfo[NL80211_SURVEY_INFO_NOISE]);
+		break;
+	}
+
+	return NL_SKIP;
+}
+
+
+static int nl80211_get_links_noise(struct wpa_driver_nl80211_data *drv,
+				   struct wpa_mlo_signal_info *mlo_sig)
+{
+	struct nl_msg *msg;
+
+	msg = nl80211_drv_msg(drv, NLM_F_DUMP, NL80211_CMD_GET_SURVEY);
+	return send_and_recv_msgs(drv, msg, get_links_noise, mlo_sig,
+				  NULL, NULL);
+}
+
+
+static int get_links_channel_width(struct nl_msg *msg, void *arg)
+{
+	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct wpa_mlo_signal_info *mlo_sig = arg;
+	struct nlattr *link;
+	int rem_links;
+
+	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+		  genlmsg_attrlen(gnlh, 0), NULL);
+
+	if (!tb[NL80211_ATTR_MLO_LINKS])
+		return NL_SKIP;
+
+	nla_for_each_nested(link, tb[NL80211_ATTR_MLO_LINKS], rem_links) {
+		struct nlattr *tb2[NL80211_ATTR_MAX + 1];
+		int link_id;
+
+		nla_parse(tb2, NL80211_ATTR_MAX, nla_data(link), nla_len(link),
+			  NULL);
+
+		if (!tb2[NL80211_ATTR_MLO_LINK_ID])
+			continue;
+
+		link_id = nla_get_u8(tb2[NL80211_ATTR_MLO_LINK_ID]);
+		if (link_id >= MAX_NUM_MLD_LINKS)
+			continue;
+
+		if (!tb2[NL80211_ATTR_CHANNEL_WIDTH])
+			continue;
+		mlo_sig->links[link_id].chanwidth = convert2width(
+			nla_get_u32(tb2[NL80211_ATTR_CHANNEL_WIDTH]));
+		if (tb2[NL80211_ATTR_CENTER_FREQ1])
+			mlo_sig->links[link_id].center_frq1 =
+				nla_get_u32(tb2[NL80211_ATTR_CENTER_FREQ1]);
+		if (tb2[NL80211_ATTR_CENTER_FREQ2])
+			mlo_sig->links[link_id].center_frq2 =
+				nla_get_u32(tb2[NL80211_ATTR_CENTER_FREQ2]);
+	}
+
+	return NL_SKIP;
+}
+
+
+static int nl80211_get_links_channel_width(struct wpa_driver_nl80211_data *drv,
+					   struct wpa_mlo_signal_info *mlo_sig)
+{
+	struct nl_msg *msg;
+
+	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_GET_INTERFACE);
+	return send_and_recv_msgs(drv, msg, get_links_channel_width, mlo_sig,
+				  NULL, NULL);
+}
+
+
+static int nl80211_mlo_signal_poll(void *priv,
+				   struct wpa_mlo_signal_info *mlo_si)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	int res;
+	int i;
+
+	if (drv->nlmode != NL80211_IFTYPE_STATION ||
+	    !drv->sta_mlo_info.valid_links)
+		return -1;
+
+	os_memset(mlo_si, 0, sizeof(*mlo_si));
+	mlo_si->valid_links = drv->sta_mlo_info.valid_links;
+
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		if (!(mlo_si->valid_links & BIT(i)))
+			continue;
+
+		res = nl80211_get_link_signal(drv,
+					      drv->sta_mlo_info.links[i].bssid,
+					      &mlo_si->links[i]);
+		if (res != 0)
+			return res;
+
+		mlo_si->links[i].center_frq1 = -1;
+		mlo_si->links[i].center_frq2 = -1;
+		mlo_si->links[i].chanwidth = CHAN_WIDTH_UNKNOWN;
+		mlo_si->links[i].current_noise = WPA_INVALID_NOISE;
+		mlo_si->links[i].frequency = drv->sta_mlo_info.links[i].freq;
+	}
+
+	res = nl80211_get_links_channel_width(drv, mlo_si);
+	if (res != 0)
+		return res;
+
+	return nl80211_get_links_noise(drv, mlo_si);
+}
+
+
 static int nl80211_set_param(void *priv, const char *param)
 {
 	struct i802_bss *bss = priv;
@@ -12710,6 +12867,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.resume = wpa_driver_nl80211_resume,
 	.signal_monitor = nl80211_signal_monitor,
 	.signal_poll = nl80211_signal_poll,
+	.mlo_signal_poll = nl80211_mlo_signal_poll,
 	.channel_info = nl80211_channel_info,
 	.set_param = nl80211_set_param,
 	.get_radio_name = nl80211_get_radio_name,

@@ -11540,6 +11540,86 @@ static int wpas_ctrl_iface_send_dscp_query(struct wpa_supplicant *wpa_s,
 }
 
 
+static int wpas_ctrl_iface_mlo_signal_poll(struct wpa_supplicant *wpa_s,
+					   char *buf, size_t buflen)
+{
+	int ret, i;
+	char *pos, *end;
+	struct wpa_mlo_signal_info mlo_si;
+
+	if (!wpa_s->valid_links)
+		return -1;
+
+	ret = wpa_drv_mlo_signal_poll(wpa_s, &mlo_si);
+	if (ret)
+		return -1;
+
+	pos = buf;
+	end = buf + buflen;
+
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		if (!(mlo_si.valid_links & BIT(i)))
+			continue;
+
+		ret = os_snprintf(pos, end - pos,
+				  "LINK_ID=%d\nRSSI=%d\nLINKSPEED=%d\n"
+				  "NOISE=%d\nFREQUENCY=%u\n",
+				  i, mlo_si.links[i].current_signal,
+				  mlo_si.links[i].current_txrate / 1000,
+				  mlo_si.links[i].current_noise,
+				  mlo_si.links[i].frequency);
+		if (os_snprintf_error(end - pos, ret))
+			return -1;
+		pos += ret;
+
+		if (mlo_si.links[i].chanwidth != CHAN_WIDTH_UNKNOWN) {
+			ret = os_snprintf(pos, end - pos, "WIDTH=%s\n",
+					  channel_width_to_string(
+						  mlo_si.links[i].chanwidth));
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
+		}
+
+		if (mlo_si.links[i].center_frq1 > 0) {
+			ret = os_snprintf(pos, end - pos, "CENTER_FRQ1=%d\n",
+					  mlo_si.links[i].center_frq1);
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
+		}
+
+		if (mlo_si.links[i].center_frq2 > 0) {
+			ret = os_snprintf(pos, end - pos, "CENTER_FRQ2=%d\n",
+					  mlo_si.links[i].center_frq2);
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
+		}
+
+		if (mlo_si.links[i].avg_signal) {
+			ret = os_snprintf(pos, end - pos,
+					  "AVG_RSSI=%d\n",
+					  mlo_si.links[i].avg_signal);
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
+		}
+
+		if (mlo_si.links[i].avg_beacon_signal) {
+			ret = os_snprintf(pos, end - pos,
+					  "AVG_BEACON_RSSI=%d\n",
+					  mlo_si.links[i].avg_beacon_signal);
+			if (os_snprintf_error(end - pos, ret))
+				return -1;
+			pos += ret;
+		}
+	}
+
+	return pos - buf;
+}
+
+
 static int wpas_ctrl_iface_mlo_status(struct wpa_supplicant *wpa_s,
 				      char *buf, size_t buflen)
 {
@@ -12588,6 +12668,9 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	} else if (os_strcmp(buf, "MLO_STATUS") == 0) {
 		reply_len = wpas_ctrl_iface_mlo_status(wpa_s, reply,
 						       reply_size);
+	} else if (os_strcmp(buf, "MLO_SIGNAL_POLL") == 0) {
+		reply_len = wpas_ctrl_iface_mlo_signal_poll(wpa_s, reply,
+							    reply_size);
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
 		reply_len = 16;

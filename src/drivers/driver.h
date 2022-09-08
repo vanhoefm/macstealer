@@ -2392,6 +2392,11 @@ struct wpa_signal_info {
 	int center_frq2;
 };
 
+struct wpa_mlo_signal_info {
+	u16 valid_links;
+	struct wpa_signal_info links[MAX_NUM_MLD_LINKS];
+};
+
 /**
  * struct wpa_channel_info - Information about the current channel
  * @frequency: Center frequency of the primary 20 MHz channel
@@ -3985,6 +3990,14 @@ struct wpa_driver_ops {
 	 * @signal_info: Connection info structure
 	 */
 	int (*signal_poll)(void *priv, struct wpa_signal_info *signal_info);
+
+	/**
+	 * mlo_signal_poll - Get current MLO connection information
+	 * @priv: Private driver interface data
+	 * @mlo_signal_info: MLO connection info structure
+	 */
+	int (*mlo_signal_poll)(void *priv,
+			       struct wpa_mlo_signal_info *mlo_signal_info);
 
 	/**
 	 * channel_info - Get parameters of the current operating channel

@@ -419,6 +419,12 @@ static int wpa_cli_cmd_mlo_status(struct wpa_ctrl *ctrl, int argc, char *argv[])
 }
 
 
+static int wpa_cli_cmd_mlo_signal_poll(struct wpa_ctrl *ctrl, int argc, char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "MLO_SIGNAL_POLL");
+}
+
+
 static int wpa_cli_cmd_set(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
 	char cmd[256];
@@ -4046,6 +4052,9 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
 	{ "mlo_status", wpa_cli_cmd_mlo_status, NULL,
 	  cli_cmd_flag_none,
 	  "= get MLO status" },
+	{ "mlo_signal_poll", wpa_cli_cmd_mlo_signal_poll, NULL,
+	  cli_cmd_flag_none,
+	  "= get mlo signal parameters" },
 	{ NULL, NULL, NULL, cli_cmd_flag_none, NULL }
 };
 
