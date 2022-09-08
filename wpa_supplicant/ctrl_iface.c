@@ -2537,12 +2537,21 @@ static int wpa_supplicant_ctrl_iface_status(struct wpa_supplicant *wpa_s,
 					  wpa_s->current_ssid->ssid_len) : "");
 		if (wpa_s->wpa_state == WPA_COMPLETED) {
 			struct wpa_ssid *ssid = wpa_s->current_ssid;
+			char mld_addr[50];
+
+			mld_addr[0] = '\0';
+			if (wpa_s->valid_links)
+				os_snprintf(mld_addr, sizeof(mld_addr),
+					    " ap_mld_addr=" MACSTR,
+					    MAC2STR(wpa_s->ap_mld_addr));
+
 			wpa_msg_ctrl(wpa_s, MSG_INFO, WPA_EVENT_CONNECTED
 				     "- connection to " MACSTR
-				     " completed %s [id=%d id_str=%s]",
+				     " completed %s [id=%d id_str=%s]%s",
 				     MAC2STR(wpa_s->bssid), "(auth)",
 				     ssid ? ssid->id : -1,
-				     ssid && ssid->id_str ? ssid->id_str : "");
+				     ssid && ssid->id_str ? ssid->id_str : "",
+				     mld_addr);
 		}
 	}
 #endif /* ANDROID */
