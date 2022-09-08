@@ -9846,6 +9846,34 @@ static int wpa_driver_nl80211_status(void *priv, char *buf, size_t buflen)
 		return pos - buf;
 	pos += res;
 
+	if (drv->sta_mlo_info.valid_links) {
+		int i;
+		struct driver_sta_mlo_info *mlo = &drv->sta_mlo_info;
+
+		res = os_snprintf(pos, end - pos,
+				  "ap_mld_addr=" MACSTR "\n",
+				   MAC2STR(mlo->ap_mld_addr));
+		if (os_snprintf_error(end - pos, res))
+			return pos - buf;
+		pos += res;
+
+		for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+			if (!(mlo->valid_links & BIT(i)))
+				continue;
+
+			res = os_snprintf(pos, end - pos,
+					  "link_addr[%u]=" MACSTR "\n"
+					  "link_bssid[%u]=" MACSTR "\n"
+					  "link_freq[%u]=%u\n",
+					  i, MAC2STR(mlo->links[i].addr),
+					  i, MAC2STR(mlo->links[i].bssid),
+					  i, mlo->links[i].freq);
+			if (os_snprintf_error(end - pos, res))
+				return pos - buf;
+			pos += res;
+		}
+	}
+
 	if (drv->has_capability) {
 		res = os_snprintf(pos, end - pos,
 				  "capa.key_mgmt=0x%x\n"
