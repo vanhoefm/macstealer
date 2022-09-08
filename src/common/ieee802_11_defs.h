@@ -2515,6 +2515,27 @@ struct ieee80211_eht_capabilities {
 	u8 optional[EHT_MCS_NSS_CAPAB_LEN + EHT_PPE_THRESH_CAPAB_LEN];
 } STRUCT_PACKED;
 
+/* IEEE P802.11be/D2.1, 9.4.2.312 - Multi-Link element */
+
+/* Figure 9-1002f: Multi-Link Control field */
+#define MULTI_LINK_CONTROL_TYPE_MASK			0x07
+
+/* Table 9-401c: Mult-Link element Type subfield encoding */
+#define MULTI_LINK_CONTROL_TYPE_BASIC			0
+#define MULTI_LINK_CONTROL_TYPE_PROBE_REQ		1
+#define MULTI_LINK_CONTROL_TYPE_RECONF			2
+#define MULTI_LINK_CONTROL_TYPE_TDLS			3
+#define MULTI_LINK_CONTROL_TYPE_PRIOR_ACCESS		4
+
+/* Figure 9-1002g: Presence Bitmap subfield of the Basic Multi-Link element */
+#define BASIC_MULTI_LINK_CTRL0_PRES_LINK_ID		0x10
+#define BASIC_MULTI_LINK_CTRL0_PRES_BSS_PARAM_CH_COUNT	0x20
+#define BASIC_MULTI_LINK_CTRL0_PRES_MSD_INFO		0x40
+#define BASIC_MULTI_LINK_CTRL0_PRES_EML_CAPA		0x80
+
+#define BASIC_MULTI_LINK_CTRL1_PRES_MLD_CAPA		0x01
+#define BASIC_MULTI_LINK_CTRL1_PRES_AP_MLD_ID		0x02
+
 /* IEEE P802.11ay/D4.0, 9.4.2.251 - EDMG Operation element */
 #define EDMG_BSS_OPERATING_CHANNELS_OFFSET	6
 #define EDMG_OPERATING_CHANNEL_WIDTH_OFFSET	7
