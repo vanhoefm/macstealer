@@ -457,7 +457,11 @@ static struct wpa_bss * wpa_bss_add(struct wpa_supplicant *wpa_s,
 				    struct os_reltime *fetch_time)
 {
 	struct wpa_bss *bss;
-	char extra[50];
+	char extra[100];
+	const u8 *ml_ie;
+	char *pos, *end;
+	int ret = 0;
+	const u8 *mld_addr;
 
 	bss = os_zalloc(sizeof(*bss) + res->ie_len + res->beacon_ie_len);
 	if (bss == NULL)
@@ -472,6 +476,14 @@ static struct wpa_bss * wpa_bss_add(struct wpa_supplicant *wpa_s,
 	os_memcpy(bss->ies, res + 1, res->ie_len + res->beacon_ie_len);
 	wpa_bss_set_hessid(bss);
 
+	os_memset(bss->mld_addr, 0, ETH_ALEN);
+	ml_ie = wpa_scan_get_ml_ie(res, MULTI_LINK_CONTROL_TYPE_BASIC);
+	if (ml_ie) {
+		mld_addr = get_basic_mle_mld_addr(&ml_ie[3], ml_ie[1] - 1);
+		if (mld_addr)
+			os_memcpy(bss->mld_addr, mld_addr, ETH_ALEN);
+	}
+
 	if (wpa_s->num_bss + 1 > wpa_s->conf->bss_max_count &&
 	    wpa_bss_remove_oldest(wpa_s) != 0) {
 		wpa_printf(MSG_ERROR, "Increasing the MAX BSS count to %d "
@@ -483,11 +495,21 @@ static struct wpa_bss * wpa_bss_add(struct wpa_supplicant *wpa_s,
 	dl_list_add_tail(&wpa_s->bss, &bss->list);
 	dl_list_add_tail(&wpa_s->bss_id, &bss->list_id);
 	wpa_s->num_bss++;
+
+	extra[0] = '\0';
+	pos = extra;
+	end = pos + sizeof(extra);
 	if (!is_zero_ether_addr(bss->hessid))
-		os_snprintf(extra, sizeof(extra), " HESSID " MACSTR,
-			    MAC2STR(bss->hessid));
-	else
-		extra[0] = '\0';
+		ret = os_snprintf(pos, end - pos, " HESSID " MACSTR,
+				  MAC2STR(bss->hessid));
+
+	if (!is_zero_ether_addr(bss->mld_addr) &&
+	    !os_snprintf_error(end - pos, ret)) {
+		pos += ret;
+		ret = os_snprintf(pos, end - pos, " MLD ADDR " MACSTR,
+				  MAC2STR(bss->mld_addr));
+	}
+
 	wpa_dbg(wpa_s, MSG_DEBUG, "BSS: Add new id %u BSSID " MACSTR
 		" SSID '%s' freq %d%s",
 		bss->id, MAC2STR(bss->bssid), wpa_ssid_txt(ssid, ssid_len),
@@ -724,8 +746,19 @@ wpa_bss_update(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
 		}
 		dl_list_add(prev, &bss->list_id);
 	}
-	if (changes & WPA_BSS_IES_CHANGED_FLAG)
+	if (changes & WPA_BSS_IES_CHANGED_FLAG) {
+		const u8 *ml_ie, *mld_addr;
+
 		wpa_bss_set_hessid(bss);
+		os_memset(bss->mld_addr, 0, ETH_ALEN);
+		ml_ie = wpa_scan_get_ml_ie(res, MULTI_LINK_CONTROL_TYPE_BASIC);
+		if (ml_ie) {
+			mld_addr = get_basic_mle_mld_addr(&ml_ie[3],
+							  ml_ie[1] - 1);
+			if (mld_addr)
+				os_memcpy(bss->mld_addr, mld_addr, ETH_ALEN);
+		}
+	}
 	dl_list_add_tail(&wpa_s->bss, &bss->list);
 
 	notify_bss_changes(wpa_s, changes, bss);

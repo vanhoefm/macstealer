@@ -122,6 +122,8 @@ struct wpa_bss {
 	size_t ie_len;
 	/** Length of the following Beacon IE field in octets */
 	size_t beacon_ie_len;
+	/** MLD address of the AP */
+	u8 mld_addr[ETH_ALEN];
 	/* followed by ie_len octets of IEs */
 	/* followed by beacon_ie_len octets of IEs */
 	u8 ies[];
