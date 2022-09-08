@@ -1699,7 +1699,7 @@ static int get_link_signal(struct nl_msg *msg, void *arg)
 
 
 int nl80211_get_link_signal(struct wpa_driver_nl80211_data *drv,
-			    struct wpa_signal_info *sig)
+			    const u8 *bssid, struct wpa_signal_info *sig)
 {
 	struct nl_msg *msg;
 
@@ -1707,7 +1707,7 @@ int nl80211_get_link_signal(struct wpa_driver_nl80211_data *drv,
 	sig->current_txrate = 0;
 
 	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_GET_STATION)) ||
-	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, drv->bssid)) {
+	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, bssid)) {
 		nlmsg_free(msg);
 		return -ENOBUFS;
 	}
@@ -8759,7 +8759,7 @@ static int nl80211_signal_poll(void *priv, struct wpa_signal_info *si)
 	int res;
 
 	os_memset(si, 0, sizeof(*si));
-	res = nl80211_get_link_signal(drv, si);
+	res = nl80211_get_link_signal(drv, drv->bssid, si);
 	if (res) {
 		if (drv->nlmode != NL80211_IFTYPE_ADHOC &&
 		    drv->nlmode != NL80211_IFTYPE_MESH_POINT)
