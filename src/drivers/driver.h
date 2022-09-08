@@ -5426,6 +5426,24 @@ enum wpa_event_type {
 	 * PASN authentication and secure ranging context for multiple peers.
 	 */
 	EVENT_PASN_AUTH,
+
+	/**
+	 * EVENT_LINK_CH_SWITCH - MLD AP link decided to switch channels
+	 *
+	 * Described in wpa_event_data.ch_switch.
+	 *
+	 */
+	EVENT_LINK_CH_SWITCH,
+
+	/**
+	 * EVENT_LINK_CH_SWITCH_STARTED - MLD AP link started to switch channels
+	 *
+	 * This is a pre-switch event indicating the shortly following switch
+	 * of operating channels.
+	 *
+	 * Described in wpa_event_data.ch_switch.
+	 */
+	EVENT_LINK_CH_SWITCH_STARTED,
 };
 
 
@@ -6141,6 +6159,7 @@ union wpa_event_data {
 	 * @ch_width: Channel width
 	 * @cf1: Center frequency 1
 	 * @cf2: Center frequency 2
+	 * @link_id: Link ID of the MLO link
 	 */
 	struct ch_switch {
 		int freq;
@@ -6149,6 +6168,7 @@ union wpa_event_data {
 		enum chan_width ch_width;
 		int cf1;
 		int cf2;
+		int link_id;
 	} ch_switch;
 
 	/**

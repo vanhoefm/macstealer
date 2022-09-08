@@ -782,10 +782,10 @@ static int calculate_chan_offset(int width, int freq, int cf1, int cf2)
 
 
 static void mlme_event_ch_switch(struct wpa_driver_nl80211_data *drv,
-				 struct nlattr *ifindex, struct nlattr *freq,
-				 struct nlattr *type, struct nlattr *bw,
-				 struct nlattr *cf1, struct nlattr *cf2,
-				 int finished)
+				 struct nlattr *ifindex, struct nlattr *link,
+				 struct nlattr *freq, struct nlattr *type,
+				 struct nlattr *bw, struct nlattr *cf1,
+				 struct nlattr *cf2, int finished)
 {
 	struct i802_bss *bss;
 	union wpa_event_data data;
@@ -849,6 +849,25 @@ static void mlme_event_ch_switch(struct wpa_driver_nl80211_data *drv,
 
 	if (finished)
 		bss->freq = data.ch_switch.freq;
+
+	if (link) {
+		u8 link_id = nla_get_u8(link);
+
+		if (link_id < MAX_NUM_MLD_LINKS &&
+		    drv->sta_mlo_info.valid_links & BIT(link_id)) {
+			data.ch_switch.link_id = link_id;
+			drv->sta_mlo_info.links[link_id].freq =
+				data.ch_switch.freq;
+			wpa_supplicant_event(
+				bss->ctx,
+				finished ? EVENT_LINK_CH_SWITCH :
+				EVENT_LINK_CH_SWITCH_STARTED, &data);
+		}
+
+		if (link_id != drv->mlo_assoc_link_id)
+			return;
+	}
+
 	drv->assoc_freq = data.ch_switch.freq;
 
 	wpa_supplicant_event(bss->ctx, finished ?
@@ -3303,6 +3322,7 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 	case NL80211_CMD_CH_SWITCH_STARTED_NOTIFY:
 		mlme_event_ch_switch(drv,
 				     tb[NL80211_ATTR_IFINDEX],
+				     tb[NL80211_ATTR_MLO_LINK_ID],
 				     tb[NL80211_ATTR_WIPHY_FREQ],
 				     tb[NL80211_ATTR_WIPHY_CHANNEL_TYPE],
 				     tb[NL80211_ATTR_CHANNEL_WIDTH],
@@ -3313,6 +3333,7 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 	case NL80211_CMD_CH_SWITCH_NOTIFY:
 		mlme_event_ch_switch(drv,
 				     tb[NL80211_ATTR_IFINDEX],
+				     tb[NL80211_ATTR_MLO_LINK_ID],
 				     tb[NL80211_ATTR_WIPHY_FREQ],
 				     tb[NL80211_ATTR_WIPHY_CHANNEL_TYPE],
 				     tb[NL80211_ATTR_CHANNEL_WIDTH],

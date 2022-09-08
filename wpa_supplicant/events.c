@@ -5367,6 +5367,39 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		break;
 #endif /* CONFIG_AP */
 
+	case EVENT_LINK_CH_SWITCH_STARTED:
+	case EVENT_LINK_CH_SWITCH:
+		if (!data || !wpa_s->current_ssid ||
+		    !(wpa_s->valid_links & BIT(data->ch_switch.link_id)))
+			break;
+
+		wpa_msg(wpa_s, MSG_INFO,
+			"%sfreq=%d link_id=%d ht_enabled=%d ch_offset=%d ch_width=%s cf1=%d cf2=%d",
+			event == EVENT_LINK_CH_SWITCH ?
+			WPA_EVENT_LINK_CHANNEL_SWITCH :
+			WPA_EVENT_LINK_CHANNEL_SWITCH_STARTED,
+			data->ch_switch.freq,
+			data->ch_switch.link_id,
+			data->ch_switch.ht_enabled,
+			data->ch_switch.ch_offset,
+			channel_width_to_string(data->ch_switch.ch_width),
+			data->ch_switch.cf1,
+			data->ch_switch.cf2);
+		if (event == EVENT_LINK_CH_SWITCH_STARTED)
+			break;
+
+		wpa_s->links[data->ch_switch.link_id].freq =
+			data->ch_switch.freq;
+		if (wpa_s->links[data->ch_switch.link_id].bss &&
+		    wpa_s->links[data->ch_switch.link_id].bss->freq !=
+		    data->ch_switch.freq) {
+			wpa_s->links[data->ch_switch.link_id].bss->freq =
+				data->ch_switch.freq;
+			notify_bss_changes(
+				wpa_s, WPA_BSS_FREQ_CHANGED_FLAG,
+				wpa_s->links[data->ch_switch.link_id].bss);
+		}
+		break;
 	case EVENT_CH_SWITCH_STARTED:
 	case EVENT_CH_SWITCH:
 		if (!data || !wpa_s->current_ssid)

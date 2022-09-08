@@ -92,6 +92,15 @@ extern "C" {
 #define WPA_EVENT_CHANNEL_SWITCH_STARTED "CTRL-EVENT-STARTED-CHANNEL-SWITCH "
 /** Channel switch (followed by freq=<MHz> and other channel parameters) */
 #define WPA_EVENT_CHANNEL_SWITCH "CTRL-EVENT-CHANNEL-SWITCH "
+/** MLO link channel switch started (followed by freq=<MHz> and other channel
+ * parameters)
+ */
+#define WPA_EVENT_LINK_CHANNEL_SWITCH_STARTED \
+	"CTRL-EVENT-STARTED-LINK-CHANNEL-SWITCH "
+/** MLO link channel switch (followed by freq=<MHz> and other channel
+ * parameters)
+ */
+#define WPA_EVENT_LINK_CHANNEL_SWITCH "CTRL-EVENT-LINK-CHANNEL-SWITCH "
 /** SAE authentication failed due to unknown password identifier */
 #define WPA_EVENT_SAE_UNKNOWN_PASSWORD_IDENTIFIER \
 	"CTRL-EVENT-SAE-UNKNOWN-PASSWORD-IDENTIFIER "

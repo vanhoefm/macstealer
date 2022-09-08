@@ -96,6 +96,8 @@ const char * event_to_string(enum wpa_event_type event)
 	E2S(CCA_ABORTED_NOTIFY);
 	E2S(CCA_NOTIFY);
 	E2S(PASN_AUTH);
+	E2S(LINK_CH_SWITCH);
+	E2S(LINK_CH_SWITCH_STARTED);
 	}
 
 	return "UNKNOWN";
