@@ -423,6 +423,89 @@ convert_connect_fail_reason_codes(enum qca_sta_connect_fail_reason_codes
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 
 
+static int nl80211_get_assoc_link_id(const u8 *data, u8 len)
+{
+	if (!(data[0] & BASIC_MULTI_LINK_CTRL0_PRES_LINK_ID))
+		return -1;
+
+#define BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX \
+		(2 + /* Multi-Link Control field */ \
+		 1 + /* Common Info Length field (Basic) */ \
+		 ETH_ALEN) /* MLD MAC Address field (Basic) */
+	if (len <= BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX)
+		return -1;
+
+	return data[BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX] & 0x0F;
+}
+
+
+static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
+				   struct nlattr *addr,
+				   struct nlattr *mlo_links,
+				   struct nlattr *resp_ie)
+{
+	struct nlattr *link;
+	int rem_links;
+	const u8 *ml_ie;
+	struct driver_sta_mlo_info *mlo = &drv->sta_mlo_info;
+
+	if (!addr || !mlo_links || !resp_ie)
+		return;
+
+	ml_ie = get_ml_ie(nla_data(resp_ie), nla_len(resp_ie),
+			  MULTI_LINK_CONTROL_TYPE_BASIC);
+	if (!ml_ie)
+		return;
+
+	drv->mlo_assoc_link_id = nl80211_get_assoc_link_id(&ml_ie[3],
+							   ml_ie[1] - 1);
+	if (drv->mlo_assoc_link_id < 0 ||
+	    drv->mlo_assoc_link_id >= MAX_NUM_MLD_LINKS)
+		return;
+
+	os_memcpy(mlo->ap_mld_addr, nla_data(addr), ETH_ALEN);
+	wpa_printf(MSG_DEBUG, "nl80211: AP MLD MAC Address " MACSTR,
+		   MAC2STR(mlo->ap_mld_addr));
+
+	nla_for_each_nested(link, mlo_links, rem_links) {
+		struct nlattr *tb[NL80211_ATTR_MAX + 1];
+		int link_id;
+
+		nla_parse(tb, NL80211_ATTR_MAX, nla_data(link), nla_len(link),
+			  NULL);
+
+		if (!tb[NL80211_ATTR_MLO_LINK_ID] || !tb[NL80211_ATTR_MAC] ||
+		    !tb[NL80211_ATTR_BSSID])
+			continue;
+
+		link_id = nla_get_u8(tb[NL80211_ATTR_MLO_LINK_ID]);
+		if (link_id >= MAX_NUM_MLD_LINKS)
+			continue;
+
+		mlo->valid_links |= BIT(link_id);
+		os_memcpy(mlo->links[link_id].addr,
+			  nla_data(tb[NL80211_ATTR_MAC]), ETH_ALEN);
+		os_memcpy(mlo->links[link_id].bssid,
+			  nla_data(tb[NL80211_ATTR_BSSID]), ETH_ALEN);
+		wpa_printf(MSG_DEBUG, "nl80211: MLO link[%u] addr " MACSTR
+			   " bssid " MACSTR,
+			   link_id, MAC2STR(mlo->links[link_id].addr),
+			   MAC2STR(mlo->links[link_id].bssid));
+	}
+
+	if (!(mlo->valid_links & BIT(drv->mlo_assoc_link_id))) {
+		wpa_printf(MSG_ERROR, "nl80211: Invalid MLO assoc link ID %d",
+			   drv->mlo_assoc_link_id);
+		mlo->valid_links = 0;
+		return;
+	}
+
+	os_memcpy(drv->bssid, mlo->links[drv->mlo_assoc_link_id].bssid,
+		  ETH_ALEN);
+	os_memcpy(drv->prev_bssid, drv->bssid, ETH_ALEN);
+}
+
+
 static void mlme_event_connect(struct wpa_driver_nl80211_data *drv,
 			       enum nl80211_commands cmd, struct nlattr *status,
 			       struct nlattr *addr, struct nlattr *req_ie,
@@ -436,7 +519,8 @@ static void mlme_event_connect(struct wpa_driver_nl80211_data *drv,
 			       struct nlattr *subnet_status,
 			       struct nlattr *fils_erp_next_seq_num,
 			       struct nlattr *fils_pmk,
-			       struct nlattr *fils_pmkid)
+			       struct nlattr *fils_pmkid,
+			       struct nlattr *mlo_links)
 {
 	union wpa_event_data event;
 	const u8 *ssid = NULL;
@@ -528,7 +612,9 @@ static void mlme_event_connect(struct wpa_driver_nl80211_data *drv,
 	}
 
 	drv->associated = 1;
-	if (addr) {
+	drv->sta_mlo_info.valid_links = 0;
+	nl80211_parse_mlo_info(drv, addr, mlo_links, resp_ie);
+	if (!drv->sta_mlo_info.valid_links && addr) {
 		os_memcpy(drv->bssid, nla_data(addr), ETH_ALEN);
 		os_memcpy(drv->prev_bssid, drv->bssid, ETH_ALEN);
 	}
@@ -2135,7 +2221,8 @@ static void qca_nl80211_key_mgmt_auth(struct wpa_driver_nl80211_data *drv,
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_SUBNET_STATUS],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_FILS_ERP_NEXT_SEQ_NUM],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PMK],
-			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PMKID]);
+			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PMKID],
+			   NULL);
 }
 
 
@@ -3210,7 +3297,8 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 				   NULL,
 				   tb[NL80211_ATTR_FILS_ERP_NEXT_SEQ_NUM],
 				   tb[NL80211_ATTR_PMK],
-				   tb[NL80211_ATTR_PMKID]);
+				   tb[NL80211_ATTR_PMKID],
+				   tb[NL80211_ATTR_MLO_LINKS]);
 		break;
 	case NL80211_CMD_CH_SWITCH_STARTED_NOTIFY:
 		mlme_event_ch_switch(drv,

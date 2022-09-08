@@ -2730,6 +2730,16 @@ struct weighted_pcl {
 	u32 flag; /* bitmap for WEIGHTED_PCL_* */
 };
 
+struct driver_sta_mlo_info {
+	u16 valid_links; /* bitmap of valid link IDs */
+	u8 ap_mld_addr[ETH_ALEN];
+	struct {
+		u8 addr[ETH_ALEN];
+		u8 bssid[ETH_ALEN];
+		unsigned int freq;
+	} links[MAX_NUM_MLD_LINKS];
+};
+
 /**
  * struct wpa_driver_ops - Driver interface API definition
  *

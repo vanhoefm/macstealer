@@ -270,6 +270,7 @@ void nl80211_mark_disconnected(struct wpa_driver_nl80211_data *drv)
 	if (drv->associated)
 		os_memcpy(drv->prev_bssid, drv->bssid, ETH_ALEN);
 	drv->associated = 0;
+	drv->sta_mlo_info.valid_links = 0;
 	os_memset(drv->bssid, 0, ETH_ALEN);
 	drv->first_bss->freq = 0;
 #ifdef CONFIG_DRIVER_NL80211_QCA
@@ -1441,6 +1442,8 @@ struct nl80211_get_assoc_freq_arg {
 	u8 assoc_bssid[ETH_ALEN];
 	u8 assoc_ssid[SSID_MAX_LEN];
 	u8 assoc_ssid_len;
+	u8 bssid[MAX_NUM_MLD_LINKS][ETH_ALEN];
+	unsigned int freq[MAX_NUM_MLD_LINKS];
 };
 
 static int nl80211_get_assoc_freq_handler(struct nl_msg *msg, void *arg)
@@ -1453,9 +1456,11 @@ static int nl80211_get_assoc_freq_handler(struct nl_msg *msg, void *arg)
 		[NL80211_BSS_FREQUENCY] = { .type = NLA_U32 },
 		[NL80211_BSS_INFORMATION_ELEMENTS] = { .type = NLA_UNSPEC },
 		[NL80211_BSS_STATUS] = { .type = NLA_U32 },
+		[NL80211_BSS_MLO_LINK_ID] = { .type = NLA_U8 },
 	};
 	struct nl80211_get_assoc_freq_arg *ctx = arg;
 	enum nl80211_bss_status status;
+	struct wpa_driver_nl80211_data *drv = ctx->drv;
 
 	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
 		  genlmsg_attrlen(gnlh, 0), NULL);
@@ -1468,9 +1473,25 @@ static int nl80211_get_assoc_freq_handler(struct nl_msg *msg, void *arg)
 	status = nla_get_u32(bss[NL80211_BSS_STATUS]);
 	if (status == NL80211_BSS_STATUS_ASSOCIATED &&
 	    bss[NL80211_BSS_FREQUENCY]) {
-		ctx->assoc_freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
-		wpa_printf(MSG_DEBUG, "nl80211: Associated on %u MHz",
-			   ctx->assoc_freq);
+		int link_id = -1;
+		u32 freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+
+		if (bss[NL80211_BSS_MLO_LINK_ID])
+			link_id = nla_get_u8(bss[NL80211_BSS_MLO_LINK_ID]);
+
+		if (link_id >= 0 && link_id < MAX_NUM_MLD_LINKS) {
+			ctx->freq[link_id] = freq;
+			wpa_printf(MSG_DEBUG,
+				   "nl80211: MLO link %d associated on %u MHz",
+				   link_id, ctx->freq[link_id]);
+		}
+
+		if (!drv->sta_mlo_info.valid_links ||
+		    drv->mlo_assoc_link_id == link_id) {
+			ctx->assoc_freq = freq;
+			wpa_printf(MSG_DEBUG, "nl80211: Associated on %u MHz",
+				   ctx->assoc_freq);
+		}
 	}
 	if (status == NL80211_BSS_STATUS_IBSS_JOINED &&
 	    bss[NL80211_BSS_FREQUENCY]) {
@@ -1480,10 +1501,26 @@ static int nl80211_get_assoc_freq_handler(struct nl_msg *msg, void *arg)
 	}
 	if (status == NL80211_BSS_STATUS_ASSOCIATED &&
 	    bss[NL80211_BSS_BSSID]) {
-		os_memcpy(ctx->assoc_bssid,
-			  nla_data(bss[NL80211_BSS_BSSID]), ETH_ALEN);
-		wpa_printf(MSG_DEBUG, "nl80211: Associated with "
-			   MACSTR, MAC2STR(ctx->assoc_bssid));
+		int link_id = -1;
+		const u8 *bssid = nla_data(bss[NL80211_BSS_BSSID]);
+
+		if (bss[NL80211_BSS_MLO_LINK_ID])
+			link_id = nla_get_u8(bss[NL80211_BSS_MLO_LINK_ID]);
+
+		if (link_id >= 0 && link_id < MAX_NUM_MLD_LINKS) {
+			os_memcpy(ctx->bssid[link_id], bssid, ETH_ALEN);
+			wpa_printf(MSG_DEBUG,
+				   "nl80211: MLO link %d associated with "
+				   MACSTR, link_id, MAC2STR(bssid));
+		}
+
+		if (!drv->sta_mlo_info.valid_links ||
+		    drv->mlo_assoc_link_id == link_id) {
+			os_memcpy(ctx->assoc_bssid, bssid, ETH_ALEN);
+			wpa_printf(MSG_DEBUG, "nl80211: Associated with "
+				   MACSTR, MAC2STR(bssid));
+		}
+
 	}
 
 	if (status == NL80211_BSS_STATUS_ASSOCIATED &&
@@ -1569,6 +1606,14 @@ try_again:
 			   "associated BSS from scan results: %u MHz", freq);
 		if (freq)
 			drv->assoc_freq = freq;
+
+		if (drv->sta_mlo_info.valid_links) {
+			int i;
+
+			for (i = 0; i < MAX_NUM_MLD_LINKS; i++)
+				drv->sta_mlo_info.links[i].freq = arg.freq[i];
+		}
+
 		return drv->assoc_freq;
 	}
 	wpa_printf(MSG_DEBUG, "nl80211: Scan result fetch failed: ret=%d "

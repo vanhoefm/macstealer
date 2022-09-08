@@ -518,4 +518,6 @@ enum frame_encryption {
 	FRAME_ENCRYPTED = 1
 };
 
+#define MAX_NUM_MLD_LINKS 15
+
 #endif /* DEFS_H */
