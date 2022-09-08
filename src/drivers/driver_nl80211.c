@@ -6979,14 +6979,17 @@ static int wpa_driver_nl80211_set_supp_port(void *priv, int authorized)
 	struct nl_msg *msg;
 	struct nl80211_sta_flag_update upd;
 	int ret;
+	const u8 *connected_addr = drv->sta_mlo_info.valid_links ?
+		drv->sta_mlo_info.ap_mld_addr : drv->bssid;
 
-	if (!drv->associated && is_zero_ether_addr(drv->bssid) && !authorized) {
+	if (!drv->associated && is_zero_ether_addr(connected_addr) &&
+	    !authorized) {
 		wpa_printf(MSG_DEBUG, "nl80211: Skip set_supp_port(unauthorized) while not associated");
 		return 0;
 	}
 
 	wpa_printf(MSG_DEBUG, "nl80211: Set supplicant port %sauthorized for "
-		   MACSTR, authorized ? "" : "un", MAC2STR(drv->bssid));
+		   MACSTR, authorized ? "" : "un", MAC2STR(connected_addr));
 
 	os_memset(&upd, 0, sizeof(upd));
 	upd.mask = BIT(NL80211_STA_FLAG_AUTHORIZED);
@@ -6994,7 +6997,7 @@ static int wpa_driver_nl80211_set_supp_port(void *priv, int authorized)
 		upd.set = BIT(NL80211_STA_FLAG_AUTHORIZED);
 
 	if (!(msg = nl80211_bss_msg(bss, 0, NL80211_CMD_SET_STATION)) ||
-	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, drv->bssid) ||
+	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, connected_addr) ||
 	    nla_put(msg, NL80211_ATTR_STA_FLAGS2, sizeof(upd), &upd)) {
 		nlmsg_free(msg);
 		return -ENOBUFS;
