@@ -379,6 +379,8 @@ static int wpa_bss_known(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
 
 static int wpa_bss_in_use(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
 {
+	int i;
+
 	if (bss == wpa_s->current_bss)
 		return 1;
 
@@ -388,9 +390,23 @@ static int wpa_bss_in_use(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
 		       bss->ssid_len) != 0))
 		return 0; /* SSID has changed */
 
-	return !is_zero_ether_addr(bss->bssid) &&
-		(os_memcmp(bss->bssid, wpa_s->bssid, ETH_ALEN) == 0 ||
-		 os_memcmp(bss->bssid, wpa_s->pending_bssid, ETH_ALEN) == 0);
+	if (!is_zero_ether_addr(bss->bssid) &&
+	    (os_memcmp(bss->bssid, wpa_s->bssid, ETH_ALEN) == 0 ||
+	     os_memcmp(bss->bssid, wpa_s->pending_bssid, ETH_ALEN) == 0))
+		return 1;
+
+	if (!wpa_s->valid_links)
+		return 0;
+
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		if (!(wpa_s->valid_links & BIT(i)))
+			continue;
+
+		if (os_memcmp(bss->bssid, wpa_s->links[i].bssid, ETH_ALEN) == 0)
+			return 1;
+	}
+
+	return 0;
 }
 
 

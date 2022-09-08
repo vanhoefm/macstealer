@@ -1020,6 +1020,20 @@ static int wpa_driver_nl80211_get_ssid(void *priv, u8 *ssid)
 }
 
 
+static int nl80211_get_sta_mlo_info(void *priv,
+				    struct driver_sta_mlo_info *mlo_info)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+
+	if (!drv->associated)
+		return -1;
+
+	os_memcpy(mlo_info, &drv->sta_mlo_info, sizeof(*mlo_info));
+	return 0;
+}
+
+
 static void wpa_driver_nl80211_event_newlink(
 	struct nl80211_global *global, struct wpa_driver_nl80211_data *drv,
 	int ifindex, const char *ifname)
@@ -12777,6 +12791,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #ifdef CONFIG_DPP
 	.dpp_listen = nl80211_dpp_listen,
 #endif /* CONFIG_DPP */
+	.get_sta_mlo_info = nl80211_get_sta_mlo_info,
 #ifdef CONFIG_TESTING_OPTIONS
 	.register_frame = testing_nl80211_register_frame,
 	.radio_disable = testing_nl80211_radio_disable,

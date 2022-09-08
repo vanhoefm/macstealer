@@ -1152,4 +1152,14 @@ static inline int wpa_drv_set_secure_ranging_ctx(struct wpa_supplicant *wpa_s,
 	return wpa_s->driver->set_secure_ranging_ctx(wpa_s->drv_priv, &params);
 }
 
+static inline int
+wpas_drv_get_sta_mlo_info(struct wpa_supplicant *wpa_s,
+			  struct driver_sta_mlo_info *mlo_info)
+{
+	if (!wpa_s->driver->get_sta_mlo_info)
+		return 0;
+
+	return wpa_s->driver->get_sta_mlo_info(wpa_s->drv_priv, mlo_info);
+}
+
 #endif /* DRIVER_I_H */

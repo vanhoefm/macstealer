@@ -4803,6 +4803,17 @@ struct wpa_driver_ops {
 	 */
 	int (*send_pasn_resp)(void *priv, struct pasn_auth *params);
 
+	/**
+	 * get_sta_mlo_info - Get the current multi-link association info
+	 * @priv: Private driver interface data
+	 * @mlo: Pointer to fill multi-link association info
+	 * Returns: 0 on success, -1 on failure
+	 *
+	 * This callback is used to fetch multi-link of the current association.
+	 */
+	int (*get_sta_mlo_info)(void *priv,
+				struct driver_sta_mlo_info *mlo_info);
+
 #ifdef CONFIG_TESTING_OPTIONS
 	int (*register_frame)(void *priv, u16 type,
 			      const u8 *match, size_t match_len,
