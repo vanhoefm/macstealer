@@ -2383,6 +2383,14 @@ static int wpa_supplicant_ctrl_iface_status(struct wpa_supplicant *wpa_s,
 		return pos - buf;
 	pos += ret;
 
+	if (wpa_s->valid_links) {
+		ret = os_snprintf(pos, end - pos, "ap_mld_addr=" MACSTR "\n",
+				  MAC2STR(wpa_s->ap_mld_addr));
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+	}
+
 #ifdef CONFIG_HS20
 	if (wpa_s->current_bss &&
 	    (hs20 = wpa_bss_get_vendor_ie(wpa_s->current_bss,
