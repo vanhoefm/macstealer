@@ -2,7 +2,7 @@
 
 <refentry>
   <refentryinfo>
-    <date>07 August 2019</date>
+    <date>13 September 2022</date>
   </refentryinfo>
 
   <refmeta>
@@ -22,6 +22,7 @@
       <arg>-D<replaceable>driver</replaceable></arg>
       <arg>-P<replaceable>PID_file</replaceable></arg>
       <arg>-f<replaceable>output file</replaceable></arg>
+      <arg>-I<replaceable>additional config file</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
   <refsect1>
@@ -337,6 +338,13 @@
 	  <para>Interface to listen on. Multiple instances of this option can
 	  be present, one per interface, separated by <option>-N</option>
 	  option (see below).</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>-I filename</term>
+	<listitem>
+          <para>Path to additional configuration file.</para>
 	</listitem>
       </varlistentry>
 
