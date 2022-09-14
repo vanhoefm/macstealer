@@ -5168,7 +5168,7 @@ def test_sigma_dut_eap_aka(dev, apdev, params):
 
     identity = "0232010000000000@wlan.mnc232.mcc02.3gppnetwork.org"
     password = "90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123"
-    cmd = "sta_set_eapaka,interface,%s,ssid,%s,keymgmttype,wpa2,encpType,AES-CCMP,imsiPrivacyCert,%s,username,%s,password,%s" % (ifname, ssid, cert_file, identity, password)
+    cmd = "sta_set_eapaka,interface,%s,ssid,%s,keymgmttype,wpa2,encpType,AES-CCMP,imsiPrivacyCert,%s,imsiPrivacyCertID,serno=12345,username,%s,password,%s" % (ifname, ssid, cert_file, identity, password)
 
     try:
         sigma_dut_cmd_check("sta_reset_default,interface,%s,prog,WPA3" % ifname)
