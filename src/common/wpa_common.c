@@ -3164,6 +3164,9 @@ static int wpa_parse_generic(const u8 *pos, struct wpa_eapol_ie_parse *ie)
 	u32 selector;
 	const u8 *p;
 	size_t left;
+	u8 link_id;
+	char title[50];
+	int ret;
 
 	if (len == 0)
 		return 1;
@@ -3268,6 +3271,78 @@ static int wpa_parse_generic(const u8 *pos, struct wpa_eapol_ie_parse *ie)
 		ie->dpp_kde = p;
 		ie->dpp_kde_len = left;
 		wpa_hexdump(MSG_DEBUG, "WPA: DPP KDE in EAPOL-Key", pos, dlen);
+		return 0;
+	}
+
+	if (left >= RSN_MLO_GTK_KDE_PREFIX_LENGTH &&
+	    selector == RSN_KEY_DATA_MLO_GTK) {
+		link_id = (p[0] & RSN_MLO_GTK_KDE_PREFIX0_LINK_ID_MASK) >>
+			RSN_MLO_GTK_KDE_PREFIX0_LINK_ID_SHIFT;
+		if (link_id >= MAX_NUM_MLO_LINKS)
+			return 2;
+
+		ie->valid_mlo_gtks |= BIT(link_id);
+		ie->mlo_gtk[link_id] = p;
+		ie->mlo_gtk_len[link_id] = left;
+		ret = os_snprintf(title, sizeof(title),
+				  "RSN: Link ID %u - MLO GTK KDE in EAPOL-Key",
+				  link_id);
+		if (!os_snprintf_error(sizeof(title), ret))
+			wpa_hexdump_key(MSG_DEBUG, title, pos, dlen);
+		return 0;
+	}
+
+	if (left >= RSN_MLO_IGTK_KDE_PREFIX_LENGTH &&
+	    selector == RSN_KEY_DATA_MLO_IGTK) {
+		link_id = (p[8] & RSN_MLO_IGTK_KDE_PREFIX8_LINK_ID_MASK) >>
+			  RSN_MLO_IGTK_KDE_PREFIX8_LINK_ID_SHIFT;
+		if (link_id >= MAX_NUM_MLO_LINKS)
+			return 2;
+
+		ie->valid_mlo_igtks |= BIT(link_id);
+		ie->mlo_igtk[link_id] = p;
+		ie->mlo_igtk_len[link_id] = left;
+		ret = os_snprintf(title, sizeof(title),
+				  "RSN: Link ID %u - MLO IGTK KDE in EAPOL-Key",
+				  link_id);
+		if (!os_snprintf_error(sizeof(title), ret))
+			wpa_hexdump_key(MSG_DEBUG, title, pos, dlen);
+		return 0;
+	}
+
+	if (left >= RSN_MLO_BIGTK_KDE_PREFIX_LENGTH &&
+	    selector == RSN_KEY_DATA_MLO_BIGTK) {
+		link_id = (p[8] & RSN_MLO_BIGTK_KDE_PREFIX8_LINK_ID_MASK) >>
+			  RSN_MLO_BIGTK_KDE_PREFIX8_LINK_ID_SHIFT;
+		if (link_id >= MAX_NUM_MLO_LINKS)
+			return 2;
+
+		ie->valid_mlo_bigtks |= BIT(link_id);
+		ie->mlo_bigtk[link_id] = p;
+		ie->mlo_bigtk_len[link_id] = left;
+		ret = os_snprintf(title, sizeof(title),
+				  "RSN: Link ID %u - MLO BIGTK KDE in EAPOL-Key",
+				  link_id);
+		if (!os_snprintf_error(sizeof(title), ret))
+			wpa_hexdump_key(MSG_DEBUG, title, pos, dlen);
+		return 0;
+	}
+
+	if (left >= RSN_MLO_LINK_KDE_FIXED_LENGTH &&
+	    selector == RSN_KEY_DATA_MLO_LINK) {
+		link_id = (p[0] & RSN_MLO_LINK_KDE_LI_LINK_ID_MASK) >>
+			  RSN_MLO_LINK_KDE_LI_LINK_ID_SHIFT;
+		if (link_id >= MAX_NUM_MLO_LINKS)
+			return 2;
+
+		ie->valid_mlo_links |= BIT(link_id);
+		ie->mlo_link[link_id] = p;
+		ie->mlo_link_len[link_id] = left;
+		ret = os_snprintf(title, sizeof(title),
+				  "RSN: Link ID %u - MLO Link KDE in EAPOL-Key",
+				  link_id);
+		if (!os_snprintf_error(sizeof(title), ret))
+			wpa_hexdump(MSG_DEBUG, title, pos, dlen);
 		return 0;
 	}
 
