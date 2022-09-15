@@ -1231,12 +1231,13 @@ static void set_pps_cred_home_sp_oi(struct hs20_osu_client *ctx, int id,
 		   homeoi, required);
 
 	if (required) {
-		if (set_cred(ctx->ifname, id, "required_roaming_consortium",
-			     homeoi) < 0)
-			wpa_printf(MSG_INFO, "Failed to set cred required_roaming_consortium");
+		if (set_cred_quoted(ctx->ifname, id, "required_home_ois",
+				    homeoi) < 0)
+			wpa_printf(MSG_INFO,
+				   "Failed to set cred required_home_ois");
 	} else {
-		if (set_cred(ctx->ifname, id, "roaming_consortium", homeoi) < 0)
-			wpa_printf(MSG_INFO, "Failed to set cred roaming_consortium");
+		if (set_cred_quoted(ctx->ifname, id, "home_ois", homeoi) < 0)
+			wpa_printf(MSG_INFO, "Failed to set cred home_ois");
 	}
 
 	xml_node_get_text_free(ctx->xml, homeoi);
