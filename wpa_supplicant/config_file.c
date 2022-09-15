@@ -922,12 +922,6 @@ static void wpa_config_write_cred(FILE *f, struct wpa_cred *cred)
 	if (cred->domain_suffix_match)
 		fprintf(f, "\tdomain_suffix_match=\"%s\"\n",
 			cred->domain_suffix_match);
-	if (cred->roaming_consortium_len) {
-		fprintf(f, "\troaming_consortium=");
-		for (i = 0; i < cred->roaming_consortium_len; i++)
-			fprintf(f, "%02x", cred->roaming_consortium[i]);
-		fprintf(f, "\n");
-	}
 	if (cred->eap_method) {
 		const char *name;
 		name = eap_get_name(cred->eap_method[0].vendor,
@@ -1003,12 +997,32 @@ static void wpa_config_write_cred(FILE *f, struct wpa_cred *cred)
 		}
 	}
 
-	if (cred->required_roaming_consortium_len) {
-		fprintf(f, "\trequired_roaming_consortium=");
-		for (i = 0; i < cred->required_roaming_consortium_len; i++)
-			fprintf(f, "%02x",
-				cred->required_roaming_consortium[i]);
-		fprintf(f, "\n");
+	if (cred->num_home_ois) {
+		size_t j;
+
+		fprintf(f, "\thome_ois=\"");
+		for (i = 0; i < cred->num_home_ois; i++) {
+			if (i > 0)
+				fprintf(f, ",");
+			for (j = 0; j < cred->home_ois_len[i]; j++)
+				fprintf(f, "%02x",
+					cred->home_ois[i][j]);
+		}
+		fprintf(f, "\"\n");
+	}
+
+	if (cred->num_required_home_ois) {
+		size_t j;
+
+		fprintf(f, "\trequired_home_ois=\"");
+		for (i = 0; i < cred->num_required_home_ois; i++) {
+			if (i > 0)
+				fprintf(f, ",");
+			for (j = 0; j < cred->required_home_ois_len[i]; j++)
+				fprintf(f, "%02x",
+					cred->required_home_ois[i][j]);
+		}
+		fprintf(f, "\"\n");
 	}
 
 	if (cred->num_roaming_consortiums) {

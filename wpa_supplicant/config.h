@@ -259,36 +259,50 @@ struct wpa_cred {
 	size_t num_domain;
 
 	/**
-	 * roaming_consortium - Roaming Consortium OI
+	 * home_ois - Home OIs
 	 *
-	 * If roaming_consortium_len is non-zero, this field contains the
-	 * Roaming Consortium OI that can be used to determine which access
-	 * points support authentication with this credential. This is an
-	 * alternative to the use of the realm parameter. When using Roaming
-	 * Consortium to match the network, the EAP parameters need to be
-	 * pre-configured with the credential since the NAI Realm information
-	 * may not be available or fetched.
+	 * If num_home_ois is non-zero, this field contains the set of Home OIs
+	 * that can be use to determine which access points support
+	 * authentication with this credential. These are an alternative to the
+	 * use of the realm parameter. When using Home OIs to match the network,
+	 * the EAP parameters need to be pre-configured with the credentials
+	 * since the NAI Realm information may not be available or fetched.
+	 * A successful authentication with the access point is possible as soon
+	 * as at least one Home OI from the list matches an OI in the Roaming
+	 * Consortium list advertised by the access point.
+	 * (Hotspot 2.0 PerProviderSubscription/<X+>/HomeSP/HomeOIList/<X+>/HomeOI)
 	 */
-	u8 roaming_consortium[15];
+	u8 home_ois[MAX_ROAMING_CONS][MAX_ROAMING_CONS_OI_LEN];
 
 	/**
-	 * roaming_consortium_len - Length of roaming_consortium
+	 * home_ois_len - Length of home_ois[i]
 	 */
-	size_t roaming_consortium_len;
+	size_t home_ois_len[MAX_ROAMING_CONS];
 
 	/**
-	 * required_roaming_consortium - Required Roaming Consortium OI
+	 * num_home_ois - Number of entries in home_ois
+	 */
+	unsigned int num_home_ois;
+
+	/**
+	 * required_home_ois - Required Home OI(s)
 	 *
-	 * If required_roaming_consortium_len is non-zero, this field contains
-	 * the Roaming Consortium OI that is required to be advertised by the AP
-	 * for the credential to be considered matching.
+	 * If required_home_ois_len is non-zero, this field contains the set of
+	 * Home OI(s) that are required to be advertised by the AP for the
+	 * credential to be considered matching.
+	 * (Hotspot 2.0 PerProviderSubscription/<X+>/HomeSP/HomeOIList/<X+>/HomeOIRequired)
 	 */
-	u8 required_roaming_consortium[15];
+	u8 required_home_ois[MAX_ROAMING_CONS][MAX_ROAMING_CONS_OI_LEN];
 
 	/**
-	 * required_roaming_consortium_len - Length of required_roaming_consortium
+	 * required_home_ois_len - Length of required_home_ois
 	 */
-	size_t required_roaming_consortium_len;
+	size_t required_home_ois_len[MAX_ROAMING_CONS];
+
+	/**
+	 * num_required_home_ois - Number of entries in required_home_ois
+	 */
+	unsigned int num_required_home_ois;
 
 	/**
 	 * roaming_consortiums - Roaming Consortium OI(s) memberships

@@ -3532,53 +3532,62 @@ static int wpa_config_set_cred_req_conn_capab(struct wpa_cred *cred,
 }
 
 
-static int wpa_config_set_cred_roaming_consortiums(struct wpa_cred *cred,
-						   const char *value)
+static int
+wpa_config_set_cred_ois(u8 cred_ois[MAX_ROAMING_CONS][MAX_ROAMING_CONS_OI_LEN],
+			size_t cred_ois_len[MAX_ROAMING_CONS],
+			unsigned int *cred_num_ois,
+			const char *value)
 {
-	u8 roaming_consortiums[MAX_ROAMING_CONS][MAX_ROAMING_CONS_OI_LEN];
-	size_t roaming_consortiums_len[MAX_ROAMING_CONS];
-	unsigned int num_roaming_consortiums = 0;
+	u8 ois[MAX_ROAMING_CONS][MAX_ROAMING_CONS_OI_LEN];
+	size_t ois_len[MAX_ROAMING_CONS];
+	unsigned int num_ois = 0;
 	const char *pos, *end;
 	size_t len;
 
-	os_memset(roaming_consortiums, 0, sizeof(roaming_consortiums));
-	os_memset(roaming_consortiums_len, 0, sizeof(roaming_consortiums_len));
+	len = os_strlen(value);
+	if (len / 2 < 3) {
+		wpa_printf(MSG_ERROR,
+			   "Invalid organisation identifier (OI) list: %s",
+			   value);
+		return -1;
+	}
+
+	os_memset(ois, 0, sizeof(ois));
+	os_memset(ois_len, 0, sizeof(ois_len));
 
 	for (pos = value;;) {
 		end = os_strchr(pos, ',');
 		len = end ? (size_t) (end - pos) : os_strlen(pos);
 		if (!end && len == 0)
 			break;
-		if (len == 0 || (len & 1) != 0 ||
+		if (len / 2 < 3 || (len & 1) != 0 ||
 		    len / 2 > MAX_ROAMING_CONS_OI_LEN ||
 		    hexstr2bin(pos,
-			       roaming_consortiums[num_roaming_consortiums],
+			       ois[num_ois],
 			       len / 2) < 0) {
 			wpa_printf(MSG_INFO,
-				   "Invalid roaming_consortiums entry: %s",
+				   "Invalid organisation identifier (OI) entry: %s",
 				   pos);
 			return -1;
 		}
-		roaming_consortiums_len[num_roaming_consortiums] = len / 2;
-		num_roaming_consortiums++;
+		ois_len[num_ois] = len / 2;
+		num_ois++;
 
 		if (!end)
 			break;
 
-		if (num_roaming_consortiums >= MAX_ROAMING_CONS) {
+		if (num_ois >= MAX_ROAMING_CONS) {
 			wpa_printf(MSG_INFO,
-				   "Too many roaming_consortiums OIs");
+				   "Too many OIs");
 			return -1;
 		}
 
 		pos = end + 1;
 	}
 
-	os_memcpy(cred->roaming_consortiums, roaming_consortiums,
-		  sizeof(roaming_consortiums));
-	os_memcpy(cred->roaming_consortiums_len, roaming_consortiums_len,
-		  sizeof(roaming_consortiums_len));
-	cred->num_roaming_consortiums = num_roaming_consortiums;
+	os_memcpy(cred_ois, ois, sizeof(ois));
+	os_memcpy(cred_ois_len, ois_len, sizeof(ois_len));
+	*cred_num_ois = num_ois;
 
 	return 0;
 }
@@ -3813,36 +3822,70 @@ int wpa_config_set_cred(struct wpa_cred *cred, const char *var,
 	}
 
 	if (os_strcmp(var, "roaming_consortium") == 0) {
-		if (len < 3 || len > sizeof(cred->roaming_consortium)) {
+		if (len < 3 || len > sizeof(cred->home_ois[0])) {
 			wpa_printf(MSG_ERROR, "Line %d: invalid "
 				   "roaming_consortium length %d (3..15 "
 				   "expected)", line, (int) len);
 			os_free(val);
 			return -1;
 		}
-		os_memcpy(cred->roaming_consortium, val, len);
-		cred->roaming_consortium_len = len;
+		wpa_printf(MSG_WARNING,
+			   "Line %d: option roaming_consortium is deprecated and will be removed in the future",
+			   line);
+		os_memcpy(cred->home_ois[0], val, len);
+		cred->home_ois_len[0] = len;
+		cred->num_home_ois = 1;
 		os_free(val);
 		return 0;
 	}
 
 	if (os_strcmp(var, "required_roaming_consortium") == 0) {
-		if (len < 3 || len > sizeof(cred->required_roaming_consortium))
-		{
+		if (len < 3 || len > sizeof(cred->required_home_ois[0])) {
 			wpa_printf(MSG_ERROR, "Line %d: invalid "
 				   "required_roaming_consortium length %d "
 				   "(3..15 expected)", line, (int) len);
 			os_free(val);
 			return -1;
 		}
-		os_memcpy(cred->required_roaming_consortium, val, len);
-		cred->required_roaming_consortium_len = len;
+		wpa_printf(MSG_WARNING,
+			   "Line %d: option required_roaming_consortium is deprecated and will be removed in the future",
+			   line);
+		os_memcpy(cred->required_home_ois[0], val, len);
+		cred->required_home_ois_len[0] = len;
+		cred->num_required_home_ois = 1;
 		os_free(val);
 		return 0;
 	}
 
+	if (os_strcmp(var, "home_ois") == 0) {
+		res = wpa_config_set_cred_ois(cred->home_ois,
+					      cred->home_ois_len,
+					      &cred->num_home_ois,
+					      val);
+		if (res < 0)
+			wpa_printf(MSG_ERROR, "Line %d: invalid home_ois",
+				   line);
+		os_free(val);
+		return res;
+	}
+
+	if (os_strcmp(var, "required_home_ois") == 0) {
+		res = wpa_config_set_cred_ois(cred->required_home_ois,
+					      cred->required_home_ois_len,
+					      &cred->num_required_home_ois,
+					      val);
+		if (res < 0)
+			wpa_printf(MSG_ERROR,
+				   "Line %d: invalid required_home_ois", line);
+		os_free(val);
+		return res;
+	}
+
 	if (os_strcmp(var, "roaming_consortiums") == 0) {
-		res = wpa_config_set_cred_roaming_consortiums(cred, val);
+		res = wpa_config_set_cred_ois(cred->roaming_consortiums,
+					      cred->roaming_consortiums_len,
+					      &cred->num_roaming_consortiums,
+					      val);
 		if (res < 0)
 			wpa_printf(MSG_ERROR,
 				   "Line %d: invalid roaming_consortiums",
@@ -4154,14 +4197,14 @@ char * wpa_config_get_cred_no_key(struct wpa_cred *cred, const char *var)
 		size_t buflen;
 		char *buf;
 
-		if (!cred->roaming_consortium_len)
+		if (!cred->num_home_ois || !cred->home_ois_len[0])
 			return NULL;
-		buflen = cred->roaming_consortium_len * 2 + 1;
+		buflen = cred->home_ois_len[0] * 2 + 1;
 		buf = os_malloc(buflen);
 		if (buf == NULL)
 			return NULL;
-		wpa_snprintf_hex(buf, buflen, cred->roaming_consortium,
-				 cred->roaming_consortium_len);
+		wpa_snprintf_hex(buf, buflen, cred->home_ois[0],
+				 cred->home_ois_len[0]);
 		return buf;
 	}
 
@@ -4169,14 +4212,64 @@ char * wpa_config_get_cred_no_key(struct wpa_cred *cred, const char *var)
 		size_t buflen;
 		char *buf;
 
-		if (!cred->required_roaming_consortium_len)
+		if (!cred->num_required_home_ois ||
+		    !cred->required_home_ois_len[0])
 			return NULL;
-		buflen = cred->required_roaming_consortium_len * 2 + 1;
+		buflen = cred->required_home_ois_len[0] * 2 + 1;
 		buf = os_malloc(buflen);
 		if (buf == NULL)
 			return NULL;
-		wpa_snprintf_hex(buf, buflen, cred->required_roaming_consortium,
-				 cred->required_roaming_consortium_len);
+		wpa_snprintf_hex(buf, buflen, cred->required_home_ois[0],
+				 cred->required_home_ois_len[0]);
+		return buf;
+	}
+
+	if (os_strcmp(var, "home_ois") == 0) {
+		size_t buflen;
+		char *buf, *pos;
+		size_t i;
+
+		if (!cred->num_home_ois)
+			return NULL;
+		buflen = cred->num_home_ois * MAX_ROAMING_CONS_OI_LEN * 2 + 1;
+		buf = os_malloc(buflen);
+		if (!buf)
+			return NULL;
+		pos = buf;
+		for (i = 0; i < cred->num_home_ois; i++) {
+			if (i > 0)
+				*pos++ = ',';
+			pos += wpa_snprintf_hex(
+				pos, buf + buflen - pos,
+				cred->home_ois[i],
+				cred->home_ois_len[i]);
+		}
+		*pos = '\0';
+		return buf;
+	}
+
+	if (os_strcmp(var, "required_home_ois") == 0) {
+		size_t buflen;
+		char *buf, *pos;
+		size_t i;
+
+		if (!cred->num_required_home_ois)
+			return NULL;
+		buflen = cred->num_required_home_ois *
+			MAX_ROAMING_CONS_OI_LEN * 2 + 1;
+		buf = os_malloc(buflen);
+		if (!buf)
+			return NULL;
+		pos = buf;
+		for (i = 0; i < cred->num_required_home_ois; i++) {
+			if (i > 0)
+				*pos++ = ',';
+			pos += wpa_snprintf_hex(
+				pos, buf + buflen - pos,
+				cred->required_home_ois[i],
+				cred->required_home_ois_len[i]);
+		}
+		*pos = '\0';
 		return buf;
 	}
 
