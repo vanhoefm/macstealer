@@ -6104,8 +6104,8 @@ def test_dbus_creds(dev, apdev):
 
     args = {'domain': 'server.w1.fi',
             'realm': 'server.w1.fi',
-            'roaming_consortium': '50a9bf',
-            'required_roaming_consortium': '23bf50',
+            'home_ois': '50a9bf',
+            'required_home_ois': '23bf50',
             'eap': 'TTLS',
             'phase2': 'auth=MSCHAPV2',
             'username': 'user',

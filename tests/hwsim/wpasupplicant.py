@@ -469,6 +469,11 @@ class WpaSupplicant:
             if field in params:
                 self.set_cred(id, field, params[field])
 
+        as_list = ["home_ois", "required_home_ois"]
+        for field in as_list:
+            if field in params:
+                self.set_cred_quoted(id, field, ','.join(params[field]))
+
         return id
 
     def select_network(self, id, freq=None):

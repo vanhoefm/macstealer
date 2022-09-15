@@ -223,8 +223,8 @@ def test_wpas_config_file(dev, apdev, params):
         wpas.set_cred_quoted(id, "provisioning_sp", "example.com")
         wpas.set_cred_quoted(id, "domain", "example.com")
         wpas.set_cred_quoted(id, "domain_suffix_match", "example.com")
-        wpas.set_cred(id, "roaming_consortium", "112233")
-        wpas.set_cred(id, "required_roaming_consortium", "112233")
+        wpas.set_cred_quoted(id, "home_ois", "112233,445566")
+        wpas.set_cred_quoted(id, "required_home_ois", "112233")
         wpas.set_cred_quoted(id, "roaming_consortiums",
                              "112233,aabbccddee,445566")
         wpas.set_cred_quoted(id, "roaming_partner",
