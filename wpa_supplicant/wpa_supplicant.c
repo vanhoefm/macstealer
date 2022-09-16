@@ -2280,7 +2280,7 @@ void wpa_s_setup_sae_pt(struct wpa_config *conf, struct wpa_ssid *ssid)
 
 	if (!password ||
 	    (conf->sae_pwe == 0 && !ssid->sae_password_id &&
-	     !wpa_key_mgmt_sae_ext_key(ssid->key_mgmt) &
+	     !wpa_key_mgmt_sae_ext_key(ssid->key_mgmt) &&
 	     !sae_pk_valid_password(password)) ||
 	    conf->sae_pwe == 3) {
 		/* PT derivation not needed */
