@@ -1127,19 +1127,13 @@ fail:
 }
 
 
-static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
+static void wpa_pasn_reset(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
-
 	wpa_printf(MSG_DEBUG, "PASN: Reset");
 
 	crypto_ecdh_deinit(pasn->ecdh);
 	pasn->ecdh = NULL;
 
-	wpas_pasn_cancel_auth_work(wpa_s);
-	wpa_s->pasn_auth_work = NULL;
-
-	eloop_cancel_timeout(wpas_pasn_auth_work_timeout, wpa_s, NULL);
 
 	pasn->akmp = 0;
 	pasn->cipher = 0;
@@ -1173,6 +1167,18 @@ static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 	os_memset(pasn->pmk_r1_name, 0, sizeof(pasn->pmk_r1_name));
 #endif /* CONFIG_IEEE80211R */
 	pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+}
+
+
+static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
+{
+	struct wpas_pasn *pasn = &wpa_s->pasn;
+
+	wpas_pasn_cancel_auth_work(wpa_s);
+	wpa_s->pasn_auth_work = NULL;
+	eloop_cancel_timeout(wpas_pasn_auth_work_timeout, wpa_s, NULL);
+
+	wpa_pasn_reset(pasn);
 }
 
 
