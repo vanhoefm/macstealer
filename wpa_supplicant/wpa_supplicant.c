@@ -1998,7 +1998,7 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 		}
 
 		if (wpa_key_mgmt_sae(ssid->key_mgmt) &&
-		    (ssid->sae_password || ssid->passphrase))
+		    (ssid->sae_password || ssid->passphrase || ssid->ext_psk))
 			psk_set = 1;
 
 		if (!psk_set) {

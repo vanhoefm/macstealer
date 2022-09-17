@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "utils/eloop.h"
+#include "utils/ext_password.h"
 #include "common/ieee802_11_defs.h"
 #include "common/ieee802_11_common.h"
 #include "common/ocv.h"
@@ -90,7 +91,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 {
 	struct wpabuf *buf;
 	size_t len;
-	const char *password;
+	char *password = NULL;
 	struct wpa_bss *bss;
 	int use_pt = 0;
 	bool use_pk = false;
@@ -106,7 +107,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 		wpa_printf(MSG_DEBUG, "SAE: TESTING - commit override");
 		buf = wpabuf_alloc(4 + wpabuf_len(wpa_s->sae_commit_override));
 		if (!buf)
-			return NULL;
+			goto fail;
 		if (!external) {
 			wpabuf_put_le16(buf, 1); /* Transaction seq# */
 			wpabuf_put_le16(buf, WLAN_STATUS_SUCCESS);
@@ -116,12 +117,45 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	}
 #endif /* CONFIG_TESTING_OPTIONS */
 
-	password = ssid->sae_password;
-	if (!password)
-		password = ssid->passphrase;
+	if (ssid->sae_password) {
+		password = os_strdup(ssid->sae_password);
+		if (!password) {
+			wpa_dbg(wpa_s, MSG_INFO,
+				"SAE: Failed to allocate password");
+			goto fail;
+		}
+	}
+	if (!password && ssid->passphrase) {
+		password = os_strdup(ssid->passphrase);
+		if (!password) {
+			wpa_dbg(wpa_s, MSG_INFO,
+				"SAE: Failed to allocate password");
+			goto fail;
+		}
+	}
+	if (!password && ssid->ext_psk) {
+		struct wpabuf *pw = ext_password_get(wpa_s->ext_pw,
+						     ssid->ext_psk);
+
+		if (!pw) {
+			wpa_msg(wpa_s, MSG_INFO,
+				"SAE: No password found from external storage");
+			goto fail;
+		}
+
+		password = os_malloc(wpabuf_len(pw) + 1);
+		if (!password) {
+			wpa_dbg(wpa_s, MSG_INFO,
+				"SAE: Failed to allocate password");
+			goto fail;
+		}
+		os_memcpy(password, wpabuf_head(pw), wpabuf_len(pw));
+		password[wpabuf_len(pw)] = '\0';
+		ext_password_free(pw);
+	}
 	if (!password) {
 		wpa_printf(MSG_DEBUG, "SAE: No password available");
-		return NULL;
+		goto fail;
 	}
 
 	if (reuse && wpa_s->sme.sae.tmp &&
@@ -134,7 +168,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	}
 	if (sme_set_sae_group(wpa_s) < 0) {
 		wpa_printf(MSG_DEBUG, "SAE: Failed to select group");
-		return NULL;
+		goto fail;
 	}
 
 	bss = wpa_bss_get_bssid_latest(wpa_s, bssid);
@@ -171,7 +205,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	if (ssid->sae_pk == SAE_PK_MODE_ONLY && !use_pk) {
 		wpa_printf(MSG_DEBUG,
 			   "SAE: Cannot use PK with the selected AP");
-		return NULL;
+		goto fail;
 	}
 #endif /* CONFIG_SAE_PK */
 
@@ -184,7 +218,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 		    !use_pt) {
 			wpa_printf(MSG_DEBUG,
 				   "SAE: Cannot use H2E with the selected AP");
-			return NULL;
+			goto fail;
 		}
 	}
 
@@ -192,13 +226,13 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	    sae_prepare_commit_pt(&wpa_s->sme.sae, ssid->pt,
 				  wpa_s->own_addr, bssid,
 				  wpa_s->sme.sae_rejected_groups, NULL) < 0)
-		return NULL;
+		goto fail;
 	if (!use_pt &&
 	    sae_prepare_commit(wpa_s->own_addr, bssid,
 			       (u8 *) password, os_strlen(password),
 			       &wpa_s->sme.sae) < 0) {
 		wpa_printf(MSG_DEBUG, "SAE: Could not pick PWE");
-		return NULL;
+		goto fail;
 	}
 	if (wpa_s->sme.sae.tmp) {
 		os_memcpy(wpa_s->sme.sae.tmp->bssid, bssid, ETH_ALEN);
@@ -218,7 +252,7 @@ reuse_data:
 		len += 4 + os_strlen(ssid->sae_password_id);
 	buf = wpabuf_alloc(4 + SAE_COMMIT_MAX_LEN + len);
 	if (buf == NULL)
-		return NULL;
+		goto fail;
 	if (!external) {
 		wpabuf_put_le16(buf, 1); /* Transaction seq# */
 		if (use_pk)
@@ -231,14 +265,19 @@ reuse_data:
 	if (sae_write_commit(&wpa_s->sme.sae, buf, wpa_s->sme.sae_token,
 			     ssid->sae_password_id) < 0) {
 		wpabuf_free(buf);
-		return NULL;
+		goto fail;
 	}
 	if (ret_use_pt)
 		*ret_use_pt = use_pt;
 	if (ret_use_pk)
 		*ret_use_pk = use_pk;
 
+	str_clear_free(password);
 	return buf;
+
+fail:
+	str_clear_free(password);
+	return NULL;
 }
 
 
