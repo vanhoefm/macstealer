@@ -102,9 +102,8 @@ static void wpas_pasn_auth_status(struct wpa_supplicant *wpa_s, const u8 *bssid,
 
 #ifdef CONFIG_SAE
 
-static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpa_supplicant *wpa_s)
+static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf = NULL;
 	int ret;
 
@@ -140,9 +139,8 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpa_supplicant *wpa_s)
 }
 
 
-static int wpas_pasn_wd_sae_rx(struct wpa_supplicant *wpa_s, struct wpabuf *wd)
+static int wpas_pasn_wd_sae_rx(struct wpas_pasn *pasn, struct wpabuf *wd)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	const u8 *data;
 	size_t buf_len;
 	u16 len, res, alg, seq, status;
@@ -240,9 +238,8 @@ static int wpas_pasn_wd_sae_rx(struct wpa_supplicant *wpa_s, struct wpabuf *wd)
 }
 
 
-static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpa_supplicant *wpa_s)
+static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf = NULL;
 
 	/* Need to add the entire authentication frame body */
@@ -876,9 +873,9 @@ static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpa_supplicant *wpa_s)
 	case WPA_KEY_MGMT_SAE:
 #ifdef CONFIG_SAE
 		if (pasn->trans_seq == 0)
-			return wpas_pasn_wd_sae_commit(wpa_s);
+			return wpas_pasn_wd_sae_commit(pasn);
 		if (pasn->trans_seq == 2)
-			return wpas_pasn_wd_sae_confirm(wpa_s);
+			return wpas_pasn_wd_sae_confirm(pasn);
 #endif /* CONFIG_SAE */
 		wpa_printf(MSG_ERROR,
 			   "PASN: SAE: Cannot derive wrapped data");
@@ -1236,7 +1233,7 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 	if (pasn->akmp == WPA_KEY_MGMT_SAE) {
 		int ret;
 
-		ret = wpas_pasn_wd_sae_rx(wpa_s, wrapped_data);
+		ret = wpas_pasn_wd_sae_rx(pasn, wrapped_data);
 		if (ret) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: Failed processing SAE wrapped data");
