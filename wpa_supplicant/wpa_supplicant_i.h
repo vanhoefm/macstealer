@@ -590,6 +590,8 @@ struct wpas_pasn {
 	size_t pmk_r1_len;
 	u8 pmk_r1_name[WPA_PMK_NAME_LEN];
 #endif /* CONFIG_IEEE80211R */
+	struct rsn_pmksa_cache *pmksa;
+	struct rsn_pmksa_cache_entry *pmksa_entry;
 };
 #endif /* CONFIG_PASN */
 

@@ -847,9 +847,11 @@ static int wpas_pasn_wd_fils_rx(struct wpa_supplicant *wpa_s, struct wpabuf *wd)
 
 	wpa_printf(MSG_DEBUG, "PASN: FILS: ERP processing succeeded");
 
-	wpa_pasn_pmksa_cache_add(wpa_s->wpa, pasn->pmk,
-				 pasn->pmk_len, pasn->fils.erp_pmkid,
-				 pasn->bssid, pasn->akmp);
+	pasn->pmksa_entry = pmksa_cache_add(pasn->pmksa, pasn->pmk,
+					    pasn->pmk_len, pasn->fils.erp_pmkid,
+					    NULL, 0, pasn->bssid,
+					    pasn->own_addr, NULL,
+					    pasn->akmp, 0);
 
 	pasn->fils.completed = true;
 	return 0;
@@ -1163,6 +1165,7 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 	os_memset(pasn->pmk_r1_name, 0, sizeof(pasn->pmk_r1_name));
 #endif /* CONFIG_IEEE80211R */
 	pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+	pasn->pmksa_entry = NULL;
 }
 
 
@@ -1244,9 +1247,12 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 		pasn->pmk_len = PMK_LEN;
 		os_memcpy(pasn->pmk, pasn->sae.pmk, PMK_LEN);
 
-		wpa_pasn_pmksa_cache_add(wpa_s->wpa, pasn->pmk,
-					 pasn->pmk_len, pasn->sae.pmkid,
-					 pasn->bssid, pasn->akmp);
+		pasn->pmksa_entry = pmksa_cache_add(pasn->pmksa, pasn->pmk,
+						    pasn->pmk_len,
+						    pasn->sae.pmkid,
+						    NULL, 0, pasn->bssid,
+						    pasn->own_addr, NULL,
+						    pasn->akmp, 0);
 		return 0;
 	}
 #endif /* CONFIG_SAE */
@@ -1498,6 +1504,8 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	}
 
 	rsnxe = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
+
+	wpa_s->pasn.pmksa = wpa_sm_get_pmksa_cache(wpa_s->wpa);
 
 	ret = wpas_pasn_start(wpa_s, awork->own_addr, awork->bssid, awork->akmp,
 			      awork->cipher, awork->group, bss->freq,
@@ -1887,6 +1895,10 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
 
 	pasn->status = WLAN_STATUS_SUCCESS;
+
+	if (pasn->pmksa_entry)
+		wpa_sm_set_cur_pmksa(wpa_s->wpa, pasn->pmksa_entry);
+
 	return 0;
 fail:
 	wpa_printf(MSG_DEBUG, "PASN: Failed RX processing - terminating");

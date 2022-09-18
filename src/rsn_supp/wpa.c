@@ -5322,15 +5322,6 @@ void wpa_sm_set_dpp_z(struct wpa_sm *sm, const struct wpabuf *z)
 
 #ifdef CONFIG_PASN
 
-void wpa_pasn_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
-			      const u8 *pmkid, const u8 *bssid, int key_mgmt)
-{
-	sm->cur_pmksa = pmksa_cache_add(sm->pmksa, pmk, pmk_len, pmkid, NULL, 0,
-					bssid, sm->own_addr, NULL,
-					key_mgmt, 0);
-}
-
-
 void wpa_pasn_sm_set_caps(struct wpa_sm *sm, unsigned int flags2)
 {
 	if (flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA)
@@ -5348,4 +5339,18 @@ void wpa_sm_pmksa_cache_reconfig(struct wpa_sm *sm)
 {
 	if (sm)
 		pmksa_cache_reconfig(sm->pmksa);
+}
+
+
+struct rsn_pmksa_cache * wpa_sm_get_pmksa_cache(struct wpa_sm *sm)
+{
+	return sm ? sm->pmksa : NULL;
+}
+
+
+void wpa_sm_set_cur_pmksa(struct wpa_sm *sm,
+			  struct rsn_pmksa_cache_entry *entry)
+{
+	if (sm)
+		sm->cur_pmksa = entry;
 }
