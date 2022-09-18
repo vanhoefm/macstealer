@@ -598,6 +598,7 @@ struct wpas_pasn {
 #ifdef CONFIG_TESTING_OPTIONS
 	int corrupt_mic;
 #endif /* CONFIG_TESTING_OPTIONS */
+	void *cb_ctx;
 };
 #endif /* CONFIG_PASN */
 

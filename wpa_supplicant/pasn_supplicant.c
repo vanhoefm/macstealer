@@ -839,10 +839,8 @@ static int wpas_pasn_wd_fils_rx(struct wpas_pasn *pasn, struct wpabuf *wd)
 #endif /* CONFIG_FILS */
 
 
-static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpa_supplicant *wpa_s)
+static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
-
 	if (pasn->using_pmksa)
 		return NULL;
 
@@ -974,7 +972,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 		 * Note: Even when PMKSA is available, also add wrapped data as
 		 * it is possible that the PMKID is no longer valid at the AP.
 		 */
-		wrapped_data_buf = wpas_pasn_get_wrapped_data(wpa_s);
+		wrapped_data_buf = wpas_pasn_get_wrapped_data(pasn);
 	}
 
 	if (wpa_pasn_add_rsne(buf, pmkid, pasn->akmp, pasn->cipher) < 0)
@@ -1025,9 +1023,8 @@ fail:
 }
 
 
-static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
+static struct wpabuf * wpas_pasn_build_auth_3(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf, *wrapped_data_buf = NULL;
 	u8 mic[WPA_PASN_MAX_MIC_LEN];
 	u8 mic_len, data_len;
@@ -1051,7 +1048,7 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
 				   pasn->own_addr, pasn->bssid,
 				   pasn->trans_seq + 1, WLAN_STATUS_SUCCESS);
 
-	wrapped_data_buf = wpas_pasn_get_wrapped_data(wpa_s);
+	wrapped_data_buf = wpas_pasn_get_wrapped_data(pasn);
 
 	if (!wrapped_data_buf)
 		wrapped_data = WPA_PASN_WRAPPED_DATA_NO;
@@ -1164,13 +1161,12 @@ static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 }
 
 
-static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
+static int wpas_pasn_set_pmk(struct wpas_pasn *pasn,
 			     struct wpa_ie_data *rsn_data,
 			     struct wpa_pasn_params_data *pasn_data,
 			     struct wpabuf *wrapped_data)
 {
 	static const u8 pasn_default_pmk[] = {'P', 'M', 'K', 'z'};
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 
 	os_memset(pasn->pmk, 0, sizeof(pasn->pmk));
 	pasn->pmk_len = 0;
@@ -1200,9 +1196,8 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 	if (rsn_data->num_pmkid) {
 		struct rsn_pmksa_cache_entry *pmksa;
 
-		pmksa = wpa_sm_pmksa_cache_get(wpa_s->wpa, pasn->bssid,
-					       rsn_data->pmkid, NULL,
-					       pasn->akmp);
+		pmksa = pmksa_cache_get(pasn->pmksa, pasn->bssid,
+					rsn_data->pmkid, NULL, pasn->akmp);
 		if (pmksa) {
 			wpa_printf(MSG_DEBUG, "PASN: Using PMKSA");
 
@@ -1659,13 +1654,14 @@ static void wpas_pasn_deauth_cb(struct ptksa_cache_entry *entry)
 }
 
 
-int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
-		      const struct ieee80211_mgmt *mgmt, size_t len)
+static int wpa_pasn_auth_rx(struct wpas_pasn *pasn, const u8 *data, size_t len,
+			    struct wpa_pasn_params_data *pasn_params)
+
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct ieee802_11_elems elems;
 	struct wpa_ie_data rsn_data;
-	struct wpa_pasn_params_data pasn_params;
+	const struct ieee80211_mgmt *mgmt =
+		(const struct ieee80211_mgmt *) data;
 	struct wpabuf *wrapped_data = NULL, *secret = NULL, *frame = NULL;
 	u8 mic[WPA_PASN_MAX_MIC_LEN], out_mic[WPA_PASN_MAX_MIC_LEN];
 	u8 mic_len;
@@ -1674,7 +1670,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 	u16 fc = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
 			      (WLAN_FC_STYPE_AUTH << 4));
 
-	if (!wpa_s->pasn_auth_work || !mgmt ||
+	if (!mgmt ||
 	    len < offsetof(struct ieee80211_mgmt, u.auth.variable))
 		return -2;
 
@@ -1698,7 +1694,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 			   "PASN: RX: Invalid transaction sequence: (%u != %u)",
 			   le_to_host16(mgmt->u.auth.auth_transaction),
 			   pasn->trans_seq + 1);
-		return -1;
+		return -3;
 	}
 
 	status = le_to_host16(mgmt->u.auth.status_code);
@@ -1741,9 +1737,14 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		goto fail;
 	}
 
+	if (!pasn_params) {
+		wpa_printf(MSG_DEBUG, "PASN: pasn_params == NULL");
+		goto fail;
+	}
+
 	ret = wpa_pasn_parse_parameter_ie(elems.pasn_params - 3,
 					  elems.pasn_params_len + 3,
-					  true, &pasn_params);
+					  true, pasn_params);
 	if (ret) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Failed validation PASN of Parameters IE");
@@ -1754,19 +1755,19 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Authentication temporarily rejected");
 
-		if (pasn_params.comeback && pasn_params.comeback_len) {
+		if (pasn_params->comeback && pasn_params->comeback_len) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: Comeback token available. After=%u",
-				   pasn_params.after);
+				   pasn_params->after);
 
-			if (!pasn_params.after)
-				return wpas_pasn_immediate_retry(wpa_s, pasn,
-								 &pasn_params);
+			if (!pasn_params->after)
+				return 1;
 
 			pasn->comeback = wpabuf_alloc_copy(
-				pasn_params.comeback, pasn_params.comeback_len);
+				pasn_params->comeback,
+				pasn_params->comeback_len);
 			if (pasn->comeback)
-				pasn->comeback_after = pasn_params.after;
+				pasn->comeback_after = pasn_params->after;
 		}
 
 		pasn->status = status;
@@ -1792,38 +1793,38 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		goto fail;
 	}
 
-	if (pasn->group != pasn_params.group) {
+	if (pasn->group != pasn_params->group) {
 		wpa_printf(MSG_DEBUG, "PASN: Mismatch in group");
 		goto fail;
 	}
 
-	if (!pasn_params.pubkey || !pasn_params.pubkey_len) {
+	if (!pasn_params->pubkey || !pasn_params->pubkey_len) {
 		wpa_printf(MSG_DEBUG, "PASN: Invalid public key");
 		goto fail;
 	}
 
-	if (pasn_params.pubkey[0] == WPA_PASN_PUBKEY_UNCOMPRESSED) {
+	if (pasn_params->pubkey[0] == WPA_PASN_PUBKEY_UNCOMPRESSED) {
 		inc_y = 1;
-	} else if (pasn_params.pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_0 ||
-		   pasn_params.pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_1) {
+	} else if (pasn_params->pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_0 ||
+		   pasn_params->pubkey[0] == WPA_PASN_PUBKEY_COMPRESSED_1) {
 		inc_y = 0;
 	} else {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Invalid first octet in pubkey=0x%x",
-			   pasn_params.pubkey[0]);
+			   pasn_params->pubkey[0]);
 		goto fail;
 	}
 
 	secret = crypto_ecdh_set_peerkey(pasn->ecdh, inc_y,
-					 pasn_params.pubkey + 1,
-					 pasn_params.pubkey_len - 1);
+					 pasn_params->pubkey + 1,
+					 pasn_params->pubkey_len - 1);
 
 	if (!secret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive shared secret");
 		goto fail;
 	}
 
-	if (pasn_params.wrapped_data_format != WPA_PASN_WRAPPED_DATA_NO) {
+	if (pasn_params->wrapped_data_format != WPA_PASN_WRAPPED_DATA_NO) {
 		wrapped_data = ieee802_11_defrag(&elems,
 						 WLAN_EID_EXTENSION,
 						 WLAN_EID_EXT_WRAPPED_DATA);
@@ -1834,7 +1835,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		}
 	}
 
-	ret = wpas_pasn_set_pmk(wpa_s, &rsn_data, &pasn_params, wrapped_data);
+	ret = wpas_pasn_set_pmk(pasn, &rsn_data, pasn_params, wrapped_data);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to set PMK");
 		goto fail;
@@ -1883,13 +1884,14 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 
 	wpa_printf(MSG_DEBUG, "PASN: Success verifying Authentication frame");
 
-	frame = wpas_pasn_build_auth_3(wpa_s);
+	frame = wpas_pasn_build_auth_3(pasn);
 	if (!frame) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed building 3rd auth frame");
 		goto fail;
 	}
 
-	ret = wpa_drv_send_mlme(wpa_s, wpabuf_head(frame), wpabuf_len(frame), 0,
+	ret = wpa_drv_send_mlme(pasn->cb_ctx,
+				wpabuf_head(frame), wpabuf_len(frame), 0,
 				pasn->freq, 100);
 	wpabuf_free(frame);
 	if (ret) {
@@ -1899,17 +1901,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 
 	wpa_printf(MSG_DEBUG, "PASN: Success sending last frame. Store PTK");
 
-	ptksa_cache_add(wpa_s->ptksa, pasn->own_addr, pasn->bssid,
-			pasn->cipher, dot11RSNAConfigPMKLifetime, &pasn->ptk,
-			wpa_s->pasn_params ? wpas_pasn_deauth_cb : NULL,
-			wpa_s->pasn_params ? wpa_s : NULL);
-
-	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
-
 	pasn->status = WLAN_STATUS_SUCCESS;
-
-	if (pasn->pmksa_entry)
-		wpa_sm_set_cur_pmksa(wpa_s->wpa, pasn->pmksa_entry);
 
 	return 0;
 fail:
@@ -1927,10 +1919,44 @@ fail:
 	else
 		pasn->status = status;
 
-	wpas_pasn_auth_stop(wpa_s);
-
-	wpas_pasn_auth_work_done(wpa_s, PASN_STATUS_FAILURE);
 	return -1;
+}
+
+
+int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
+		      const struct ieee80211_mgmt *mgmt, size_t len)
+{
+	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct wpa_pasn_params_data pasn_data;
+	int ret;
+
+	if (!wpa_s->pasn_auth_work)
+		return -2;
+
+	pasn->cb_ctx = wpa_s;
+	ret = wpa_pasn_auth_rx(pasn, (const u8 *) mgmt, len, &pasn_data);
+	if (ret == 0) {
+		ptksa_cache_add(wpa_s->ptksa, pasn->own_addr, pasn->bssid,
+				pasn->cipher, dot11RSNAConfigPMKLifetime,
+				&pasn->ptk,
+				wpa_s->pasn_params ? wpas_pasn_deauth_cb : NULL,
+				wpa_s->pasn_params ? wpa_s : NULL);
+
+		if (pasn->pmksa_entry)
+			wpa_sm_set_cur_pmksa(wpa_s->wpa, pasn->pmksa_entry);
+	}
+
+	forced_memzero(&pasn->ptk, sizeof(pasn->ptk));
+
+	if (ret == -1) {
+		wpas_pasn_auth_stop(wpa_s);
+		wpas_pasn_auth_work_done(wpa_s, PASN_STATUS_FAILURE);
+	}
+
+	if (ret == 1)
+		ret = wpas_pasn_immediate_retry(wpa_s, pasn, &pasn_data);
+
+	return ret;
 }
 
 
