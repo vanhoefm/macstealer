@@ -1987,22 +1987,15 @@ void wpas_pasn_auth_trigger(struct wpa_supplicant *wpa_s,
 }
 
 
-int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
-			     const u8 *data, size_t data_len, u8 acked)
+static int wpa_pasn_auth_tx_status(struct wpas_pasn *pasn,
+				   const u8 *data, size_t data_len, u8 acked)
 
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	const struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *) data;
 	u16 fc = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
 			      (WLAN_FC_STYPE_AUTH << 4));
 
 	wpa_printf(MSG_DEBUG, "PASN: auth_tx_status: acked=%u", acked);
-
-	if (!wpa_s->pasn_auth_work) {
-		wpa_printf(MSG_DEBUG,
-			   "PASN: auth_tx_status: no work in progress");
-		return -1;
-	}
 
 	if (!mgmt ||
 	    data_len < offsetof(struct ieee80211_mgmt, u.auth.variable))
@@ -2046,18 +2039,39 @@ int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 		 * Either frame was not ACKed or it was ACKed but the trans_seq
 		 * != 1, i.e., not expecting an RX frame, so we are done.
 		 */
-		if (!wpa_s->pasn_params) {
-			wpas_pasn_auth_stop(wpa_s);
-			return 0;
-		}
-
-		wpas_pasn_set_keys_from_cache(wpa_s, pasn->own_addr,
-					      pasn->bssid, pasn->cipher,
-					      pasn->akmp);
-		wpas_pasn_auth_stop(wpa_s);
-
-		wpas_pasn_auth_work_done(wpa_s, PASN_STATUS_SUCCESS);
+		return 1;
 	}
+
+	return 0;
+}
+
+
+int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
+			     const u8 *data, size_t data_len, u8 acked)
+
+{
+	struct wpas_pasn *pasn = &wpa_s->pasn;
+	int ret;
+
+	if (!wpa_s->pasn_auth_work) {
+		wpa_printf(MSG_DEBUG,
+			   "PASN: auth_tx_status: no work in progress");
+		return -1;
+	}
+
+	ret = wpa_pasn_auth_tx_status(pasn, data, data_len, acked);
+	if (ret != 1)
+		return ret;
+
+	if (!wpa_s->pasn_params) {
+		wpas_pasn_auth_stop(wpa_s);
+		return 0;
+	}
+
+	wpas_pasn_set_keys_from_cache(wpa_s, pasn->own_addr, pasn->bssid,
+				      pasn->cipher, pasn->akmp);
+	wpas_pasn_auth_stop(wpa_s);
+	wpas_pasn_auth_work_done(wpa_s, PASN_STATUS_SUCCESS);
 
 	return 0;
 }
