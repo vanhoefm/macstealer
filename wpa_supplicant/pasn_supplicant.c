@@ -909,15 +909,13 @@ static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
 }
 
 
-static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
+static struct wpabuf * wpas_pasn_build_auth_1(struct wpas_pasn *pasn,
 					      const struct wpabuf *comeback)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
 	const u8 *pmkid;
 	u8 wrapped_data;
 	int ret;
-	u16 capab;
 
 	wpa_printf(MSG_DEBUG, "PASN: Building frame 1");
 
@@ -945,17 +943,6 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 	pmkid = NULL;
 	if (wpa_key_mgmt_ft(pasn->akmp)) {
 #ifdef CONFIG_IEEE80211R
-		ret = wpa_pasn_ft_derive_pmk_r1(wpa_s->wpa, pasn->akmp,
-						pasn->bssid,
-						pasn->pmk_r1,
-						&pasn->pmk_r1_len,
-						pasn->pmk_r1_name);
-		if (ret) {
-			wpa_printf(MSG_DEBUG,
-				   "PASN: FT: Failed to derive keys");
-			goto fail;
-		}
-
 		pmkid = pasn->pmk_r1_name;
 #else /* CONFIG_IEEE80211R */
 		goto fail;
@@ -963,8 +950,8 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 	} else if (wrapped_data != WPA_PASN_WRAPPED_DATA_NO) {
 		struct rsn_pmksa_cache_entry *pmksa;
 
-		pmksa = wpa_sm_pmksa_cache_get(wpa_s->wpa, pasn->bssid,
-					       NULL, NULL, pasn->akmp);
+		pmksa = pmksa_cache_get(pasn->pmksa, pasn->bssid,
+					NULL, NULL, pasn->akmp);
 		if (pmksa)
 			pmkid = pmksa->pmkid;
 
@@ -987,16 +974,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 	if (wpa_pasn_add_wrapped_data(buf, wrapped_data_buf) < 0)
 		goto fail;
 
-	/* Add own RNSXE */
-	capab = 0;
-	capab |= BIT(WLAN_RSNX_CAPAB_SAE_H2E);
-	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA)
-		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF);
-	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT_STA)
-		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_RTT);
-	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA)
-		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
-	wpa_pasn_add_rsnxe(buf, capab);
+	wpa_pasn_add_rsnxe(buf, pasn->rsnxe_capab);
 
 	ret = pasn_auth_frame_hash(pasn->akmp, pasn->cipher,
 				   wpabuf_head_u8(buf) + IEEE80211_HDRLEN,
@@ -1376,7 +1354,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
 		   MAC2STR(pasn->bssid), pasn->akmp, pasn->cipher,
 		   pasn->group);
 
-	frame = wpas_pasn_build_auth_1(wpa_s, comeback);
+	frame = wpas_pasn_build_auth_1(pasn, comeback);
 	if (!frame) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed building 1st auth frame");
 		goto fail;
@@ -1451,6 +1429,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	const u8 *rsne, *rsnxe;
 	const u8 *indic;
 	u16 fils_info;
+	u16 capab = 0;
 	int ret;
 
 	wpa_printf(MSG_DEBUG, "PASN: auth_start_cb: deinit=%d", deinit);
@@ -1490,6 +1469,15 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	pasn->corrupt_mic = wpa_s->conf->pasn_corrupt_mic;
 #endif /* CONFIG_TESTING_OPTIONS */
 
+	capab |= BIT(WLAN_RSNX_CAPAB_SAE_H2E);
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA)
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_LTF);
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_RTT_STA)
+		capab |= BIT(WLAN_RSNX_CAPAB_SECURE_RTT);
+	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA)
+		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
+	pasn->rsnxe_capab = capab;
+
 #ifdef CONFIG_FILS
 	/* Prepare needed information for wpas_pasn_wd_fils_auth(). */
 	if (awork->akmp == WPA_KEY_MGMT_FILS_SHA256 ||
@@ -1513,6 +1501,23 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 #endif /* CONFIG_FILS */
 
 	pasn->pmksa = wpa_sm_get_pmksa_cache(wpa_s->wpa);
+
+	if (wpa_key_mgmt_ft(awork->akmp)) {
+#ifdef CONFIG_IEEE80211R
+		ret = wpa_pasn_ft_derive_pmk_r1(wpa_s->wpa, awork->akmp,
+						awork->bssid,
+						pasn->pmk_r1,
+						&pasn->pmk_r1_len,
+						pasn->pmk_r1_name);
+		if (ret) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: FT: Failed to derive keys");
+			goto fail;
+		}
+#else /* CONFIG_IEEE80211R */
+		goto fail;
+#endif /* CONFIG_IEEE80211R */
+	}
 
 	ret = wpas_pasn_start(wpa_s, awork->own_addr, awork->bssid, awork->akmp,
 			      awork->cipher, awork->group, bss->freq,
