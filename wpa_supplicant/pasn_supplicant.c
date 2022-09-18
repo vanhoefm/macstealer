@@ -1237,17 +1237,14 @@ static int wpas_pasn_set_pmk(struct wpas_pasn *pasn,
 }
 
 
-static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
+static int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 			   const u8 *bssid, int akmp, int cipher, u16 group,
 			   int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 			   const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
-			   int network_id, struct wpabuf *comeback)
+			   struct wpa_ssid *ssid, struct wpabuf *comeback)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
-	struct wpa_ssid *ssid = NULL;
 	struct wpabuf *frame;
 	int ret;
-	bool derive_kdk;
 
 	/* TODO: Currently support only ECC groups */
 	if (!dragonfly_suitable_group(group, 1)) {
@@ -1255,8 +1252,6 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
 			   "PASN: Reject unsuitable group %u", group);
 		return -1;
 	}
-
-	ssid = wpa_config_get_network(wpa_s->conf, network_id);
 
 	switch (akmp) {
 	case WPA_KEY_MGMT_PASN:
@@ -1327,25 +1322,6 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
 	pasn->group = group;
 	pasn->freq = freq;
 
-	derive_kdk = (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA) &&
-		ieee802_11_rsnx_capab(beacon_rsnxe,
-				      WLAN_RSNX_CAPAB_SECURE_LTF);
-#ifdef CONFIG_TESTING_OPTIONS
-	if (!derive_kdk)
-		derive_kdk = wpa_s->conf->force_kdk_derivation;
-#endif /* CONFIG_TESTING_OPTIONS */
-	if (derive_kdk)
-		pasn->kdk_len = WPA_KDK_MAX_LEN;
-	else
-		pasn->kdk_len = 0;
-	wpa_printf(MSG_DEBUG, "PASN: kdk_len=%zu", pasn->kdk_len);
-
-	if ((wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA) &&
-	    ieee802_11_rsnx_capab(beacon_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF))
-		pasn->secure_ltf = true;
-	else
-		pasn->secure_ltf = false;
-
 	os_memcpy(pasn->own_addr, own_addr, ETH_ALEN);
 	os_memcpy(pasn->bssid, bssid, ETH_ALEN);
 
@@ -1360,7 +1336,8 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
 		goto fail;
 	}
 
-	ret = wpa_drv_send_mlme(wpa_s, wpabuf_head(frame), wpabuf_len(frame), 0,
+	ret = wpa_drv_send_mlme(pasn->cb_ctx,
+				wpabuf_head(frame), wpabuf_len(frame), 0,
 				pasn->freq, 1000);
 
 	wpabuf_free(frame);
@@ -1369,7 +1346,6 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
 		goto fail;
 	}
 
-	eloop_register_timeout(2, 0, wpas_pasn_auth_work_timeout, wpa_s, NULL);
 	return 0;
 
 fail:
@@ -1425,11 +1401,13 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	struct wpa_supplicant *wpa_s = work->wpa_s;
 	struct wpa_pasn_auth_work *awork = work->ctx;
 	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct wpa_ssid *ssid = NULL;
 	struct wpa_bss *bss;
 	const u8 *rsne, *rsnxe;
 	const u8 *indic;
 	u16 fils_info;
 	u16 capab = 0;
+	bool derive_kdk;
 	int ret;
 
 	wpa_printf(MSG_DEBUG, "PASN: auth_start_cb: deinit=%d", deinit);
@@ -1464,6 +1442,25 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	}
 
 	rsnxe = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
+
+	derive_kdk = (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA) &&
+		ieee802_11_rsnx_capab(rsnxe,
+				      WLAN_RSNX_CAPAB_SECURE_LTF);
+#ifdef CONFIG_TESTING_OPTIONS
+	if (!derive_kdk)
+		derive_kdk = wpa_s->conf->force_kdk_derivation;
+#endif /* CONFIG_TESTING_OPTIONS */
+	if (derive_kdk)
+		pasn->kdk_len = WPA_KDK_MAX_LEN;
+	else
+		pasn->kdk_len = 0;
+	wpa_printf(MSG_DEBUG, "PASN: kdk_len=%zu", pasn->kdk_len);
+
+	if ((wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_SEC_LTF_STA) &&
+	    ieee802_11_rsnx_capab(rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF))
+		pasn->secure_ltf = true;
+	else
+		pasn->secure_ltf = false;
 
 #ifdef CONFIG_TESTING_OPTIONS
 	pasn->corrupt_mic = wpa_s->conf->pasn_corrupt_mic;
@@ -1500,6 +1497,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	}
 #endif /* CONFIG_FILS */
 
+	pasn->cb_ctx = wpa_s;
 	pasn->pmksa = wpa_sm_get_pmksa_cache(wpa_s->wpa);
 
 	if (wpa_key_mgmt_ft(awork->akmp)) {
@@ -1519,16 +1517,19 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 #endif /* CONFIG_IEEE80211R */
 	}
 
-	ret = wpas_pasn_start(wpa_s, awork->own_addr, awork->bssid, awork->akmp,
+	ssid = wpa_config_get_network(wpa_s->conf, awork->network_id);
+
+	ret = wpas_pasn_start(pasn, awork->own_addr, awork->bssid, awork->akmp,
 			      awork->cipher, awork->group, bss->freq,
 			      rsne, *(rsne + 1) + 2,
 			      rsnxe, rsnxe ? *(rsnxe + 1) + 2 : 0,
-			      awork->network_id, awork->comeback);
+			      ssid, awork->comeback);
 	if (ret) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Failed to start PASN authentication");
 		goto fail;
 	}
+	eloop_register_timeout(2, 0, wpas_pasn_auth_work_timeout, wpa_s, NULL);
 
 	/* comeback token is no longer needed at this stage */
 	wpabuf_free(awork->comeback);
