@@ -582,6 +582,7 @@ struct wpas_pasn {
 	struct wpa_ssid *ssid;
 
 #ifdef CONFIG_FILS
+	bool fils_eapol;
 	struct pasn_fils fils;
 #endif /* CONFIG_FILS */
 
@@ -592,6 +593,11 @@ struct wpas_pasn {
 #endif /* CONFIG_IEEE80211R */
 	struct rsn_pmksa_cache *pmksa;
 	struct rsn_pmksa_cache_entry *pmksa_entry;
+	struct eapol_sm *eapol;
+	int fast_reauth;
+#ifdef CONFIG_TESTING_OPTIONS
+	int corrupt_mic;
+#endif /* CONFIG_TESTING_OPTIONS */
 };
 #endif /* CONFIG_PASN */
 

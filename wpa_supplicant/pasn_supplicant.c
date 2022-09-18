@@ -563,14 +563,13 @@ static void wpas_pasn_delete_peers(struct wpa_supplicant *wpa_s,
 
 #ifdef CONFIG_FILS
 
-static struct wpabuf * wpas_pasn_fils_build_auth(struct wpa_supplicant *wpa_s)
+static struct wpabuf * wpas_pasn_fils_build_auth(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpabuf *buf = NULL;
 	struct wpabuf *erp_msg;
 	int ret;
 
-	erp_msg = eapol_sm_build_erp_reauth_start(wpa_s->eapol);
+	erp_msg = eapol_sm_build_erp_reauth_start(pasn->eapol);
 	if (!erp_msg) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: FILS: ERP EAP-Initiate/Re-auth unavailable");
@@ -645,33 +644,27 @@ fail:
 }
 
 
-static void wpas_pasn_initiate_eapol(struct wpa_supplicant *wpa_s)
+static void wpas_pasn_initiate_eapol(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct eapol_config eapol_conf;
 	struct wpa_ssid *ssid = pasn->ssid;
 
 	wpa_printf(MSG_DEBUG, "PASN: FILS: Initiating EAPOL");
 
-	eapol_sm_notify_eap_success(wpa_s->eapol, false);
-	eapol_sm_notify_eap_fail(wpa_s->eapol, false);
-	eapol_sm_notify_portControl(wpa_s->eapol, Auto);
+	eapol_sm_notify_eap_success(pasn->eapol, false);
+	eapol_sm_notify_eap_fail(pasn->eapol, false);
+	eapol_sm_notify_portControl(pasn->eapol, Auto);
 
 	os_memset(&eapol_conf, 0, sizeof(eapol_conf));
-	eapol_conf.fast_reauth = wpa_s->conf->fast_reauth;
+	eapol_conf.fast_reauth = pasn->fast_reauth;
 	eapol_conf.workaround = ssid->eap_workaround;
 
-	eapol_sm_notify_config(wpa_s->eapol, &ssid->eap, &eapol_conf);
+	eapol_sm_notify_config(pasn->eapol, &ssid->eap, &eapol_conf);
 }
 
 
-static struct wpabuf * wpas_pasn_wd_fils_auth(struct wpa_supplicant *wpa_s)
+static struct wpabuf * wpas_pasn_wd_fils_auth(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
-	struct wpa_bss *bss;
-	const u8 *indic;
-	u16 fils_info;
-
 	wpa_printf(MSG_DEBUG, "PASN: FILS: wrapped data - completed=%u",
 		   pasn->fils.completed);
 
@@ -684,34 +677,20 @@ static struct wpabuf * wpas_pasn_wd_fils_auth(struct wpa_supplicant *wpa_s)
 		return NULL;
 	}
 
-	bss = wpa_bss_get_bssid(wpa_s, pasn->bssid);
-	if (!bss) {
-		wpa_printf(MSG_DEBUG, "PASN: FILS: BSS not found");
-		return NULL;
-	}
-
-	indic = wpa_bss_get_ie(bss, WLAN_EID_FILS_INDICATION);
-	if (!indic || indic[1] < 2) {
-		wpa_printf(MSG_DEBUG, "PASN: Missing FILS Indication IE");
-		return NULL;
-	}
-
-	fils_info = WPA_GET_LE16(indic + 2);
-	if (!(fils_info & BIT(9))) {
+	if (!pasn->fils_eapol) {
 		wpa_printf(MSG_DEBUG,
-			   "PASN: FILS auth without PFS not supported");
+			   "PASN: FILS: Missing Indication IE or PFS");
 		return NULL;
 	}
 
-	wpas_pasn_initiate_eapol(wpa_s);
+	wpas_pasn_initiate_eapol(pasn);
 
-	return wpas_pasn_fils_build_auth(wpa_s);
+	return wpas_pasn_fils_build_auth(pasn);
 }
 
 
-static int wpas_pasn_wd_fils_rx(struct wpa_supplicant *wpa_s, struct wpabuf *wd)
+static int wpas_pasn_wd_fils_rx(struct wpas_pasn *pasn, struct wpabuf *wd)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct ieee802_11_elems elems;
 	struct wpa_ie_data rsne_data;
 	u8 rmsk[ERP_MAX_KEY_LEN];
@@ -807,23 +786,23 @@ static int wpas_pasn_wd_fils_rx(struct wpa_supplicant *wpa_s, struct wpabuf *wd)
 		return -1;
 	}
 
-	eapol_sm_process_erp_finish(wpa_s->eapol, wpabuf_head(fils_wd),
+	eapol_sm_process_erp_finish(pasn->eapol, wpabuf_head(fils_wd),
 				    wpabuf_len(fils_wd));
 
 	wpabuf_free(fils_wd);
 	fils_wd = NULL;
 
-	if (eapol_sm_failed(wpa_s->eapol)) {
+	if (eapol_sm_failed(pasn->eapol)) {
 		wpa_printf(MSG_DEBUG, "PASN: FILS: ERP finish failed");
 		return -1;
 	}
 
 	rmsk_len = ERP_MAX_KEY_LEN;
-	ret = eapol_sm_get_key(wpa_s->eapol, rmsk, rmsk_len);
+	ret = eapol_sm_get_key(pasn->eapol, rmsk, rmsk_len);
 
 	if (ret == PMK_LEN) {
 		rmsk_len = PMK_LEN;
-		ret = eapol_sm_get_key(wpa_s->eapol, rmsk, rmsk_len);
+		ret = eapol_sm_get_key(pasn->eapol, rmsk, rmsk_len);
 	}
 
 	if (ret) {
@@ -884,7 +863,7 @@ static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpa_supplicant *wpa_s)
 	case WPA_KEY_MGMT_FILS_SHA256:
 	case WPA_KEY_MGMT_FILS_SHA384:
 #ifdef CONFIG_FILS
-		return wpas_pasn_wd_fils_auth(wpa_s);
+		return wpas_pasn_wd_fils_auth(pasn);
 #endif /* CONFIG_FILS */
 	case WPA_KEY_MGMT_FT_PSK:
 	case WPA_KEY_MGMT_FT_IEEE8021X:
@@ -1105,7 +1084,7 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct wpa_supplicant *wpa_s)
 	}
 
 #ifdef CONFIG_TESTING_OPTIONS
-	if (wpa_s->conf->pasn_corrupt_mic) {
+	if (pasn->corrupt_mic) {
 		wpa_printf(MSG_DEBUG, "PASN: frame 3: Corrupt MIC");
 		mic[0] = ~mic[0];
 	}
@@ -1156,6 +1135,7 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 #endif /* CONFIG_SAE */
 
 #ifdef CONFIG_FILS
+	pasn->fils_eapol = false;
 	os_memset(&pasn->fils, 0, sizeof(pasn->fils));
 #endif /* CONFIG_FILS*/
 
@@ -1166,6 +1146,9 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 #endif /* CONFIG_IEEE80211R */
 	pasn->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 	pasn->pmksa_entry = NULL;
+#ifdef CONFIG_TESTING_OPTIONS
+	pasn->corrupt_mic = 0;
+#endif /* CONFIG_TESTING_OPTIONS */
 }
 
 
@@ -1262,7 +1245,7 @@ static int wpas_pasn_set_pmk(struct wpa_supplicant *wpa_s,
 	    pasn->akmp == WPA_KEY_MGMT_FILS_SHA384) {
 		int ret;
 
-		ret = wpas_pasn_wd_fils_rx(wpa_s, wrapped_data);
+		ret = wpas_pasn_wd_fils_rx(pasn, wrapped_data);
 		if (ret) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: Failed processing FILS wrapped data");
@@ -1468,8 +1451,11 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 {
 	struct wpa_supplicant *wpa_s = work->wpa_s;
 	struct wpa_pasn_auth_work *awork = work->ctx;
+	struct wpas_pasn *pasn = &wpa_s->pasn;
 	struct wpa_bss *bss;
 	const u8 *rsne, *rsnxe;
+	const u8 *indic;
+	u16 fils_info;
 	int ret;
 
 	wpa_printf(MSG_DEBUG, "PASN: auth_start_cb: deinit=%d", deinit);
@@ -1505,7 +1491,33 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 
 	rsnxe = wpa_bss_get_ie(bss, WLAN_EID_RSNX);
 
-	wpa_s->pasn.pmksa = wpa_sm_get_pmksa_cache(wpa_s->wpa);
+#ifdef CONFIG_TESTING_OPTIONS
+	pasn->corrupt_mic = wpa_s->conf->pasn_corrupt_mic;
+#endif /* CONFIG_TESTING_OPTIONS */
+
+#ifdef CONFIG_FILS
+	/* Prepare needed information for wpas_pasn_wd_fils_auth(). */
+	if (awork->akmp == WPA_KEY_MGMT_FILS_SHA256 ||
+	    awork->akmp == WPA_KEY_MGMT_FILS_SHA384) {
+		indic = wpa_bss_get_ie(bss, WLAN_EID_FILS_INDICATION);
+		if (!indic || indic[1] < 2) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Missing FILS Indication IE");
+		} else {
+			fils_info = WPA_GET_LE16(indic + 2);
+			if ((fils_info & BIT(9))) {
+				pasn->eapol = wpa_s->eapol;
+				pasn->fils_eapol = true;
+			} else {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: FILS auth without PFS not supported");
+			}
+		}
+		pasn->fast_reauth = wpa_s->conf->fast_reauth;
+	}
+#endif /* CONFIG_FILS */
+
+	pasn->pmksa = wpa_sm_get_pmksa_cache(wpa_s->wpa);
 
 	ret = wpas_pasn_start(wpa_s, awork->own_addr, awork->bssid, awork->akmp,
 			      awork->cipher, awork->group, bss->freq,
