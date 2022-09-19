@@ -2908,7 +2908,8 @@ static int pasn_set_keys_from_cache(struct hostapd_data *hapd,
 
 
 static int
-pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
+pasn_derive_keys(struct wpas_pasn *pasn,
+		 const u8 *own_addr, const u8 *peer_addr,
 		 const u8 *cached_pmk, size_t cached_pmk_len,
 		 struct wpa_pasn_params_data *pasn_data,
 		 struct wpabuf *wrapped_data,
@@ -2925,7 +2926,7 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 	if (!cached_pmk || !cached_pmk_len)
 		wpa_printf(MSG_DEBUG, "PASN: No valid PMKSA entry");
 
-	if (sta->pasn->akmp == WPA_KEY_MGMT_PASN) {
+	if (pasn->akmp == WPA_KEY_MGMT_PASN) {
 		wpa_printf(MSG_DEBUG, "PASN: Using default PMK");
 
 		pmk_len = WPA_PASN_PMK_LEN;
@@ -2936,12 +2937,12 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 		pmk_len = cached_pmk_len;
 		os_memcpy(pmk, cached_pmk, cached_pmk_len);
 	} else {
-		switch (sta->pasn->akmp) {
+		switch (pasn->akmp) {
 #ifdef CONFIG_SAE
 		case WPA_KEY_MGMT_SAE:
-			if (sta->pasn->sae.state == SAE_COMMITTED) {
+			if (pasn->sae.state == SAE_COMMITTED) {
 				pmk_len = PMK_LEN;
-				os_memcpy(pmk, sta->pasn->sae.pmk, PMK_LEN);
+				os_memcpy(pmk, pasn->sae.pmk, PMK_LEN);
 				break;
 			}
 #endif /* CONFIG_SAE */
@@ -2954,18 +2955,18 @@ pasn_derive_keys(struct hostapd_data *hapd, struct sta_info *sta,
 		}
 	}
 
-	ret = pasn_pmk_to_ptk(pmk, pmk_len, sta->addr, hapd->own_addr,
+	ret = pasn_pmk_to_ptk(pmk, pmk_len, peer_addr, own_addr,
 			      wpabuf_head(secret), wpabuf_len(secret),
-			      &sta->pasn->ptk, sta->pasn->akmp,
-			      sta->pasn->cipher, sta->pasn->kdk_len);
+			      &pasn->ptk, pasn->akmp,
+			      pasn->cipher, pasn->kdk_len);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive PTK");
 		return -1;
 	}
 
-	if (sta->pasn->secure_ltf) {
-		ret = wpa_ltf_keyseed(&sta->pasn->ptk, sta->pasn->akmp,
-				      sta->pasn->cipher);
+	if (pasn->secure_ltf) {
+		ret = wpa_ltf_keyseed(&pasn->ptk, pasn->akmp,
+				      pasn->cipher);
 		if (ret) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: Failed to derive LTF keyseed");
@@ -3442,7 +3443,8 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 		wpa_printf(MSG_DEBUG, "PASN: No PMKID specified");
 	}
 
-	ret = pasn_derive_keys(hapd, sta, cached_pmk, cached_pmk_len,
+	ret = pasn_derive_keys(sta->pasn, hapd->own_addr, sta->addr,
+			       cached_pmk, cached_pmk_len,
 			       &pasn_params, wrapped_data, secret);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive keys");
