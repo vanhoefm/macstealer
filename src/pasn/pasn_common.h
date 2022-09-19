@@ -18,12 +18,20 @@ extern "C" {
 
 #ifdef CONFIG_PASN
 
+enum pasn_fils_state {
+	PASN_FILS_STATE_NONE = 0,
+	PASN_FILS_STATE_PENDING_AS,
+	PASN_FILS_STATE_COMPLETE
+};
+
 struct pasn_fils {
+	u8 state;
 	u8 nonce[FILS_NONCE_LEN];
 	u8 anonce[FILS_NONCE_LEN];
 	u8 session[FILS_SESSION_LEN];
 	u8 erp_pmkid[PMKID_LEN];
 	bool completed;
+	struct wpabuf *erp_resp;
 };
 
 struct wpas_pasn {
@@ -81,6 +89,9 @@ struct wpas_pasn {
 	void *cb_ctx;
 	u16 rsnxe_capab;
 	int network_id;
+
+	u8 wrapped_data_format;
+	struct wpabuf *secret;
 
 	/**
 	 * send_mgmt - Function handler to transmit a Management frame
