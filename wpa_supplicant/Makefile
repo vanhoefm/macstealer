@@ -12,6 +12,12 @@ EXTRA_TARGETS=dynamic_eap_methods
 CONFIG_FILE=.config
 include ../src/build.rules
 
+ifdef CONFIG_BUILD_PASN_SO
+# add the dependency this way to allow CONFIG_BUILD_PASN_SO
+# being set in the config which is read by build.rules
+_all: libpasn.so
+endif
+
 ifdef CONFIG_BUILD_WPA_CLIENT_SO
 # add the dependency this way to allow CONFIG_BUILD_WPA_CLIENT_SO
 # being set in the config which is read by build.rules
@@ -76,6 +82,11 @@ install: $(addprefix $(DESTDIR)$(BINDIR)/,$(BINALL))
 ifndef CONFIG_NO_WPA_PASSPHRASE
 	install -D wpa_passphrase $(DESTDIR)/$(BINDIR)/wpa_passphrase
 endif
+
+ifdef CONFIG_BUILD_PASN_SO
+	install -m 0644 -D libpasn.so $(DESTDIR)/$(LIBDIR)/libpasn.so
+endif
+
 ifdef CONFIG_BUILD_WPA_CLIENT_SO
 	install -m 0644 -D libwpa_client.so $(DESTDIR)/$(LIBDIR)/libwpa_client.so
 	install -m 0644 -D ../src/common/wpa_ctrl.h $(DESTDIR)/$(INCDIR)/wpa_ctrl.h
@@ -2092,6 +2103,157 @@ lcov-html: $(call BUILDOBJ,wpa_supplicant.gcda)
 	lcov -c -d $(BUILDDIR) > lcov.info
 	genhtml lcov.info --output-directory lcov-html
 
+PASN_CFLAGS := $(CFLAGS)
+PASN_CFLAGS += -DCONFIG_PASN
+
+LIBPASNSO := ../src/utils/$(CONFIG_ELOOP).c
+LIBPASNSO += ../src/utils/wpa_debug.c
+LIBPASNSO += ../src/utils/wpabuf.c
+LIBPASNSO += ../src/utils/os_$(CONFIG_OS).c
+LIBPASNSO += ../src/utils/config.c
+LIBPASNSO += ../src/utils/common.c
+
+ifdef NEED_BASE64
+LIBPASNSO += ../src/utils/base64.c
+endif
+
+ifdef CONFIG_WPA_TRACE
+LIBPASNSO += ../src/utils/trace.c
+endif
+
+ifdef CONFIG_EXT_PASSWORD_FILE
+LIBPASNSO += ../src/utils/ext_password_file.c
+endif
+
+ifdef CONFIG_EXT_PASSWORD_TEST
+LIBPASNSO += ../src/utils/ext_password_test.c
+endif
+
+ifdef NEED_EXT_PASSWORD
+LIBPASNSO += ../src/utils/ext_password.c
+endif
+
+ifdef CONFIG_SAE
+LIBPASNSO += ../src/common/sae.c
+endif
+
+ifdef CONFIG_SAE_PK
+LIBPASNSO += ../src/common/sae_pk.c
+endif
+
+ifndef CONFIG_NO_WPA
+LIBPASNSO += ../src/common/wpa_common.c
+endif
+
+LIBPASNSO += ../src/common/ieee802_11_common.c
+
+ifdef NEED_DRAGONFLY
+LIBPASNSO += ../src/common/dragonfly.c
+endif
+
+LIBPASNSO += ../src/common/ptksa_cache.c
+
+ifndef CONFIG_NO_WPA
+LIBPASNSO += ../src/rsn_supp/pmksa_cache.c
+LIBPASNSO += ../src/rsn_supp/wpa_ie.c
+endif
+
+LIBPASNSO += ../src/ap/comeback_token.c
+LIBPASNSO += ../src/ap/pmksa_cache_auth.c
+
+ifdef NEED_EAP_COMMON
+LIBPASNSO += ../src/eap_common/eap_common.c
+endif
+
+ifdef CHAP
+LIBPASNSO += ../src/eap_common/chap.c
+endif
+
+ifdef CONFIG_IEEE8021X_EAPOL
+LIBPASNSO += ../src/eap_peer/eap.c
+LIBPASNSO += ../src/eap_peer/eap_methods.c
+LIBPASNSO += ../src/eapol_supp/eapol_supp_sm.c
+endif
+
+ifeq ($(CONFIG_TLS), wolfssl)
+LIBPASNSO += ../src/crypto/crypto_wolfssl.c
+ifdef TLS_FUNCS
+LIBPASNSO += ../src/crypto/tls_wolfssl.c
+NEED_TLS_PRF_SHA256=y
+LIBPASNSO += -lwolfssl -lm
+endif
+endif
+
+ifeq ($(CONFIG_TLS), openssl)
+LIBPASNSO += ../src/crypto/crypto_openssl.c
+ifdef TLS_FUNCS
+LIBPASNSO += ../src/crypto/tls_openssl.c
+LIBPASNSO += -lssl -lcrypto
+NEED_TLS_PRF_SHA256=y
+endif
+endif
+
+ifeq ($(CONFIG_TLS), gnutls)
+LIBPASNSO += ../src/crypto/crypto_$(CONFIG_CRYPTO).c
+ifdef TLS_FUNCS
+LIBPASNSO += ../src/crypto/tls_gnutls.c
+LIBPASNSO += -lgnutls -lgpg-error
+LIBPASNSO += -lgcrypt
+endif
+endif
+
+ifdef NEED_TLS_PRF_SHA256
+LIBPASNSO += ../src/crypto/sha256-tlsprf.c
+endif
+
+ifdef NEED_SHA512
+LIBPASNSO += ../src/crypto/sha512-prf.c
+endif
+
+ifdef NEED_SHA384
+LIBPASNSO += ../src/crypto/sha384-prf.c
+endif
+
+LIBPASNSO += ../src/crypto/sha256-prf.c
+
+ifdef NEED_HMAC_SHA512_KDF
+LIBPASNSO += ../src/crypto/sha512-kdf.c
+endif
+
+ifdef NEED_HMAC_SHA384_KDF
+LIBPASNSO += ../src/crypto/sha384-kdf.c
+endif
+
+ifdef NEED_HMAC_SHA256_KDF
+LIBPASNSO += ../src/crypto/sha256-kdf.c
+endif
+
+ifdef NEED_DH_GROUPS
+LIBPASNSO += ../src/crypto/dh_groups.c
+endif
+
+ifdef NEED_AES_SIV
+LIBPASNSO += ../src/crypto/aes-siv.c
+endif
+
+ifdef NEED_AES_CTR
+LIBPASNSO += ../src/crypto/aes-ctr.c
+endif
+
+ifdef NEED_SHA1
+LIBPASNSO += ../src/crypto/sha1-prf.c
+ifdef NEED_TLS_PRF
+LIBPASNSO += ../src/crypto/sha1-tlsprf.c
+endif
+endif
+
+LIBPASNSO += ../src/pasn/pasn_initiator.c
+LIBPASNSO += ../src/pasn/pasn_responder.c
+
+libpasn.so: $(LIBPASNSO)
+	@$(E) "  CC  $@ ($^)"
+	$(Q)$(CC) $(LDFLAGS) -o $@ $(PASN_CFLAGS) -shared -fPIC -lcrypto $^
+
 clean: common-clean
 	$(MAKE) -C ../src clean
 	$(MAKE) -C dbus clean
@@ -2102,6 +2264,7 @@ clean: common-clean
 	rm -f lcov.info
 	rm -rf lcov-html
 	rm -f libwpa_client.a
+	rm -f libpasn.so
 	rm -f libwpa_client.so
 	rm -f libwpa_test1 libwpa_test2
 	rm -f wpa_passphrase
