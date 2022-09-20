@@ -67,6 +67,7 @@ struct wpas_pasn {
 
 #ifdef CONFIG_FILS
 	bool fils_eapol;
+	bool fils_wd_valid;
 	struct pasn_fils fils;
 #endif /* CONFIG_FILS */
 
@@ -99,6 +100,17 @@ struct wpas_pasn {
 	bool derive_kdk;
 	const char *password;
 	int disable_pmksa_caching;
+	int *pasn_groups;
+	struct wpabuf *wrapped_data;
+	int use_anti_clogging;
+	const u8 *rsn_ie;
+	const u8 *rsnxe_ie;
+	size_t rsn_ie_len;
+
+	u8 *comeback_key;
+	struct os_reltime last_comeback_key_update;
+	u16 comeback_idx;
+	u16 *comeback_pending_idx;
 
 	/**
 	 * send_mgmt - Function handler to transmit a Management frame

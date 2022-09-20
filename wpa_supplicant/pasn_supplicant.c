@@ -1144,6 +1144,9 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 #endif /* CONFIG_TESTING_OPTIONS */
 	pasn->network_id = 0;
 	pasn->derive_kdk = false;
+	pasn->rsn_ie = NULL;
+	pasn->rsn_ie_len = 0;
+	pasn->rsnxe_ie = NULL;
 }
 
 
