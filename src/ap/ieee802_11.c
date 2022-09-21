@@ -3733,7 +3733,8 @@ static void handle_auth_pasn(struct hostapd_data *hapd, struct sta_info *sta,
 				       sta->addr, mgmt, len) == 0) {
 			ptksa_cache_add(hapd->ptksa, hapd->own_addr, sta->addr,
 					sta->pasn->cipher, 43200,
-					&sta->pasn->ptk, NULL, NULL);
+					&sta->pasn->ptk, NULL, NULL,
+					sta->pasn->akmp);
 
 			pasn_set_keys_from_cache(hapd, hapd->own_addr,
 						 sta->addr, sta->pasn->cipher,

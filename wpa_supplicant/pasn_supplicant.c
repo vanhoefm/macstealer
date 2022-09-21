@@ -1977,7 +1977,7 @@ int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 				pasn->cipher, dot11RSNAConfigPMKLifetime,
 				&pasn->ptk,
 				wpa_s->pasn_params ? wpas_pasn_deauth_cb : NULL,
-				wpa_s->pasn_params ? wpa_s : NULL);
+				wpa_s->pasn_params ? wpa_s : NULL, pasn->akmp);
 
 		if (pasn->pmksa_entry)
 			wpa_sm_set_cur_pmksa(wpa_s->wpa, pasn->pmksa_entry);
