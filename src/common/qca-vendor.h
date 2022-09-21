@@ -5889,7 +5889,7 @@ enum qca_wlan_vendor_channel_prop_flags {
 	/* HE 40 with extension channel below */
 	QCA_WLAN_VENDOR_CHANNEL_PROP_FLAG_HE40MINUS     = 1 << 30,
 	/* HE 40 intolerant */
-	QCA_WLAN_VENDOR_CHANNEL_PROP_FLAG_HE40INTOL     = 1 << 31,
+	QCA_WLAN_VENDOR_CHANNEL_PROP_FLAG_HE40INTOL     = 1U << 31,
 };
 
 /**
