@@ -686,3 +686,26 @@ def test_ap_acs_he_24g_overlap(dev, apdev):
         raise Exception("Unexpected frequency")
 
     dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
+
+def test_ap_acs_chan14(dev, apdev):
+    """Automatic channel selection and 2.4 GHz channel 14"""
+    try:
+        hapd = None
+        force_prev_ap_on_24g(apdev[0])
+        params = hostapd.wpa2_params(ssid="test-acs", passphrase="12345678")
+        params['hw_mode'] = 'g'
+        params['channel'] = '0'
+        params['country_code'] = 'JP'
+        params['acs_chan_bias'] = '14:0.01'
+        hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
+        wait_acs(hapd)
+        freq = hapd.get_status_field("freq")
+        if int(freq) != 2484:
+            raise Exception("Unexpected frequency: " + str(freq))
+        if hapd.get_status_field("ieee80211n") != "0":
+            raise Exception("HT enabled unexpectedly")
+
+        dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
+        dev[0].wait_regdom(country_ie=True)
+    finally:
+        clear_regdom(hapd, dev)
