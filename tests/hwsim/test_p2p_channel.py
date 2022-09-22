@@ -255,6 +255,33 @@ def test_p2p_channel_avoid3(dev):
         dev[0].global_request("SET p2p_pref_chan ")
         dev[1].flush_scan_cache()
 
+def test_p2p_channel_avoid4(dev):
+    """P2P and avoid frequencies preventing 80 MHz on channel 149"""
+    try:
+        set_country("US", dev[0])
+        if "OK" not in dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES 5180-5320,5785-5825"):
+            raise Exception("Could not simulate driver event")
+        ev = dev[0].wait_event(["CTRL-EVENT-AVOID-FREQ"], timeout=10)
+        if ev is None:
+            raise Exception("No CTRL-EVENT-AVOID-FREQ event")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                               r_dev=dev[1], r_intent=0,
+                                               test_data=False,
+                                               i_max_oper_chwidth=80,
+                                               i_ht40=True, i_vht=True)
+        check_grpform_results(i_res, r_res)
+        freq = int(i_res['freq'])
+        if freq not in [5745, 5765]:
+            raise Exception("Unexpected channel %d MHz" % freq)
+
+        sig = dev[1].group_request("SIGNAL_POLL").splitlines()
+        if "WIDTH=40 MHz" not in sig:
+            raise Exception("Unexpected channel width: " + str(sig))
+    finally:
+        set_country("00")
+        dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES")
+        dev[1].flush_scan_cache()
+
 @remote_compatible
 def test_autogo_following_bss(dev, apdev):
     """P2P autonomous GO operate on the same channel as station interface"""
