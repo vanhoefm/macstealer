@@ -420,52 +420,52 @@ convert_connect_fail_reason_codes(enum qca_sta_connect_fail_reason_codes
 	}
 }
 
-#endif /* CONFIG_DRIVER_NL80211_QCA */
 
-
-static int nl80211_get_assoc_link_id(const u8 *data, u8 len)
-{
-	if (!(data[0] & BASIC_MULTI_LINK_CTRL0_PRES_LINK_ID))
-		return -1;
-
-#define BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX \
-		(2 + /* Multi-Link Control field */ \
-		 1 + /* Common Info Length field (Basic) */ \
-		 ETH_ALEN) /* MLD MAC Address field (Basic) */
-	if (len <= BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX)
-		return -1;
-
-	return data[BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX] & 0x0F;
-}
-
-
-static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
-				   struct nlattr *addr,
-				   struct nlattr *mlo_links,
-				   struct nlattr *resp_ie)
+static void
+nl80211_parse_qca_vendor_mlo_link_info(struct driver_sta_mlo_info *mlo,
+				       struct nlattr *mlo_links)
 {
 	struct nlattr *link;
 	int rem_links;
-	const u8 *ml_ie;
-	struct driver_sta_mlo_info *mlo = &drv->sta_mlo_info;
 
-	if (!addr || !mlo_links || !resp_ie)
-		return;
+	nla_for_each_nested(link, mlo_links, rem_links) {
+		struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAX + 1];
+		int link_id;
 
-	ml_ie = get_ml_ie(nla_data(resp_ie), nla_len(resp_ie),
-			  MULTI_LINK_CONTROL_TYPE_BASIC);
-	if (!ml_ie)
-		return;
+		nla_parse(tb,QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAX, nla_data(link),
+			  nla_len(link), NULL);
 
-	drv->mlo_assoc_link_id = nl80211_get_assoc_link_id(&ml_ie[3],
-							   ml_ie[1] - 1);
-	if (drv->mlo_assoc_link_id < 0 ||
-	    drv->mlo_assoc_link_id >= MAX_NUM_MLD_LINKS)
-		return;
+		if (!tb[QCA_WLAN_VENDOR_ATTR_MLO_LINK_ID] ||
+		    !tb[QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAC_ADDR] ||
+		    !tb[QCA_WLAN_VENDOR_ATTR_MLO_LINK_BSSID])
+			continue;
 
-	os_memcpy(mlo->ap_mld_addr, nla_data(addr), ETH_ALEN);
-	wpa_printf(MSG_DEBUG, "nl80211: AP MLD MAC Address " MACSTR,
-		   MAC2STR(mlo->ap_mld_addr));
+		link_id = nla_get_u8(tb[QCA_WLAN_VENDOR_ATTR_MLO_LINK_ID]);
+		if (link_id >= MAX_NUM_MLD_LINKS)
+			continue;
+
+		mlo->valid_links |= BIT(link_id);
+		os_memcpy(mlo->links[link_id].addr,
+			  nla_data(tb[QCA_WLAN_VENDOR_ATTR_MLO_LINK_MAC_ADDR]),
+			  ETH_ALEN);
+		os_memcpy(mlo->links[link_id].bssid,
+			  nla_data(tb[QCA_WLAN_VENDOR_ATTR_MLO_LINK_BSSID]),
+			  ETH_ALEN);
+		wpa_printf(MSG_DEBUG, "nl80211: MLO link[%u] addr " MACSTR
+			   " bssid " MACSTR,
+			   link_id, MAC2STR(mlo->links[link_id].addr),
+			   MAC2STR(mlo->links[link_id].bssid));
+	}
+}
+
+#endif /* CONFIG_DRIVER_NL80211_QCA */
+
+
+static void nl80211_parse_mlo_link_info(struct driver_sta_mlo_info *mlo,
+					struct nlattr *mlo_links)
+{
+	struct nlattr *link;
+	int rem_links;
 
 	nla_for_each_nested(link, mlo_links, rem_links) {
 		struct nlattr *tb[NL80211_ATTR_MAX + 1];
@@ -492,6 +492,58 @@ static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
 			   link_id, MAC2STR(mlo->links[link_id].addr),
 			   MAC2STR(mlo->links[link_id].bssid));
 	}
+}
+
+
+static int nl80211_get_assoc_link_id(const u8 *data, u8 len)
+{
+	if (!(data[0] & BASIC_MULTI_LINK_CTRL0_PRES_LINK_ID))
+		return -1;
+
+#define BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX \
+		(2 + /* Multi-Link Control field */ \
+		 1 + /* Common Info Length field (Basic) */ \
+		 ETH_ALEN) /* MLD MAC Address field (Basic) */
+	if (len <= BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX)
+		return -1;
+
+	return data[BASIC_ML_IE_COMMON_INFO_LINK_ID_IDX] & 0x0F;
+}
+
+
+static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
+				   bool qca_roam_auth,
+				   struct nlattr *addr,
+				   struct nlattr *mlo_links,
+				   struct nlattr *resp_ie)
+{
+	const u8 *ml_ie;
+	struct driver_sta_mlo_info *mlo = &drv->sta_mlo_info;
+
+	if (!addr || !mlo_links || !resp_ie)
+		return;
+
+	ml_ie = get_ml_ie(nla_data(resp_ie), nla_len(resp_ie),
+			  MULTI_LINK_CONTROL_TYPE_BASIC);
+	if (!ml_ie)
+		return;
+
+	drv->mlo_assoc_link_id = nl80211_get_assoc_link_id(&ml_ie[3],
+							   ml_ie[1] - 1);
+	if (drv->mlo_assoc_link_id < 0 ||
+	    drv->mlo_assoc_link_id >= MAX_NUM_MLD_LINKS)
+		return;
+
+	os_memcpy(mlo->ap_mld_addr, nla_data(addr), ETH_ALEN);
+	wpa_printf(MSG_DEBUG, "nl80211: AP MLD MAC Address " MACSTR,
+		   MAC2STR(mlo->ap_mld_addr));
+
+	if (!qca_roam_auth)
+		nl80211_parse_mlo_link_info(mlo, mlo_links);
+#ifdef CONFIG_DRIVER_NL80211_QCA
+	if (qca_roam_auth)
+		nl80211_parse_qca_vendor_mlo_link_info(mlo, mlo_links);
+#endif /* CONFIG_DRIVER_NL80211_QCA */
 
 	if (!(mlo->valid_links & BIT(drv->mlo_assoc_link_id))) {
 		wpa_printf(MSG_ERROR, "nl80211: Invalid MLO assoc link ID %d",
@@ -507,7 +559,8 @@ static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
 
 
 static void mlme_event_connect(struct wpa_driver_nl80211_data *drv,
-			       enum nl80211_commands cmd, struct nlattr *status,
+			       enum nl80211_commands cmd, bool qca_roam_auth,
+			       struct nlattr *status,
 			       struct nlattr *addr, struct nlattr *req_ie,
 			       struct nlattr *resp_ie,
 			       struct nlattr *timed_out,
@@ -613,7 +666,7 @@ static void mlme_event_connect(struct wpa_driver_nl80211_data *drv,
 
 	drv->associated = 1;
 	drv->sta_mlo_info.valid_links = 0;
-	nl80211_parse_mlo_info(drv, addr, mlo_links, resp_ie);
+	nl80211_parse_mlo_info(drv, qca_roam_auth, addr, mlo_links, resp_ie);
 	if (!drv->sta_mlo_info.valid_links && addr) {
 		os_memcpy(drv->bssid, nla_data(addr), ETH_ALEN);
 		os_memcpy(drv->prev_bssid, drv->bssid, ETH_ALEN);
@@ -2228,7 +2281,7 @@ static void qca_nl80211_key_mgmt_auth(struct wpa_driver_nl80211_data *drv,
 	bssid = nla_data(tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_BSSID]);
 	wpa_printf(MSG_DEBUG, "  * roam BSSID " MACSTR, MAC2STR(bssid));
 
-	mlme_event_connect(drv, NL80211_CMD_ROAM, NULL,
+	mlme_event_connect(drv, NL80211_CMD_ROAM, true, NULL,
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_BSSID],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_REQ_IE],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_RESP_IE],
@@ -2241,7 +2294,7 @@ static void qca_nl80211_key_mgmt_auth(struct wpa_driver_nl80211_data *drv,
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_FILS_ERP_NEXT_SEQ_NUM],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PMK],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PMKID],
-			   NULL);
+			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_MLO_LINKS]);
 }
 
 
@@ -3304,7 +3357,7 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 		break;
 	case NL80211_CMD_CONNECT:
 	case NL80211_CMD_ROAM:
-		mlme_event_connect(drv, cmd,
+		mlme_event_connect(drv, cmd, false,
 				   tb[NL80211_ATTR_STATUS_CODE],
 				   tb[NL80211_ATTR_MAC],
 				   tb[NL80211_ATTR_REQ_IE],
