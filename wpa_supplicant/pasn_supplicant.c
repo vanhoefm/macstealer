@@ -260,8 +260,7 @@ static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpas_pasn *pasn)
 }
 
 
-static int wpas_pasn_sae_setup_pt(struct wpa_supplicant *wpa_s,
-				  struct wpa_ssid *ssid, int group)
+static int wpas_pasn_sae_setup_pt(struct wpa_ssid *ssid, int group)
 {
 	const char *password = ssid->sae_password;
 	int groups[2] = { group, 0 };
@@ -391,13 +390,13 @@ static int wpas_pasn_get_params_from_bss(struct wpa_supplicant *wpa_s,
 	} else if ((sel & WPA_KEY_MGMT_SAE_EXT_KEY) &&
 		   (ieee802_11_rsnx_capab(rsnxe,
 					   WLAN_RSNX_CAPAB_SAE_H2E)) &&
-		   (wpas_pasn_sae_setup_pt(wpa_s, ssid, group) == 0)) {
+		   (wpas_pasn_sae_setup_pt(ssid, group) == 0)) {
 		key_mgmt = WPA_KEY_MGMT_SAE_EXT_KEY;
 		wpa_printf(MSG_DEBUG, "PASN: using KEY_MGMT SAE (ext key)");
 	} else if ((sel & WPA_KEY_MGMT_SAE) &&
 		   (ieee802_11_rsnx_capab(rsnxe,
 					   WLAN_RSNX_CAPAB_SAE_H2E)) &&
-		   (wpas_pasn_sae_setup_pt(wpa_s, ssid, group) == 0)) {
+		   (wpas_pasn_sae_setup_pt(ssid, group) == 0)) {
 		key_mgmt = WPA_KEY_MGMT_SAE;
 		wpa_printf(MSG_DEBUG, "PASN: using KEY_MGMT SAE");
 #endif /* CONFIG_SAE */
@@ -1315,7 +1314,7 @@ static int wpas_pasn_start(struct wpa_supplicant *wpa_s, const u8 *own_addr,
 			return -1;
 		}
 
-		if (wpas_pasn_sae_setup_pt(wpa_s, ssid, group) < 0) {
+		if (wpas_pasn_sae_setup_pt(ssid, group) < 0) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: Failed to derive PT");
 			return -1;
