@@ -1143,6 +1143,7 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 	pasn->corrupt_mic = 0;
 #endif /* CONFIG_TESTING_OPTIONS */
 	pasn->network_id = 0;
+	pasn->derive_kdk = false;
 }
 
 

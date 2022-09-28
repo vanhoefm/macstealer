@@ -93,6 +93,13 @@ struct wpas_pasn {
 	u8 wrapped_data_format;
 	struct wpabuf *secret;
 
+	/* Reponder */
+	int wpa_key_mgmt;
+	int rsn_pairwise;
+	bool derive_kdk;
+	const char *password;
+	int disable_pmksa_caching;
+
 	/**
 	 * send_mgmt - Function handler to transmit a Management frame
 	 * @ctx: Callback context from cb_ctx

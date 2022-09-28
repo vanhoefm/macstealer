@@ -5103,6 +5103,15 @@ int wpa_auth_pmksa_add_entry(struct wpa_authenticator *wpa_auth,
 #endif /* CONFIG_PMKSA_CACHE_EXTERNAL */
 
 
+struct rsn_pmksa_cache *
+wpa_auth_get_pmksa_cache(struct wpa_authenticator *wpa_auth)
+{
+	if (!wpa_auth || !wpa_auth->pmksa)
+		return NULL;
+	return wpa_auth->pmksa;
+}
+
+
 struct rsn_pmksa_cache_entry *
 wpa_auth_pmksa_get(struct wpa_authenticator *wpa_auth, const u8 *sta_addr,
 		   const u8 *pmkid)

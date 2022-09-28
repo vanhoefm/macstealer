@@ -2391,17 +2391,14 @@ int ieee802_11_set_radius_info(struct hostapd_data *hapd, struct sta_info *sta,
 #ifdef CONFIG_PASN
 #ifdef CONFIG_SAE
 
-static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
-				     struct sta_info *sta,
+static int pasn_wd_handle_sae_commit(struct wpas_pasn *pasn,
+				     const u8 *own_addr, const u8 *peer_addr,
 				     struct wpabuf *wd)
 {
-	struct wpas_pasn *pasn = sta->pasn;
-	const char *password;
 	const u8 *data;
 	size_t buf_len;
 	u16 res, alg, seq, status;
 	int groups[] = { pasn->group, 0 };
-	struct sae_pt *pt = NULL;
 	int ret;
 
 	if (!wd)
@@ -2438,13 +2435,12 @@ static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
 		return -1;
 	}
 
-	password = sae_get_password(hapd, sta, NULL, NULL, &pt, NULL);
-	if (!password || !pt) {
+	if (!pasn->password || !pasn->pt) {
 		wpa_printf(MSG_DEBUG, "PASN: No SAE PT found");
 		return -1;
 	}
 
-	ret = sae_prepare_commit_pt(&pasn->sae, pt, hapd->own_addr, sta->addr,
+	ret = sae_prepare_commit_pt(&pasn->sae, pasn->pt, own_addr, peer_addr,
 				    NULL, NULL);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
@@ -2471,11 +2467,9 @@ static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
 }
 
 
-static int pasn_wd_handle_sae_confirm(struct hostapd_data *hapd,
-				      struct sta_info *sta,
-				      struct wpabuf *wd)
+static int pasn_wd_handle_sae_confirm(struct wpas_pasn *pasn,
+				      const u8 *peer_addr, struct wpabuf *wd)
 {
-	struct wpas_pasn *pasn = sta->pasn;
 	const u8 *data;
 	size_t buf_len;
 	u16 res, alg, seq, status;
@@ -2517,17 +2511,23 @@ static int pasn_wd_handle_sae_confirm(struct hostapd_data *hapd,
 	 * PASN/SAE should only be allowed with future PASN only. For now do not
 	 * restrict this only for PASN.
 	 */
-	wpa_auth_pmksa_add_sae(hapd->wpa_auth, sta->addr,
-			       pasn->sae.pmk, pasn->sae.pmk_len,
-			       pasn->sae.pmkid, pasn->sae.akmp);
+	if (pasn->disable_pmksa_caching)
+		return 0;
+
+	wpa_hexdump_key(MSG_DEBUG, "RSN: Cache PMK from SAE",
+			pasn->sae.pmk, pasn->sae.pmk_len);
+	if (!pasn->sae.akmp)
+		pasn->sae.akmp = WPA_KEY_MGMT_SAE;
+
+	pmksa_cache_auth_add(pasn->pmksa, pasn->sae.pmk, pasn->sae.pmk_len,
+			     pasn->sae.pmkid, NULL, 0, pasn->own_addr,
+			     peer_addr, 0, NULL, pasn->sae.akmp);
 	return 0;
 }
 
 
-static struct wpabuf * pasn_get_sae_wd(struct hostapd_data *hapd,
-				       struct sta_info *sta)
+static struct wpabuf * pasn_get_sae_wd(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = sta->pasn;
 	struct wpabuf *buf = NULL;
 	u8 *len_ptr;
 	size_t len;
@@ -2569,10 +2569,8 @@ static struct wpabuf * pasn_get_sae_wd(struct hostapd_data *hapd,
 
 #ifdef CONFIG_FILS
 
-static struct wpabuf * pasn_get_fils_wd(struct hostapd_data *hapd,
-					struct sta_info *sta)
+static struct wpabuf * pasn_get_fils_wd(struct wpas_pasn *pasn)
 {
-	struct wpas_pasn *pasn = sta->pasn;
 	struct pasn_fils *fils = &pasn->fils;
 	struct wpabuf *buf = NULL;
 
@@ -2823,16 +2821,15 @@ static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 #endif /* CONFIG_FILS */
 
 
-static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
-					     struct sta_info *sta)
+static struct wpabuf * pasn_get_wrapped_data(struct wpas_pasn *pasn)
 {
-	switch (sta->pasn->akmp) {
+	switch (pasn->akmp) {
 	case WPA_KEY_MGMT_PASN:
 		/* no wrapped data */
 		return NULL;
 	case WPA_KEY_MGMT_SAE:
 #ifdef CONFIG_SAE
-		return pasn_get_sae_wd(hapd, sta);
+		return pasn_get_sae_wd(pasn);
 #else /* CONFIG_SAE */
 		wpa_printf(MSG_ERROR,
 			   "PASN: SAE: Cannot derive wrapped data");
@@ -2841,7 +2838,7 @@ static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
 	case WPA_KEY_MGMT_FILS_SHA256:
 	case WPA_KEY_MGMT_FILS_SHA384:
 #ifdef CONFIG_FILS
-		return pasn_get_fils_wd(hapd, sta);
+		return pasn_get_fils_wd(pasn);
 #endif /* CONFIG_FILS */
 		/* fall through */
 	case WPA_KEY_MGMT_FT_PSK:
@@ -2850,9 +2847,31 @@ static struct wpabuf * pasn_get_wrapped_data(struct hostapd_data *hapd,
 	default:
 		wpa_printf(MSG_ERROR,
 			   "PASN: TODO: Wrapped data for akmp=0x%x",
-			   sta->pasn->akmp);
+			   pasn->akmp);
 		return NULL;
 	}
+}
+
+
+static void hapd_initialize_pasn(struct hostapd_data *hapd,
+				 struct sta_info *sta)
+{
+	struct wpas_pasn *pasn = sta->pasn;
+
+	pasn->cb_ctx = hapd;
+	pasn->wpa_key_mgmt = hapd->conf->wpa_key_mgmt;
+	pasn->rsn_pairwise = hapd->conf->rsn_pairwise;
+	pasn->derive_kdk = hapd->iface->drv_flags2 &
+		WPA_DRIVER_FLAGS2_SEC_LTF_AP;
+#ifdef CONFIG_TESTING_OPTIONS
+	pasn->corrupt_mic = hapd->conf->pasn_corrupt_mic;
+	if (hapd->conf->force_kdk_derivation)
+		pasn->derive_kdk = true;
+#endif /* CONFIG_TESTING_OPTIONS */
+	pasn->password = sae_get_password(hapd, sta, NULL, NULL, &pasn->pt,
+					  NULL);
+	pasn->disable_pmksa_caching = hapd->conf->disable_pmksa_caching;
+	pasn->pmksa = wpa_auth_get_pmksa_cache(hapd->wpa_auth);
 }
 
 
@@ -3055,7 +3074,7 @@ static int handle_auth_pasn_resp(struct hostapd_data *hapd,
 
 	/* No need to derive PMK if PMKSA is given */
 	if (!pmksa)
-		wrapped_data_buf = pasn_get_wrapped_data(hapd, sta);
+		wrapped_data_buf = pasn_get_wrapped_data(sta->pasn);
 	else
 		sta->pasn->wrapped_data_format = WPA_PASN_WRAPPED_DATA_NO;
 
@@ -3333,7 +3352,9 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 
 #ifdef CONFIG_SAE
 		if (sta->pasn->akmp == WPA_KEY_MGMT_SAE) {
-			ret = pasn_wd_handle_sae_commit(hapd, sta,
+			ret = pasn_wd_handle_sae_commit(sta->pasn,
+							hapd->own_addr,
+							sta->addr,
 							wrapped_data);
 			if (ret) {
 				wpa_printf(MSG_DEBUG,
@@ -3534,7 +3555,7 @@ static void handle_auth_pasn_3(struct hostapd_data *hapd, struct sta_info *sta,
 
 #ifdef CONFIG_SAE
 		if (sta->pasn->akmp == WPA_KEY_MGMT_SAE) {
-			ret = pasn_wd_handle_sae_confirm(hapd, sta,
+			ret = pasn_wd_handle_sae_confirm(sta->pasn, sta->addr,
 							 wrapped_data);
 			if (ret) {
 				wpa_printf(MSG_DEBUG,
@@ -3600,6 +3621,7 @@ static void handle_auth_pasn(struct hostapd_data *hapd, struct sta_info *sta,
 			return;
 		}
 
+		hapd_initialize_pasn(hapd, sta);
 		handle_auth_pasn_1(hapd, sta, mgmt, len);
 	} else if (trans_seq == 3) {
 		if (!sta->pasn) {

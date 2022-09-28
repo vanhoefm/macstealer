@@ -448,6 +448,8 @@ wpa_auth_pmksa_create_entry(const u8 *aa, const u8 *spa, const u8 *pmk,
 			    const u8 *pmkid, int expiration);
 int wpa_auth_pmksa_add_entry(struct wpa_authenticator *wpa_auth,
 			     struct rsn_pmksa_cache_entry *entry);
+struct rsn_pmksa_cache *
+wpa_auth_get_pmksa_cache(struct wpa_authenticator *wpa_auth);
 struct rsn_pmksa_cache_entry *
 wpa_auth_pmksa_get(struct wpa_authenticator *wpa_auth, const u8 *sta_addr,
 		   const u8 *pmkid);
