@@ -108,7 +108,7 @@ static void rx_data_eapol_key_1_of_4(struct wlantest *wt, const u8 *dst,
 	key_data = mic + mic_len + 2;
 	key_data_len = WPA_GET_BE16(mic + mic_len);
 
-	if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0) {
+	if (wpa_parse_kde_ies(key_data, key_data_len, &ie) < 0) {
 		add_note(wt, MSG_INFO, "Failed to parse EAPOL-Key Key Data");
 		return;
 	}
@@ -335,7 +335,7 @@ static void rx_data_eapol_key_2_of_4(struct wlantest *wt, const u8 *dst,
 	key_data = mic + mic_len + 2;
 	key_data_len = WPA_GET_BE16(mic + mic_len);
 
-	if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0) {
+	if (wpa_parse_kde_ies(key_data, key_data_len, &ie) < 0) {
 		add_note(wt, MSG_INFO, "Failed to parse EAPOL-Key Key Data");
 		return;
 	}
@@ -520,7 +520,7 @@ static void learn_kde_keys(struct wlantest *wt, struct wlantest_bss *bss,
 {
 	struct wpa_eapol_ie_parse ie;
 
-	if (wpa_supplicant_parse_ies(buf, len, &ie) < 0) {
+	if (wpa_parse_kde_ies(buf, len, &ie) < 0) {
 		add_note(wt, MSG_INFO, "Failed to parse EAPOL-Key Key Data");
 		return;
 	}
@@ -835,7 +835,7 @@ static void rx_data_eapol_key_3_of_4(struct wlantest *wt, const u8 *dst,
 				     decrypted, plain_len);
 	}
 
-	if (wpa_supplicant_parse_ies(decrypted, decrypted_len, &ie) < 0) {
+	if (wpa_parse_kde_ies(decrypted, decrypted_len, &ie) < 0) {
 		add_note(wt, MSG_INFO, "Failed to parse EAPOL-Key Key Data");
 		os_free(decrypted_buf);
 		return;
