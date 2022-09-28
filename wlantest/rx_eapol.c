@@ -514,11 +514,120 @@ static u8 * decrypt_eapol_key_data(struct wlantest *wt, int akmp, const u8 *kek,
 }
 
 
+static void learn_kde_keys_mlo(struct wlantest *wt, struct wlantest_bss *bss,
+			       struct wlantest_sta *sta, int link_id,
+			       struct wpa_eapol_ie_parse *ie)
+{
+	const u8 *key, *pn;
+	size_t key_len;
+	unsigned int key_id;
+	bool tx;
+
+	if (ie->mlo_gtk[link_id]) {
+		pn = ie->mlo_gtk[link_id] + 1;
+		key = ie->mlo_gtk[link_id] + RSN_MLO_GTK_KDE_PREFIX_LENGTH;
+		key_len = ie->mlo_gtk_len[link_id] -
+			RSN_MLO_GTK_KDE_PREFIX_LENGTH;
+		key_id = ie->mlo_gtk[link_id][0] &
+			RSN_MLO_GTK_KDE_PREFIX0_KEY_ID_MASK;
+		tx = ie->mlo_gtk[link_id][0] & RSN_MLO_GTK_KDE_PREFIX0_TX;
+		if (key_len <= WPA_GTK_MAX_LEN) {
+			add_note(wt, MSG_DEBUG, "GTK KeyID=%u tx=%u",
+				 key_id, tx);
+			if (ie->mlo_gtk[link_id][0] & BIT(3)) {
+				add_note(wt, MSG_INFO,
+					 "MLO GTK KDE: Reserved field set");
+			}
+			wpa_hexdump(MSG_DEBUG, "GTK", key, key_len);
+			bss->gtk_len[key_id] = key_len;
+			sta->gtk_len = key_len;
+			os_memcpy(bss->gtk[key_id], key, key_len);
+			os_memcpy(sta->gtk, key, key_len);
+			bss->rsc[key_id][0] = pn[5];
+			bss->rsc[key_id][1] = pn[4];
+			bss->rsc[key_id][2] = pn[3];
+			bss->rsc[key_id][3] = pn[2];
+			bss->rsc[key_id][4] = pn[1];
+			bss->rsc[key_id][5] = pn[0];
+			bss->gtk_idx = key_id;
+			sta->gtk_idx = key_id;
+			wpa_hexdump(MSG_DEBUG, "RSC", bss->rsc[key_id], 6);
+		} else {
+			add_note(wt, MSG_INFO,
+				 "Invalid MLO GTK KDE key length %zu",
+				 key_len);
+		}
+	}
+
+	if (ie->mlo_igtk[link_id]) {
+		pn = ie->mlo_igtk[link_id] + 2;
+		key = ie->mlo_igtk[link_id] + RSN_MLO_IGTK_KDE_PREFIX_LENGTH;
+		key_len = ie->mlo_igtk_len[link_id] -
+			RSN_MLO_IGTK_KDE_PREFIX_LENGTH;
+		key_id = WPA_GET_LE16(ie->mlo_igtk[link_id]);
+		if (key_len <= WPA_IGTK_MAX_LEN && key_id >= 4 && key_id <= 5) {
+			add_note(wt, MSG_DEBUG, "IGTK KeyID=%u", key_id);
+			if (ie->mlo_igtk[link_id][2 + 6] & 0x0f) {
+				add_note(wt, MSG_INFO,
+					 "MLO IGTK KDE: Reserved field set");
+			}
+			wpa_hexdump(MSG_DEBUG, "IGTK", key, key_len);
+			wpa_hexdump(MSG_DEBUG, "IPN", pn, 6);
+			bss->igtk_len[key_id] = key_len;
+			os_memcpy(bss->igtk[key_id], key, key_len);
+			bss->ipn[key_id][0] = pn[5];
+			bss->ipn[key_id][1] = pn[4];
+			bss->ipn[key_id][2] = pn[3];
+			bss->ipn[key_id][3] = pn[2];
+			bss->ipn[key_id][4] = pn[1];
+			bss->ipn[key_id][5] = pn[0];
+			bss->igtk_idx = key_id;
+		} else {
+			add_note(wt, MSG_INFO,
+				 "Invalid MLO IGTK KDE ID %u or key length %zu",
+				 key_id, key_len);
+		}
+	}
+
+	if (ie->mlo_bigtk[link_id]) {
+		pn = ie->mlo_bigtk[link_id] + 2;
+		key = ie->mlo_bigtk[link_id] + RSN_MLO_BIGTK_KDE_PREFIX_LENGTH;
+		key_len = ie->mlo_bigtk_len[link_id] -
+			RSN_MLO_BIGTK_KDE_PREFIX_LENGTH;
+		key_id = WPA_GET_LE16(ie->mlo_bigtk[link_id]);
+		if (key_len <= WPA_BIGTK_MAX_LEN &&
+		    key_id >= 6 && key_id <= 7) {
+			add_note(wt, MSG_DEBUG, "BIGTK KeyID=%u", key_id);
+			if (ie->mlo_bigtk[link_id][2 + 6] & 0x0f) {
+				add_note(wt, MSG_INFO,
+					 "MLO BIGTK KDE: Reserved field set");
+			}
+			wpa_hexdump(MSG_DEBUG, "BIGTK", key, key_len);
+			wpa_hexdump(MSG_DEBUG, "BIPN", pn, 6);
+			bss->igtk_len[key_id] = key_len;
+			os_memcpy(bss->igtk[key_id], key, key_len);
+			bss->ipn[key_id][0] = pn[5];
+			bss->ipn[key_id][1] = pn[4];
+			bss->ipn[key_id][2] = pn[3];
+			bss->ipn[key_id][3] = pn[2];
+			bss->ipn[key_id][4] = pn[1];
+			bss->ipn[key_id][5] = pn[0];
+			bss->bigtk_idx = key_id;
+		} else {
+			add_note(wt, MSG_INFO,
+				 "Invalid MLO IGTK KDE ID %u or key length %zu",
+				 key_id, key_len);
+		}
+	}
+}
+
+
 static void learn_kde_keys(struct wlantest *wt, struct wlantest_bss *bss,
 			   struct wlantest_sta *sta,
 			   const u8 *buf, size_t len, const u8 *rsc)
 {
 	struct wpa_eapol_ie_parse ie;
+	int link_id;
 
 	if (wpa_parse_kde_ies(buf, len, &ie) < 0) {
 		add_note(wt, MSG_INFO, "Failed to parse EAPOL-Key Key Data");
@@ -684,6 +793,21 @@ static void learn_kde_keys(struct wlantest *wt, struct wlantest_bss *bss,
 			add_note(wt, MSG_INFO, "Invalid BIGTK KDE length %u",
 				 (unsigned) ie.bigtk_len);
 		}
+	}
+
+	for (link_id = 0; link_id < MAX_NUM_MLO_LINKS; link_id++) {
+		const u8 *addr;
+
+		if (!ie.mlo_link[link_id])
+			continue;
+		addr = &ie.mlo_link[link_id][RSN_MLO_LINK_KDE_LINK_MAC_INDEX];
+		if (os_memcmp(addr, bss->bssid, ETH_ALEN) != 0)
+			continue;
+		wpa_printf(MSG_DEBUG,
+			   "Trying to learn keys for the current MLO link (ID %u)",
+			   link_id);
+		learn_kde_keys_mlo(wt, bss, sta, link_id, &ie);
+		break;
 	}
 }
 
