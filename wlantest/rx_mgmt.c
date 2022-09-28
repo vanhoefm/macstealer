@@ -75,9 +75,9 @@ static void rx_mgmt_beacon(struct wlantest *wt, const u8 *data, size_t len)
 	bss = bss_get(wt, mgmt->bssid);
 	if (bss == NULL)
 		return;
-	if (bss->proberesp_seen)
-		return; /* do not override with Beacon data */
-	bss->capab_info = le_to_host16(mgmt->u.beacon.capab_info);
+	/* do not override with Beacon data */
+	if (!bss->proberesp_seen)
+		bss->capab_info = le_to_host16(mgmt->u.beacon.capab_info);
 	if (ieee802_11_parse_elems(mgmt->u.beacon.variable, len - offset,
 				   &elems, 0) == ParseFailed) {
 		if (bss->parse_error_reported)
@@ -88,7 +88,8 @@ static void rx_mgmt_beacon(struct wlantest *wt, const u8 *data, size_t len)
 		return;
 	}
 
-	bss_update(wt, bss, &elems, 1);
+	if (!bss->proberesp_seen)
+		bss_update(wt, bss, &elems, 1);
 
 	mme = get_ie(mgmt->u.beacon.variable, len - offset, WLAN_EID_MMIE);
 	if (!mme) {
