@@ -2295,6 +2295,14 @@ static void qca_nl80211_key_mgmt_auth(struct wpa_driver_nl80211_data *drv,
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PMK],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PMKID],
 			   tb[QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_MLO_LINKS]);
+
+#ifdef ANDROID
+#ifdef ANDROID_LIB_EVENT
+	wpa_driver_nl80211_driver_event(
+		drv, OUI_QCA, QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH,
+		data, len);
+#endif /* ANDROID_LIB_EVENT */
+#endif /* ANDROID */
 }
 
 
@@ -2804,7 +2812,13 @@ static void nl80211_vendor_event(struct wpa_driver_nl80211_data *drv,
 
 #ifdef ANDROID
 #ifdef ANDROID_LIB_EVENT
-       wpa_driver_nl80211_driver_event(drv, vendor_id, subcmd, data, len);
+	/* Postpone QCA roam+auth event indication to the point when both that
+	 * and the NL80211_CMD_ROAM event have been received (see calls to
+	 * qca_nl80211_key_mgmt_auth() and drv->pending_roam_data). */
+	if (!(vendor_id == OUI_QCA &&
+	      subcmd == QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH))
+		wpa_driver_nl80211_driver_event(drv, vendor_id, subcmd, data,
+						len);
 #endif /* ANDROID_LIB_EVENT */
 #endif /* ANDROID */
 
