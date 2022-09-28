@@ -125,7 +125,9 @@ static void rx_mgmt_beacon(struct wlantest *wt, const u8 *data, size_t len)
 	wpa_hexdump(MSG_MSGDUMP, "MME MIC", mme + 8, mic_len);
 
 	if (!bss->igtk_len[keyid]) {
-		add_note(wt, MSG_DEBUG, "No BIGTK known to validate BIP frame");
+		add_note(wt, MSG_DEBUG,
+			 "No BIGTK known to validate BIP frame from " MACSTR,
+			 MAC2STR(mgmt->sa));
 		return;
 	}
 
