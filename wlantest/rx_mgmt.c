@@ -2078,10 +2078,15 @@ static void rx_mgmt_action(struct wlantest *wt, const u8 *data, size_t len,
 	bss = bss_get(wt, mgmt->bssid);
 	if (bss == NULL)
 		return;
-	if (os_memcmp(mgmt->sa, mgmt->bssid, ETH_ALEN) == 0)
-		sta = sta_get(bss, mgmt->da);
-	else
-		sta = sta_get(bss, mgmt->sa);
+	if (os_memcmp(mgmt->sa, mgmt->bssid, ETH_ALEN) == 0) {
+		sta = sta_find_mlo(wt, bss, mgmt->da);
+		if (!sta)
+			sta = sta_get(bss, mgmt->da);
+	} else {
+		sta = sta_find_mlo(wt, bss, mgmt->sa);
+		if (!sta)
+			sta = sta_get(bss, mgmt->sa);
+	}
 	if (sta == NULL)
 		return;
 
@@ -2381,10 +2386,15 @@ static u8 * mgmt_decrypt(struct wlantest *wt, const u8 *data, size_t len,
 	bss = bss_get(wt, hdr->addr3);
 	if (bss == NULL)
 		return mgmt_decrypt_tk(wt, data, len, dlen);
-	if (os_memcmp(hdr->addr1, hdr->addr3, ETH_ALEN) == 0)
-		sta = sta_get(bss, hdr->addr2);
-	else
-		sta = sta_get(bss, hdr->addr1);
+	if (os_memcmp(hdr->addr1, hdr->addr3, ETH_ALEN) == 0) {
+		sta = sta_find_mlo(wt, bss, hdr->addr2);
+		if (!sta)
+			sta = sta_get(bss, hdr->addr2);
+	} else {
+		sta = sta_find_mlo(wt, bss, hdr->addr1);
+		if (!sta)
+			sta = sta_get(bss, hdr->addr1);
+	}
 	if (sta == NULL || !sta->ptk_set) {
 		decrypted = mgmt_decrypt_tk(wt, data, len, dlen);
 		if (!decrypted)

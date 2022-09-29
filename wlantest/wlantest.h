@@ -56,6 +56,7 @@ struct wlantest_sta {
 	struct wlantest_bss *bss;
 	u8 addr[ETH_ALEN];
 	u8 mld_mac_addr[ETH_ALEN];
+	u8 link_addr[MAX_NUM_MLO_LINKS][ETH_ALEN];
 	enum {
 		STATE1 /* not authenticated */,
 		STATE2 /* authenticated */,
@@ -297,6 +298,8 @@ void pmk_deinit(struct wlantest_pmk *pmk);
 void tdls_deinit(struct wlantest_tdls *tdls);
 
 struct wlantest_sta * sta_find(struct wlantest_bss *bss, const u8 *addr);
+struct wlantest_sta * sta_find_mlo(struct wlantest *wt,
+				   struct wlantest_bss *bss, const u8 *addr);
 struct wlantest_sta * sta_get(struct wlantest_bss *bss, const u8 *addr);
 void sta_deinit(struct wlantest_sta *sta);
 void sta_update_assoc(struct wlantest_sta *sta,

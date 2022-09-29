@@ -303,6 +303,7 @@ static void rx_data_eapol_key_2_of_4(struct wlantest *wt, const u8 *dst,
 	size_t kck_len, mic_len;
 	u16 key_info, key_data_len;
 	struct wpa_eapol_ie_parse ie;
+	int link_id;
 
 	wpa_printf(MSG_DEBUG, "EAPOL-Key 2/4 " MACSTR " -> " MACSTR,
 		   MAC2STR(src), MAC2STR(dst));
@@ -419,6 +420,19 @@ static void rx_data_eapol_key_2_of_4(struct wlantest *wt, const u8 *dst,
 				    sta->rsnie,
 				    sta->rsnie[0] ? 2 + sta->rsnie[1] : 0);
 		}
+	}
+
+	for (link_id = 0; link_id < MAX_NUM_MLO_LINKS; link_id++) {
+		const u8 *addr;
+
+		if (!ie.mlo_link[link_id])
+			continue;
+		addr = &ie.mlo_link[link_id][RSN_MLO_LINK_KDE_LINK_MAC_INDEX];
+		wpa_printf(MSG_DEBUG,
+			   "Learned Link ID %u MAC address " MACSTR
+			   " from EAPOL-Key 2/4",
+			   link_id, MAC2STR(addr));
+		os_memcpy(sta->link_addr[link_id], addr, ETH_ALEN);
 	}
 }
 

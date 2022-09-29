@@ -466,14 +466,18 @@ static void rx_data_bss_prot(struct wlantest *wt,
 		bss = bss_get(wt, hdr->addr1);
 		if (bss == NULL)
 			return;
-		sta = sta_get(bss, hdr->addr2);
+		sta = sta_find_mlo(wt, bss, hdr->addr2);
+		if (!sta)
+			sta = sta_get(bss, hdr->addr2);
 		if (sta)
 			sta->counters[WLANTEST_STA_COUNTER_PROT_DATA_TX]++;
 	} else if (fc & WLAN_FC_FROMDS) {
 		bss = bss_get(wt, hdr->addr2);
 		if (bss == NULL)
 			return;
-		sta = sta_get(bss, hdr->addr1);
+		sta = sta_find_mlo(wt, bss, hdr->addr1);
+		if (!sta)
+			sta = sta_get(bss, hdr->addr1);
 	} else {
 		bss = bss_get(wt, hdr->addr3);
 		if (bss == NULL)
