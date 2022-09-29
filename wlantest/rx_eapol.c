@@ -829,6 +829,9 @@ static void rx_data_eapol_key_3_of_4(struct wlantest *wt, const u8 *dst,
 	size_t decrypted_len = 0;
 	struct wpa_eapol_ie_parse ie;
 	struct wpa_ie_data rsn;
+	const u8 *rsne;
+	size_t rsne_len;
+	int link_id;
 
 	wpa_printf(MSG_DEBUG, "EAPOL-Key 3/4 " MACSTR " -> " MACSTR,
 		   MAC2STR(src), MAC2STR(dst));
@@ -989,23 +992,52 @@ static void rx_data_eapol_key_3_of_4(struct wlantest *wt, const u8 *dst,
 			    bss->wpaie[0] ? 2 + bss->wpaie[1] : 0);
 	}
 
-	if ((ie.rsn_ie &&
+	rsne = ie.rsn_ie;
+	rsne_len = ie.rsn_ie_len;
+	for (link_id = 0; !rsne && link_id < MAX_NUM_MLO_LINKS; link_id++) {
+		const u8 *addr, *pos, *end;
+
+		if (!ie.mlo_link[link_id])
+			continue;
+		addr = &ie.mlo_link[link_id][RSN_MLO_LINK_KDE_LINK_MAC_INDEX];
+		if (os_memcmp(addr, bss->bssid, ETH_ALEN) != 0)
+			continue;
+		if (!(ie.mlo_link[link_id][0] & RSN_MLO_LINK_KDE_LI_RSNE_INFO))
+			continue;
+		pos = ie.mlo_link[link_id] + RSN_MLO_LINK_KDE_FIXED_LENGTH;
+		end = ie.mlo_link[link_id] + ie.mlo_link_len[link_id];
+		if (end - pos < 2 || pos[0] != WLAN_EID_RSN ||
+		    end - pos < 2 + pos[1]) {
+			add_note(wt, MSG_INFO, "Invalid MLO Link KDE from "
+				 MACSTR " - RSNE info missing",
+				 MAC2STR(bss->bssid));
+			break;
+		}
+		wpa_printf(MSG_DEBUG,
+			   "Using RSNE from MLO Link KDE for Link ID %u",
+			   link_id);
+		rsne = pos;
+		rsne_len = 2 + pos[1];
+		break;
+	}
+
+	if ((rsne &&
 	     wpa_compare_rsn_ie(wpa_key_mgmt_ft(sta->key_mgmt),
-				ie.rsn_ie, ie.rsn_ie_len,
+				rsne, rsne_len,
 				bss->rsnie, 2 + bss->rsnie[1])) ||
-	    (ie.rsn_ie == NULL && bss->rsnie[0])) {
+	    (!rsne && bss->rsnie[0])) {
 		add_note(wt, MSG_INFO, "Mismatch in RSN IE between EAPOL-Key "
 			 "3/4 and Beacon/Probe Response from " MACSTR,
 			 MAC2STR(bss->bssid));
 		wpa_hexdump(MSG_INFO, "RSN IE in EAPOL-Key",
-			    ie.rsn_ie, ie.rsn_ie_len);
+			    rsne, rsne_len);
 		wpa_hexdump(MSG_INFO, "RSN IE in Beacon/Probe Response",
 			    bss->rsnie,
 			    bss->rsnie[0] ? 2 + bss->rsnie[1] : 0);
 	}
 
 	if (wpa_key_mgmt_ft(sta->key_mgmt) &&
-	    (wpa_parse_wpa_ie_rsn(ie.rsn_ie, ie.rsn_ie_len, &rsn) < 0 ||
+	    (wpa_parse_wpa_ie_rsn(rsne, rsne_len, &rsn) < 0 ||
 	     rsn.num_pmkid != 1 || !rsn.pmkid ||
 	     os_memcmp_const(rsn.pmkid, sta->pmk_r1_name,
 			     WPA_PMK_NAME_LEN) != 0))
