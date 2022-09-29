@@ -312,12 +312,14 @@ static void rx_mgmt_auth(struct wlantest *wt, const u8 *data, size_t len)
 	struct wlantest_bss *bss;
 	struct wlantest_sta *sta;
 	u16 alg, trans, status;
+	bool from_ap;
 
 	mgmt = (const struct ieee80211_mgmt *) data;
 	bss = bss_get(wt, mgmt->bssid);
 	if (bss == NULL)
 		return;
-	if (os_memcmp(mgmt->sa, mgmt->bssid, ETH_ALEN) == 0)
+	from_ap = os_memcmp(mgmt->sa, mgmt->bssid, ETH_ALEN) == 0;
+	if (from_ap)
 		sta = sta_get(bss, mgmt->da);
 	else
 		sta = sta_get(bss, mgmt->sa);
@@ -339,7 +341,9 @@ static void rx_mgmt_auth(struct wlantest *wt, const u8 *data, size_t len)
 		   " (alg=%u trans=%u status=%u)",
 		   MAC2STR(mgmt->sa), MAC2STR(mgmt->da), alg, trans, status);
 
-	if (alg == 0 && trans == 2 && status == 0) {
+	if (status == WLAN_STATUS_SUCCESS &&
+	    ((alg == WLAN_AUTH_OPEN && trans == 2) ||
+	     (alg == WLAN_AUTH_SAE && trans == 2 && from_ap))) {
 		if (sta->state == STATE1) {
 			add_note(wt, MSG_DEBUG, "STA " MACSTR
 				 " moved to State 2 with " MACSTR,
