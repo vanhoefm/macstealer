@@ -554,9 +554,11 @@ static void learn_kde_keys_mlo(struct wlantest *wt, struct wlantest_bss *bss,
 			}
 			wpa_hexdump(MSG_DEBUG, "GTK", key, key_len);
 			bss->gtk_len[key_id] = key_len;
-			sta->gtk_len = key_len;
+			if (sta)
+				sta->gtk_len = key_len;
 			os_memcpy(bss->gtk[key_id], key, key_len);
-			os_memcpy(sta->gtk, key, key_len);
+			if (sta)
+				os_memcpy(sta->gtk, key, key_len);
 			bss->rsc[key_id][0] = pn[5];
 			bss->rsc[key_id][1] = pn[4];
 			bss->rsc[key_id][2] = pn[3];
@@ -564,7 +566,8 @@ static void learn_kde_keys_mlo(struct wlantest *wt, struct wlantest_bss *bss,
 			bss->rsc[key_id][4] = pn[1];
 			bss->rsc[key_id][5] = pn[0];
 			bss->gtk_idx = key_id;
-			sta->gtk_idx = key_id;
+			if (sta)
+				sta->gtk_idx = key_id;
 			wpa_hexdump(MSG_DEBUG, "RSC", bss->rsc[key_id], 6);
 		} else {
 			add_note(wt, MSG_INFO,
@@ -815,13 +818,25 @@ static void learn_kde_keys(struct wlantest *wt, struct wlantest_bss *bss,
 		if (!ie.mlo_link[link_id])
 			continue;
 		addr = &ie.mlo_link[link_id][RSN_MLO_LINK_KDE_LINK_MAC_INDEX];
-		if (os_memcmp(addr, bss->bssid, ETH_ALEN) != 0)
-			continue;
-		wpa_printf(MSG_DEBUG,
-			   "Trying to learn keys for the current MLO link (ID %u)",
-			   link_id);
-		learn_kde_keys_mlo(wt, bss, sta, link_id, &ie);
-		break;
+		if (os_memcmp(addr, bss->bssid, ETH_ALEN) == 0) {
+			wpa_printf(MSG_DEBUG,
+				   "Trying to learn keys for the current MLO link (ID %u)",
+				   link_id);
+			learn_kde_keys_mlo(wt, bss, sta, link_id, &ie);
+		} else {
+			struct wlantest_bss *obss;
+
+			wpa_printf(MSG_DEBUG,
+				   "Trying to learn keys for another MLO link (ID %u addr " MACSTR ")",
+				   link_id, MAC2STR(addr));
+			obss = bss_get(wt, addr);
+			if (!obss) {
+				wpa_printf(MSG_DEBUG,
+					   "No BSS entry for the other BSS found");
+				continue;
+			}
+			learn_kde_keys_mlo(wt, obss, NULL, link_id, &ie);
+		}
 	}
 }
 
