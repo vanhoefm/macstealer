@@ -969,6 +969,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 
 	pmkid = NULL;
 	if (wpa_key_mgmt_ft(pasn->akmp)) {
+#ifdef CONFIG_IEEE80211R
 		ret = wpa_pasn_ft_derive_pmk_r1(wpa_s->wpa, pasn->akmp,
 						pasn->bssid,
 						pasn->pmk_r1,
@@ -981,6 +982,9 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpa_supplicant *wpa_s,
 		}
 
 		pmkid = pasn->pmk_r1_name;
+#else /* CONFIG_IEEE80211R */
+		goto fail;
+#endif /* CONFIG_IEEE80211R */
 	} else if (wrapped_data != WPA_PASN_WRAPPED_DATA_NO) {
 		struct rsn_pmksa_cache_entry *pmksa;
 

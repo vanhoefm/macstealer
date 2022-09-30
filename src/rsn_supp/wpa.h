@@ -509,8 +509,9 @@ wpa_ft_validate_reassoc_resp(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 
 #ifdef CONFIG_PASN
 
-int wpa_pasn_ft_derive_pmk_r1(struct wpa_sm *sm, int akmp, const u8 *r1kh_id,
-			      u8 *pmk_r1, size_t *pmk_r1_len, u8 *pmk_r1_name)
+static inline int
+wpa_pasn_ft_derive_pmk_r1(struct wpa_sm *sm, int akmp, const u8 *r1kh_id,
+			  u8 *pmk_r1, size_t *pmk_r1_len, u8 *pmk_r1_name)
 {
 	return -1;
 }
