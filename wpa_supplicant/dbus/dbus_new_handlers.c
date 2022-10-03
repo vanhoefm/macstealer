@@ -4324,6 +4324,7 @@ dbus_bool_t wpas_dbus_setter_iface_global(
 	const char *new_value = NULL;
 	char buf[250];
 	size_t combined_len;
+	int wpa_sm_param;
 	int ret;
 
 	if (!wpas_dbus_simple_property_setter(iter, error, DBUS_TYPE_STRING,
@@ -4341,6 +4342,35 @@ dbus_bool_t wpas_dbus_setter_iface_global(
 
 	if (!new_value[0])
 		new_value = "NULL";
+
+	wpa_sm_param = -1;
+	if (os_strcmp(property_desc->data, "dot11RSNAConfigPMKLifetime") == 0)
+		wpa_sm_param = RSNA_PMK_LIFETIME;
+	else if (os_strcmp(property_desc->data,
+			   "dot11RSNAConfigPMKReauthThreshold") == 0)
+		wpa_sm_param = RSNA_PMK_REAUTH_THRESHOLD;
+	else if (os_strcmp(property_desc->data, "dot11RSNAConfigSATimeout") == 0)
+		wpa_sm_param = RSNA_SA_TIMEOUT;
+
+	if (wpa_sm_param != -1) {
+		char *end;
+		int val;
+
+		val = strtol(new_value, &end, 0);
+		if (*end) {
+			dbus_set_error(error, DBUS_ERROR_INVALID_ARGS,
+				       "Invalid value for property %s",
+				       property_desc->dbus_property);
+			return FALSE;
+		}
+
+		if (wpa_sm_set_param(wpa_s->wpa, wpa_sm_param, val)) {
+			dbus_set_error(error, DBUS_ERROR_INVALID_ARGS,
+				       "Failed to apply interface property %s",
+				       property_desc->dbus_property);
+			return FALSE;
+		}
+	}
 
 	ret = os_snprintf(buf, combined_len, "%s=%s", property_desc->data,
 			  new_value);
