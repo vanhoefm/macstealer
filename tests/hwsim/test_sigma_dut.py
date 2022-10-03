@@ -2738,6 +2738,21 @@ def test_sigma_dut_ap_dpp_qr_legacy_psk(dev, apdev, params):
     run_sigma_dut_ap_dpp_qr(dev, apdev, params, "ap-psk", "sta-psk",
                             extra="psk=%s" % (32*"12"))
 
+def test_sigma_dut_ap_dpp_qr_sae(dev, apdev, params):
+    """sigma_dut controlled AP (SAE)"""
+    run_sigma_dut_ap_dpp_qr(dev, apdev, params, "ap-sae", "sta-sae",
+                            extra="pass=%s" % to_hex("qwertyuiop"))
+
+def test_sigma_dut_ap_dpp_qr_dpp_sae(dev, apdev, params):
+    """sigma_dut controlled AP (DPP+SAE)"""
+    run_sigma_dut_ap_dpp_qr(dev, apdev, params, "ap-sae-dpp", "sta-sae",
+                            extra="pass=%s" % to_hex("qwertyuiop"))
+
+def test_sigma_dut_ap_dpp_qr_dpp_sae2(dev, apdev, params):
+    """sigma_dut controlled AP (DPP+SAE)"""
+    run_sigma_dut_ap_dpp_qr(dev, apdev, params, "ap-sae-dpp", "sta-dpp",
+                            extra="pass=%s" % to_hex("qwertyuiop"))
+
 def test_sigma_dut_ap_dpp_qr_mud_url(dev, apdev, params):
     """sigma_dut controlled AP (DPP) with MUD URL"""
     run_sigma_dut_ap_dpp_qr(dev, apdev, params, "ap-dpp", "sta-dpp",
