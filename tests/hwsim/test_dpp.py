@@ -1806,7 +1806,16 @@ def test_dpp_ap_config_reconfig_configurator(dev, apdev):
     """DPP and AP configuration with Configurator reconfiguration"""
     run_dpp_ap_config(dev, apdev, reconf_configurator=True)
 
+def test_dpp_ap_config_sae(dev, apdev):
+    """DPP and AP configuration for SAE"""
+    run_dpp_ap_config(dev, apdev, sae=True)
+
 def update_hapd_config(hapd):
+    ev = hapd.wait_event(["DPP-CONFOBJ-AKM"], timeout=1)
+    if ev is None:
+        raise Exception("AKM not reported (AP)")
+    akm = ev.split(' ')[1]
+
     ev = hapd.wait_event(["DPP-CONFOBJ-SSID"], timeout=1)
     if ev is None:
         raise Exception("SSID not reported (AP)")
@@ -1816,6 +1825,12 @@ def update_hapd_config(hapd):
     if ev is None:
         raise Exception("Connector not reported (AP)")
     connector = ev.split(' ')[1]
+
+    if akm == "sae":
+        ev = hapd.wait_event(["DPP-CONFOBJ-PASS"], timeout=1)
+        if ev is None:
+            raise Exception("Password not reported (AP)")
+        password = ev.split(' ')[1]
 
     ev = hapd.wait_event(["DPP-C-SIGN-KEY"], timeout=1)
     if ev is None:
@@ -1830,12 +1845,16 @@ def update_hapd_config(hapd):
     net_access_key = p[1]
     net_access_key_expiry = p[2] if len(p) > 2 else None
 
-    logger.info("Update AP configuration to use key_mgmt=DPP")
+    logger.info("Update AP configuration")
     hapd.disable()
     hapd.set("ssid", ssid)
     hapd.set("utf8_ssid", "1")
     hapd.set("wpa", "2")
-    hapd.set("wpa_key_mgmt", "DPP")
+    if akm == "sae":
+        hapd.set("wpa_key_mgmt", "SAE")
+        hapd.set("sae_password", binascii.unhexlify(password).decode())
+    else:
+        hapd.set("wpa_key_mgmt", "DPP")
     hapd.set("ieee80211w", "2")
     hapd.set("rsn_pairwise", "CCMP")
     hapd.set("dpp_connector", connector)
@@ -1846,7 +1865,7 @@ def update_hapd_config(hapd):
     hapd.enable()
 
 def run_dpp_ap_config(dev, apdev, curve=None, conf_curve=None,
-                      reconf_configurator=False):
+                      reconf_configurator=False, sae=False):
     brainpool = (curve and "BP-" in curve) or \
         (conf_curve and "BP-" in conf_curve)
     check_dpp_capab(dev[0], brainpool)
@@ -1864,7 +1883,11 @@ def run_dpp_ap_config(dev, apdev, curve=None, conf_curve=None,
         if "FAIL" in csign or len(csign) == 0:
             raise Exception("DPP_CONFIGURATOR_GET_KEY failed")
 
-    dev[0].dpp_auth_init(uri=uri, conf="ap-dpp", configurator=conf_id)
+    if sae:
+        dev[0].dpp_auth_init(uri=uri, conf="ap-sae", configurator=conf_id,
+                             passphrase="secret SAE password")
+    else:
+        dev[0].dpp_auth_init(uri=uri, conf="ap-dpp", configurator=conf_id)
     wait_auth_success(hapd, dev[0], configurator=dev[0], enrollee=hapd)
     update_hapd_config(hapd)
 
@@ -1876,7 +1899,11 @@ def run_dpp_ap_config(dev, apdev, curve=None, conf_curve=None,
         conf_id = dev[0].dpp_configurator_add(curve=conf_curve, key=csign)
 
     dev[1].dpp_listen(2412)
-    dev[0].dpp_auth_init(uri=uri1, conf="sta-dpp", configurator=conf_id)
+    if sae:
+        dev[0].dpp_auth_init(uri=uri1, conf="sta-sae", configurator=conf_id,
+                             passphrase="secret SAE password")
+    else:
+        dev[0].dpp_auth_init(uri=uri1, conf="sta-dpp", configurator=conf_id)
     wait_auth_success(dev[1], dev[0], configurator=dev[0], enrollee=dev[1],
                       stop_responder=True)
 
@@ -1905,13 +1932,21 @@ def run_dpp_ap_config(dev, apdev, curve=None, conf_curve=None,
 
     dev[1].dump_monitor()
 
-    id = dev[1].connect(ssid, key_mgmt="DPP", ieee80211w="2", scan_freq="2412",
-                        only_add_network=True)
-    dev[1].set_network_quoted(id, "dpp_connector", connector)
-    dev[1].set_network(id, "dpp_csign", csign)
-    dev[1].set_network(id, "dpp_netaccesskey", net_access_key)
-    if net_access_key_expiry:
-        dev[1].set_network(id, "dpp_netaccess_expiry", net_access_key_expiry)
+    if sae:
+        id = dev[1].connect(ssid, key_mgmt="SAE", ieee80211w="2",
+                            scan_freq="2412",
+                            sae_password="secret SAE password",
+                            only_add_network=True)
+    else:
+        id = dev[1].connect(ssid, key_mgmt="DPP", ieee80211w="2",
+                            scan_freq="2412",
+                            only_add_network=True)
+        dev[1].set_network_quoted(id, "dpp_connector", connector)
+        dev[1].set_network(id, "dpp_csign", csign)
+        dev[1].set_network(id, "dpp_netaccesskey", net_access_key)
+        if net_access_key_expiry:
+            dev[1].set_network(id, "dpp_netaccess_expiry",
+                               net_access_key_expiry)
 
     logger.info("Check data connection")
     dev[1].select_network(id, freq="2412")
