@@ -1792,8 +1792,11 @@ def test_sigma_dut_dpp_qr_mutual_resp_enrollee_connector_privacy(dev, apdev):
     """sigma_dut DPP/QR (mutual) responder as Enrollee (Connector Privacy)"""
     check_dpp_capab(dev[0], min_ver=3)
     check_dpp_capab(dev[1], min_ver=3)
-    run_sigma_dut_dpp_qr_mutual_resp_enrollee(dev, apdev,
-                                              ",DPPPrivNetIntro,Yes")
+    try:
+        run_sigma_dut_dpp_qr_mutual_resp_enrollee(dev, apdev,
+                                                  ",DPPPrivNetIntro,Yes")
+    finally:
+        dev[0].set("dpp_connector_privacy_default", "0", allow_fail=True)
 
 def run_sigma_dut_dpp_qr_mutual_resp_enrollee(dev, apdev, extra=None):
     check_dpp_capab(dev[0])
