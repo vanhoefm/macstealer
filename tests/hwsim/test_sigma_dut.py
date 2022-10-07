@@ -2764,6 +2764,8 @@ def test_sigma_dut_ap_dpp_qr_mud_url(dev, apdev, params):
 def run_sigma_dut_ap_dpp_qr(dev, apdev, params, ap_conf, sta_conf, extra="",
                             mud_url=False):
     check_dpp_capab(dev[0])
+    if "sae" in sta_conf:
+        check_sae_capab(dev[1])
     logdir = params['prefix'] + ".sigma-hostapd"
     with HWSimRadio() as (radio, iface):
         sigma = start_sigma_dut(iface, hostapd_logdir=logdir)
@@ -2800,6 +2802,7 @@ def run_sigma_dut_ap_dpp_qr(dev, apdev, params, ap_conf, sta_conf, extra="",
 
             id0b = dev[0].dpp_qr_code(uri1)
 
+            dev[1].set("sae_groups", "")
             dev[1].set("dpp_config_processing", "2")
             cmd = "DPP_LISTEN 2412"
             if "OK" not in dev[1].request(cmd):
