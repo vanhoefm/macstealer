@@ -511,7 +511,8 @@ static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
 
 
 static struct wpabuf * wpas_pasn_build_auth_1(struct wpas_pasn *pasn,
-					      const struct wpabuf *comeback)
+					      const struct wpabuf *comeback,
+					      bool verify)
 {
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
 	const u8 *pmkid;
@@ -562,7 +563,8 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpas_pasn *pasn,
 		 * Note: Even when PMKSA is available, also add wrapped data as
 		 * it is possible that the PMKID is no longer valid at the AP.
 		 */
-		wrapped_data_buf = wpas_pasn_get_wrapped_data(pasn);
+		if (!verify)
+			wrapped_data_buf = wpas_pasn_get_wrapped_data(pasn);
 	}
 
 	if (wpa_pasn_add_rsne(buf, pmkid, pasn->akmp, pasn->cipher) < 0)
@@ -855,15 +857,80 @@ static int wpas_pasn_set_pmk(struct wpas_pasn *pasn,
 }
 
 
+static int wpas_pasn_send_auth_1(struct wpas_pasn *pasn, const u8 *own_addr,
+				 const u8 *bssid, int akmp, int cipher,
+				 u16 group, int freq,
+				 const u8 *beacon_rsne, u8 beacon_rsne_len,
+				 const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
+				 const struct wpabuf *comeback, bool verify)
+{
+	struct wpabuf *frame;
+	int ret;
+
+	pasn->ecdh = crypto_ecdh_init(group);
+	if (!pasn->ecdh) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed to init ECDH");
+		goto fail;
+	}
+
+	if (beacon_rsne && beacon_rsne_len) {
+		pasn->beacon_rsne_rsnxe = wpabuf_alloc(beacon_rsne_len +
+						       beacon_rsnxe_len);
+		if (!pasn->beacon_rsne_rsnxe) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Failed storing beacon RSNE/RSNXE");
+			goto fail;
+		}
+
+		wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsne,
+				beacon_rsne_len);
+		if (beacon_rsnxe && beacon_rsnxe_len)
+			wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsnxe,
+					beacon_rsnxe_len);
+	}
+
+	pasn->akmp = akmp;
+	pasn->cipher = cipher;
+	pasn->group = group;
+	pasn->freq = freq;
+
+	os_memcpy(pasn->own_addr, own_addr, ETH_ALEN);
+	os_memcpy(pasn->bssid, bssid, ETH_ALEN);
+
+	wpa_printf(MSG_DEBUG,
+		   "PASN: Init%s: " MACSTR " akmp=0x%x, cipher=0x%x, group=%u",
+		   verify ? " (verify)" : "",
+		   MAC2STR(pasn->bssid), pasn->akmp, pasn->cipher, pasn->group);
+
+	frame = wpas_pasn_build_auth_1(pasn, comeback, verify);
+	if (!frame) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed building 1st auth frame");
+		goto fail;
+	}
+
+	ret = pasn->send_mgmt(pasn->cb_ctx,
+			      wpabuf_head(frame), wpabuf_len(frame), 0,
+			      pasn->freq, 1000);
+
+	wpabuf_free(frame);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "PASN: Failed sending 1st auth frame");
+		goto fail;
+	}
+
+	return 0;
+
+fail:
+	return -1;
+}
+
+
 int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 		    const u8 *bssid, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback)
 {
-	struct wpabuf *frame;
-	int ret;
-
 	/* TODO: Currently support only ECC groups */
 	if (!dragonfly_suitable_group(group, 1)) {
 		wpa_printf(MSG_DEBUG,
@@ -905,61 +972,33 @@ int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 		return -1;
 	}
 
-	pasn->ecdh = crypto_ecdh_init(group);
-	if (!pasn->ecdh) {
-		wpa_printf(MSG_DEBUG, "PASN: Failed to init ECDH");
-		goto fail;
-	}
+	return wpas_pasn_send_auth_1(pasn, own_addr, bssid, akmp, cipher, group,
+				     freq, beacon_rsne, beacon_rsne_len,
+				     beacon_rsnxe, beacon_rsnxe_len, comeback,
+				     false);
+}
 
-	if (beacon_rsne && beacon_rsne_len) {
-		pasn->beacon_rsne_rsnxe = wpabuf_alloc(beacon_rsne_len +
-						       beacon_rsnxe_len);
-		if (!pasn->beacon_rsne_rsnxe) {
-			wpa_printf(MSG_DEBUG,
-				   "PASN: Failed storing beacon RSNE/RSNXE");
-			goto fail;
-		}
-
-		wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsne,
-				beacon_rsne_len);
-		if (beacon_rsnxe && beacon_rsnxe_len)
-			wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsnxe,
-					beacon_rsnxe_len);
-	}
-
-	pasn->akmp = akmp;
-	pasn->cipher = cipher;
-	pasn->group = group;
-	pasn->freq = freq;
-
-	os_memcpy(pasn->own_addr, own_addr, ETH_ALEN);
-	os_memcpy(pasn->bssid, bssid, ETH_ALEN);
-
-	wpa_printf(MSG_DEBUG,
-		   "PASN: Init: " MACSTR " akmp=0x%x, cipher=0x%x, group=%u",
-		   MAC2STR(pasn->bssid), pasn->akmp, pasn->cipher,
-		   pasn->group);
-
-	frame = wpas_pasn_build_auth_1(pasn, comeback);
-	if (!frame) {
-		wpa_printf(MSG_DEBUG, "PASN: Failed building 1st auth frame");
-		goto fail;
-	}
-
-	ret = pasn->send_mgmt(pasn->cb_ctx,
-			      wpabuf_head(frame), wpabuf_len(frame), 0,
-			      pasn->freq, 1000);
-
-	wpabuf_free(frame);
-	if (ret) {
-		wpa_printf(MSG_DEBUG, "PASN: Failed sending 1st auth frame");
-		goto fail;
-	}
-
-	return 0;
-
-fail:
-	return -1;
+/*
+ * Wi-Fi Aware uses PASN handshake to authenticate peer devices.
+ * Devices can simply verify each other for subsequent sessions using
+ * pairing verification procedure.
+ *
+ * In pairing verification, Wi-Fi aware devices use PASN authentication
+ * frames with a custom PMKID and Wi-Fi Aware R4 specific verification IEs.
+ * It does not use wrapped data in the Authentication frames. This function
+ * provides support to construct PASN Authentication frames for pairing
+ * verification.
+ */
+int wpa_pasn_verify(struct wpas_pasn *pasn, const u8 *own_addr,
+		    const u8 *bssid, int akmp, int cipher, u16 group,
+		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
+		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
+		    const struct wpabuf *comeback)
+{
+	return wpas_pasn_send_auth_1(pasn, own_addr, bssid, akmp, cipher, group,
+				     freq, beacon_rsne, beacon_rsne_len,
+				     beacon_rsnxe, beacon_rsnxe_len, comeback,
+				     true);
 }
 
 

@@ -152,6 +152,11 @@ int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback);
+int wpa_pasn_verify(struct wpas_pasn *pasn, const u8 *own_addr,
+		    const u8 *bssid, int akmp, int cipher, u16 group,
+		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
+		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
+		    const struct wpabuf *comeback);
 int wpa_pasn_auth_rx(struct wpas_pasn *pasn, const u8 *data, size_t len,
 		     struct wpa_pasn_params_data *pasn_params);
 int wpa_pasn_auth_tx_status(struct wpas_pasn *pasn,
