@@ -577,9 +577,8 @@ struct wpas_pasn {
 
 #ifdef CONFIG_SAE
 	struct sae_data sae;
+	struct sae_pt *pt;
 #endif /* CONFIG_SAE */
-
-	struct wpa_ssid *ssid;
 
 #ifdef CONFIG_FILS
 	bool fils_eapol;
@@ -600,6 +599,7 @@ struct wpas_pasn {
 #endif /* CONFIG_TESTING_OPTIONS */
 	void *cb_ctx;
 	u16 rsnxe_capab;
+	int network_id;
 };
 #endif /* CONFIG_PASN */
 

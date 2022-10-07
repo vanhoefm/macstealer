@@ -113,7 +113,7 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpas_pasn *pasn)
 		return NULL;
 	}
 
-	ret = sae_prepare_commit_pt(&pasn->sae, pasn->ssid->pt,
+	ret = sae_prepare_commit_pt(&pasn->sae, pasn->pt,
 				    pasn->own_addr, pasn->bssid,
 				    NULL, NULL);
 	if (ret) {
@@ -260,7 +260,8 @@ static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpas_pasn *pasn)
 }
 
 
-static int wpas_pasn_sae_setup_pt(struct wpa_ssid *ssid, int group)
+static struct sae_pt *
+wpas_pasn_sae_derive_pt(struct wpa_ssid *ssid, int group)
 {
 	const char *password = ssid->sae_password;
 	int groups[2] = { group, 0 };
@@ -270,15 +271,26 @@ static int wpas_pasn_sae_setup_pt(struct wpa_ssid *ssid, int group)
 
 	if (!password) {
 		wpa_printf(MSG_DEBUG, "PASN: SAE without a password");
+		return NULL;
+	}
+
+	return sae_derive_pt(groups, ssid->ssid, ssid->ssid_len,
+			    (const u8 *) password, os_strlen(password),
+			    ssid->sae_password_id);
+}
+
+
+static int wpas_pasn_sae_setup_pt(struct wpa_ssid *ssid, int group)
+{
+	if (!ssid->sae_password && !ssid->passphrase) {
+		wpa_printf(MSG_DEBUG, "PASN: SAE without a password");
 		return -1;
 	}
 
 	if (ssid->pt)
 		return 0; /* PT already derived */
 
-	ssid->pt = sae_derive_pt(groups, ssid->ssid, ssid->ssid_len,
-				 (const u8 *) password, os_strlen(password),
-				 ssid->sae_password_id);
+	ssid->pt = wpas_pasn_sae_derive_pt(ssid, group);
 
 	return ssid->pt ? 0 : -1;
 }
@@ -644,10 +656,10 @@ fail:
 }
 
 
-static void wpas_pasn_initiate_eapol(struct wpas_pasn *pasn)
+static void wpas_pasn_initiate_eapol(struct wpas_pasn *pasn,
+				     struct wpa_ssid *ssid)
 {
 	struct eapol_config eapol_conf;
-	struct wpa_ssid *ssid = pasn->ssid;
 
 	wpa_printf(MSG_DEBUG, "PASN: FILS: Initiating EAPOL");
 
@@ -672,18 +684,11 @@ static struct wpabuf * wpas_pasn_wd_fils_auth(struct wpas_pasn *pasn)
 	if (pasn->fils.completed)
 		return NULL;
 
-	if (!pasn->ssid) {
-		wpa_printf(MSG_DEBUG, "PASN: FILS: No network block");
-		return NULL;
-	}
-
 	if (!pasn->fils_eapol) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: FILS: Missing Indication IE or PFS");
 		return NULL;
 	}
-
-	wpas_pasn_initiate_eapol(pasn);
 
 	return wpas_pasn_fils_build_auth(pasn);
 }
@@ -1107,6 +1112,10 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 
 #ifdef CONFIG_SAE
 	sae_clear_data(&pasn->sae);
+	if (pasn->pt) {
+		sae_deinit_pt(pasn->pt);
+		pasn->pt = NULL;
+	}
 #endif /* CONFIG_SAE */
 
 #ifdef CONFIG_FILS
@@ -1124,6 +1133,7 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 #ifdef CONFIG_TESTING_OPTIONS
 	pasn->corrupt_mic = 0;
 #endif /* CONFIG_TESTING_OPTIONS */
+	pasn->network_id = 0;
 }
 
 
@@ -1241,7 +1251,7 @@ static int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 			   const u8 *bssid, int akmp, int cipher, u16 group,
 			   int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 			   const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
-			   struct wpa_ssid *ssid, struct wpabuf *comeback)
+			   struct wpabuf *comeback)
 {
 	struct wpabuf *frame;
 	int ret;
@@ -1258,11 +1268,6 @@ static int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 		break;
 #ifdef CONFIG_SAE
 	case WPA_KEY_MGMT_SAE:
-		if (!ssid) {
-			wpa_printf(MSG_DEBUG,
-				   "PASN: No network profile found for SAE");
-			return -1;
-		}
 
 		if (!ieee802_11_rsnx_capab(beacon_rsnxe,
 					   WLAN_RSNX_CAPAB_SAE_H2E)) {
@@ -1271,21 +1276,13 @@ static int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 			return -1;
 		}
 
-		if (wpas_pasn_sae_setup_pt(ssid, group) < 0) {
-			wpa_printf(MSG_DEBUG,
-				   "PASN: Failed to derive PT");
-			return -1;
-		}
-
 		pasn->sae.state = SAE_NOTHING;
 		pasn->sae.send_confirm = 0;
-		pasn->ssid = ssid;
 		break;
 #endif /* CONFIG_SAE */
 #ifdef CONFIG_FILS
 	case WPA_KEY_MGMT_FILS_SHA256:
 	case WPA_KEY_MGMT_FILS_SHA384:
-		pasn->ssid = ssid;
 		break;
 #endif /* CONFIG_FILS */
 #ifdef CONFIG_IEEE80211R
@@ -1401,7 +1398,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	struct wpa_supplicant *wpa_s = work->wpa_s;
 	struct wpa_pasn_auth_work *awork = work->ctx;
 	struct wpas_pasn *pasn = &wpa_s->pasn;
-	struct wpa_ssid *ssid = NULL;
+	struct wpa_ssid *ssid;
 	struct wpa_bss *bss;
 	const u8 *rsne, *rsnxe;
 	const u8 *indic;
@@ -1475,18 +1472,40 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
 	pasn->rsnxe_capab = capab;
 
+	ssid = wpa_config_get_network(wpa_s->conf, awork->network_id);
+
+#ifdef CONFIG_SAE
+	if (awork->akmp == WPA_KEY_MGMT_SAE) {
+		if (!ssid) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: No network profile found for SAE");
+			goto fail;
+		}
+		pasn->pt = wpas_pasn_sae_derive_pt(ssid, awork->group);
+		if (!pasn->pt) {
+			wpa_printf(MSG_DEBUG, "PASN: Failed to derive PT");
+			goto fail;
+		}
+		pasn->network_id = ssid->id;
+	}
+#endif /* CONFIG_SAE */
+
 #ifdef CONFIG_FILS
 	/* Prepare needed information for wpas_pasn_wd_fils_auth(). */
 	if (awork->akmp == WPA_KEY_MGMT_FILS_SHA256 ||
 	    awork->akmp == WPA_KEY_MGMT_FILS_SHA384) {
 		indic = wpa_bss_get_ie(bss, WLAN_EID_FILS_INDICATION);
-		if (!indic || indic[1] < 2) {
+		if (!ssid) {
+			wpa_printf(MSG_DEBUG, "PASN: FILS: No network block");
+		} else if (!indic || indic[1] < 2) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: Missing FILS Indication IE");
 		} else {
 			fils_info = WPA_GET_LE16(indic + 2);
-			if ((fils_info & BIT(9))) {
+			if ((fils_info & BIT(9)) && ssid) {
 				pasn->eapol = wpa_s->eapol;
+				pasn->network_id = ssid->id;
+				wpas_pasn_initiate_eapol(pasn, ssid);
 				pasn->fils_eapol = true;
 			} else {
 				wpa_printf(MSG_DEBUG,
@@ -1517,13 +1536,12 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 #endif /* CONFIG_IEEE80211R */
 	}
 
-	ssid = wpa_config_get_network(wpa_s->conf, awork->network_id);
 
 	ret = wpas_pasn_start(pasn, awork->own_addr, awork->bssid, awork->akmp,
 			      awork->cipher, awork->group, bss->freq,
 			      rsne, *(rsne + 1) + 2,
 			      rsnxe, rsnxe ? *(rsnxe + 1) + 2 : 0,
-			      ssid, awork->comeback);
+			      awork->comeback);
 	if (ret) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Failed to start PASN authentication");
@@ -1639,7 +1657,6 @@ static int wpas_pasn_immediate_retry(struct wpa_supplicant *wpa_s,
 	u16 group = pasn->group;
 	u8 own_addr[ETH_ALEN];
 	u8 bssid[ETH_ALEN];
-	int network_id = pasn->ssid ? pasn->ssid->id : 0;
 
 	wpa_printf(MSG_DEBUG, "PASN: Immediate retry");
 	os_memcpy(own_addr, pasn->own_addr, ETH_ALEN);
@@ -1647,7 +1664,7 @@ static int wpas_pasn_immediate_retry(struct wpa_supplicant *wpa_s,
 	wpas_pasn_reset(wpa_s);
 
 	return wpas_pasn_auth_start(wpa_s, own_addr, bssid, akmp, cipher, group,
-				    network_id,
+				    pasn->network_id,
 				    params->comeback, params->comeback_len);
 }
 
