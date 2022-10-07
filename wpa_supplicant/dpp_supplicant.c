@@ -1338,7 +1338,10 @@ static struct wpa_ssid * wpas_dpp_add_network(struct wpa_supplicant *wpa_s,
 		if (dpp_akm_sae(conf->akm))
 			ssid->key_mgmt |= WPA_KEY_MGMT_SAE |
 				WPA_KEY_MGMT_FT_SAE;
-		ssid->ieee80211w = MGMT_FRAME_PROTECTION_OPTIONAL;
+		if (dpp_akm_psk(conf->akm))
+			ssid->ieee80211w = MGMT_FRAME_PROTECTION_OPTIONAL;
+		else
+			ssid->ieee80211w = MGMT_FRAME_PROTECTION_REQUIRED;
 		if (conf->passphrase[0]) {
 			if (wpa_config_set_quoted(ssid, "psk",
 						  conf->passphrase) < 0)
