@@ -1300,7 +1300,8 @@ static int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 #ifdef CONFIG_SAE
 	case WPA_KEY_MGMT_SAE:
 
-		if (!ieee802_11_rsnx_capab(beacon_rsnxe,
+		if (beacon_rsnxe &&
+		    !ieee802_11_rsnx_capab(beacon_rsnxe,
 					   WLAN_RSNX_CAPAB_SAE_H2E)) {
 			wpa_printf(MSG_DEBUG,
 				   "PASN: AP does not support SAE H2E");
@@ -1333,17 +1334,21 @@ static int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 		goto fail;
 	}
 
-	pasn->beacon_rsne_rsnxe = wpabuf_alloc(beacon_rsne_len +
-					       beacon_rsnxe_len);
-	if (!pasn->beacon_rsne_rsnxe) {
-		wpa_printf(MSG_DEBUG, "PASN: Failed storing beacon RSNE/RSNXE");
-		goto fail;
-	}
+	if (beacon_rsne && beacon_rsne_len) {
+		pasn->beacon_rsne_rsnxe = wpabuf_alloc(beacon_rsne_len +
+						       beacon_rsnxe_len);
+		if (!pasn->beacon_rsne_rsnxe) {
+			wpa_printf(MSG_DEBUG,
+				   "PASN: Failed storing beacon RSNE/RSNXE");
+			goto fail;
+		}
 
-	wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsne, beacon_rsne_len);
-	if (beacon_rsnxe && beacon_rsnxe_len)
-		wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsnxe,
-				beacon_rsnxe_len);
+		wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsne,
+				beacon_rsne_len);
+		if (beacon_rsnxe && beacon_rsnxe_len)
+			wpabuf_put_data(pasn->beacon_rsne_rsnxe, beacon_rsnxe,
+					beacon_rsnxe_len);
+	}
 
 	pasn->akmp = akmp;
 	pasn->cipher = cipher;
@@ -1920,14 +1925,55 @@ static int wpa_pasn_auth_rx(struct wpas_pasn *pasn, const u8 *data, size_t len,
 	wpabuf_free(secret);
 	secret = NULL;
 
-	/* Verify the MIC */
-	ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
-		       pasn->bssid, pasn->own_addr,
-		       wpabuf_head(pasn->beacon_rsne_rsnxe),
-		       wpabuf_len(pasn->beacon_rsne_rsnxe),
-		       (u8 *) &mgmt->u.auth,
-		       len - offsetof(struct ieee80211_mgmt, u.auth),
-		       out_mic);
+	if (pasn->beacon_rsne_rsnxe) {
+		/* Verify the MIC */
+		ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
+			       pasn->bssid, pasn->own_addr,
+			       wpabuf_head(pasn->beacon_rsne_rsnxe),
+			       wpabuf_len(pasn->beacon_rsne_rsnxe),
+			       (u8 *) &mgmt->u.auth,
+			       len - offsetof(struct ieee80211_mgmt, u.auth),
+			       out_mic);
+	} else {
+		u8 *rsne_rsnxe;
+		size_t rsne_rsnxe_len = 0;
+
+		/*
+		 * Note: When Beacon rsne_rsnxe is not initialized, it is likely
+		 * that this is for Wi-Fi Aware using PASN handshake for which
+		 * Beacon RSNE/RSNXE are same as RSNE/RSNXE in the
+		 * Authentication frame
+		 */
+		if (elems.rsn_ie && elems.rsn_ie_len)
+			rsne_rsnxe_len += elems.rsn_ie_len + 2;
+		if (elems.rsnxe && elems.rsnxe_len)
+			rsne_rsnxe_len += elems.rsnxe_len + 2;
+
+		rsne_rsnxe = os_zalloc(rsne_rsnxe_len);
+		if (!rsne_rsnxe)
+			goto fail;
+
+		if (elems.rsn_ie && elems.rsn_ie_len)
+			os_memcpy(rsne_rsnxe, elems.rsn_ie - 2,
+				  elems.rsn_ie_len + 2);
+		if (elems.rsnxe && elems.rsnxe_len)
+			os_memcpy(rsne_rsnxe + elems.rsn_ie_len + 2,
+				  elems.rsnxe - 2, elems.rsnxe_len + 2);
+
+		wpa_hexdump_key(MSG_DEBUG, "PASN: RSN + RSNXE buf",
+				rsne_rsnxe, rsne_rsnxe_len);
+
+		/* Verify the MIC */
+		ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
+			       pasn->bssid, pasn->own_addr,
+			       rsne_rsnxe,
+			       rsne_rsnxe_len,
+			       (u8 *) &mgmt->u.auth,
+			       len - offsetof(struct ieee80211_mgmt, u.auth),
+			       out_mic);
+
+		os_free(rsne_rsnxe);
+	}
 
 	wpa_hexdump_key(MSG_DEBUG, "PASN: Frame MIC", mic, mic_len);
 	if (ret || os_memcmp(mic, out_mic, mic_len) != 0) {

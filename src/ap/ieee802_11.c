@@ -3067,6 +3067,7 @@ static int handle_auth_pasn_resp(struct wpas_pasn *pasn, const u8 *own_addr,
 				 u16 status)
 {
 	struct wpabuf *buf, *pubkey = NULL, *wrapped_data_buf = NULL;
+	struct wpabuf *rsn_buf = NULL;
 	u8 mic[WPA_PASN_MAX_MIC_LEN];
 	u8 mic_len;
 	u8 *ptr;
@@ -3152,10 +3153,26 @@ static int handle_auth_pasn_resp(struct wpas_pasn *pasn, const u8 *own_addr,
 	frame = wpabuf_head_u8(buf) + IEEE80211_HDRLEN;
 	frame_len = wpabuf_len(buf) - IEEE80211_HDRLEN;
 
-	if (!pasn->rsn_ie || !pasn->rsn_ie_len)
-		goto fail;
+	if (pasn->rsn_ie && pasn->rsn_ie_len) {
+		rsn_ie = pasn->rsn_ie;
+	} else {
+		/*
+		 * Note: when pasn->rsn_ie is NULL, it is likely that Beacon
+		 * frame RSNE is not initialized. This is possible in case of
+		 * PASN authentication used for Wi-Fi Aware for which Beacon
+		 * frame RSNE and RSNXE are same as RSNE and RSNXE in the
+		 * Authentication frame.
+		 */
+		rsn_buf = wpabuf_alloc(500);
+		if (!rsn_buf)
+			goto fail;
 
-	rsn_ie = pasn->rsn_ie;
+		if (wpa_pasn_add_rsne(rsn_buf, pmkid,
+				      pasn->akmp, pasn->cipher) < 0)
+			goto fail;
+
+		rsn_ie = wpabuf_head_u8(rsn_buf);
+	}
 
 	/*
 	 * Note: wpa_auth_get_wpa_ie() might return not only the RSNE but also
@@ -3204,11 +3221,13 @@ done:
 	if (ret)
 		wpa_printf(MSG_INFO, "send_auth_reply: Send failed");
 
+	wpabuf_free(rsn_buf);
 	wpabuf_free(buf);
 	return ret;
 fail:
 	wpabuf_free(wrapped_data_buf);
 	wpabuf_free(pubkey);
+	wpabuf_free(rsn_buf);
 	wpabuf_free(buf);
 	return -1;
 }
