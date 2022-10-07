@@ -2832,6 +2832,15 @@ static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 #endif /* CONFIG_FILS */
 
 
+static int hapd_pasn_send_mlme(void *ctx, const u8 *data, size_t data_len,
+			       int noack, unsigned int freq, unsigned int wait)
+{
+	struct hostapd_data *hapd = ctx;
+
+	return hostapd_drv_send_mlme(hapd, data, data_len, 0, NULL, 0, 0);
+}
+
+
 static struct wpabuf * pasn_get_wrapped_data(struct wpas_pasn *pasn)
 {
 	switch (pasn->akmp) {
@@ -2870,6 +2879,7 @@ static void hapd_initialize_pasn(struct hostapd_data *hapd,
 	struct wpas_pasn *pasn = sta->pasn;
 
 	pasn->cb_ctx = hapd;
+	pasn->send_mgmt = hapd_pasn_send_mlme;
 	pasn->pasn_groups = hapd->conf->pasn_groups;
 	pasn->wpa_key_mgmt = hapd->conf->wpa_key_mgmt;
 	pasn->rsn_pairwise = hapd->conf->rsn_pairwise;
@@ -3042,9 +3052,8 @@ static void handle_auth_pasn_comeback(struct wpas_pasn *pasn,
 	wpa_printf(MSG_DEBUG,
 		   "PASN: comeback: STA=" MACSTR, MAC2STR(peer_addr));
 
-	ret = hostapd_drv_send_mlme(pasn->cb_ctx, wpabuf_head(buf),
-				    wpabuf_len(buf), 0,
-				    NULL, 0, 0);
+	ret = pasn->send_mgmt(pasn->cb_ctx, wpabuf_head_u8(buf),
+			      wpabuf_len(buf), 0, 0, 0);
 	if (ret)
 		wpa_printf(MSG_INFO, "PASN: Failed to send comeback frame 2");
 
@@ -3188,8 +3197,8 @@ done:
 		   "PASN: Building frame 2: success; resp STA=" MACSTR,
 		   MAC2STR(peer_addr));
 
-	ret = hostapd_drv_send_mlme(pasn->cb_ctx, wpabuf_head(buf),
-				    wpabuf_len(buf), 0, NULL, 0, 0);
+	ret = pasn->send_mgmt(pasn->cb_ctx, wpabuf_head_u8(buf),
+			      wpabuf_len(buf), 0, 0, 0);
 	if (ret)
 		wpa_printf(MSG_INFO, "send_auth_reply: Send failed");
 
