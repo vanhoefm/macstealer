@@ -112,6 +112,9 @@ struct wpas_pasn {
 	u16 comeback_idx;
 	u16 *comeback_pending_idx;
 
+	bool custom_pmkid_valid;
+	u8 custom_pmkid[PMKID_LEN];
+
 	/**
 	 * send_mgmt - Function handler to transmit a Management frame
 	 * @ctx: Callback context from cb_ctx
@@ -123,6 +126,15 @@ struct wpas_pasn {
 	 */
 	int (*send_mgmt)(void *ctx, const u8 *data, size_t data_len, int noack,
 			 unsigned int freq, unsigned int wait);
+	/**
+	 * validate_custom_pmkid - Handler to validate vendor specific PMKID
+	 * @ctx: Callback context from cb_ctx
+	 * @addr : MAC address of the peer
+	 * @pmkid: Custom PMKID
+	 * Returns: 0 on success (valid PMKID), -1 on failure
+	 */
+	int (*validate_custom_pmkid)(void *ctx, const u8 *addr,
+				     const u8 *pmkid);
 };
 
 #endif /* CONFIG_PASN */

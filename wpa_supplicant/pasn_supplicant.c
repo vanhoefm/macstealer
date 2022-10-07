@@ -966,7 +966,9 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpas_pasn *pasn,
 
 		pmksa = pmksa_cache_get(pasn->pmksa, pasn->bssid,
 					NULL, NULL, pasn->akmp);
-		if (pmksa)
+		if (pmksa && pasn->custom_pmkid_valid)
+			pmkid = pasn->custom_pmkid;
+		else if (pmksa)
 			pmkid = pmksa->pmkid;
 
 		/*
@@ -1147,6 +1149,7 @@ static void wpa_pasn_reset(struct wpas_pasn *pasn)
 	pasn->rsn_ie = NULL;
 	pasn->rsn_ie_len = 0;
 	pasn->rsnxe_ie = NULL;
+	pasn->custom_pmkid_valid = false;
 }
 
 
@@ -1195,10 +1198,25 @@ static int wpas_pasn_set_pmk(struct wpas_pasn *pasn,
 	}
 
 	if (rsn_data->num_pmkid) {
+		int ret;
 		struct rsn_pmksa_cache_entry *pmksa;
+		const u8 *pmkid = NULL;
+
+		if (pasn->custom_pmkid_valid) {
+			ret = pasn->validate_custom_pmkid(pasn->cb_ctx,
+							  pasn->bssid,
+							  rsn_data->pmkid);
+			if (ret) {
+				wpa_printf(MSG_DEBUG,
+					   "PASN: Failed custom PMKID validation");
+				return -1;
+			}
+		} else {
+			pmkid = rsn_data->pmkid;
+		}
 
 		pmksa = pmksa_cache_get(pasn->pmksa, pasn->bssid,
-					rsn_data->pmkid, NULL, pasn->akmp);
+					pmkid, NULL, pasn->akmp);
 		if (pmksa) {
 			wpa_printf(MSG_DEBUG, "PASN: Using PMKSA");
 

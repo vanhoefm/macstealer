@@ -3088,7 +3088,9 @@ static int handle_auth_pasn_resp(struct wpas_pasn *pasn, const u8 *own_addr,
 	if (status != WLAN_STATUS_SUCCESS)
 		goto done;
 
-	if (pmksa) {
+	if (pmksa && pasn->custom_pmkid_valid)
+		pmkid = pasn->custom_pmkid;
+	else if (pmksa) {
 		pmkid = pmksa->pmkid;
 #ifdef CONFIG_SAE
 	} else if (pasn->akmp == WPA_KEY_MGMT_SAE) {
@@ -3525,9 +3527,25 @@ static int handle_auth_pasn_1(struct wpas_pasn *pasn,
 			wpa_printf(MSG_DEBUG, "PASN: Try to find PMKSA entry");
 
 			if (pasn->pmksa) {
+				const u8 *pmkid = NULL;
+
+				if (pasn->custom_pmkid_valid) {
+					ret = pasn->validate_custom_pmkid(
+						pasn->cb_ctx, peer_addr,
+						rsn_data.pmkid);
+					if (ret) {
+						wpa_printf(MSG_DEBUG,
+							   "PASN: Failed custom PMKID validation");
+						status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+						goto send_resp;
+					}
+				} else {
+					pmkid = rsn_data.pmkid;
+				}
+
 				pmksa = pmksa_cache_auth_get(pasn->pmksa,
 							     peer_addr,
-							     rsn_data.pmkid);
+							     pmkid);
 				if (pmksa) {
 					cached_pmk = pmksa->pmk;
 					cached_pmk_len = pmksa->pmk_len;
