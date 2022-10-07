@@ -352,11 +352,15 @@ struct hostapd_data {
 #endif /* CONFIG_SQLITE */
 
 #ifdef CONFIG_SAE
+
+#define COMEBACK_KEY_SIZE 8
+#define COMEBACK_PENDING_IDX_SIZE 256
+
 	/** Key used for generating SAE anti-clogging tokens */
-	u8 comeback_key[8];
+	u8 comeback_key[COMEBACK_KEY_SIZE];
 	struct os_reltime last_comeback_key_update;
 	u16 comeback_idx;
-	u16 comeback_pending_idx[256];
+	u16 comeback_pending_idx[COMEBACK_PENDING_IDX_SIZE];
 	int dot11RSNASAERetransPeriod; /* msec */
 	struct dl_list sae_commit_queue; /* struct hostapd_sae_commit_queue */
 #endif /* CONFIG_SAE */

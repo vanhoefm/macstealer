@@ -739,12 +739,11 @@ static int use_anti_clogging(struct hostapd_data *hapd)
 }
 
 
-static int comeback_token_hash(struct hostapd_data *hapd, const u8 *addr,
-			       u8 *idx)
+static int comeback_token_hash(const u8 *comeback_key, const u8 *addr, u8 *idx)
 {
 	u8 hash[SHA256_MAC_LEN];
 
-	if (hmac_sha256(hapd->comeback_key, sizeof(hapd->comeback_key),
+	if (hmac_sha256(comeback_key, COMEBACK_KEY_SIZE,
 			addr, ETH_ALEN, hash) < 0)
 		return -1;
 	*idx = hash[0];
@@ -752,7 +751,8 @@ static int comeback_token_hash(struct hostapd_data *hapd, const u8 *addr,
 }
 
 
-static int check_comeback_token(struct hostapd_data *hapd, const u8 *addr,
+static int check_comeback_token(const u8 *comeback_key,
+				u16 *comeback_pending_idx, const u8 *addr,
 				const u8 *token, size_t token_len)
 {
 	u8 mac[SHA256_MAC_LEN];
@@ -762,9 +762,9 @@ static int check_comeback_token(struct hostapd_data *hapd, const u8 *addr,
 	u8 idx;
 
 	if (token_len != SHA256_MAC_LEN ||
-	    comeback_token_hash(hapd, addr, &idx) < 0)
+	    comeback_token_hash(comeback_key, addr, &idx) < 0)
 		return -1;
-	token_idx = hapd->comeback_pending_idx[idx];
+	token_idx = comeback_pending_idx[idx];
 	if (token_idx == 0 || token_idx != WPA_GET_BE16(token)) {
 		wpa_printf(MSG_DEBUG,
 			   "Comeback: Invalid anti-clogging token from "
@@ -777,19 +777,22 @@ static int check_comeback_token(struct hostapd_data *hapd, const u8 *addr,
 	len[0] = ETH_ALEN;
 	addrs[1] = token;
 	len[1] = 2;
-	if (hmac_sha256_vector(hapd->comeback_key, sizeof(hapd->comeback_key),
+	if (hmac_sha256_vector(comeback_key, COMEBACK_KEY_SIZE,
 			       2, addrs, len, mac) < 0 ||
 	    os_memcmp_const(token + 2, &mac[2], SHA256_MAC_LEN - 2) != 0)
 		return -1;
 
-	hapd->comeback_pending_idx[idx] = 0; /* invalidate used token */
+	comeback_pending_idx[idx] = 0; /* invalidate used token */
 
 	return 0;
 }
 
 
-static struct wpabuf * auth_build_token_req(struct hostapd_data *hapd,
-					    int group, const u8 *addr, int h2e)
+static struct wpabuf *
+auth_build_token_req(struct os_reltime *last_comeback_key_update,
+		     u8 *comeback_key, u16 comeback_idx,
+		     u16 *comeback_pending_idx, size_t idx_len,
+		     int group, const u8 *addr, int h2e)
 {
 	struct wpabuf *buf;
 	u8 *token;
@@ -801,18 +804,16 @@ static struct wpabuf * auth_build_token_req(struct hostapd_data *hapd,
 	u16 token_idx;
 
 	os_get_reltime(&now);
-	if (!os_reltime_initialized(&hapd->last_comeback_key_update) ||
-	    os_reltime_expired(&now, &hapd->last_comeback_key_update, 60) ||
-	    hapd->comeback_idx == 0xffff) {
-		if (random_get_bytes(hapd->comeback_key,
-				     sizeof(hapd->comeback_key)) < 0)
+	if (!os_reltime_initialized(last_comeback_key_update) ||
+	    os_reltime_expired(&now, last_comeback_key_update, 60) ||
+	    comeback_idx == 0xffff) {
+		if (random_get_bytes(comeback_key, COMEBACK_KEY_SIZE) < 0)
 			return NULL;
 		wpa_hexdump(MSG_DEBUG, "Comeback: Updated token key",
-			    hapd->comeback_key, sizeof(hapd->comeback_key));
-		hapd->last_comeback_key_update = now;
-		hapd->comeback_idx = 0;
-		os_memset(hapd->comeback_pending_idx, 0,
-			  sizeof(hapd->comeback_pending_idx));
+			    comeback_key, COMEBACK_KEY_SIZE);
+		*last_comeback_key_update = now;
+		comeback_idx = 0;
+		os_memset(comeback_pending_idx, 0, idx_len);
 	}
 
 	buf = wpabuf_alloc(sizeof(le16) + 3 + SHA256_MAC_LEN);
@@ -829,16 +830,16 @@ static struct wpabuf * auth_build_token_req(struct hostapd_data *hapd,
 		wpabuf_put_u8(buf, WLAN_EID_EXT_ANTI_CLOGGING_TOKEN);
 	}
 
-	if (comeback_token_hash(hapd, addr, &p_idx) < 0) {
+	if (comeback_token_hash(comeback_key, addr, &p_idx) < 0) {
 		wpabuf_free(buf);
 		return NULL;
 	}
 
-	token_idx = hapd->comeback_pending_idx[p_idx];
+	token_idx = comeback_pending_idx[p_idx];
 	if (!token_idx) {
-		hapd->comeback_idx++;
-		token_idx = hapd->comeback_idx;
-		hapd->comeback_pending_idx[p_idx] = token_idx;
+		comeback_idx++;
+		token_idx = comeback_idx;
+		comeback_pending_idx[p_idx] = token_idx;
 	}
 	WPA_PUT_BE16(idx, token_idx);
 	token = wpabuf_put(buf, SHA256_MAC_LEN);
@@ -846,7 +847,7 @@ static struct wpabuf * auth_build_token_req(struct hostapd_data *hapd,
 	len[0] = ETH_ALEN;
 	addrs[1] = idx;
 	len[1] = sizeof(idx);
-	if (hmac_sha256_vector(hapd->comeback_key, sizeof(hapd->comeback_key),
+	if (hmac_sha256_vector(comeback_key, COMEBACK_KEY_SIZE,
 			       2, addrs, len, token) < 0) {
 		wpabuf_free(buf);
 		return NULL;
@@ -1488,7 +1489,9 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
 		}
 
 		if (token &&
-		    check_comeback_token(hapd, sta->addr, token, token_len)
+		    check_comeback_token(hapd->comeback_key,
+					 hapd->comeback_pending_idx, sta->addr,
+					 token, token_len)
 		    < 0) {
 			wpa_printf(MSG_DEBUG, "SAE: Drop commit message with "
 				   "incorrect token from " MACSTR,
@@ -1516,8 +1519,14 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
 			if (status_code == WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
 			    status_code == WLAN_STATUS_SAE_PK)
 				h2e = 1;
-			data = auth_build_token_req(hapd, sta->sae->group,
-						    sta->addr, h2e);
+			data = auth_build_token_req(
+				&hapd->last_comeback_key_update,
+				hapd->comeback_key,
+				hapd->comeback_idx,
+				hapd->comeback_pending_idx,
+				sizeof(hapd->comeback_pending_idx),
+				sta->sae->group,
+				sta->addr, h2e);
 			resp = WLAN_STATUS_ANTI_CLOGGING_TOKEN_REQ;
 			if (hapd->conf->mesh & MESH_ENABLED)
 				sae_set_state(sta, SAE_NOTHING,
@@ -3001,7 +3010,11 @@ static void handle_auth_pasn_comeback(struct hostapd_data *hapd,
 	 * Do not include the group as a part of the token since it is not going
 	 * to be used.
 	 */
-	comeback = auth_build_token_req(hapd, 0, sta->addr, 0);
+	comeback = auth_build_token_req(&hapd->last_comeback_key_update,
+					hapd->comeback_key, hapd->comeback_idx,
+					hapd->comeback_pending_idx,
+					sizeof(hapd->comeback_pending_idx), 0,
+					sta->addr, 0);
 	if (!comeback) {
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Failed sending auth with comeback");
@@ -3293,7 +3306,9 @@ static void handle_auth_pasn_1(struct hostapd_data *hapd, struct sta_info *sta,
 	if (pasn_params.comeback) {
 		wpa_printf(MSG_DEBUG, "PASN: Checking peer comeback token");
 
-		ret = check_comeback_token(hapd, sta->addr,
+		ret = check_comeback_token(hapd->comeback_key,
+					   hapd->comeback_pending_idx,
+					   sta->addr,
 					   pasn_params.comeback,
 					   pasn_params.comeback_len);
 
