@@ -6021,6 +6021,22 @@ enum qca_wlan_vendor_external_acs_event_chan_info_attr {
 	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FLAGS_2 = 11,
 
 	/*
+	 * Segment 0 in MHz (u32).
+	 *
+	 * For 20/40/80 MHz bandwidth, this indicates the channel center
+	 * frequency index for the 20/40/80 MHz operating channel.
+	 * For 160 MHz bandwidth, this indicates the channel center
+	 * frequency of the primary 80 MHz channel.
+	 * For 320 MHz bandwidth, indicates the channel center frequency
+	 * of the primary 160 MHz channel.
+	 *
+	 * To maintain backward compatibility,
+	 * QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_0
+	 * is also maintained.
+	 */
+	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_SEG_0 = 12,
+	/* Legacy alias for the Segment 0 attribute.
+	 *
 	 * VHT segment 0 in MHz (u32) and the attribute is mandatory.
 	 * Note: Event QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_ACS includes
 	 * QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_0
@@ -6038,9 +6054,25 @@ enum qca_wlan_vendor_external_acs_event_chan_info_attr {
 	 * is still used if either of the driver or user space application
 	 * doesn't support the 6 GHz band.
 	 */
-	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_0 = 12,
+	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_0 =
+	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_SEG_0,
 
 	/*
+	 * Segment 1 in MHz (u32).
+	 *
+	 * For 20/40/80 MHz bandwidth, this is set to 0.
+	 * For 160 MHz bandwidth, indicates the channel center frequency of the
+	 * 160 MHz channel.
+	 * For 320 MHz bandwidth, indicates the channel center frequency of the
+	 * 320 MHz channel.
+	 *
+	 * To maintain backward compatibility,
+	 * QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_1
+	 * is also maintained.
+	 */
+	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_SEG_1 = 13,
+	/* Legacy alias for the Segment 1 attribute.
+	 *
 	 * VHT segment 1 in MHz (u32) and the attribute is mandatory.
 	 * Note: Event QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_ACS includes
 	 * QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_1
@@ -6058,7 +6090,8 @@ enum qca_wlan_vendor_external_acs_event_chan_info_attr {
 	 * is still used if either of the driver or user space application
 	 * doesn't support the 6 GHz band.
 	 */
-	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_1 = 13,
+	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_VHT_SEG_1 =
+	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_SEG_1,
 
 	/*
 	 * 16-bit attribute of bits indicating the AP power modes supported by
@@ -6075,6 +6108,33 @@ enum qca_wlan_vendor_external_acs_event_chan_info_attr {
 	 * qca_wlan_vendor_external_acs_event_chan_power_info_attr.
 	 */
 	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_POWER_INFO_ATTR	= 15,
+	/*
+	 * This indicates the overlapping 320 MHz center frequency in MHz
+	 * (u32), if the given primary channel supports more than one
+	 * 320 MHz channel bonding.
+	 *
+	 * Example:
+	 * For 6 GHz, channel frequency 6115 MHz (channel number 33) segment 0
+	 * center frequency (primary 160 MHz) is 6185 MHz and there can be two
+	 * possible segment 2 frequencies for this (320 MHz center
+	 * frequencies):
+	 *
+	 * 1) Center frequency 6105 MHz (channel 31): 320 MHz channel bonding
+	 *    from frequency 5945 MHz - 6265 MHz
+	 * 2) Center frequency 6265 MHz (channel 63): 320 MHz channel bonding
+	 *    from frequency 6105 MHz - 6425 MHz
+	 *
+	 * In this case,
+	 * QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_SEG_0 will
+	 * return 6185 MHz.
+	 * QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_SEG_1 will
+	 * return 6105 MHz.
+	 * QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_OVERLAP_SEG_1
+	 * will return 6265 MHz.
+	 */
+	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_FREQ_OVERLAP_SEG_1
+									= 16,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_LAST,
 	QCA_WLAN_VENDOR_EXTERNAL_ACS_EVENT_CHAN_INFO_ATTR_MAX =
@@ -6327,6 +6387,11 @@ enum qca_wlan_vendor_attr_external_acs_event {
  * VHT seg1 channel frequency in MHz
  * Note: If user-space application has no support of the 6 GHz band, this
  * attribute is optional.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_PUNCTURE_BITMAP: Required (u16)
+ * Puncture Bitmap for selected primary channel. Optional if no support
+ * for EHT (IEEE 802.11be). Encoding for this attribute follows the
+ * convention used in the Disabled Subchannel Bitmap field of the EHT Operation
+ * element.
  */
 enum qca_wlan_vendor_attr_external_acs_channels {
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_CHANNEL_INVALID = 0,
@@ -6362,6 +6427,7 @@ enum qca_wlan_vendor_attr_external_acs_channels {
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_FREQUENCY_SECONDARY = 11,
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_FREQUENCY_CENTER_SEG0 = 12,
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_FREQUENCY_CENTER_SEG1 = 13,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_PUNCTURE_BITMAP = 14,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_CHANNEL_LAST,
