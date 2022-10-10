@@ -1320,7 +1320,7 @@ int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
  * PASN frame. SHA-256 is used as the hash algorithm, except for the ciphers
  * 00-0F-AC:9 and 00-0F-AC:10 for which SHA-384 is used.
  */
-static bool pasn_use_sha384(int akmp, int cipher)
+bool pasn_use_sha384(int akmp, int cipher)
 {
 	return (akmp == WPA_KEY_MGMT_PASN && (cipher == WPA_CIPHER_CCMP_256 ||
 					      cipher == WPA_CIPHER_GCMP_256)) ||
