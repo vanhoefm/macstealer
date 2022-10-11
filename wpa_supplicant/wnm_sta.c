@@ -524,6 +524,11 @@ static void wnm_parse_neighbor_report_elem(struct neighbor_report *rep,
 		rep->mul_bssid->subelem_len = elen - 1;
 		os_memcpy(rep->mul_bssid->subelems, pos + 1, elen - 1);
 		break;
+	default:
+		wpa_printf(MSG_DEBUG,
+			   "WNM: Unsupported neighbor report subelement id %u",
+			   id);
+		break;
 	}
 }
 
