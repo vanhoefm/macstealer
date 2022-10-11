@@ -5551,8 +5551,9 @@ static const char * openssl_pkey_type_str(const EVP_PKEY *pkey)
 		return "DH";
 	case EVP_PKEY_EC:
 		return "EC";
+	default:
+		return "?";
 	}
-	return "?";
 }
 
 

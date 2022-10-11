@@ -206,9 +206,9 @@ static const char * timeout_next_str(int val)
 		return "REMOVE";
 	case STA_DISASSOC_FROM_CLI:
 		return "DISASSOC_FROM_CLI";
+	default:
+		return "?";
 	}
-
-	return "?";
 }
 
 

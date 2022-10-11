@@ -530,9 +530,9 @@ static enum wpa_driver_if_type wpas_p2p_if_type(int p2p_group_interface)
 		return WPA_IF_P2P_GO;
 	case P2P_GROUP_INTERFACE_CLIENT:
 		return WPA_IF_P2P_CLIENT;
+	default:
+		return WPA_IF_P2P_GROUP;
 	}
-
-	return WPA_IF_P2P_GROUP;
 }
 
 

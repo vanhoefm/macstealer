@@ -603,9 +603,9 @@ static int sswu_curve_param(int group, int *z)
 	case 30:
 		*z = 7;
 		return 0;
+	default:
+		return -1;
 	}
-
-	return -1;
 }
 
 

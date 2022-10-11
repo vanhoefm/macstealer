@@ -219,8 +219,9 @@ enum chan_width convert2width(int width)
 		return CHAN_WIDTH_160;
 	case NL80211_CHAN_WIDTH_320:
 		return CHAN_WIDTH_320;
+	default:
+		return CHAN_WIDTH_UNKNOWN;
 	}
-	return CHAN_WIDTH_UNKNOWN;
 }
 
 
@@ -3189,9 +3190,9 @@ static u32 wpa_cipher_to_cipher_suite(unsigned int cipher)
 		return RSN_CIPHER_SUITE_WEP40;
 	case WPA_CIPHER_GTK_NOT_USED:
 		return RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED;
+	default:
+		return 0;
 	}
-
-	return 0;
 }
 
 

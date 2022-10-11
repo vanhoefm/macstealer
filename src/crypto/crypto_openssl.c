@@ -454,9 +454,9 @@ static const EVP_CIPHER * aes_get_evp_cipher(size_t keylen)
 		return EVP_aes_192_ecb();
 	case 32:
 		return EVP_aes_256_ecb();
+	default:
+		return NULL;
 	}
-
-	return NULL;
 }
 
 
@@ -4090,10 +4090,12 @@ int crypto_ec_key_group(struct crypto_ec_key *key)
 	case NID_brainpoolP512r1:
 		return 30;
 #endif /* NID_brainpoolP512r1 */
+	default:
+		wpa_printf(MSG_ERROR,
+			   "OpenSSL: Unsupported curve (nid=%d) in EC key",
+			   nid);
+		return -1;
 	}
-	wpa_printf(MSG_ERROR, "OpenSSL: Unsupported curve (nid=%d) in EC key",
-		   nid);
-	return -1;
 }
 
 
