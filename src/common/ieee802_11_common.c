@@ -1965,11 +1965,14 @@ const struct oper_class_map global_op_class[] = {
 
 	/*
 	 * IEEE Std 802.11ax-2021, Table E-4 actually talks about channel center
-	 * frequency index 42, 58, 106, 122, 138, 155, 171 with channel spacing
-	 * of 80 MHz, but currently use the following definition for simplicity
+	 * frequency index for operation classes 128, 129, 130, 132, 133, 134,
+	 * and 135, but currently use the lowest 20 MHz channel for simplicity
 	 * (these center frequencies are not actual channels, which makes
-	 * wpas_p2p_verify_channel() fail). wpas_p2p_verify_80mhz() should take
-	 * care of removing invalid channels.
+	 * wpas_p2p_verify_channel() fail).
+	 * Specially for the operation class 136, it is also defined to use the
+	 * channel center frequency index value, but it happens to be a 20 MHz
+	 * channel and the channel number in the channel set would match the
+	 * value in for the frequency center.
 	 */
 	{ HOSTAPD_MODE_IEEE80211A, 128, 36, 177, 4, BW80, P2P_SUPP },
 	{ HOSTAPD_MODE_IEEE80211A, 129, 36, 177, 4, BW160, P2P_SUPP },
