@@ -6875,6 +6875,8 @@ static int wpas_start_p2p_client(struct wpa_supplicant *wpa_s,
 				 int freq, int force_scan)
 {
 	struct wpa_ssid *ssid;
+	int other_iface_found = 0;
+	struct wpa_supplicant *ifs;
 
 	wpa_s = wpas_p2p_get_group_iface(wpa_s, addr_allocated, 0);
 	if (wpa_s == NULL)
@@ -6918,6 +6920,26 @@ static int wpas_start_p2p_client(struct wpa_supplicant *wpa_s,
 	wpa_s->p2p_invite_go_freq = freq;
 	wpa_s->p2p_go_group_formation_completed = 0;
 	wpa_s->global->p2p_group_formation = wpa_s;
+
+	/*
+	 * Get latest scan results from driver in case cached scan results from
+	 * interfaces on the same wiphy allow us to skip the next scan by fast
+	 * associating. Also update the scan time to the most recent scan result
+	 * fetch time on the same radio so it reflects the actual time the last
+	 * scan result event occurred.
+	 */
+	wpa_supplicant_update_scan_results(wpa_s);
+	dl_list_for_each(ifs, &wpa_s->radio->ifaces, struct wpa_supplicant,
+			 radio_list) {
+		if (ifs == wpa_s)
+			continue;
+		if (!other_iface_found || os_reltime_before(&wpa_s->last_scan,
+							    &ifs->last_scan)) {
+			other_iface_found = 1;
+			wpa_s->last_scan.sec = ifs->last_scan.sec;
+			wpa_s->last_scan.usec = ifs->last_scan.usec;
+		}
+	}
 
 	eloop_cancel_timeout(wpas_p2p_group_formation_timeout, wpa_s->p2pdev,
 			     NULL);
