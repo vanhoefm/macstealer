@@ -116,6 +116,8 @@ struct wlantest_sta {
 
 	u32 tx_tid[16 + 1];
 	u32 rx_tid[16 + 1];
+
+	u16 sae_group;
 };
 
 struct wlantest_tdls {

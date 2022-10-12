@@ -306,6 +306,32 @@ static void process_ft_auth(struct wlantest *wt, struct wlantest_bss *bss,
 }
 
 
+static void process_sae_auth(struct wlantest *wt, struct wlantest_bss *bss,
+			     struct wlantest_sta *sta,
+			     const struct ieee80211_mgmt *mgmt, size_t len)
+{
+	u16 trans, status, group;
+
+	if (sta->auth_alg != WLAN_AUTH_SAE ||
+	    len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth) + 2)
+		return;
+
+	trans = le_to_host16(mgmt->u.auth.auth_transaction);
+	if (trans != 1)
+		return;
+
+	status = le_to_host16(mgmt->u.auth.status_code);
+	if (status != WLAN_STATUS_SUCCESS &&
+	    status != WLAN_STATUS_SAE_HASH_TO_ELEMENT &&
+	    status != WLAN_STATUS_SAE_PK)
+		return;
+
+	group = WPA_GET_LE16(mgmt->u.auth.variable);
+	wpa_printf(MSG_DEBUG, "SAE Commit using group %u", group);
+	sta->sae_group = group;
+}
+
+
 static void rx_mgmt_auth(struct wlantest *wt, const u8 *data, size_t len)
 {
 	const struct ieee80211_mgmt *mgmt;
@@ -359,6 +385,7 @@ static void rx_mgmt_auth(struct wlantest *wt, const u8 *data, size_t len)
 
 	process_fils_auth(wt, bss, sta, mgmt, len);
 	process_ft_auth(wt, bss, sta, mgmt, len);
+	process_sae_auth(wt, bss, sta, mgmt, len);
 }
 
 
