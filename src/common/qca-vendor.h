@@ -870,6 +870,16 @@ enum qca_radiotap_vendor_ids {
  * @QCA_NL80211_VENDOR_SUBCMD_AFC_RESPONSE: This vendor command is used by
  *	userspace to deliver AFC response data to driver. The attributes used
  *	with this command are defined in enum qca_wlan_vendor_attr_afc_response.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_DOZED_AP: Subcommand to configure AP interface to
+ *	operate in doze mode.
+ *
+ *	Userspace uses this command to configure the AP interface to enter or
+ *	exit from doze mode. The driver sends this event after it enters or
+ *	exits the doze mode with the updated AP doze mode settings.
+ *
+ *	The attributes used with this subcommand are defined in
+ *	enum qca_wlan_vendor_attr_dozed_ap.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -1077,6 +1087,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_MLO_PEER_PRIM_NETDEV_EVENT = 221,
 	QCA_NL80211_VENDOR_SUBCMD_AFC_EVENT = 222,
 	QCA_NL80211_VENDOR_SUBCMD_AFC_RESPONSE = 223,
+	QCA_NL80211_VENDOR_SUBCMD_DOZED_AP = 224,
 };
 
 /* Compatibility defines for previously used subcmd names.
@@ -14175,6 +14186,56 @@ enum qca_wlan_vendor_attr_afc_response {
 	QCA_WLAN_VENDOR_ATTR_AFC_RESP_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_AFC_RESP_MAX =
 	QCA_WLAN_VENDOR_ATTR_AFC_RESP_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_dozed_ap_state - Doze states for AP interface
+ *
+ * @QCA_WLAN_DOZED_AP_DISABLE: Disable doze state on the AP interface.
+ *
+ * @QCA_WLAN_DOZED_AP_ENABLE: Enable doze state on the AP interface. AP starts
+ * beaconing at higher beacon interval with Rx disabled.
+ */
+enum qca_wlan_dozed_ap_state {
+	QCA_WLAN_DOZED_AP_DISABLE = 0,
+	QCA_WLAN_DOZED_AP_ENABLE = 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_dozed_ap - Used by the vendor command
+ * @QCA_NL80211_VENDOR_SUBCMD_DOZED_AP to configure or receive dozed AP mode
+ * configuration.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DOZED_AP_STATE: u8 attribute.
+ * Configures the doze state for an AP interface. Possible values are defined
+ * in enum qca_wlan_dozed_ap_state. @QCA_NL80211_VENDOR_SUBCMD_DOZED_AP event
+ * gets triggered asynchronously to provide updated AP interface configuration.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DOZED_AP_COOKIE: Unsigned 64-bit cookie provided by
+ * the driver in the response to specific @QCA_NL80211_VENDOR_SUBCMD_DOZED_AP
+ * command, which is used later to maintain synchronization between commands
+ * and asynchronous events.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DOZED_AP_NEXT_TSF: u64 attribute.
+ * Used in event to indicate the next TBTT TSF timer value after applying the
+ * doze mode configuration. Next TBTT TSF is the time at which the AP sends
+ * the first beacon after entering or exiting dozed mode.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DOZED_AP_BI_MULTIPLIER: u16 attribute.
+ * Used with event to inform the periodicity of beacon transmission that would
+ * be skipped at all TBTTs in between.
+ */
+enum qca_wlan_vendor_attr_dozed_ap {
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_STATE = 1,
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_COOKIE = 2,
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_NEXT_TSF = 3,
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_BI_MULTIPLIER = 4,
+
+	/* Keep last */
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_MAX =
+	QCA_WLAN_VENDOR_ATTR_DOZED_AP_AFTER_LAST - 1,
 };
 
 #endif /* QCA_VENDOR_H */
