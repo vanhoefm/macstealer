@@ -320,12 +320,12 @@ static int openssl_digest_vector(const EVP_MD *type, size_t num_elem,
 
 
 #ifndef CONFIG_FIPS
+
 int md4_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 {
 	openssl_load_legacy_provider();
 	return openssl_digest_vector(EVP_md4(), num_elem, addr, len, mac);
 }
-#endif /* CONFIG_FIPS */
 
 
 int des_encrypt(const u8 *clear, const u8 *key, u8 *cypher)
@@ -404,11 +404,11 @@ out:
 #endif /* CONFIG_NO_RC4 */
 
 
-#ifndef CONFIG_FIPS
 int md5_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 {
 	return openssl_digest_vector(EVP_md5(), num_elem, addr, len, mac);
 }
+
 #endif /* CONFIG_FIPS */
 
 
