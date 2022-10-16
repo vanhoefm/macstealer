@@ -4105,7 +4105,8 @@ static int wpa_ft_rrb_rx_r1(struct wpa_authenticator *wpa_auth,
 	pmk_r1_len = PMK_LEN;
 	if (wpa_ft_rrb_get_tlv(plain, plain_len, FT_RRB_PMK_R1, &f_pmk_r1_len,
 			       &f_pmk_r1) == 0 &&
-	    (f_pmk_r1_len == PMK_LEN || f_pmk_r1_len == SHA384_MAC_LEN))
+	    (f_pmk_r1_len == PMK_LEN || f_pmk_r1_len == SHA384_MAC_LEN ||
+	     f_pmk_r1_len == SHA512_MAC_LEN))
 		pmk_r1_len = f_pmk_r1_len;
 	RRB_GET(FT_RRB_PMK_R1, pmk_r1, msgtype, pmk_r1_len);
 	wpa_hexdump_key(MSG_DEBUG, "FT: PMK-R1", f_pmk_r1, pmk_r1_len);
