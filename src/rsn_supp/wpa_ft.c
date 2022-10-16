@@ -11,6 +11,7 @@
 #include "common.h"
 #include "crypto/aes_wrap.h"
 #include "crypto/sha384.h"
+#include "crypto/sha512.h"
 #include "crypto/random.h"
 #include "common/ieee802_11_defs.h"
 #include "common/ieee802_11_common.h"
@@ -218,7 +219,7 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 	sm->ft_reassoc_completed = 0;
 
 	buf_len = 2 + sizeof(struct rsn_mdie) + 2 +
-		sizeof(struct rsn_ftie_sha384) +
+		sizeof(struct rsn_ftie_sha512) +
 		2 + sm->r0kh_id_len + ric_ies_len + 100;
 	buf = os_zalloc(buf_len);
 	if (buf == NULL)
@@ -344,7 +345,21 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 			   rsnxe_used);
 	}
 #endif /* CONFIG_TESTING_OPTIONS */
-	if (wpa_key_mgmt_sha384(sm->key_mgmt)) {
+	if (sm->key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    sm->pmk_r0_len == SHA512_MAC_LEN) {
+		struct rsn_ftie_sha512 *ftie;
+
+		ftie = (struct rsn_ftie_sha512 *) pos;
+		ftie->mic_control[0] = !!rsnxe_used;
+		fte_mic = ftie->mic;
+		elem_count = &ftie->mic_control[1];
+		pos += sizeof(*ftie);
+		os_memcpy(ftie->snonce, sm->snonce, WPA_NONCE_LEN);
+		if (anonce)
+			os_memcpy(ftie->anonce, anonce, WPA_NONCE_LEN);
+	} else if ((sm->key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		    sm->pmk_r0_len == SHA384_MAC_LEN) ||
+		   wpa_key_mgmt_sha384(sm->key_mgmt)) {
 		struct rsn_ftie_sha384 *ftie;
 
 		ftie = (struct rsn_ftie_sha384 *) pos;
