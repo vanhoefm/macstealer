@@ -553,6 +553,10 @@ struct wpa_ft_ies {
 	size_t r0kh_id_len;
 	const u8 *fte_anonce;
 	const u8 *fte_snonce;
+	bool fte_rsnxe_used;
+	unsigned int fte_elem_count;
+	const u8 *fte_mic;
+	size_t fte_mic_len;
 	const u8 *rsn;
 	size_t rsn_len;
 	u16 rsn_capab;
@@ -608,7 +612,8 @@ struct wpa_pasn_params_data {
 #define WPA_PASN_PUBKEY_UNCOMPRESSED 0x04
 
 int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
-		     int use_sha384);
+		     int key_mgmt, size_t key_len, bool need_r0kh_id,
+		     bool need_r1kh_id);
 
 struct wpa_eapol_ie_parse {
 	const u8 *wpa_ie;

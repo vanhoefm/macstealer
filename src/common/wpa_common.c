@@ -1010,15 +1010,14 @@ int wpa_ft_mic(int key_mgmt, const u8 *kck, size_t kck_len, const u8 *sta_addr,
 
 
 static int wpa_ft_parse_ftie(const u8 *ie, size_t ie_len,
-			     struct wpa_ft_ies *parse, int use_sha384)
+			     struct wpa_ft_ies *parse, const u8 *opt)
 {
 	const u8 *end, *pos;
 
 	parse->ftie = ie;
 	parse->ftie_len = ie_len;
 
-	pos = ie + (use_sha384 ? sizeof(struct rsn_ftie_sha384) :
-		    sizeof(struct rsn_ftie));
+	pos = opt;
 	end = ie + ie_len;
 	wpa_hexdump(MSG_DEBUG, "FT: Parse FTE subelements", pos, end - pos);
 
@@ -1029,7 +1028,7 @@ static int wpa_ft_parse_ftie(const u8 *ie, size_t ie_len,
 		len = *pos++;
 		if (len > end - pos) {
 			wpa_printf(MSG_DEBUG, "FT: Truncated subelement");
-			break;
+			return -1;
 		}
 
 		switch (id) {
@@ -1082,20 +1081,47 @@ static int wpa_ft_parse_ftie(const u8 *ie, size_t ie_len,
 }
 
 
-int wpa_ft_parse_ies(const u8 *ies, size_t ies_len,
-		     struct wpa_ft_ies *parse, int use_sha384)
+static int wpa_ft_parse_fte(const u8 *ie, size_t len, size_t mic_len,
+			    struct wpa_ft_ies *parse)
+{
+	const u8 *pos = ie;
+	const u8 *end = pos + len;
+
+	wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC Control", pos, 2);
+	parse->fte_rsnxe_used = pos[0] & 0x01;
+	parse->fte_elem_count = pos[1];
+	pos += 2;
+
+	if (mic_len > (size_t) (end - pos))
+		return -1;
+	wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC", pos, mic_len);
+	parse->fte_mic = pos;
+	parse->fte_mic_len = mic_len;
+	pos += mic_len;
+
+	if (2 * WPA_NONCE_LEN > end - pos)
+		return -1;
+	parse->fte_anonce = pos;
+	wpa_hexdump(MSG_DEBUG, "FT: FTE-ANonce",
+		    parse->fte_anonce, WPA_NONCE_LEN);
+	pos += WPA_NONCE_LEN;
+	parse->fte_snonce = pos;
+	wpa_hexdump(MSG_DEBUG, "FT: FTE-SNonce",
+		    parse->fte_snonce, WPA_NONCE_LEN);
+	pos += WPA_NONCE_LEN;
+
+	return wpa_ft_parse_ftie(ie, len, parse, pos);
+}
+
+
+int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
+		     int key_mgmt, size_t key_len, bool need_r0kh_id,
+		     bool need_r1kh_id)
 {
 	const u8 *end, *pos;
 	struct wpa_ie_data data;
 	int ret;
-	const struct rsn_ftie *ftie;
 	int prot_ie_count = 0;
-	int update_use_sha384 = 0;
-
-	if (use_sha384 < 0) {
-		use_sha384 = 0;
-		update_use_sha384 = 1;
-	}
 
 	os_memset(parse, 0, sizeof(*parse));
 	if (ies == NULL)
@@ -1129,11 +1155,8 @@ int wpa_ft_parse_ies(const u8 *ies, size_t ies_len,
 				parse->rsn_pmkid = data.pmkid;
 			parse->key_mgmt = data.key_mgmt;
 			parse->pairwise_cipher = data.pairwise_cipher;
-			if (update_use_sha384) {
-				use_sha384 =
-					wpa_key_mgmt_sha384(parse->key_mgmt);
-				update_use_sha384 = 0;
-			}
+			if (!key_mgmt)
+				key_mgmt = parse->key_mgmt;
 			break;
 		case WLAN_EID_RSNX:
 			wpa_hexdump(MSG_DEBUG, "FT: RSNXE", pos, len);
@@ -1151,47 +1174,61 @@ int wpa_ft_parse_ies(const u8 *ies, size_t ies_len,
 			break;
 		case WLAN_EID_FAST_BSS_TRANSITION:
 			wpa_hexdump(MSG_DEBUG, "FT: FTE", pos, len);
-			if (use_sha384) {
-				const struct rsn_ftie_sha384 *ftie_sha384;
+			/* The first two octets (MIC Control field) is in the
+			 * same offset for all cases, but the second field (MIC)
+			 * has variable length with three different values.
+			 * In particular the FT-SAE-EXT-KEY is inconvinient to
+			 * parse, so try to handle this in pieces instead of
+			 * using the struct rsn_ftie* definitions. */
 
-				if (len < sizeof(*ftie_sha384))
-					return -1;
-				ftie_sha384 =
-					(const struct rsn_ftie_sha384 *) pos;
-				wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC Control",
-					    ftie_sha384->mic_control, 2);
-				wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC",
-					    ftie_sha384->mic,
-					    sizeof(ftie_sha384->mic));
-				parse->fte_anonce = ftie_sha384->anonce;
-				wpa_hexdump(MSG_DEBUG, "FT: FTE-ANonce",
-					    ftie_sha384->anonce,
-					    WPA_NONCE_LEN);
-				parse->fte_snonce = ftie_sha384->snonce;
-				wpa_hexdump(MSG_DEBUG, "FT: FTE-SNonce",
-					    ftie_sha384->snonce,
-					    WPA_NONCE_LEN);
-				prot_ie_count = ftie_sha384->mic_control[1];
-				if (wpa_ft_parse_ftie(pos, len, parse, 1) < 0)
+			if (len < 2)
+				return -1;
+			prot_ie_count = pos[1]; /* Element Count field in
+						 * MIC Control */
+
+			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+			    (key_len == SHA512_MAC_LEN || !key_len)) {
+				wpa_printf(MSG_DEBUG,
+					   "FT: Trying to parse FTE for FT-SAE-EXT-KEY - SHA512");
+				if (wpa_ft_parse_fte(pos, len, 32, parse) ==
+				    0 &&
+				    (!need_r0kh_id || parse->r0kh_id) &&
+				    (!need_r1kh_id || parse->r1kh_id))
+					break;
+			}
+			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+			    (key_len == SHA384_MAC_LEN || !key_len)) {
+				wpa_printf(MSG_DEBUG,
+					   "FT: Trying to parse FTE for FT-SAE-EXT-KEY - SHA384");
+				if (wpa_ft_parse_fte(pos, len, 24, parse) ==
+				    0 &&
+				    (!need_r0kh_id || parse->r0kh_id) &&
+				    (!need_r1kh_id || parse->r1kh_id))
+					break;
+			}
+			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+			    (key_len == SHA256_MAC_LEN || !key_len)) {
+				wpa_printf(MSG_DEBUG,
+					   "FT: Trying to parse FTE for FT-SAE-EXT-KEY - SHA256");
+				if (wpa_ft_parse_fte(pos, len, 16, parse) ==
+				    0 &&
+				    (!need_r0kh_id || parse->r0kh_id) &&
+				    (!need_r1kh_id || parse->r1kh_id))
+					break;
+			}
+			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY) {
+				wpa_printf(MSG_DEBUG,
+					   "FT: Failed to parse FTE for FT-SAE-EXT-KEY");
+				return -1;
+			}
+
+			if (wpa_key_mgmt_sha384(key_mgmt)) {
+				if (wpa_ft_parse_fte(pos, len, 24, parse) < 0)
 					return -1;
 				break;
 			}
 
-			if (len < sizeof(*ftie))
-				return -1;
-			ftie = (const struct rsn_ftie *) pos;
-			wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC Control",
-				    ftie->mic_control, 2);
-			wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC",
-				    ftie->mic, sizeof(ftie->mic));
-			parse->fte_anonce = ftie->anonce;
-			wpa_hexdump(MSG_DEBUG, "FT: FTE-ANonce",
-				    ftie->anonce, WPA_NONCE_LEN);
-			parse->fte_snonce = ftie->snonce;
-			wpa_hexdump(MSG_DEBUG, "FT: FTE-SNonce",
-				    ftie->snonce, WPA_NONCE_LEN);
-			prot_ie_count = ftie->mic_control[1];
-			if (wpa_ft_parse_ftie(pos, len, parse, 0) < 0)
+			if (wpa_ft_parse_fte(pos, len, 16, parse) < 0)
 				return -1;
 			break;
 		case WLAN_EID_TIMEOUT_INTERVAL:

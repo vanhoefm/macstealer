@@ -4320,7 +4320,8 @@ int fils_process_auth(struct wpa_sm *sm, const u8 *bssid, const u8 *data,
 		}
 
 		if (wpa_ft_parse_ies(pos, end - pos, &parse,
-				     wpa_key_mgmt_sha384(sm->key_mgmt)) < 0) {
+				     sm->key_mgmt, sm->xxkey_len, true,
+				     true) < 0) {
 			wpa_printf(MSG_DEBUG, "FILS+FT: Failed to parse IEs");
 			goto fail;
 		}

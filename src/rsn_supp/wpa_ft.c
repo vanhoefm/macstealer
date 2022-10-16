@@ -105,7 +105,6 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 int wpa_sm_set_ft_params(struct wpa_sm *sm, const u8 *ies, size_t ies_len)
 {
 	struct wpa_ft_ies ft;
-	int use_sha384;
 
 	if (sm == NULL)
 		return 0;
@@ -121,8 +120,8 @@ int wpa_sm_set_ft_params(struct wpa_sm *sm, const u8 *ies, size_t ies_len)
 		return 0;
 	}
 
-	use_sha384 = wpa_key_mgmt_sha384(sm->key_mgmt);
-	if (wpa_ft_parse_ies(ies, ies_len, &ft, use_sha384) < 0)
+	if (wpa_ft_parse_ies(ies, ies_len, &ft, sm->key_mgmt,
+			     sm->xxkey_len, false, false) < 0)
 		return -1;
 
 	if (ft.mdie_len < MOBILITY_DOMAIN_ID_LEN + 1)
@@ -563,7 +562,7 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 	int ret;
 	const u8 *bssid;
 	const u8 *kck;
-	size_t kck_len, kdk_len;
+	size_t kck_len, kdk_len, key_len;
 	int use_sha384 = wpa_key_mgmt_sha384(sm->key_mgmt);
 	const u8 *anonce, *snonce;
 
@@ -591,7 +590,11 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 		return -1;
 	}
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, use_sha384) < 0) {
+	key_len = sm->xxkey_len;
+	if (!key_len)
+		key_len = sm->pmk_r1_len;
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->key_mgmt,
+			     key_len, true, false) < 0) {
 		wpa_printf(MSG_DEBUG, "FT: Failed to parse IEs");
 		return -1;
 	}
@@ -1026,7 +1029,8 @@ int wpa_ft_validate_reassoc_resp(struct wpa_sm *sm, const u8 *ies,
 		return 0;
 	}
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, use_sha384) < 0) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->key_mgmt,
+			     sm->xxkey_len, true, true) < 0) {
 		wpa_printf(MSG_DEBUG, "FT: Failed to parse IEs");
 		return -1;
 	}
