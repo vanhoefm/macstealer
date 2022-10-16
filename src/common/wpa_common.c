@@ -2276,7 +2276,8 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
 	u8 tmp[2 * WPA_KCK_MAX_LEN + 2 * WPA_KEK_MAX_LEN + WPA_TK_MAX_LEN +
 	       WPA_KDK_MAX_LEN];
 	size_t ptk_len, offset;
-	int use_sha384 = wpa_key_mgmt_sha384(akmp);
+	size_t key_len;
+	int res;
 
 	if (kdk_len > WPA_KDK_MAX_LEN) {
 		wpa_printf(MSG_ERROR,
@@ -2285,12 +2286,20 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
 		return -1;
 	}
 
+	if (akmp == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    (pmk_r1_len == SHA256_MAC_LEN || pmk_r1_len == SHA384_MAC_LEN ||
+	     pmk_r1_len == SHA512_MAC_LEN))
+		key_len = pmk_r1_len;
+	else if (wpa_key_mgmt_sha384(akmp))
+		key_len = SHA384_MAC_LEN;
+	else
+		key_len = SHA256_MAC_LEN;
+
 	/*
 	 * PTK = KDF-PTKLen(PMK-R1, "FT-PTK", SNonce || ANonce ||
 	 *                  BSSID || STA-ADDR)
 	 */
-	wpa_printf(MSG_DEBUG, "FT: Derive PTK using KDF-%s",
-		   use_sha384 ? "SHA384" : "SHA256");
+	wpa_printf(MSG_DEBUG, "FT: Derive PTK using KDF-SHA%zu", key_len * 8);
 	wpa_hexdump_key(MSG_DEBUG, "FT: PMK-R1", pmk_r1, pmk_r1_len);
 	wpa_hexdump(MSG_DEBUG, "FT: SNonce", snonce, WPA_NONCE_LEN);
 	wpa_hexdump(MSG_DEBUG, "FT: ANonce", anonce, WPA_NONCE_LEN);
@@ -2306,39 +2315,52 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
 	os_memcpy(pos, sta_addr, ETH_ALEN);
 	pos += ETH_ALEN;
 
-	ptk->kck_len = wpa_kck_len(akmp, PMK_LEN);
+	ptk->kck_len = wpa_kck_len(akmp, key_len);
 	ptk->kck2_len = wpa_kck2_len(akmp);
-	ptk->kek_len = wpa_kek_len(akmp, PMK_LEN);
+	ptk->kek_len = wpa_kek_len(akmp, key_len);
 	ptk->kek2_len = wpa_kek2_len(akmp);
 	ptk->tk_len = wpa_cipher_key_len(cipher);
 	ptk->kdk_len = kdk_len;
 	ptk_len = ptk->kck_len + ptk->kek_len + ptk->tk_len +
 		ptk->kck2_len + ptk->kek2_len + ptk->kdk_len;
 
+	res = -1;
+#ifdef CONFIG_SHA512
+	if (key_len == SHA512_MAC_LEN) {
+		if (pmk_r1_len != SHA512_MAC_LEN) {
+			wpa_printf(MSG_ERROR,
+				   "FT: Unexpected PMK-R1 length %d (expected %d)",
+				   (int) pmk_r1_len, SHA512_MAC_LEN);
+			return -1;
+		}
+		res = sha512_prf(pmk_r1, pmk_r1_len, "FT-PTK",
+				 buf, pos - buf, tmp, ptk_len);
+	}
+#endif /* CONFIG_SHA512 */
 #ifdef CONFIG_SHA384
-	if (use_sha384) {
+	if (key_len == SHA384_MAC_LEN) {
 		if (pmk_r1_len != SHA384_MAC_LEN) {
 			wpa_printf(MSG_ERROR,
 				   "FT: Unexpected PMK-R1 length %d (expected %d)",
 				   (int) pmk_r1_len, SHA384_MAC_LEN);
 			return -1;
 		}
-		if (sha384_prf(pmk_r1, pmk_r1_len, "FT-PTK",
-			       buf, pos - buf, tmp, ptk_len) < 0)
-			return -1;
+		res = sha384_prf(pmk_r1, pmk_r1_len, "FT-PTK",
+				 buf, pos - buf, tmp, ptk_len);
 	}
 #endif /* CONFIG_SHA384 */
-	if (!use_sha384) {
+	if (key_len == SHA256_MAC_LEN) {
 		if (pmk_r1_len != PMK_LEN) {
 			wpa_printf(MSG_ERROR,
 				   "FT: Unexpected PMK-R1 length %d (expected %d)",
 				   (int) pmk_r1_len, PMK_LEN);
 			return -1;
 		}
-		if (sha256_prf(pmk_r1, pmk_r1_len, "FT-PTK",
-			       buf, pos - buf, tmp, ptk_len) < 0)
-			return -1;
+		res = sha256_prf(pmk_r1, pmk_r1_len, "FT-PTK",
+				 buf, pos - buf, tmp, ptk_len);
 	}
+	if (res < 0)
+		return -1;
 	wpa_hexdump_key(MSG_DEBUG, "FT: PTK", tmp, ptk_len);
 
 	/*
