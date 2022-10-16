@@ -401,6 +401,14 @@ struct rsn_ftie_sha384 {
 	/* followed by optional parameters */
 } STRUCT_PACKED;
 
+struct rsn_ftie_sha512 {
+	u8 mic_control[2];
+	u8 mic[32];
+	u8 anonce[WPA_NONCE_LEN];
+	u8 snonce[WPA_NONCE_LEN];
+	/* followed by optional parameters */
+} STRUCT_PACKED;
+
 #define FTIE_SUBELEM_R1KH_ID 1
 #define FTIE_SUBELEM_GTK 2
 #define FTIE_SUBELEM_R0KH_ID 3

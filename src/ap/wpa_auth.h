@@ -535,7 +535,8 @@ int wpa_fils_validate_key_confirm(struct wpa_state_machine *sm, const u8 *ies,
 int get_sta_tx_parameters(struct wpa_state_machine *sm, int ap_max_chanwidth,
 			  int ap_seg1_idx, int *bandwidth, int *seg1_idx);
 
-int wpa_auth_write_fte(struct wpa_authenticator *wpa_auth, int use_sha384,
+int wpa_auth_write_fte(struct wpa_authenticator *wpa_auth,
+		       struct wpa_state_machine *sm,
 		       u8 *buf, size_t len);
 void wpa_auth_get_fils_aead_params(struct wpa_state_machine *sm,
 				   u8 *fils_anonce, u8 *fils_snonce,

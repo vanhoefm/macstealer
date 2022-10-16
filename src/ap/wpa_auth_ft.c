@@ -20,6 +20,7 @@
 #include "crypto/aes_siv.h"
 #include "crypto/aes_wrap.h"
 #include "crypto/sha384.h"
+#include "crypto/sha512.h"
 #include "crypto/random.h"
 #include "ap_config.h"
 #include "ieee802_11.h"
@@ -805,15 +806,28 @@ int wpa_write_mdie(struct wpa_auth_config *conf, u8 *buf, size_t len)
 }
 
 
-int wpa_write_ftie(struct wpa_auth_config *conf, int use_sha384,
+int wpa_write_ftie(struct wpa_auth_config *conf, int key_mgmt, size_t key_len,
 		   const u8 *r0kh_id, size_t r0kh_id_len,
 		   const u8 *anonce, const u8 *snonce,
 		   u8 *buf, size_t len, const u8 *subelem,
 		   size_t subelem_len, int rsnxe_used)
 {
 	u8 *pos = buf, *ielen;
-	size_t hdrlen = use_sha384 ? sizeof(struct rsn_ftie_sha384) :
-		sizeof(struct rsn_ftie);
+	size_t hdrlen;
+
+	if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    key_len == SHA256_MAC_LEN)
+		hdrlen = sizeof(struct rsn_ftie);
+	else if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		 key_len == SHA384_MAC_LEN)
+		hdrlen = sizeof(struct rsn_ftie_sha384);
+	else if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		 key_len == SHA512_MAC_LEN)
+		hdrlen = sizeof(struct rsn_ftie_sha512);
+	else if (wpa_key_mgmt_sha384(key_mgmt))
+		hdrlen = sizeof(struct rsn_ftie_sha384);
+	else
+		hdrlen = sizeof(struct rsn_ftie);
 
 	if (len < 2 + hdrlen + 2 + FT_R1KH_ID_LEN + 2 + r0kh_id_len +
 	    subelem_len)
@@ -822,7 +836,20 @@ int wpa_write_ftie(struct wpa_auth_config *conf, int use_sha384,
 	*pos++ = WLAN_EID_FAST_BSS_TRANSITION;
 	ielen = pos++;
 
-	if (use_sha384) {
+	if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    key_len == SHA512_MAC_LEN) {
+		struct rsn_ftie_sha512 *hdr = (struct rsn_ftie_sha512 *) pos;
+
+		os_memset(hdr, 0, sizeof(*hdr));
+		pos += sizeof(*hdr);
+		WPA_PUT_LE16(hdr->mic_control, !!rsnxe_used);
+		if (anonce)
+			os_memcpy(hdr->anonce, anonce, WPA_NONCE_LEN);
+		if (snonce)
+			os_memcpy(hdr->snonce, snonce, WPA_NONCE_LEN);
+	} else if ((key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		    key_len == SHA384_MAC_LEN) ||
+		   wpa_key_mgmt_sha384(key_mgmt)) {
 		struct rsn_ftie_sha384 *hdr = (struct rsn_ftie_sha384 *) pos;
 
 		os_memset(hdr, 0, sizeof(*hdr));
@@ -2522,6 +2549,7 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
 	const u8 *kck;
 	size_t kck_len;
 	int use_sha384;
+	size_t key_len;
 
 	if (sm == NULL)
 		return pos;
@@ -2705,7 +2733,20 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
 			   rsnxe_used);
 	}
 #endif /* CONFIG_TESTING_OPTIONS */
-	res = wpa_write_ftie(conf, use_sha384, r0kh_id, r0kh_id_len,
+	key_len = sm->xxkey_len;
+	if (!key_len)
+		key_len = sm->pmk_r1_len;
+	if (!key_len && sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    sm->wpa_auth->cb->get_psk) {
+		size_t psk_len;
+
+		if (sm->wpa_auth->cb->get_psk(sm->wpa_auth->cb_ctx,
+					      sm->addr, sm->p2p_dev_addr,
+					      NULL, &psk_len, NULL))
+			key_len = psk_len;
+	}
+	res = wpa_write_ftie(conf, sm->wpa_key_mgmt, key_len,
+			     r0kh_id, r0kh_id_len,
 			     anonce, snonce, pos, end - pos,
 			     subelem, subelem_len, rsnxe_used);
 	os_free(subelem);
@@ -3282,7 +3323,8 @@ pmk_r1_derived:
 		goto fail;
 	pos += ret;
 
-	ret = wpa_write_ftie(conf, use_sha384, parse.r0kh_id, parse.r0kh_id_len,
+	ret = wpa_write_ftie(conf, parse.key_mgmt, pmk_r1_len,
+			     parse.r0kh_id, parse.r0kh_id_len,
 			     sm->ANonce, sm->SNonce, pos, end - pos, NULL, 0,
 			     0);
 	if (ret < 0)

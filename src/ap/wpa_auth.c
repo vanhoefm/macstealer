@@ -3685,9 +3685,8 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
 				  2 + sm->assoc_resp_ftie[1]);
 			res = 2 + sm->assoc_resp_ftie[1];
 		} else {
-			int use_sha384 = wpa_key_mgmt_sha384(sm->wpa_key_mgmt);
-
-			res = wpa_write_ftie(conf, use_sha384,
+			res = wpa_write_ftie(conf, sm->wpa_key_mgmt,
+					     sm->xxkey_len,
 					     conf->r0_key_holder,
 					     conf->r0_key_holder_len,
 					     NULL, NULL, pos,
@@ -5453,13 +5452,14 @@ wpa_auth_pmksa_get_fils_cache_id(struct wpa_authenticator *wpa_auth,
 
 
 #ifdef CONFIG_IEEE80211R_AP
-int wpa_auth_write_fte(struct wpa_authenticator *wpa_auth, int use_sha384,
+int wpa_auth_write_fte(struct wpa_authenticator *wpa_auth,
+		       struct wpa_state_machine *sm,
 		       u8 *buf, size_t len)
 {
 	struct wpa_auth_config *conf = &wpa_auth->conf;
 
-	return wpa_write_ftie(conf, use_sha384, conf->r0_key_holder,
-			      conf->r0_key_holder_len,
+	return wpa_write_ftie(conf, sm->wpa_key_mgmt, sm->xxkey_len,
+			      conf->r0_key_holder, conf->r0_key_holder_len,
 			      NULL, NULL, buf, len, NULL, 0, 0);
 }
 #endif /* CONFIG_IEEE80211R_AP */
@@ -5673,9 +5673,8 @@ int wpa_auth_resend_m3(struct wpa_state_machine *sm,
 				  2 + sm->assoc_resp_ftie[1]);
 			res = 2 + sm->assoc_resp_ftie[1];
 		} else {
-			int use_sha384 = wpa_key_mgmt_sha384(sm->wpa_key_mgmt);
-
-			res = wpa_write_ftie(conf, use_sha384,
+			res = wpa_write_ftie(conf, sm->wpa_key_mgmt,
+					     sm->xxkey_len,
 					     conf->r0_key_holder,
 					     conf->r0_key_holder_len,
 					     NULL, NULL, pos,
