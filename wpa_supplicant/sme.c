@@ -1193,7 +1193,10 @@ static bool is_sae_key_mgmt_suite(u32 suite)
 	if (RSN_SELECTOR_GET(&suite) == RSN_AUTH_KEY_MGMT_SAE)
 		return true;
 
-	return suite == RSN_AUTH_KEY_MGMT_SAE;
+	return suite == RSN_AUTH_KEY_MGMT_SAE ||
+		suite == RSN_AUTH_KEY_MGMT_FT_SAE ||
+		suite == RSN_AUTH_KEY_MGMT_SAE_EXT_KEY ||
+		suite == RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY;
 }
 
 
