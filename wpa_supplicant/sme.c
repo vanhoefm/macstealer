@@ -1182,11 +1182,25 @@ static void sme_external_auth_send_sae_confirm(struct wpa_supplicant *wpa_s,
 }
 
 
+static bool is_sae_key_mgmt_suite(u32 suite)
+{
+	/* suite is supposed to be the selector value in host byte order with
+	 * the OUI in three most significant octets. However, the initial
+	 * implementation swapped that byte order and did not work with drivers
+	 * that followed the expected byte order. Keep a workaround here to
+	 * match that initial implementation so that already deployed use cases
+	 * remain functional. */
+	if (RSN_SELECTOR_GET(&suite) == RSN_AUTH_KEY_MGMT_SAE)
+		return true;
+
+	return suite == RSN_AUTH_KEY_MGMT_SAE;
+}
+
+
 void sme_external_auth_trigger(struct wpa_supplicant *wpa_s,
 			       union wpa_event_data *data)
 {
-	if (RSN_SELECTOR_GET(&data->external_auth.key_mgmt_suite) !=
-	    RSN_AUTH_KEY_MGMT_SAE)
+	if (!is_sae_key_mgmt_suite(data->external_auth.key_mgmt_suite))
 		return;
 
 	if (data->external_auth.action == EXT_AUTH_START) {
