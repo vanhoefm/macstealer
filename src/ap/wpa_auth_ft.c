@@ -3409,21 +3409,16 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 	struct wpa_ft_ies parse;
 	struct rsn_mdie *mdie;
 	u8 mic[WPA_EAPOL_KEY_MIC_MAX_LEN];
-	size_t mic_len = 16;
+	size_t mic_len;
 	unsigned int count;
 	const u8 *kck;
 	size_t kck_len;
-	int use_sha384;
-	const u8 *anonce, *snonce, *fte_mic;
-	u8 fte_elem_count;
-	int rsnxe_used;
 	struct wpa_auth_config *conf;
 
 	if (sm == NULL)
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 
 	conf = &sm->wpa_auth->conf;
-	use_sha384 = wpa_key_mgmt_sha384(sm->wpa_key_mgmt);
 
 	wpa_hexdump(MSG_DEBUG, "FT: Reassoc Req IEs", ies, ies_len);
 
@@ -3458,54 +3453,41 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 		return WLAN_STATUS_INVALID_MDIE;
 	}
 
-	if (use_sha384) {
-		struct rsn_ftie_sha384 *ftie;
+	if (sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    sm->pmk_r1_len == SHA512_MAC_LEN)
+		mic_len = 32;
+	else if ((sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		  sm->pmk_r1_len == SHA384_MAC_LEN) ||
+		 wpa_key_mgmt_sha384(sm->wpa_key_mgmt))
+		mic_len = 24;
+	else
+		mic_len = 16;
 
-		ftie = (struct rsn_ftie_sha384 *) parse.ftie;
-		if (ftie == NULL || parse.ftie_len < sizeof(*ftie)) {
-			wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
-			return WLAN_STATUS_INVALID_FTIE;
-		}
-
-		anonce = ftie->anonce;
-		snonce = ftie->snonce;
-		rsnxe_used = ftie->mic_control[0] & 0x01;
-		fte_elem_count = ftie->mic_control[1];
-		fte_mic = ftie->mic;
-	} else {
-		struct rsn_ftie *ftie;
-
-		ftie = (struct rsn_ftie *) parse.ftie;
-		if (ftie == NULL || parse.ftie_len < sizeof(*ftie)) {
-			wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
-			return WLAN_STATUS_INVALID_FTIE;
-		}
-
-		anonce = ftie->anonce;
-		snonce = ftie->snonce;
-		rsnxe_used = ftie->mic_control[0] & 0x01;
-		fte_elem_count = ftie->mic_control[1];
-		fte_mic = ftie->mic;
+	if (!parse.ftie || !parse.fte_anonce || !parse.fte_snonce ||
+	    parse.fte_mic_len != mic_len) {
+		wpa_printf(MSG_DEBUG,
+			   "FT: Invalid FTE (fte_mic_len=%zu mic_len=%zu)",
+			   parse.fte_mic_len, mic_len);
+		return WLAN_STATUS_INVALID_FTIE;
 	}
 
-	if (os_memcmp(snonce, sm->SNonce, WPA_NONCE_LEN) != 0) {
+	if (os_memcmp(parse.fte_snonce, sm->SNonce, WPA_NONCE_LEN) != 0) {
 		wpa_printf(MSG_DEBUG, "FT: SNonce mismatch in FTIE");
 		wpa_hexdump(MSG_DEBUG, "FT: Received SNonce",
-			    snonce, WPA_NONCE_LEN);
+			    parse.fte_snonce, WPA_NONCE_LEN);
 		wpa_hexdump(MSG_DEBUG, "FT: Expected SNonce",
 			    sm->SNonce, WPA_NONCE_LEN);
 		return WLAN_STATUS_INVALID_FTIE;
 	}
 
-	if (os_memcmp(anonce, sm->ANonce, WPA_NONCE_LEN) != 0) {
+	if (os_memcmp(parse.fte_anonce, sm->ANonce, WPA_NONCE_LEN) != 0) {
 		wpa_printf(MSG_DEBUG, "FT: ANonce mismatch in FTIE");
 		wpa_hexdump(MSG_DEBUG, "FT: Received ANonce",
-			    anonce, WPA_NONCE_LEN);
+			    parse.fte_anonce, WPA_NONCE_LEN);
 		wpa_hexdump(MSG_DEBUG, "FT: Expected ANonce",
 			    sm->ANonce, WPA_NONCE_LEN);
 		return WLAN_STATUS_INVALID_FTIE;
 	}
-
 
 	if (parse.r0kh_id == NULL) {
 		wpa_printf(MSG_DEBUG, "FT: No R0KH-ID subelem in FTIE");
@@ -3553,10 +3535,10 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 		count += ieee802_11_ie_count(parse.ric, parse.ric_len);
 	if (parse.rsnxe)
 		count++;
-	if (fte_elem_count != count) {
+	if (parse.fte_elem_count != count) {
 		wpa_printf(MSG_DEBUG, "FT: Unexpected IE count in MIC "
 			   "Control: received %u expected %u",
-			   fte_elem_count, count);
+			   parse.fte_elem_count, count);
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 	}
 
@@ -3580,12 +3562,12 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 	}
 
-	if (os_memcmp_const(mic, fte_mic, mic_len) != 0) {
+	if (os_memcmp_const(mic, parse.fte_mic, mic_len) != 0) {
 		wpa_printf(MSG_DEBUG, "FT: Invalid MIC in FTIE");
 		wpa_printf(MSG_DEBUG, "FT: addr=" MACSTR " auth_addr=" MACSTR,
 			   MAC2STR(sm->addr), MAC2STR(sm->wpa_auth->addr));
 		wpa_hexdump(MSG_MSGDUMP, "FT: Received MIC",
-			    fte_mic, mic_len);
+			    parse.fte_mic, mic_len);
 		wpa_hexdump(MSG_MSGDUMP, "FT: Calculated MIC", mic, mic_len);
 		wpa_hexdump(MSG_MSGDUMP, "FT: MDIE",
 			    parse.mdie - 2, parse.mdie_len + 2);
@@ -3599,7 +3581,8 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 		return WLAN_STATUS_INVALID_FTIE;
 	}
 
-	if (rsnxe_used && (conf->sae_pwe == 1 || conf->sae_pwe == 2) &&
+	if (parse.fte_rsnxe_used &&
+	    (conf->sae_pwe == 1 || conf->sae_pwe == 2) &&
 	    !parse.rsnxe) {
 		wpa_printf(MSG_INFO,
 			   "FT: FTE indicated that STA uses RSNXE, but RSNXE was not included");
