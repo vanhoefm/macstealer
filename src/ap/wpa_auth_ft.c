@@ -3072,7 +3072,8 @@ static int wpa_ft_local_derive_pmk_r1(struct wpa_authenticator *wpa_auth,
 				      const u8 **identity, size_t *identity_len,
 				      const u8 **radius_cui,
 				      size_t *radius_cui_len,
-				      int *out_session_timeout)
+				      int *out_session_timeout,
+				      size_t *pmk_r1_len)
 {
 	struct wpa_auth_config *conf = &wpa_auth->conf;
 	const struct wpa_ft_pmk_r0_sa *r0;
@@ -3131,6 +3132,8 @@ static int wpa_ft_local_derive_pmk_r1(struct wpa_authenticator *wpa_auth,
 
 	*out_session_timeout = session_timeout;
 
+	*pmk_r1_len = r0->pmk_r0_len;
+
 	return 0;
 }
 
@@ -3151,8 +3154,7 @@ static int wpa_ft_process_auth_req(struct wpa_state_machine *sm,
 	struct vlan_description vlan;
 	const u8 *identity, *radius_cui;
 	size_t identity_len = 0, radius_cui_len = 0;
-	int use_sha384;
-	size_t pmk_r1_len, kdk_len;
+	size_t pmk_r1_len, kdk_len, len;
 
 	*resp_ies = NULL;
 	*resp_ies_len = 0;
@@ -3167,8 +3169,6 @@ static int wpa_ft_process_auth_req(struct wpa_state_machine *sm,
 		wpa_printf(MSG_DEBUG, "FT: Failed to parse FT IEs");
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 	}
-	use_sha384 = wpa_key_mgmt_sha384(parse.key_mgmt);
-	pmk_r1_len = use_sha384 ? SHA384_MAC_LEN : PMK_LEN;
 
 	mdie = (struct rsn_mdie *) parse.mdie;
 	if (mdie == NULL || parse.mdie_len < sizeof(*mdie) ||
@@ -3179,26 +3179,9 @@ static int wpa_ft_process_auth_req(struct wpa_state_machine *sm,
 		return WLAN_STATUS_INVALID_MDIE;
 	}
 
-	if (use_sha384) {
-		struct rsn_ftie_sha384 *ftie;
-
-		ftie = (struct rsn_ftie_sha384 *) parse.ftie;
-		if (!ftie || parse.ftie_len < sizeof(*ftie)) {
-			wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
-			return WLAN_STATUS_INVALID_FTIE;
-		}
-
-		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
-	} else {
-		struct rsn_ftie *ftie;
-
-		ftie = (struct rsn_ftie *) parse.ftie;
-		if (!ftie || parse.ftie_len < sizeof(*ftie)) {
-			wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
-			return WLAN_STATUS_INVALID_FTIE;
-		}
-
-		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
+	if (!parse.ftie || parse.ftie_len < sizeof(struct rsn_ftie)) {
+		wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
+		return WLAN_STATUS_INVALID_FTIE;
 	}
 
 	if (parse.r0kh_id == NULL) {
@@ -3221,48 +3204,72 @@ static int wpa_ft_process_auth_req(struct wpa_state_machine *sm,
 
 	wpa_hexdump(MSG_DEBUG, "FT: Requested PMKR0Name",
 		    parse.rsn_pmkid, WPA_PMK_NAME_LEN);
-	if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
-				   sm->wpa_auth->conf.r1_key_holder, sm->addr,
-				   pmk_r1_name, pmk_r1_len) < 0)
-		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 
 	if (conf->ft_psk_generate_local &&
 	    wpa_key_mgmt_ft_psk(sm->wpa_key_mgmt)) {
+		if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
+					   sm->wpa_auth->conf.r1_key_holder,
+					   sm->addr, pmk_r1_name, PMK_LEN) < 0)
+			return WLAN_STATUS_UNSPECIFIED_FAILURE;
 		if (wpa_ft_psk_pmk_r1(sm, pmk_r1_name, pmk_r1, &pairwise,
 				      &vlan, &identity, &identity_len,
 				      &radius_cui, &radius_cui_len,
 				      &session_timeout) < 0)
 			return WLAN_STATUS_INVALID_PMKID;
+		pmk_r1_len = PMK_LEN;
 		wpa_printf(MSG_DEBUG,
 			   "FT: Generated PMK-R1 for FT-PSK locally");
-	} else if (wpa_ft_fetch_pmk_r1(sm->wpa_auth, sm->addr, pmk_r1_name,
-				       pmk_r1, &pmk_r1_len, &pairwise, &vlan,
-				       &identity, &identity_len, &radius_cui,
-				       &radius_cui_len, &session_timeout) < 0) {
-		wpa_printf(MSG_DEBUG,
-			   "FT: No PMK-R1 available in local cache for the requested PMKR1Name");
-		if (wpa_ft_local_derive_pmk_r1(sm->wpa_auth, sm,
-					       parse.r0kh_id, parse.r0kh_id_len,
-					       parse.rsn_pmkid,
-					       pmk_r1_name, pmk_r1, &pairwise,
-					       &vlan, &identity, &identity_len,
-					       &radius_cui, &radius_cui_len,
-					       &session_timeout) == 0) {
+		goto pmk_r1_derived;
+	}
+
+	/* Need to test all possible hash algorithms for FT-SAE-EXT-KEY since
+	 * the key length is not yet known. For other AKMs, only the length
+	 * identified by the AKM is used. */
+	for (len = SHA256_MAC_LEN; len <= SHA512_MAC_LEN; len += 16) {
+		if (parse.key_mgmt != WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		    ((wpa_key_mgmt_sha384(parse.key_mgmt) &&
+		      len != SHA384_MAC_LEN) ||
+		     (!wpa_key_mgmt_sha384(parse.key_mgmt) &&
+		      len != SHA256_MAC_LEN)))
+			continue;
+		if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
+					   sm->wpa_auth->conf.r1_key_holder,
+					   sm->addr, pmk_r1_name, len) < 0)
+			continue;
+
+		if (wpa_ft_fetch_pmk_r1(sm->wpa_auth, sm->addr, pmk_r1_name,
+					pmk_r1, &pmk_r1_len, &pairwise, &vlan,
+					&identity, &identity_len, &radius_cui,
+					&radius_cui_len,
+					&session_timeout) == 0) {
 			wpa_printf(MSG_DEBUG,
-				   "FT: Generated PMK-R1 based on local PMK-R0");
+				   "FT: Found PMKR1Name (using SHA%zu) from local cache",
+				   pmk_r1_len * 8);
 			goto pmk_r1_derived;
 		}
-
-		if (wpa_ft_pull_pmk_r1(sm, ies, ies_len, parse.rsn_pmkid) < 0) {
-			wpa_printf(MSG_DEBUG,
-				   "FT: Did not have matching PMK-R1 and either unknown or blocked R0KH-ID or NAK from R0KH");
-			return WLAN_STATUS_INVALID_PMKID;
-		}
-
-		return -1; /* Status pending */
-	} else {
-		wpa_printf(MSG_DEBUG, "FT: Found PMKR1Name from local cache");
 	}
+
+	wpa_printf(MSG_DEBUG,
+		   "FT: No PMK-R1 available in local cache for the requested PMKR1Name");
+	if (wpa_ft_local_derive_pmk_r1(sm->wpa_auth, sm,
+				       parse.r0kh_id, parse.r0kh_id_len,
+				       parse.rsn_pmkid,
+				       pmk_r1_name, pmk_r1, &pairwise,
+				       &vlan, &identity, &identity_len,
+				       &radius_cui, &radius_cui_len,
+				       &session_timeout, &pmk_r1_len) == 0) {
+		wpa_printf(MSG_DEBUG,
+			   "FT: Generated PMK-R1 based on local PMK-R0");
+		goto pmk_r1_derived;
+	}
+
+	if (wpa_ft_pull_pmk_r1(sm, ies, ies_len, parse.rsn_pmkid) < 0) {
+		wpa_printf(MSG_DEBUG,
+			   "FT: Did not have matching PMK-R1 and either unknown or blocked R0KH-ID or NAK from R0KH");
+		return WLAN_STATUS_INVALID_PMKID;
+	}
+
+	return -1; /* Status pending */
 
 pmk_r1_derived:
 	wpa_hexdump_key(MSG_DEBUG, "FT: Selected PMK-R1", pmk_r1, pmk_r1_len);
@@ -3275,6 +3282,40 @@ pmk_r1_derived:
 		wpa_printf(MSG_DEBUG, "FT: Failed to get random data for "
 			   "ANonce");
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+	}
+
+	/* Now that we know the correct PMK-R1 length and as such, the length
+	 * of the MIC field, fetch the SNonce. */
+	if (pmk_r1_len == SHA512_MAC_LEN) {
+		const struct rsn_ftie_sha512 *ftie;
+
+		ftie = (const struct rsn_ftie_sha512 *) parse.ftie;
+		if (!ftie || parse.ftie_len < sizeof(*ftie)) {
+			wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
+			return WLAN_STATUS_INVALID_FTIE;
+		}
+
+		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
+	} else if (pmk_r1_len == SHA384_MAC_LEN) {
+		const struct rsn_ftie_sha384 *ftie;
+
+		ftie = (const struct rsn_ftie_sha384 *) parse.ftie;
+		if (!ftie || parse.ftie_len < sizeof(*ftie)) {
+			wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
+			return WLAN_STATUS_INVALID_FTIE;
+		}
+
+		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
+	} else {
+		const struct rsn_ftie *ftie;
+
+		ftie = (const struct rsn_ftie *) parse.ftie;
+		if (!ftie || parse.ftie_len < sizeof(*ftie)) {
+			wpa_printf(MSG_DEBUG, "FT: Invalid FTIE");
+			return WLAN_STATUS_INVALID_FTIE;
+		}
+
+		os_memcpy(sm->SNonce, ftie->snonce, WPA_NONCE_LEN);
 	}
 
 	wpa_hexdump(MSG_DEBUG, "FT: Received SNonce",
@@ -3291,14 +3332,14 @@ pmk_r1_derived:
 
 	if (wpa_pmk_r1_to_ptk(pmk_r1, pmk_r1_len, sm->SNonce, sm->ANonce,
 			      sm->addr, sm->wpa_auth->addr, pmk_r1_name,
-			      &sm->PTK, ptk_name, sm->wpa_key_mgmt,
+			      &sm->PTK, ptk_name, parse.key_mgmt,
 			      pairwise, kdk_len) < 0)
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 
 #ifdef CONFIG_PASN
 	if (sm->wpa_auth->conf.secure_ltf &&
 	    ieee802_11_rsnx_capab(sm->rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF) &&
-	    wpa_ltf_keyseed(&sm->PTK, sm->wpa_key_mgmt, pairwise)) {
+	    wpa_ltf_keyseed(&sm->PTK, parse.key_mgmt, pairwise)) {
 		wpa_printf(MSG_DEBUG, "FT: Failed to derive LTF keyseed");
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 	}
