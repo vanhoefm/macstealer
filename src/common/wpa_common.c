@@ -1040,8 +1040,11 @@ static int wpa_ft_parse_ftie(const u8 *ie, size_t ie_len,
 				return -1;
 			}
 			parse->r1kh_id = pos;
+			wpa_hexdump(MSG_DEBUG, "FT: R1KH-ID",
+				    parse->r1kh_id, FT_R1KH_ID_LEN);
 			break;
 		case FTIE_SUBELEM_GTK:
+			wpa_printf(MSG_DEBUG, "FT: GTK");
 			parse->gtk = pos;
 			parse->gtk_len = len;
 			break;
@@ -1054,8 +1057,11 @@ static int wpa_ft_parse_ftie(const u8 *ie, size_t ie_len,
 			}
 			parse->r0kh_id = pos;
 			parse->r0kh_id_len = len;
+			wpa_hexdump(MSG_DEBUG, "FT: R0KH-ID",
+				    parse->r0kh_id, parse->r0kh_id_len);
 			break;
 		case FTIE_SUBELEM_IGTK:
+			wpa_printf(MSG_DEBUG, "FT: IGTK");
 			parse->igtk = pos;
 			parse->igtk_len = len;
 			break;
@@ -1063,9 +1069,12 @@ static int wpa_ft_parse_ftie(const u8 *ie, size_t ie_len,
 		case FTIE_SUBELEM_OCI:
 			parse->oci = pos;
 			parse->oci_len = len;
+			wpa_hexdump(MSG_DEBUG, "FT: OCI",
+				    parse->oci, parse->oci_len);
 			break;
 #endif /* CONFIG_OCV */
 		case FTIE_SUBELEM_BIGTK:
+			wpa_printf(MSG_DEBUG, "FT: BIGTK");
 			parse->bigtk = pos;
 			parse->bigtk_len = len;
 			break;
