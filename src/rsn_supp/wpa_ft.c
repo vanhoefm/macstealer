@@ -187,7 +187,7 @@ int wpa_sm_set_ft_params(struct wpa_sm *sm, const u8 *ies, size_t ies_len)
  * @len: Buffer for returning the length of the IEs
  * @anonce: ANonce or %NULL if not yet available
  * @pmk_name: PMKR0Name or PMKR1Name to be added into the RSN IE PMKID List
- * @kck: 128-bit KCK for MIC or %NULL if no MIC is used
+ * @kck: KCK for MIC or %NULL if no MIC is used
  * @kck_len: KCK length in octets
  * @target_ap: Target AP address
  * @ric_ies: Optional IE(s), e.g., WMM TSPEC(s), for RIC-Request or %NULL
