@@ -2557,13 +2557,11 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
 	u8 *anonce, *snonce;
 	const u8 *kck;
 	size_t kck_len;
-	int use_sha384;
 	size_t key_len;
 
 	if (sm == NULL)
 		return pos;
 
-	use_sha384 = wpa_key_mgmt_sha384(sm->wpa_key_mgmt);
 	conf = &sm->wpa_auth->conf;
 
 	if (!wpa_key_mgmt_ft(sm->wpa_key_mgmt))
@@ -2765,7 +2763,16 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
 	ftie_len = res;
 	pos += res;
 
-	if (use_sha384) {
+	if (sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    key_len == SHA512_MAC_LEN) {
+		struct rsn_ftie_sha512 *_ftie =
+			(struct rsn_ftie_sha512 *) (ftie + 2);
+
+		fte_mic = _ftie->mic;
+		elem_count = &_ftie->mic_control[1];
+	} else if ((sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		    key_len == SHA384_MAC_LEN) ||
+		   wpa_key_mgmt_sha384(sm->wpa_key_mgmt)) {
 		struct rsn_ftie_sha384 *_ftie =
 			(struct rsn_ftie_sha384 *) (ftie + 2);
 
