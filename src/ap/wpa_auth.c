@@ -23,6 +23,7 @@
 #include "crypto/sha1.h"
 #include "crypto/sha256.h"
 #include "crypto/sha384.h"
+#include "crypto/sha512.h"
 #include "crypto/random.h"
 #include "eapol_auth/eapol_auth_sm.h"
 #include "drivers/driver.h"
@@ -2183,13 +2184,20 @@ SM_STATE(WPA_PTK, INITPSK)
 		os_memcpy(sm->PMK, psk, psk_len);
 		sm->pmk_len = psk_len;
 #ifdef CONFIG_IEEE80211R_AP
-		os_memcpy(sm->xxkey, psk, PMK_LEN);
 		sm->xxkey_len = PMK_LEN;
+#ifdef CONFIG_SAE
+		if (sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+		    (psk_len == SHA512_MAC_LEN || psk_len == SHA384_MAC_LEN ||
+		     psk_len == SHA256_MAC_LEN))
+			sm->xxkey_len = psk_len;
+#endif /* CONFIG_SAE */
+		os_memcpy(sm->xxkey, psk, sm->xxkey_len);
 #endif /* CONFIG_IEEE80211R_AP */
 	}
 #ifdef CONFIG_SAE
 	if (wpa_auth_uses_sae(sm) && sm->pmksa) {
-		wpa_printf(MSG_DEBUG, "SAE: PMK from PMKSA cache");
+		wpa_printf(MSG_DEBUG, "SAE: PMK from PMKSA cache (len=%zu)",
+			   sm->pmksa->pmk_len);
 		os_memcpy(sm->PMK, sm->pmksa->pmk, sm->pmksa->pmk_len);
 		sm->pmk_len = sm->pmksa->pmk_len;
 #ifdef CONFIG_IEEE80211R_AP
