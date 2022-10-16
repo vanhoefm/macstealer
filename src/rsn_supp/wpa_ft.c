@@ -55,11 +55,14 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		return -1;
 	}
 
-	sm->pmk_r0_len = use_sha384 ? SHA384_MAC_LEN : PMK_LEN;
+	if (wpa_key_mgmt_sae_ext_key(sm->key_mgmt))
+		sm->pmk_r0_len = mpmk_len;
+	else
+		sm->pmk_r0_len = use_sha384 ? SHA384_MAC_LEN : PMK_LEN;
 	if (wpa_derive_pmk_r0(mpmk, mpmk_len, sm->ssid,
 			      sm->ssid_len, sm->mobility_domain,
 			      sm->r0kh_id, sm->r0kh_id_len, sm->own_addr,
-			      sm->pmk_r0, sm->pmk_r0_name, use_sha384) < 0)
+			      sm->pmk_r0, sm->pmk_r0_name, sm->key_mgmt) < 0)
 		return -1;
 	sm->pmk_r1_len = sm->pmk_r0_len;
 	if (wpa_derive_pmk_r1(sm->pmk_r0, sm->pmk_r0_len, sm->pmk_r0_name,

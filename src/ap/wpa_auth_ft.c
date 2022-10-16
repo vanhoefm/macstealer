@@ -2108,9 +2108,7 @@ int wpa_ft_store_pmk_fils(struct wpa_state_machine *sm,
 int wpa_auth_derive_ptk_ft(struct wpa_state_machine *sm, struct wpa_ptk *ptk)
 {
 	u8 pmk_r0[PMK_LEN_MAX], pmk_r0_name[WPA_PMK_NAME_LEN];
-	size_t pmk_r0_len = wpa_key_mgmt_sha384(sm->wpa_key_mgmt) ?
-		SHA384_MAC_LEN : PMK_LEN;
-	size_t pmk_r1_len = pmk_r0_len;
+	size_t pmk_r0_len, pmk_r1_len;
 	u8 pmk_r1[PMK_LEN_MAX];
 	u8 ptk_name[WPA_PMK_NAME_LEN];
 	const u8 *mdid = sm->wpa_auth->conf.mobility_domain;
@@ -2127,6 +2125,17 @@ int wpa_auth_derive_ptk_ft(struct wpa_state_machine *sm, struct wpa_ptk *ptk)
 	int session_timeout;
 	const u8 *mpmk;
 	size_t mpmk_len;
+
+	if (sm->wpa_key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    (sm->xxkey_len == SHA256_MAC_LEN ||
+	     sm->xxkey_len == SHA384_MAC_LEN ||
+	     sm->xxkey_len == SHA512_MAC_LEN))
+		pmk_r0_len = sm->xxkey_len;
+	else if (wpa_key_mgmt_sha384(sm->wpa_key_mgmt))
+		pmk_r0_len = SHA384_MAC_LEN;
+	else
+		pmk_r0_len = PMK_LEN;
+	pmk_r1_len = pmk_r0_len;
 
 	if (sm->xxkey_len > 0) {
 		mpmk = sm->xxkey;
@@ -2154,7 +2163,7 @@ int wpa_auth_derive_ptk_ft(struct wpa_state_machine *sm, struct wpa_ptk *ptk)
 	if (wpa_derive_pmk_r0(mpmk, mpmk_len, ssid, ssid_len, mdid,
 			      r0kh, r0kh_len, sm->addr,
 			      pmk_r0, pmk_r0_name,
-			      wpa_key_mgmt_sha384(sm->wpa_key_mgmt)) < 0)
+			      sm->wpa_key_mgmt) < 0)
 		return -1;
 	if (!psk_local || !wpa_key_mgmt_ft_psk(sm->wpa_key_mgmt))
 		wpa_ft_store_pmk_r0(sm->wpa_auth, sm->addr, pmk_r0, pmk_r0_len,
@@ -2955,7 +2964,8 @@ static int wpa_ft_psk_pmk_r1(struct wpa_state_machine *sm,
 
 		if (wpa_derive_pmk_r0(pmk, PMK_LEN, ssid, ssid_len, mdid, r0kh,
 				      r0kh_len, sm->addr,
-				      pmk_r0, pmk_r0_name, 0) < 0 ||
+				      pmk_r0, pmk_r0_name,
+				      WPA_KEY_MGMT_FT_PSK) < 0 ||
 		    wpa_derive_pmk_r1(pmk_r0, PMK_LEN, pmk_r0_name, r1kh,
 				      sm->addr, pmk_r1, pmk_r1_name) < 0 ||
 		    os_memcmp_const(pmk_r1_name, req_pmk_r1_name,

@@ -192,9 +192,13 @@ static int try_pmk(struct wlantest *wt, struct wlantest_bss *bss,
 				      bss->ssid, bss->ssid_len, bss->mdid,
 				      bss->r0kh_id, bss->r0kh_id_len,
 				      sa, sta->pmk_r0, sta->pmk_r0_name,
-				      use_sha384) < 0)
+				      sta->key_mgmt) < 0)
 			return -1;
-		sta->pmk_r0_len = use_sha384 ? PMK_LEN_SUITE_B_192 : PMK_LEN;
+		if (wpa_key_mgmt_sae_ext_key(sta->key_mgmt))
+			sta->pmk_r0_len = pmk->pmk_len;
+		else
+			sta->pmk_r0_len = use_sha384 ? PMK_LEN_SUITE_B_192 :
+				PMK_LEN;
 		if (wpa_derive_pmk_r1(sta->pmk_r0, sta->pmk_r0_len,
 				      sta->pmk_r0_name,
 				      bss->r1kh_id, sa,
