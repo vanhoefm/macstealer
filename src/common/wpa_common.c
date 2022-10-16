@@ -882,7 +882,7 @@ int fils_key_auth_sk(const u8 *ick, size_t ick_len, const u8 *snonce,
 
 
 #ifdef CONFIG_IEEE80211R
-int wpa_ft_mic(const u8 *kck, size_t kck_len, const u8 *sta_addr,
+int wpa_ft_mic(int key_mgmt, const u8 *kck, size_t kck_len, const u8 *sta_addr,
 	       const u8 *ap_addr, u8 transaction_seqnum,
 	       const u8 *mdie, size_t mdie_len,
 	       const u8 *ftie, size_t ftie_len,
@@ -894,8 +894,9 @@ int wpa_ft_mic(const u8 *kck, size_t kck_len, const u8 *sta_addr,
 	const u8 *addr[10];
 	size_t len[10];
 	size_t i, num_elem = 0;
-	u8 zero_mic[24];
+	u8 zero_mic[32];
 	size_t mic_len, fte_fixed_len;
+	int res;
 
 	if (kck_len == 16) {
 		mic_len = 16;
@@ -903,6 +904,10 @@ int wpa_ft_mic(const u8 *kck, size_t kck_len, const u8 *sta_addr,
 	} else if (kck_len == 24) {
 		mic_len = 24;
 #endif /* CONFIG_SHA384 */
+#ifdef CONFIG_SHA512
+	} else if (kck_len == 32) {
+		mic_len = 32;
+#endif /* CONFIG_SHA512 */
 	} else {
 		wpa_printf(MSG_WARNING, "FT: Unsupported KCK length %u",
 			   (unsigned int) kck_len);
@@ -967,6 +972,17 @@ int wpa_ft_mic(const u8 *kck, size_t kck_len, const u8 *sta_addr,
 
 	for (i = 0; i < num_elem; i++)
 		wpa_hexdump(MSG_MSGDUMP, "FT: MIC data", addr[i], len[i]);
+	res = -1;
+#ifdef CONFIG_SHA512
+	if (kck_len == 32) {
+		u8 hash[SHA512_MAC_LEN];
+
+		if (hmac_sha512_vector(kck, kck_len, num_elem, addr, len, hash))
+			return -1;
+		os_memcpy(mic, hash, 32);
+		res = 0;
+	}
+#endif /* CONFIG_SHA384 */
 #ifdef CONFIG_SHA384
 	if (kck_len == 24) {
 		u8 hash[SHA384_MAC_LEN];
@@ -974,13 +990,22 @@ int wpa_ft_mic(const u8 *kck, size_t kck_len, const u8 *sta_addr,
 		if (hmac_sha384_vector(kck, kck_len, num_elem, addr, len, hash))
 			return -1;
 		os_memcpy(mic, hash, 24);
+		res = 0;
 	}
 #endif /* CONFIG_SHA384 */
-	if (kck_len == 16 &&
-	    omac1_aes_128_vector(kck, num_elem, addr, len, mic))
-		return -1;
+	if (kck_len == 16 && key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY) {
+		u8 hash[SHA256_MAC_LEN];
 
-	return 0;
+		if (hmac_sha256_vector(kck, kck_len, num_elem, addr, len, hash))
+			return -1;
+		os_memcpy(mic, hash, 16);
+		res = 0;
+	}
+	if (kck_len == 16 && key_mgmt != WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
+	    omac1_aes_128_vector(kck, num_elem, addr, len, mic) == 0)
+		res = 0;
+
+	return res;
 }
 
 

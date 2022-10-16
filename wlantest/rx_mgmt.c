@@ -1052,7 +1052,8 @@ static void rx_mgmt_reassoc_req(struct wlantest *wt, const u8 *data,
 			kck = sta->ptk.kck;
 			kck_len = sta->ptk.kck_len;
 		}
-		if (wpa_ft_mic(kck, kck_len, sta->addr, bss->bssid, 5,
+		if (wpa_ft_mic(sta->key_mgmt, kck, kck_len,
+			       sta->addr, bss->bssid, 5,
 			       parse.mdie - 2, parse.mdie_len + 2,
 			       parse.ftie - 2, parse.ftie_len + 2,
 			       parse.rsn - 2, parse.rsn_len + 2,
@@ -1556,7 +1557,8 @@ static void rx_mgmt_reassoc_resp(struct wlantest *wt, const u8 *data,
 			kek = sta->ptk.kek;
 			kek_len = sta->ptk.kek_len;
 		}
-		if (wpa_ft_mic(kck, kck_len, sta->addr, bss->bssid, 6,
+		if (wpa_ft_mic(sta->key_mgmt, kck, kck_len,
+			       sta->addr, bss->bssid, 6,
 			       parse.mdie - 2, parse.mdie_len + 2,
 			       parse.ftie - 2, parse.ftie_len + 2,
 			       parse.rsn - 2, parse.rsn_len + 2,

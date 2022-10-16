@@ -2813,7 +2813,8 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
 		kck_len = sm->PTK.kck_len;
 	}
 	if (auth_alg == WLAN_AUTH_FT &&
-	    wpa_ft_mic(kck, kck_len, sm->addr, sm->wpa_auth->addr, 6,
+	    wpa_ft_mic(sm->wpa_key_mgmt, kck, kck_len,
+		       sm->addr, sm->wpa_auth->addr, 6,
 		       mdie, mdie_len, ftie, ftie_len,
 		       rsnie, rsnie_len,
 		       ric_start, ric_start ? pos - ric_start : 0,
@@ -3548,7 +3549,8 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 		kck = sm->PTK.kck;
 		kck_len = sm->PTK.kck_len;
 	}
-	if (wpa_ft_mic(kck, kck_len, sm->addr, sm->wpa_auth->addr, 5,
+	if (wpa_ft_mic(sm->wpa_key_mgmt, kck, kck_len,
+		       sm->addr, sm->wpa_auth->addr, 5,
 		       parse.mdie - 2, parse.mdie_len + 2,
 		       parse.ftie - 2, parse.ftie_len + 2,
 		       parse.rsn - 2, parse.rsn_len + 2,

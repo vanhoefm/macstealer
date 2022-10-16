@@ -441,7 +441,8 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 		*elem_count = 3 + ieee802_11_ie_count(ric_ies, ric_ies_len);
 		if (rsnxe_len)
 			*elem_count += 1;
-		if (wpa_ft_mic(kck, kck_len, sm->own_addr, target_ap, 5,
+		if (wpa_ft_mic(sm->key_mgmt, kck, kck_len,
+			       sm->own_addr, target_ap, 5,
 			       ((u8 *) mdie) - 2, 2 + sizeof(*mdie),
 			       ftie_pos, 2 + *ftie_len,
 			       (u8 *) rsnie, 2 + rsnie->len, ric_ies,
@@ -1142,7 +1143,7 @@ int wpa_ft_validate_reassoc_resp(struct wpa_sm *sm, const u8 *ies,
 		kck_len = sm->ptk.kck_len;
 	}
 
-	if (wpa_ft_mic(kck, kck_len, sm->own_addr, src_addr, 6,
+	if (wpa_ft_mic(sm->key_mgmt, kck, kck_len, sm->own_addr, src_addr, 6,
 		       parse.mdie - 2, parse.mdie_len + 2,
 		       parse.ftie - 2, parse.ftie_len + 2,
 		       parse.rsn - 2, parse.rsn_len + 2,
