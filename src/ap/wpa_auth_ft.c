@@ -3205,7 +3205,7 @@ static int wpa_ft_process_auth_req(struct wpa_state_machine *sm,
 		    parse.rsn_pmkid, WPA_PMK_NAME_LEN);
 	if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
 				   sm->wpa_auth->conf.r1_key_holder, sm->addr,
-				   pmk_r1_name, use_sha384) < 0)
+				   pmk_r1_name, pmk_r1_len) < 0)
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 
 	if (conf->ft_psk_generate_local &&

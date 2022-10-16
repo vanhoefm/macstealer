@@ -2084,11 +2084,14 @@ int wpa_derive_pmk_r0(const u8 *xxkey, size_t xxkey_len,
  * IEEE Std 802.11r-2008 - 8.5.1.5.4
  */
 int wpa_derive_pmk_r1_name(const u8 *pmk_r0_name, const u8 *r1kh_id,
-			   const u8 *s1kh_id, u8 *pmk_r1_name, int use_sha384)
+			   const u8 *s1kh_id, u8 *pmk_r1_name,
+			   size_t pmk_r1_len)
 {
-	u8 hash[48];
+	u8 hash[64];
 	const u8 *addr[4];
 	size_t len[4];
+	int res;
+	const char *title;
 
 	/*
 	 * PMKR1Name = Truncate-128(Hash("FT-R1N" || PMKR0Name ||
@@ -2103,14 +2106,31 @@ int wpa_derive_pmk_r1_name(const u8 *pmk_r0_name, const u8 *r1kh_id,
 	addr[3] = s1kh_id;
 	len[3] = ETH_ALEN;
 
+	res = -1;
+#ifdef CONFIG_SHA512
+	if (pmk_r1_len == SHA512_MAC_LEN) {
+		title = "FT: PMKR1Name (using SHA512)";
+		res = sha512_vector(4, addr, len, hash);
+	}
+#endif /* CONFIG_SHA512 */
 #ifdef CONFIG_SHA384
-	if (use_sha384 && sha384_vector(4, addr, len, hash) < 0)
-		return -1;
+	if (pmk_r1_len == SHA384_MAC_LEN) {
+		title = "FT: PMKR1Name (using SHA384)";
+		res = sha384_vector(4, addr, len, hash);
+	}
 #endif /* CONFIG_SHA384 */
-	if (!use_sha384 && sha256_vector(4, addr, len, hash) < 0)
-		return -1;
+	if (pmk_r1_len == SHA256_MAC_LEN) {
+		title = "FT: PMKR1Name (using SHA256)";
+		res = sha256_vector(4, addr, len, hash);
+	}
+	if (res < 0) {
+		wpa_printf(MSG_DEBUG,
+			   "FT: Failed to derive PMKR1Name (PMK-R1 len %zu)",
+			   pmk_r1_len);
+		return res;
+	}
 	os_memcpy(pmk_r1_name, hash, WPA_PMK_NAME_LEN);
-	wpa_hexdump(MSG_DEBUG, "FT: PMKR1Name", pmk_r1_name, WPA_PMK_NAME_LEN);
+	wpa_hexdump(MSG_DEBUG, title, pmk_r1_name, WPA_PMK_NAME_LEN);
 	return 0;
 }
 
@@ -2158,8 +2178,7 @@ int wpa_derive_pmk_r1(const u8 *pmk_r0, size_t pmk_r0_len,
 	wpa_hexdump_key(MSG_DEBUG, "FT: PMK-R1", pmk_r1, pmk_r0_len);
 
 	return wpa_derive_pmk_r1_name(pmk_r0_name, r1kh_id, s1kh_id,
-				      pmk_r1_name,
-				      pmk_r0_len == SHA384_MAC_LEN);
+				      pmk_r1_name, pmk_r0_len);
 }
 
 

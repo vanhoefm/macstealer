@@ -2475,7 +2475,7 @@ int fils_auth_pmk_to_ptk(struct wpa_state_machine *sm, const u8 *pmk,
 
 		res = wpa_derive_pmk_r1_name(pmk_r0_name, conf->r1_key_holder,
 					     sm->addr, sm->pmk_r1_name,
-					     use_sha384);
+					     fils_ft_len);
 		forced_memzero(pmk_r0, PMK_LEN_MAX);
 		if (res < 0)
 			return -1;
