@@ -4119,6 +4119,7 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 #ifdef CONFIG_HE_OVERRIDES
 	wpa_supplicant_apply_he_overrides(wpa_s, ssid, &params);
 #endif /* CONFIG_HE_OVERRIDES */
+	wpa_supplicant_apply_eht_overrides(wpa_s, ssid, &params);
 
 #ifdef CONFIG_P2P
 	/*
@@ -5913,6 +5914,17 @@ void wpa_supplicant_apply_he_overrides(
 	params->disable_he = ssid->disable_he;
 }
 #endif /* CONFIG_HE_OVERRIDES */
+
+
+void wpa_supplicant_apply_eht_overrides(
+	struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
+	struct wpa_driver_associate_params *params)
+{
+	if (!ssid)
+		return;
+
+	params->disable_eht = ssid->disable_eht;
+}
 
 
 static int pcsc_reader_init(struct wpa_supplicant *wpa_s)

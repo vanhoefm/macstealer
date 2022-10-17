@@ -6059,6 +6059,12 @@ static int nl80211_ht_vht_overrides(struct nl_msg *msg,
 	}
 #endif /* CONFIG_HE_OVERRIDES */
 
+	if (params->disable_eht) {
+		wpa_printf(MSG_DEBUG, "  * EHT disabled");
+		if (nla_put_flag(msg, NL80211_ATTR_DISABLE_EHT))
+			return -1;
+	}
+
 	return 0;
 }
 

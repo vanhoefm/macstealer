@@ -1192,6 +1192,14 @@ struct wpa_ssid {
 	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
 	 */
 	int sae_pwe;
+
+	/**
+	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
+	 *
+	 * By default, use it if it is available, but this can be configured
+	 * to 1 to have it disabled.
+	 */
+	int disable_eht;
 };
 
 #endif /* CONFIG_SSID_H */
