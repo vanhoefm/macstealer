@@ -3387,13 +3387,14 @@ static int wpa_drv_get_mlo_info(struct wpa_supplicant *wpa_s)
 			}
 		}
 
-		if (match &&
+		if (match && wpa_s->mlo_assoc_link_id == mlo.assoc_link_id &&
 		    os_memcmp(wpa_s->ap_mld_addr, mlo.ap_mld_addr,
 			      ETH_ALEN) == 0)
 			return 0;
 	}
 
 	wpa_s->valid_links = mlo.valid_links;
+	wpa_s->mlo_assoc_link_id = mlo.assoc_link_id;
 	os_memcpy(wpa_s->ap_mld_addr, mlo.ap_mld_addr, ETH_ALEN);
 	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
 		if (!(wpa_s->valid_links & BIT(i)))

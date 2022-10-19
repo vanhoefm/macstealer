@@ -1502,7 +1502,7 @@ static int nl80211_get_assoc_freq_handler(struct nl_msg *msg, void *arg)
 		}
 
 		if (!drv->sta_mlo_info.valid_links ||
-		    drv->mlo_assoc_link_id == link_id) {
+		    drv->sta_mlo_info.assoc_link_id == link_id) {
 			ctx->assoc_freq = freq;
 			wpa_printf(MSG_DEBUG, "nl80211: Associated on %u MHz",
 				   ctx->assoc_freq);
@@ -1530,7 +1530,7 @@ static int nl80211_get_assoc_freq_handler(struct nl_msg *msg, void *arg)
 		}
 
 		if (!drv->sta_mlo_info.valid_links ||
-		    drv->mlo_assoc_link_id == link_id) {
+		    drv->sta_mlo_info.assoc_link_id == link_id) {
 			os_memcpy(ctx->assoc_bssid, bssid, ETH_ALEN);
 			wpa_printf(MSG_DEBUG, "nl80211: Associated with "
 				   MACSTR, MAC2STR(bssid));

@@ -128,7 +128,6 @@ struct wpa_driver_nl80211_data {
 	u8 bssid[ETH_ALEN];
 	u8 prev_bssid[ETH_ALEN];
 	int associated;
-	int mlo_assoc_link_id;
 	struct driver_sta_mlo_info sta_mlo_info;
 	u8 ssid[SSID_MAX_LEN];
 	size_t ssid_len;

@@ -524,6 +524,7 @@ static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
 {
 	const u8 *ml_ie;
 	struct driver_sta_mlo_info *mlo = &drv->sta_mlo_info;
+	int res;
 
 	if (!addr || !mlo_links || !resp_ie)
 		return;
@@ -533,11 +534,14 @@ static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
 	if (!ml_ie)
 		return;
 
-	drv->mlo_assoc_link_id = nl80211_get_assoc_link_id(&ml_ie[3],
-							   ml_ie[1] - 1);
-	if (drv->mlo_assoc_link_id < 0 ||
-	    drv->mlo_assoc_link_id >= MAX_NUM_MLD_LINKS)
+	res = nl80211_get_assoc_link_id(&ml_ie[3], ml_ie[1] - 1);
+	if (res < 0 || res >= MAX_NUM_MLD_LINKS) {
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: Could not find a valid association Link ID (res=%d)",
+			   res);
 		return;
+	}
+	drv->sta_mlo_info.assoc_link_id = res;
 
 	os_memcpy(mlo->ap_mld_addr, nla_data(addr), ETH_ALEN);
 	wpa_printf(MSG_DEBUG, "nl80211: AP MLD MAC Address " MACSTR,
@@ -550,14 +554,14 @@ static void nl80211_parse_mlo_info(struct wpa_driver_nl80211_data *drv,
 		nl80211_parse_qca_vendor_mlo_link_info(mlo, mlo_links);
 #endif /* CONFIG_DRIVER_NL80211_QCA */
 
-	if (!(mlo->valid_links & BIT(drv->mlo_assoc_link_id))) {
+	if (!(mlo->valid_links & BIT(drv->sta_mlo_info.assoc_link_id))) {
 		wpa_printf(MSG_ERROR, "nl80211: Invalid MLO assoc link ID %d",
-			   drv->mlo_assoc_link_id);
+			   drv->sta_mlo_info.assoc_link_id);
 		mlo->valid_links = 0;
 		return;
 	}
 
-	os_memcpy(drv->bssid, mlo->links[drv->mlo_assoc_link_id].bssid,
+	os_memcpy(drv->bssid, mlo->links[drv->sta_mlo_info.assoc_link_id].bssid,
 		  ETH_ALEN);
 	os_memcpy(drv->prev_bssid, drv->bssid, ETH_ALEN);
 }
@@ -922,7 +926,7 @@ static void mlme_event_ch_switch(struct wpa_driver_nl80211_data *drv,
 				EVENT_LINK_CH_SWITCH_STARTED, &data);
 		}
 
-		if (link_id != drv->mlo_assoc_link_id)
+		if (link_id != drv->sta_mlo_info.assoc_link_id)
 			return;
 	}
 

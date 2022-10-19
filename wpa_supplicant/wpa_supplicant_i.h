@@ -740,6 +740,7 @@ struct wpa_supplicant {
 	int ap_ies_from_associnfo;
 	unsigned int assoc_freq;
 	u8 ap_mld_addr[ETH_ALEN];
+	u8 mlo_assoc_link_id;
 	u8 valid_links; /* bitmap of valid MLO link IDs */
 	struct {
 		u8 addr[ETH_ALEN];
