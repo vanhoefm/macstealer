@@ -482,6 +482,11 @@ static void nl80211_parse_mlo_link_info(struct driver_sta_mlo_info *mlo,
 		if (link_id >= MAX_NUM_MLD_LINKS)
 			continue;
 
+		if (tb[NL80211_ATTR_STATUS_CODE] &&
+		    nla_get_u16(tb[NL80211_ATTR_STATUS_CODE]) !=
+		    WLAN_STATUS_SUCCESS)
+			continue;
+
 		mlo->valid_links |= BIT(link_id);
 		os_memcpy(mlo->links[link_id].addr,
 			  nla_data(tb[NL80211_ATTR_MAC]), ETH_ALEN);
