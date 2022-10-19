@@ -119,6 +119,11 @@ struct ieee802_11_elems {
 	const u8 *pasn_params;
 	const u8 *eht_capabilities;
 	const u8 *eht_operation;
+	const u8 *basic_mle;
+	const u8 *probe_req_mle;
+	const u8 *reconf_mle;
+	const u8 *tdls_mle;
+	const u8 *prior_access_mle;
 
 	u8 ssid_len;
 	u8 supp_rates_len;
@@ -175,6 +180,11 @@ struct ieee802_11_elems {
 	u8 pasn_params_len;
 	u8 eht_capabilities_len;
 	u8 eht_operation_len;
+	u8 basic_mle_len;
+	u8 probe_req_mle_len;
+	u8 reconf_mle_len;
+	u8 tdls_mle_len;
+	u8 prior_access_mle_len;
 
 	struct mb_ies_info mb_ies;
 	struct frag_ies_info frag_ies;

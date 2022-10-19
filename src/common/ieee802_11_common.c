@@ -199,6 +199,46 @@ static int ieee802_11_parse_vendor_specific(const u8 *pos, size_t elen,
 }
 
 
+static int ieee802_11_parse_mle(const u8 *pos, size_t elen,
+				struct ieee802_11_elems *elems,
+				int show_errors)
+{
+	u8 mle_type = pos[0] & MULTI_LINK_CONTROL_TYPE_MASK;
+
+	switch (mle_type) {
+	case MULTI_LINK_CONTROL_TYPE_BASIC:
+		elems->basic_mle = pos;
+		elems->basic_mle_len = elen;
+		break;
+	case MULTI_LINK_CONTROL_TYPE_PROBE_REQ:
+		elems->probe_req_mle = pos;
+		elems->probe_req_mle_len = elen;
+		break;
+	case MULTI_LINK_CONTROL_TYPE_RECONF:
+		elems->reconf_mle = pos;
+		elems->reconf_mle_len = elen;
+		break;
+	case MULTI_LINK_CONTROL_TYPE_TDLS:
+		elems->tdls_mle = pos;
+		elems->tdls_mle_len = elen;
+		break;
+	case MULTI_LINK_CONTROL_TYPE_PRIOR_ACCESS:
+		elems->prior_access_mle = pos;
+		elems->prior_access_mle_len = elen;
+		break;
+	default:
+		if (show_errors) {
+			wpa_printf(MSG_MSGDUMP,
+				   "Unknown Multi-Link element type %u",
+				   mle_type);
+		}
+		return -1;
+	}
+
+	return 0;
+}
+
+
 static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
 				      struct ieee802_11_elems *elems,
 				      int show_errors)
@@ -314,6 +354,12 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
 	case WLAN_EID_EXT_EHT_OPERATION:
 		elems->eht_operation = pos;
 		elems->eht_operation_len = elen;
+		break;
+	case WLAN_EID_EXT_MULTI_LINK:
+		if (elen < 2)
+			break;
+		if (ieee802_11_parse_mle(pos, elen, elems, show_errors))
+			return -1;
 		break;
 	default:
 		if (show_errors) {
