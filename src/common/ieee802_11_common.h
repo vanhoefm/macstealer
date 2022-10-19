@@ -164,11 +164,11 @@ struct ieee802_11_elems {
 	u8 pasn_params_len;
 	u8 eht_capabilities_len;
 	u8 eht_operation_len;
-	u8 basic_mle_len;
-	u8 probe_req_mle_len;
-	u8 reconf_mle_len;
-	u8 tdls_mle_len;
-	u8 prior_access_mle_len;
+	size_t basic_mle_len;
+	size_t probe_req_mle_len;
+	size_t reconf_mle_len;
+	size_t tdls_mle_len;
+	size_t prior_access_mle_len;
 
 	struct mb_ies_info mb_ies;
 
@@ -341,6 +341,7 @@ struct wpabuf * ieee802_11_defrag_data(const u8 *data, size_t len,
 				       bool ext_elem);
 struct wpabuf * ieee802_11_defrag(struct ieee802_11_elems *elems,
 				  u8 eid, u8 eid_ext);
+struct wpabuf * ieee802_11_defrag_mle(struct ieee802_11_elems *elems, u8 type);
 const u8 * get_ml_ie(const u8 *ies, size_t len, u8 type);
 const u8 * get_basic_mle_mld_addr(const u8 *buf, size_t len);
 
