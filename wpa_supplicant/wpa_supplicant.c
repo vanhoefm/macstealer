@@ -5143,6 +5143,8 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 			     enum frame_encryption encrypted)
 {
 	struct wpa_supplicant *wpa_s = ctx;
+	const u8 *connected_addr = wpa_s->valid_links ?
+		wpa_s->ap_mld_addr : wpa_s->bssid;
 
 	wpa_dbg(wpa_s, MSG_DEBUG, "RX EAPOL from " MACSTR " (encrypted=%d)",
 		MAC2STR(src_addr), encrypted);
@@ -5168,7 +5170,7 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 #ifdef CONFIG_AP
 	     !wpa_s->ap_iface &&
 #endif /* CONFIG_AP */
-	     os_memcmp(src_addr, wpa_s->bssid, ETH_ALEN) != 0)) {
+	     os_memcmp(src_addr, connected_addr, ETH_ALEN) != 0)) {
 		/*
 		 * There is possible race condition between receiving the
 		 * association event and the EAPOL frame since they are coming
@@ -5181,10 +5183,11 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 		 * Authenticator uses BSSID as the src_addr (which is not the
 		 * case with wired IEEE 802.1X).
 		 */
-		wpa_dbg(wpa_s, MSG_DEBUG, "Not associated - Delay processing "
-			"of received EAPOL frame (state=%s bssid=" MACSTR ")",
+		wpa_dbg(wpa_s, MSG_DEBUG,
+			"Not associated - Delay processing of received EAPOL frame (state=%s connected_addr="
+			MACSTR ")",
 			wpa_supplicant_state_txt(wpa_s->wpa_state),
-			MAC2STR(wpa_s->bssid));
+			MAC2STR(connected_addr));
 		wpabuf_free(wpa_s->pending_eapol_rx);
 		wpa_s->pending_eapol_rx = wpabuf_alloc_copy(buf, len);
 		if (wpa_s->pending_eapol_rx) {
@@ -5197,7 +5200,7 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 	}
 
 	wpa_s->last_eapol_matches_bssid =
-		os_memcmp(src_addr, wpa_s->bssid, ETH_ALEN) == 0;
+		os_memcmp(src_addr, connected_addr, ETH_ALEN) == 0;
 
 #ifdef CONFIG_AP
 	if (wpa_s->ap_iface) {
