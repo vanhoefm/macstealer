@@ -21,7 +21,6 @@ struct element {
 struct hostapd_hw_modes;
 
 #define MAX_NOF_MB_IES_SUPPORTED 5
-#define MAX_NUM_FRAG_IES_SUPPORTED 3
 
 struct mb_ies_info {
 	struct {
@@ -29,21 +28,6 @@ struct mb_ies_info {
 		u8 ie_len;
 	} ies[MAX_NOF_MB_IES_SUPPORTED];
 	u8 nof_ies;
-};
-
-struct frag_ies_info {
-	struct {
-		u8 eid;
-		u8 eid_ext;
-		const u8 *ie;
-		u8 ie_len;
-	} frags[MAX_NUM_FRAG_IES_SUPPORTED];
-
-	u8 n_frags;
-
-	/* the last parsed element ID and element extension ID */
-	u8 last_eid;
-	u8 last_eid_ext;
 };
 
 /* Parsed Information Elements */
@@ -162,10 +146,10 @@ struct ieee802_11_elems {
 	u8 dils_len;
 	u8 fils_req_params_len;
 	u8 fils_key_confirm_len;
-	u8 fils_hlp_len;
+	size_t fils_hlp_len;
 	u8 fils_ip_addr_assign_len;
 	u8 key_delivery_len;
-	u8 wrapped_data_len;
+	size_t wrapped_data_len;
 	u8 fils_pk_len;
 	u8 owe_dh_len;
 	u8 power_capab_len;
@@ -187,7 +171,12 @@ struct ieee802_11_elems {
 	u8 prior_access_mle_len;
 
 	struct mb_ies_info mb_ies;
-	struct frag_ies_info frag_ies;
+
+	/*
+	 * The number of fragment elements to be skipped after a known
+	 * fragmented element.
+	 */
+	unsigned int num_frag_elems;
 };
 
 typedef enum { ParseOK = 0, ParseUnknown = 1, ParseFailed = -1 } ParseRes;
@@ -348,9 +337,8 @@ void hostapd_encode_edmg_chan(int edmg_enable, u8 edmg_channel,
 int ieee802_edmg_is_allowed(struct ieee80211_edmg_config allowed,
 			    struct ieee80211_edmg_config requested);
 
-struct wpabuf * ieee802_11_defrag_data(struct ieee802_11_elems *elems,
-				       u8 eid, u8 eid_ext,
-				       const u8 *data, u8 len);
+struct wpabuf * ieee802_11_defrag_data(const u8 *data, size_t len,
+				       bool ext_elem);
 struct wpabuf * ieee802_11_defrag(struct ieee802_11_elems *elems,
 				  u8 eid, u8 eid_ext);
 const u8 * get_ml_ie(const u8 *ies, size_t len, u8 type);
