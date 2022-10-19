@@ -2519,6 +2519,7 @@ struct ieee80211_eht_capabilities {
 
 /* Figure 9-1002f: Multi-Link Control field */
 #define MULTI_LINK_CONTROL_TYPE_MASK			0x07
+#define MULTI_LINK_CONTROL_LEN				2
 
 /* Table 9-401c: Mult-Link element Type subfield encoding */
 #define MULTI_LINK_CONTROL_TYPE_BASIC			0
@@ -2526,6 +2527,16 @@ struct ieee80211_eht_capabilities {
 #define MULTI_LINK_CONTROL_TYPE_RECONF			2
 #define MULTI_LINK_CONTROL_TYPE_TDLS			3
 #define MULTI_LINK_CONTROL_TYPE_PRIOR_ACCESS		4
+
+/*
+ * IEEE P802.11be/D2.2, Table 9-401c: Optional subelement IDs for Link Info
+ * field of the Multi-Link element
+ */
+#define MULTI_LINK_SUB_ELEM_ID_PER_STA_PROFILE		0
+#define MULTI_LINK_SUB_ELEM_ID_VENDOR			221
+#define MULTI_LINK_SUB_ELEM_ID_FRAGMENT			254
+
+/* IEEE P802.11be/D2.2, 9.4.2.312.2 - Basic Multi-Link element */
 
 /* Figure 9-1002g: Presence Bitmap subfield of the Basic Multi-Link element */
 #define BASIC_MULTI_LINK_CTRL0_PRES_LINK_ID		0x10
@@ -2535,6 +2546,23 @@ struct ieee80211_eht_capabilities {
 
 #define BASIC_MULTI_LINK_CTRL1_PRES_MLD_CAPA		0x01
 #define BASIC_MULTI_LINK_CTRL1_PRES_AP_MLD_ID		0x02
+
+/*
+ * STA Control field definitions of Per-STA Profile subelement in Basic
+ * Multi-Link element as described in Figure 9-1002n: STA Control field format.
+ */
+#define BASIC_MLE_STA_CTRL0_LINK_ID_SHIFT		0
+#define BASIC_MLE_STA_CTRL0_LINK_ID_MASK		0x0F
+#define BASIC_MLE_STA_CTRL0_COMPLETE_PROFILE		0x10
+#define BASIC_MLE_STA_CTRL0_PRES_STA_MAC		0x20
+#define BASIC_MLE_STA_CTRL0_PRES_BEACON_INT		0x40
+#define BASIC_MLE_STA_CTRL0_PRES_TSF_OFFSET		0x80
+#define BASIC_MLE_STA_CTRL1_PRES_DTIM_INFO		0x01
+#define BASIC_MLE_STA_CTRL1_PRES_NSTR_LINK_PAIR		0x02
+#define BASIC_MLE_STA_CTRL1_NSTR_BITMAP			0x04
+#define BASIC_MLE_STA_CTRL1_PRES_BSS_PARAM_COUNT	0x08
+
+#define BASIC_MLE_STA_PROF_STA_MAC_IDX			3
 
 /* IEEE P802.11ay/D4.0, 9.4.2.251 - EDMG Operation element */
 #define EDMG_BSS_OPERATING_CHANNELS_OFFSET	6
