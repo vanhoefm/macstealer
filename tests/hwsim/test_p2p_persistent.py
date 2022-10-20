@@ -613,6 +613,28 @@ def test_persistent_group_cancel_on_cli2(dev):
     terminate_group(dev[0], dev[1])
 
 @remote_compatible
+def test_persistent_group_cancel_on_cli3(dev):
+    """P2P persistent group formation, re-invocation, and cancel"""
+    dev[0].global_request("SET p2p_no_group_iface 0")
+    dev[1].global_request("SET p2p_no_group_iface 1")
+    dev[1].p2p_ext_listen(30,30)
+    form(dev[0], dev[1])
+
+    invite_from_go(dev[0], dev[1], terminate=False)
+    if "FAIL" not in dev[1].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on CLI")
+    if "FAIL" not in dev[0].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on GO")
+    terminate_group(dev[0], dev[1])
+
+    invite_from_cli(dev[0], dev[1], terminate=False)
+    if "FAIL" not in dev[1].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on CLI")
+    if "FAIL" not in dev[0].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on GO")
+    terminate_group(dev[0], dev[1])
+
+@remote_compatible
 def test_persistent_group_peer_dropped(dev):
     """P2P persistent group formation and re-invocation with peer having dropped group"""
     form(dev[0], dev[1], reverse_init=True)
