@@ -8507,6 +8507,10 @@ int wpas_p2p_in_progress(struct wpa_supplicant *wpa_s)
 				"in group formation",
 				wpa_s->global->p2p_group_formation->ifname);
 			ret = 1;
+		} else if (wpa_s->global->p2p_group_formation == wpa_s) {
+			wpa_dbg(wpa_s, MSG_DEBUG,
+				"P2P: Skip Extended Listen timeout and allow scans on current interface for group formation");
+			ret = 2;
 		}
 	}
 
