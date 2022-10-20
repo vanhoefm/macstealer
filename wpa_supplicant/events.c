@@ -139,7 +139,7 @@ static struct wpa_bss * wpa_supplicant_get_new_bss(
 	struct wpa_bss *bss = NULL;
 	struct wpa_ssid *ssid = wpa_s->current_ssid;
 
-	if (ssid->ssid_len > 0)
+	if (ssid && ssid->ssid_len > 0)
 		bss = wpa_bss_get(wpa_s, bssid, ssid->ssid, ssid->ssid_len);
 	if (!bss)
 		bss = wpa_bss_get_bssid(wpa_s, bssid);
