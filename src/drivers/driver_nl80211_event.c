@@ -2633,11 +2633,11 @@ static void qca_nl80211_pasn_auth(struct wpa_driver_nl80211_data *drv,
 		nl_src = cfg[QCA_WLAN_VENDOR_ATTR_PASN_PEER_SRC_ADDR];
 		nl_peer = cfg[QCA_WLAN_VENDOR_ATTR_PASN_PEER_MAC_ADDR];
 		if (nl_src)
-			os_memcpy(event.pasn_auth.peer[idx].own_addr, nl_src,
-				  ETH_ALEN);
+			os_memcpy(event.pasn_auth.peer[idx].own_addr,
+				  nla_data(nl_src), ETH_ALEN);
 		if (nl_peer)
-			os_memcpy(event.pasn_auth.peer[idx].peer_addr, nl_peer,
-				  ETH_ALEN);
+			os_memcpy(event.pasn_auth.peer[idx].peer_addr,
+				  nla_data(nl_peer), ETH_ALEN);
 		if (cfg[QCA_WLAN_VENDOR_ATTR_PASN_PEER_LTF_KEYSEED_REQUIRED])
 			event.pasn_auth.peer[idx].ltf_keyseed_required = true;
 		idx++;
