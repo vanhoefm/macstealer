@@ -413,8 +413,13 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_DPP */
 		} else if (wpa_parse_wpa_ie(rsn, 2 + rsn[1], &ied) == 0 &&
 			   wpa_key_mgmt_sae(ied.key_mgmt)) {
-			wpa_dbg(wpa_s, MSG_DEBUG, "Using SAE auth_alg");
-			params.auth_alg = WPA_AUTH_ALG_SAE;
+			if (wpas_is_sae_avoided(wpa_s, ssid, &ied)) {
+				wpa_dbg(wpa_s, MSG_DEBUG,
+					"SAE enabled, but disallowing SAE auth_alg without PMF");
+			} else {
+				wpa_dbg(wpa_s, MSG_DEBUG, "Using SAE auth_alg");
+				params.auth_alg = WPA_AUTH_ALG_SAE;
+			}
 		} else {
 			wpa_dbg(wpa_s, MSG_DEBUG,
 				"SAE enabled, but target BSS does not advertise SAE AKM for RSN");

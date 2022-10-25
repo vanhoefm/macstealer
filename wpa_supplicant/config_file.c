@@ -1356,6 +1356,9 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 	if (config->beacon_int)
 		fprintf(f, "beacon_int=%d\n", config->beacon_int);
 
+	if (config->sae_check_mfp)
+		fprintf(f, "sae_check_mfp=%d\n", config->sae_check_mfp);
+
 	if (config->sae_groups) {
 		int i;
 		fprintf(f, "sae_groups=");

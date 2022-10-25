@@ -1794,6 +1794,10 @@ int wpas_get_ssid_pmf(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid);
 int pmf_in_use(struct wpa_supplicant *wpa_s, const u8 *addr);
 void wpa_s_setup_sae_pt(struct wpa_config *conf, struct wpa_ssid *ssid);
 
+bool wpas_is_sae_avoided(struct wpa_supplicant *wpa_s,
+			struct wpa_ssid *ssid,
+			const struct wpa_ie_data *ie);
+
 int wpas_init_ext_pw(struct wpa_supplicant *wpa_s);
 
 void dump_freq_data(struct wpa_supplicant *wpa_s, const char *title,

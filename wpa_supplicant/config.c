@@ -5280,6 +5280,7 @@ static const struct global_parse_data global_fields[] = {
 	{ INT_RANGE(auto_interworking, 0, 1), 0 },
 	{ INT(okc), 0 },
 	{ INT(pmf), 0 },
+	{ INT_RANGE(sae_check_mfp, 0, 1), 0 },
 	{ FUNC(sae_groups), 0 },
 	{ INT_RANGE(sae_pwe, 0, 3), 0 },
 	{ INT_RANGE(sae_pmkid_in_assoc, 0, 1), 0 },

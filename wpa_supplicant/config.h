@@ -1239,6 +1239,25 @@ struct wpa_config {
 	enum mfp_options pmf;
 
 	/**
+	 * sae_check_mfp - Whether to limit SAE based on PMF capabilities
+	 *
+	 * With this check SAE key_mgmt will not be selected if PMF is
+	 * not enabled.
+	 * Scenarios where enabling this check will limit SAE:
+	 *  1) ieee8011w=0 is set for the network.
+	 *  2) The AP does not have PMF enabled.
+	 *  3) ieee8011w for the network is the default(3), pmf=1 is enabled
+	 *     globally and the device does not support the BIP cipher.
+	 *
+	 * Useful to allow the BIP cipher check that occurs for ieee80211w=3
+	 * and pmf=1 to also avoid using SAE key_mgmt.
+	 * Useful when hardware does not support BIP to still to allow
+	 * connecting to sae_require_mfp=1 WPA2+WPA3-Personal transition mode
+	 *access points by automatically selecting PSK instead of SAE.
+	 */
+	int sae_check_mfp;
+
+	/**
 	 * sae_groups - Preference list of enabled groups for SAE
 	 *
 	 * By default (if this parameter is not set), the mandatory group 19
