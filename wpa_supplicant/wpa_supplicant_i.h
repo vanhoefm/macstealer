@@ -600,6 +600,18 @@ struct wpas_pasn {
 	void *cb_ctx;
 	u16 rsnxe_capab;
 	int network_id;
+
+	/**
+	 * send_mgmt - Function handler to transmit a Management frame
+	 * @ctx: Callback context from cb_ctx
+	 * @frame_buf : Frame to transmit
+	 * @frame_len: Length of frame to transmit
+	 * @freq: Frequency in MHz for the channel on which to transmit
+	 * @wait_dur: How many milliseconds to wait for a response frame
+	 * Returns: 0 on success, -1 on failure
+	 */
+	int (*send_mgmt)(void *ctx, const u8 *data, size_t data_len, int noack,
+			 unsigned int freq, unsigned int wait);
 };
 #endif /* CONFIG_PASN */
 

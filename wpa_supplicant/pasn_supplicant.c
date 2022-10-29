@@ -39,6 +39,15 @@ struct wpa_pasn_auth_work {
 };
 
 
+static int wpas_pasn_send_mlme(void *ctx, const u8 *data, size_t data_len,
+			       int noack, unsigned int freq, unsigned int wait)
+{
+	struct wpa_supplicant *wpa_s = ctx;
+
+	return wpa_drv_send_mlme(wpa_s, data, data_len, noack, freq, wait);
+}
+
+
 static void wpas_pasn_free_auth_work(struct wpa_pasn_auth_work *awork)
 {
 	wpabuf_free(awork->comeback);
@@ -1333,9 +1342,9 @@ static int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 		goto fail;
 	}
 
-	ret = wpa_drv_send_mlme(pasn->cb_ctx,
-				wpabuf_head(frame), wpabuf_len(frame), 0,
-				pasn->freq, 1000);
+	ret = pasn->send_mgmt(pasn->cb_ctx,
+			      wpabuf_head(frame), wpabuf_len(frame), 0,
+			      pasn->freq, 1000);
 
 	wpabuf_free(frame);
 	if (ret) {
@@ -1471,6 +1480,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 	if (wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA)
 		capab |= BIT(WLAN_RSNX_CAPAB_PROT_RANGE_NEG);
 	pasn->rsnxe_capab = capab;
+	pasn->send_mgmt = wpas_pasn_send_mlme;
 
 	ssid = wpa_config_get_network(wpa_s->conf, awork->network_id);
 
@@ -1913,9 +1923,9 @@ static int wpa_pasn_auth_rx(struct wpas_pasn *pasn, const u8 *data, size_t len,
 		goto fail;
 	}
 
-	ret = wpa_drv_send_mlme(pasn->cb_ctx,
-				wpabuf_head(frame), wpabuf_len(frame), 0,
-				pasn->freq, 100);
+	ret = pasn->send_mgmt(pasn->cb_ctx,
+			      wpabuf_head(frame), wpabuf_len(frame), 0,
+			      pasn->freq, 100);
 	wpabuf_free(frame);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed sending 3st auth frame");
