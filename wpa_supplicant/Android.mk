@@ -383,6 +383,7 @@ NEED_HMAC_SHA384_KDF=y
 NEED_SHA256=y
 NEED_SHA384=y
 OBJS += src/common/ptksa_cache.c
+OBJS += src/pasn/pasn_initiator.c
 OBJS += pasn_supplicant.c
 endif
 
