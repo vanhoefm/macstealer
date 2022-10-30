@@ -150,6 +150,17 @@ int wpa_pasn_auth_rx(struct wpas_pasn *pasn, const u8 *data, size_t len,
 int wpa_pasn_auth_tx_status(struct wpas_pasn *pasn,
 			    const u8 *data, size_t data_len, u8 acked);
 
+/* Responder */
+int handle_auth_pasn_1(struct wpas_pasn *pasn,
+		       const u8 *own_addr, const u8 *peer_addr,
+		       const struct ieee80211_mgmt *mgmt, size_t len);
+int handle_auth_pasn_3(struct wpas_pasn *pasn, const u8 *own_addr,
+		       const u8 *peer_addr,
+		       const struct ieee80211_mgmt *mgmt, size_t len);
+int handle_auth_pasn_resp(struct wpas_pasn *pasn, const u8 *own_addr,
+			  const u8 *peer_addr,
+			  struct rsn_pmksa_cache_entry *pmksa, u16 status);
+
 #endif /* CONFIG_PASN */
 
 #ifdef __cplusplus

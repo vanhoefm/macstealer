@@ -10,6 +10,7 @@ CFLAGS += -DCONFIG_SHA512
 CFLAGS += -DCONFIG_PASN
 
 LIB_OBJS= \
-	pasn_initiator.o
+	pasn_initiator.o \
+	pasn_responder.o
 
 include ../lib.rules
