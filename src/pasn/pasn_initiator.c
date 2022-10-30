@@ -40,7 +40,7 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct pasn_data *pasn)
 	}
 
 	ret = sae_prepare_commit_pt(&pasn->sae, pasn->pt,
-				    pasn->own_addr, pasn->bssid,
+				    pasn->own_addr, pasn->peer_addr,
 				    NULL, NULL);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
@@ -429,7 +429,7 @@ static int wpas_pasn_wd_fils_rx(struct pasn_data *pasn, struct wpabuf *wd)
 
 	pasn->pmksa_entry = pmksa_cache_add(pasn->pmksa, pasn->pmk,
 					    pasn->pmk_len, pasn->fils.erp_pmkid,
-					    NULL, 0, pasn->bssid,
+					    NULL, 0, pasn->peer_addr,
 					    pasn->own_addr, NULL,
 					    pasn->akmp, 0);
 
@@ -538,8 +538,8 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct pasn_data *pasn,
 
 	wrapped_data = wpas_pasn_get_wrapped_data_format(pasn);
 
-	wpa_pasn_build_auth_header(buf, pasn->bssid,
-				   pasn->own_addr, pasn->bssid,
+	wpa_pasn_build_auth_header(buf, pasn->peer_addr,
+				   pasn->own_addr, pasn->peer_addr,
 				   pasn->trans_seq + 1, WLAN_STATUS_SUCCESS);
 
 	pmkid = NULL;
@@ -552,7 +552,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct pasn_data *pasn,
 	} else if (wrapped_data != WPA_PASN_WRAPPED_DATA_NO) {
 		struct rsn_pmksa_cache_entry *pmksa;
 
-		pmksa = pmksa_cache_get(pasn->pmksa, pasn->bssid,
+		pmksa = pmksa_cache_get(pasn->pmksa, pasn->peer_addr,
 					NULL, NULL, pasn->akmp);
 		if (pmksa && pasn->custom_pmkid_valid)
 			pmkid = pasn->custom_pmkid;
@@ -629,8 +629,8 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct pasn_data *pasn)
 
 	wrapped_data = wpas_pasn_get_wrapped_data_format(pasn);
 
-	wpa_pasn_build_auth_header(buf, pasn->bssid,
-				   pasn->own_addr, pasn->bssid,
+	wpa_pasn_build_auth_header(buf, pasn->peer_addr,
+				   pasn->own_addr, pasn->peer_addr,
 				   pasn->trans_seq + 1, WLAN_STATUS_SUCCESS);
 
 	wrapped_data_buf = wpas_pasn_get_wrapped_data(pasn);
@@ -658,7 +658,7 @@ static struct wpabuf * wpas_pasn_build_auth_3(struct pasn_data *pasn)
 	data_len = wpabuf_len(buf) - IEEE80211_HDRLEN;
 
 	ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
-		       pasn->own_addr, pasn->bssid,
+		       pasn->own_addr, pasn->peer_addr,
 		       pasn->hash, mic_len * 2, data, data_len, mic);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: frame 3: Failed MIC calculation");
@@ -783,7 +783,7 @@ static int wpas_pasn_set_pmk(struct pasn_data *pasn,
 
 		if (pasn->custom_pmkid_valid) {
 			ret = pasn->validate_custom_pmkid(pasn->cb_ctx,
-							  pasn->bssid,
+							  pasn->peer_addr,
 							  rsn_data->pmkid);
 			if (ret) {
 				wpa_printf(MSG_DEBUG,
@@ -794,7 +794,7 @@ static int wpas_pasn_set_pmk(struct pasn_data *pasn,
 			pmkid = rsn_data->pmkid;
 		}
 
-		pmksa = pmksa_cache_get(pasn->pmksa, pasn->bssid,
+		pmksa = pmksa_cache_get(pasn->pmksa, pasn->peer_addr,
 					pmkid, NULL, pasn->akmp);
 		if (pmksa) {
 			wpa_printf(MSG_DEBUG, "PASN: Using PMKSA");
@@ -826,7 +826,7 @@ static int wpas_pasn_set_pmk(struct pasn_data *pasn,
 		pasn->pmksa_entry = pmksa_cache_add(pasn->pmksa, pasn->pmk,
 						    pasn->pmk_len,
 						    pasn->sae.pmkid,
-						    NULL, 0, pasn->bssid,
+						    NULL, 0, pasn->peer_addr,
 						    pasn->own_addr, NULL,
 						    pasn->akmp, 0);
 		return 0;
@@ -858,7 +858,7 @@ static int wpas_pasn_set_pmk(struct pasn_data *pasn,
 
 
 static int wpas_pasn_send_auth_1(struct pasn_data *pasn, const u8 *own_addr,
-				 const u8 *bssid, int akmp, int cipher,
+				 const u8 *peer_addr, int akmp, int cipher,
 				 u16 group, int freq,
 				 const u8 *beacon_rsne, u8 beacon_rsne_len,
 				 const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
@@ -895,12 +895,13 @@ static int wpas_pasn_send_auth_1(struct pasn_data *pasn, const u8 *own_addr,
 	pasn->freq = freq;
 
 	os_memcpy(pasn->own_addr, own_addr, ETH_ALEN);
-	os_memcpy(pasn->bssid, bssid, ETH_ALEN);
+	os_memcpy(pasn->peer_addr, peer_addr, ETH_ALEN);
 
 	wpa_printf(MSG_DEBUG,
 		   "PASN: Init%s: " MACSTR " akmp=0x%x, cipher=0x%x, group=%u",
 		   verify ? " (verify)" : "",
-		   MAC2STR(pasn->bssid), pasn->akmp, pasn->cipher, pasn->group);
+		   MAC2STR(pasn->peer_addr), pasn->akmp, pasn->cipher,
+		   pasn->group);
 
 	frame = wpas_pasn_build_auth_1(pasn, comeback, verify);
 	if (!frame) {
@@ -926,7 +927,7 @@ fail:
 
 
 int wpas_pasn_start(struct pasn_data *pasn, const u8 *own_addr,
-		    const u8 *bssid, int akmp, int cipher, u16 group,
+		    const u8 *peer_addr, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback)
@@ -972,7 +973,8 @@ int wpas_pasn_start(struct pasn_data *pasn, const u8 *own_addr,
 		return -1;
 	}
 
-	return wpas_pasn_send_auth_1(pasn, own_addr, bssid, akmp, cipher, group,
+	return wpas_pasn_send_auth_1(pasn, own_addr, peer_addr, akmp, cipher,
+				     group,
 				     freq, beacon_rsne, beacon_rsne_len,
 				     beacon_rsnxe, beacon_rsnxe_len, comeback,
 				     false);
@@ -990,13 +992,13 @@ int wpas_pasn_start(struct pasn_data *pasn, const u8 *own_addr,
  * verification.
  */
 int wpa_pasn_verify(struct pasn_data *pasn, const u8 *own_addr,
-		    const u8 *bssid, int akmp, int cipher, u16 group,
+		    const u8 *peer_addr, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback)
 {
-	return wpas_pasn_send_auth_1(pasn, own_addr, bssid, akmp, cipher, group,
-				     freq, beacon_rsne, beacon_rsne_len,
+	return wpas_pasn_send_auth_1(pasn, own_addr, peer_addr, akmp, cipher,
+				     group, freq, beacon_rsne, beacon_rsne_len,
 				     beacon_rsnxe, beacon_rsnxe_len, comeback,
 				     true);
 }
@@ -1019,8 +1021,8 @@ static bool is_pasn_auth_frame(struct pasn_data *pasn,
 
 	/* Not our frame; do nothing */
 	if (os_memcmp(mgmt->da, pasn->own_addr, ETH_ALEN) != 0 ||
-	    os_memcmp(mgmt->sa, pasn->bssid, ETH_ALEN) != 0 ||
-	    os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN) != 0)
+	    os_memcmp(mgmt->sa, pasn->peer_addr, ETH_ALEN) != 0 ||
+	    os_memcmp(mgmt->bssid, pasn->peer_addr, ETH_ALEN) != 0)
 		return false;
 
 	/* Not PASN; do nothing */
@@ -1205,7 +1207,7 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 	}
 
 	ret = pasn_pmk_to_ptk(pasn->pmk, pasn->pmk_len,
-			      pasn->own_addr, pasn->bssid,
+			      pasn->own_addr, pasn->peer_addr,
 			      wpabuf_head(secret), wpabuf_len(secret),
 			      &pasn->ptk, pasn->akmp, pasn->cipher,
 			      pasn->kdk_len);
@@ -1243,7 +1245,7 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 	if (pasn->beacon_rsne_rsnxe) {
 		/* Verify the MIC */
 		ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
-			       pasn->bssid, pasn->own_addr,
+			       pasn->peer_addr, pasn->own_addr,
 			       wpabuf_head(pasn->beacon_rsne_rsnxe),
 			       wpabuf_len(pasn->beacon_rsne_rsnxe),
 			       copy, copy_len, out_mic);
@@ -1278,7 +1280,7 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 
 		/* Verify the MIC */
 		ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
-			       pasn->bssid, pasn->own_addr,
+			       pasn->peer_addr, pasn->own_addr,
 			       rsne_rsnxe,
 			       rsne_rsnxe_len,
 			       copy, copy_len, out_mic);
@@ -1369,7 +1371,7 @@ int wpa_pasn_auth_tx_status(struct pasn_data *pasn,
 	 */
 	if (pasn->trans_seq == 3) {
 		wpa_printf(MSG_DEBUG, "PASN: auth complete with: " MACSTR,
-			   MAC2STR(pasn->bssid));
+			   MAC2STR(pasn->peer_addr));
 		/*
 		 * Either frame was not ACKed or it was ACKed but the trans_seq
 		 * != 1, i.e., not expecting an RX frame, so we are done.

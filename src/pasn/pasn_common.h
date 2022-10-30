@@ -46,7 +46,7 @@ struct pasn_data {
 	u8 status;
 
 	u8 own_addr[ETH_ALEN];
-	u8 bssid[ETH_ALEN];
+	u8 peer_addr[ETH_ALEN];
 	size_t pmk_len;
 	u8 pmk[PMK_LEN_MAX];
 	bool using_pmksa;
@@ -148,12 +148,12 @@ struct pasn_data {
 
 void wpa_pasn_reset(struct pasn_data *pasn);
 int wpas_pasn_start(struct pasn_data *pasn, const u8 *own_addr,
-		    const u8 *bssid, int akmp, int cipher, u16 group,
+		    const u8 *peer_addr, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback);
 int wpa_pasn_verify(struct pasn_data *pasn, const u8 *own_addr,
-		    const u8 *bssid, int akmp, int cipher, u16 group,
+		    const u8 *peer_addr, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback);
