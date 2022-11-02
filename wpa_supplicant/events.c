@@ -3360,7 +3360,7 @@ static int wpa_drv_get_mlo_info(struct wpa_supplicant *wpa_s)
 	struct driver_sta_mlo_info mlo;
 	int i;
 
-	mlo.valid_links = 0;
+	os_memset(&mlo, 0, sizeof(mlo));
 	if (wpas_drv_get_sta_mlo_info(wpa_s, &mlo)) {
 		wpa_dbg(wpa_s, MSG_ERROR, "Failed to get MLO link info");
 		wpa_supplicant_deauthenticate(wpa_s,
