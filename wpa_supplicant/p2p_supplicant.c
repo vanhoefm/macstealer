@@ -2174,6 +2174,7 @@ do {                                    \
 	d->passive_scan = s->passive_scan;
 	d->pmf = s->pmf;
 	d->p2p_6ghz_disable = s->p2p_6ghz_disable;
+	d->sae_pwe = s->sae_pwe;
 
 	if (s->wps_nfc_dh_privkey && s->wps_nfc_dh_pubkey &&
 	    !d->wps_nfc_pw_from_config) {
