@@ -1068,9 +1068,9 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 		wpa_hexdump(MSG_DEBUG, "WPA: RSC", key_rsc, rsclen);
 	}
 
-	if (wpa_sm_set_key(sm, alg, wpa_sm_get_auth_addr(sm), sm->keyidx_active,
-			   1, key_rsc, rsclen, sm->ptk.tk, keylen,
-			   KEY_FLAG_PAIRWISE | key_flag) < 0) {
+	if (wpa_sm_set_key(sm, -1, alg, wpa_sm_get_auth_addr(sm),
+			   sm->keyidx_active, 1, key_rsc, rsclen, sm->ptk.tk,
+			   keylen, KEY_FLAG_PAIRWISE | key_flag) < 0) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
 			"WPA: Failed to set PTK to the driver (alg=%d keylen=%d auth_addr="
 			MACSTR " idx=%d key_flag=0x%x)",
@@ -1117,8 +1117,8 @@ static int wpa_supplicant_activate_ptk(struct wpa_sm *sm)
 		"WPA: Activate PTK (idx=%d auth_addr=" MACSTR ")",
 		sm->keyidx_active, MAC2STR(wpa_sm_get_auth_addr(sm)));
 
-	if (wpa_sm_set_key(sm, 0, wpa_sm_get_auth_addr(sm), sm->keyidx_active,
-			   0, NULL, 0, NULL, 0,
+	if (wpa_sm_set_key(sm, -1, 0, wpa_sm_get_auth_addr(sm),
+			   sm->keyidx_active, 0, NULL, 0, NULL, 0,
 			   KEY_FLAG_PAIRWISE_RX_TX_MODIFY) < 0) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
 			"WPA: Failed to activate PTK for TX (idx=%d auth_addr="
@@ -1198,7 +1198,7 @@ static int wpa_supplicant_install_gtk(struct wpa_sm *sm,
 		_gtk = gtk_buf;
 	}
 	if (sm->pairwise_cipher == WPA_CIPHER_NONE) {
-		if (wpa_sm_set_key(sm, gd->alg, NULL,
+		if (wpa_sm_set_key(sm, -1, gd->alg, NULL,
 				   gd->keyidx, 1, key_rsc, gd->key_rsc_len,
 				   _gtk, gd->gtk_len,
 				   KEY_FLAG_GROUP_RX_TX_DEFAULT) < 0) {
@@ -1208,7 +1208,7 @@ static int wpa_supplicant_install_gtk(struct wpa_sm *sm,
 			forced_memzero(gtk_buf, sizeof(gtk_buf));
 			return -1;
 		}
-	} else if (wpa_sm_set_key(sm, gd->alg, broadcast_ether_addr,
+	} else if (wpa_sm_set_key(sm, -1, gd->alg, broadcast_ether_addr,
 				  gd->keyidx, gd->tx, key_rsc, gd->key_rsc_len,
 				  _gtk, gd->gtk_len, KEY_FLAG_GROUP_RX) < 0) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
@@ -1361,7 +1361,7 @@ static int wpa_supplicant_install_igtk(struct wpa_sm *sm,
 			"WPA: Invalid IGTK KeyID %d", keyidx);
 		return -1;
 	}
-	if (wpa_sm_set_key(sm, wpa_cipher_to_alg(sm->mgmt_group_cipher),
+	if (wpa_sm_set_key(sm, -1, wpa_cipher_to_alg(sm->mgmt_group_cipher),
 			   broadcast_ether_addr,
 			   keyidx, 0, igtk->pn, sizeof(igtk->pn),
 			   igtk->igtk, len, KEY_FLAG_GROUP_RX) < 0) {
@@ -1430,7 +1430,7 @@ static int wpa_supplicant_install_bigtk(struct wpa_sm *sm,
 			"WPA: Invalid BIGTK KeyID %d", keyidx);
 		return -1;
 	}
-	if (wpa_sm_set_key(sm, wpa_cipher_to_alg(sm->mgmt_group_cipher),
+	if (wpa_sm_set_key(sm, -1, wpa_cipher_to_alg(sm->mgmt_group_cipher),
 			   broadcast_ether_addr,
 			   keyidx, 0, bigtk->pn, sizeof(bigtk->pn),
 			   bigtk->bigtk, len, KEY_FLAG_GROUP_RX) < 0) {
@@ -5236,7 +5236,7 @@ int fils_process_assoc_resp(struct wpa_sm *sm, const u8 *resp, size_t len)
 	rsclen = wpa_cipher_rsc_len(sm->pairwise_cipher);
 	wpa_hexdump_key(MSG_DEBUG, "FILS: Set TK to driver",
 			sm->ptk.tk, keylen);
-	if (wpa_sm_set_key(sm, alg, wpa_sm_get_auth_addr(sm), 0, 1,
+	if (wpa_sm_set_key(sm, -1, alg, wpa_sm_get_auth_addr(sm), 0, 1,
 			   null_rsc, rsclen,
 			   sm->ptk.tk, keylen, KEY_FLAG_PAIRWISE_RX_TX) < 0) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,

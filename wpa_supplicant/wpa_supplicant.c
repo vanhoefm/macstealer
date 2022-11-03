@@ -143,7 +143,7 @@ int wpa_set_wep_keys(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 			continue;
 
 		set = 1;
-		wpa_drv_set_key(wpa_s, WPA_ALG_WEP, NULL,
+		wpa_drv_set_key(wpa_s, -1, WPA_ALG_WEP, NULL,
 				i, i == ssid->wep_tx_keyidx, NULL, 0,
 				ssid->wep_key[i], ssid->wep_key_len[i],
 				i == ssid->wep_tx_keyidx ?
@@ -207,7 +207,7 @@ int wpa_supplicant_set_wpa_none_key(struct wpa_supplicant *wpa_s,
 	/* TODO: should actually remember the previously used seq#, both for TX
 	 * and RX from each STA.. */
 
-	ret = wpa_drv_set_key(wpa_s, alg, NULL, 0, 1, seq, 6, key, keylen,
+	ret = wpa_drv_set_key(wpa_s, -1, alg, NULL, 0, 1, seq, 6, key, keylen,
 			      KEY_FLAG_GROUP_RX_TX_DEFAULT);
 	os_memset(key, 0, sizeof(key));
 	return ret;
@@ -768,18 +768,18 @@ void wpa_clear_keys(struct wpa_supplicant *wpa_s, const u8 *addr)
 	for (i = 0; i < max; i++) {
 		if (wpa_s->keys_cleared & BIT(i))
 			continue;
-		wpa_drv_set_key(wpa_s, WPA_ALG_NONE, NULL, i, 0, NULL, 0,
+		wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, NULL, i, 0, NULL, 0,
 				NULL, 0, KEY_FLAG_GROUP);
 	}
 	/* Pairwise Key ID 1 for Extended Key ID is tracked in bit 15 */
 	if (~wpa_s->keys_cleared & (BIT(0) | BIT(15)) && addr &&
 	    !is_zero_ether_addr(addr)) {
 		if (!(wpa_s->keys_cleared & BIT(0)))
-			wpa_drv_set_key(wpa_s, WPA_ALG_NONE, addr, 0, 0, NULL,
-					0, NULL, 0, KEY_FLAG_PAIRWISE);
+			wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, addr, 0, 0,
+					NULL, 0, NULL, 0, KEY_FLAG_PAIRWISE);
 		if (!(wpa_s->keys_cleared & BIT(15)))
-			wpa_drv_set_key(wpa_s, WPA_ALG_NONE, addr, 1, 0, NULL,
-					0, NULL, 0, KEY_FLAG_PAIRWISE);
+			wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, addr, 1, 0,
+					NULL, 0, NULL, 0, KEY_FLAG_PAIRWISE);
 		/* MLME-SETPROTECTION.request(None) */
 		wpa_drv_mlme_setprotection(
 			wpa_s, addr,

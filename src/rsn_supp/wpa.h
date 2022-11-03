@@ -29,7 +29,7 @@ struct wpa_sm_ctx {
 	enum wpa_states (*get_state)(void *ctx);
 	void (*deauthenticate)(void * ctx, u16 reason_code);
 	void (*reconnect)(void *ctx);
-	int (*set_key)(void *ctx, enum wpa_alg alg,
+	int (*set_key)(void *ctx, int link_id, enum wpa_alg alg,
 		       const u8 *addr, int key_idx, int set_tx,
 		       const u8 *seq, size_t seq_len,
 		       const u8 *key, size_t key_len, enum key_flag key_flag);

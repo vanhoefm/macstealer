@@ -879,7 +879,8 @@ static void mesh_mpm_plink_estab(struct wpa_supplicant *wpa_s,
 
 	if (conf->security & MESH_CONF_SEC_AMPE) {
 		wpa_hexdump_key(MSG_DEBUG, "mesh: MTK", sta->mtk, sta->mtk_len);
-		wpa_drv_set_key(wpa_s, wpa_cipher_to_alg(conf->pairwise_cipher),
+		wpa_drv_set_key(wpa_s, -1,
+				wpa_cipher_to_alg(conf->pairwise_cipher),
 				sta->addr, 0, 0, seq, sizeof(seq),
 				sta->mtk, sta->mtk_len,
 				KEY_FLAG_PAIRWISE_RX_TX);
@@ -888,7 +889,8 @@ static void mesh_mpm_plink_estab(struct wpa_supplicant *wpa_s,
 				sta->mgtk_rsc, sizeof(sta->mgtk_rsc));
 		wpa_hexdump_key(MSG_DEBUG, "mesh: RX MGTK",
 				sta->mgtk, sta->mgtk_len);
-		wpa_drv_set_key(wpa_s, wpa_cipher_to_alg(conf->group_cipher),
+		wpa_drv_set_key(wpa_s, -1,
+				wpa_cipher_to_alg(conf->group_cipher),
 				sta->addr, sta->mgtk_key_id, 0,
 				sta->mgtk_rsc, sizeof(sta->mgtk_rsc),
 				sta->mgtk, sta->mgtk_len,
@@ -900,7 +902,7 @@ static void mesh_mpm_plink_estab(struct wpa_supplicant *wpa_s,
 			wpa_hexdump_key(MSG_DEBUG, "mesh: RX IGTK",
 					sta->igtk, sta->igtk_len);
 			wpa_drv_set_key(
-				wpa_s,
+				wpa_s, -1,
 				wpa_cipher_to_alg(conf->mgmt_group_cipher),
 				sta->addr, sta->igtk_key_id, 0,
 				sta->igtk_rsc, sizeof(sta->igtk_rsc),

@@ -240,15 +240,15 @@ static inline void wpa_sm_deauthenticate(struct wpa_sm *sm, u16 reason_code)
 	sm->ctx->deauthenticate(sm->ctx->ctx, reason_code);
 }
 
-static inline int wpa_sm_set_key(struct wpa_sm *sm, enum wpa_alg alg,
-				 const u8 *addr, int key_idx, int set_tx,
-				 const u8 *seq, size_t seq_len,
+static inline int wpa_sm_set_key(struct wpa_sm *sm, int link_id,
+				 enum wpa_alg alg, const u8 *addr, int key_idx,
+				 int set_tx, const u8 *seq, size_t seq_len,
 				 const u8 *key, size_t key_len,
 				 enum key_flag key_flag)
 {
 	WPA_ASSERT(sm->ctx->set_key);
-	return sm->ctx->set_key(sm->ctx->ctx, alg, addr, key_idx, set_tx,
-				seq, seq_len, key, key_len, key_flag);
+	return sm->ctx->set_key(sm->ctx->ctx, link_id, alg, addr, key_idx,
+				set_tx, seq, seq_len, key, key_len, key_flag);
 }
 
 static inline void wpa_sm_reconnect(struct wpa_sm *sm)

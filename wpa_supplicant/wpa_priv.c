@@ -414,6 +414,7 @@ static void wpa_priv_cmd_set_key(struct wpa_priv_interface *iface,
 	p.key = params->key_len ? params->key : NULL;
 	p.key_len = params->key_len;
 	p.key_flag = params->key_flag;
+	p.link_id = -1;
 
 	res = iface->driver->set_key(iface->drv_priv, &p);
 	wpa_printf(MSG_DEBUG, "drv->set_key: res=%d", res);

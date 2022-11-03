@@ -3345,6 +3345,7 @@ static int wpa_driver_nl80211_set_key(struct i802_bss *bss,
 	size_t key_len = params->key_len;
 	int vlan_id = params->vlan_id;
 	enum key_flag key_flag = params->key_flag;
+	int link_id = params->link_id;
 
 	/* Ignore for P2P Device */
 	if (drv->nlmode == NL80211_IFTYPE_P2P_DEVICE)
@@ -3352,9 +3353,10 @@ static int wpa_driver_nl80211_set_key(struct i802_bss *bss,
 
 	ifindex = if_nametoindex(ifname);
 	wpa_printf(MSG_DEBUG, "%s: ifindex=%d (%s) alg=%d addr=%p key_idx=%d "
-		   "set_tx=%d seq_len=%lu key_len=%lu key_flag=0x%x",
+		   "set_tx=%d seq_len=%lu key_len=%lu key_flag=0x%x link_id=%d",
 		   __func__, ifindex, ifname, alg, addr, key_idx, set_tx,
-		   (unsigned long) seq_len, (unsigned long) key_len, key_flag);
+		   (unsigned long) seq_len, (unsigned long) key_len, key_flag,
+		   link_id);
 
 	if (check_key_flag(key_flag)) {
 		wpa_printf(MSG_DEBUG, "%s: invalid key_flag", __func__);
@@ -3481,6 +3483,12 @@ static int wpa_driver_nl80211_set_key(struct i802_bss *bss,
 			goto fail;
 	}
 
+	if (link_id != -1) {
+		wpa_printf(MSG_DEBUG, "nl80211: Link ID %d", link_id);
+		if (nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, link_id))
+			goto fail;
+	}
+
 	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
 	if ((ret == -ENOENT || ret == -ENOLINK) && alg == WPA_ALG_NONE)
 		ret = 0;
@@ -3540,6 +3548,13 @@ static int wpa_driver_nl80211_set_key(struct i802_bss *bss,
 		wpa_printf(MSG_DEBUG, "nl80211: set_key default - VLAN ID %d",
 			   vlan_id);
 		if (nla_put_u16(msg, NL80211_ATTR_VLAN_ID, vlan_id))
+			goto fail;
+	}
+
+	if (link_id != -1) {
+		wpa_printf(MSG_DEBUG, "nl80211: set_key default - Link ID %d",
+			   link_id);
+		if (nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, link_id))
 			goto fail;
 	}
 
@@ -3870,6 +3885,7 @@ retry:
 	os_memset(&p, 0, sizeof(p));
 	p.ifname = bss->ifname;
 	p.alg = WPA_ALG_WEP;
+	p.link_id = -1;
 	for (i = 0; i < 4; i++) {
 		if (!params->wep_key[i])
 			continue;

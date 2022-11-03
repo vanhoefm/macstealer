@@ -131,7 +131,7 @@ static int wpa_supplicant_get_bssid(void *wpa_s, u8 *bssid)
 }
 
 
-static int wpa_supplicant_set_key(void *wpa_s, enum wpa_alg alg,
+static int wpa_supplicant_set_key(void *wpa_s, int link_id, enum wpa_alg alg,
 				  const u8 *addr, int key_idx, int set_tx,
 				  const u8 *seq, size_t seq_len,
 				  const u8 *key, size_t key_len,

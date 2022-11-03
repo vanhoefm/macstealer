@@ -724,6 +724,7 @@ int hostapd_drv_set_key(const char *ifname, struct hostapd_data *hapd,
 	params.key_len = key_len;
 	params.vlan_id = vlan_id;
 	params.key_flag = key_flag;
+	params.link_id = -1;
 
 	return hapd->driver->set_key(hapd->drv_priv, &params);
 }

@@ -143,7 +143,7 @@ static inline int wpa_drv_get_ssid(struct wpa_supplicant *wpa_s, u8 *ssid)
 	return -1;
 }
 
-static inline int wpa_drv_set_key(struct wpa_supplicant *wpa_s,
+static inline int wpa_drv_set_key(struct wpa_supplicant *wpa_s, int link_id,
 				  enum wpa_alg alg, const u8 *addr,
 				  int key_idx, int set_tx,
 				  const u8 *seq, size_t seq_len,
@@ -163,6 +163,7 @@ static inline int wpa_drv_set_key(struct wpa_supplicant *wpa_s,
 	params.key = key;
 	params.key_len = key_len;
 	params.key_flag = key_flag;
+	params.link_id = link_id;
 
 	if (alg != WPA_ALG_NONE) {
 		/* keyidx = 1 can be either a broadcast or--with

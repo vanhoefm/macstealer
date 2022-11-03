@@ -495,7 +495,7 @@ static int wpa_ft_install_ptk(struct wpa_sm *sm, const u8 *bssid)
 	keylen = wpa_cipher_key_len(sm->pairwise_cipher);
 
 	/* TODO: AP MLD address for MLO */
-	if (wpa_sm_set_key(sm, alg, bssid, 0, 1, null_rsc, sizeof(null_rsc),
+	if (wpa_sm_set_key(sm, -1, alg, bssid, 0, 1, null_rsc, sizeof(null_rsc),
 			   (u8 *) sm->ptk.tk, keylen,
 			   KEY_FLAG_PAIRWISE_RX_TX) < 0) {
 		wpa_printf(MSG_WARNING, "FT: Failed to set PTK to the driver");
@@ -851,7 +851,7 @@ static int wpa_ft_process_gtk_subelem(struct wpa_sm *sm, const u8 *gtk_elem,
 		os_memcpy(gtk + 16, gtk + 24, 8);
 		os_memcpy(gtk + 24, tmp, 8);
 	}
-	if (wpa_sm_set_key(sm, alg, broadcast_ether_addr, keyidx, 0,
+	if (wpa_sm_set_key(sm, -1, alg, broadcast_ether_addr, keyidx, 0,
 			   gtk_elem + 3, rsc_len, gtk, keylen,
 			   KEY_FLAG_GROUP_RX) < 0) {
 		wpa_printf(MSG_WARNING, "WPA: Failed to set GTK to the "
@@ -918,7 +918,7 @@ static int wpa_ft_process_igtk_subelem(struct wpa_sm *sm, const u8 *igtk_elem,
 
 	wpa_hexdump_key(MSG_DEBUG, "FT: IGTK from Reassoc Resp", igtk,
 			igtk_len);
-	if (wpa_sm_set_key(sm, wpa_cipher_to_alg(sm->mgmt_group_cipher),
+	if (wpa_sm_set_key(sm, -1, wpa_cipher_to_alg(sm->mgmt_group_cipher),
 			   broadcast_ether_addr, keyidx, 0,
 			   igtk_elem + 2, 6, igtk, igtk_len,
 			   KEY_FLAG_GROUP_RX) < 0) {
@@ -986,7 +986,7 @@ static int wpa_ft_process_bigtk_subelem(struct wpa_sm *sm, const u8 *bigtk_elem,
 
 	wpa_hexdump_key(MSG_DEBUG, "FT: BIGTK from Reassoc Resp", bigtk,
 			bigtk_len);
-	if (wpa_sm_set_key(sm, wpa_cipher_to_alg(sm->mgmt_group_cipher),
+	if (wpa_sm_set_key(sm, -1, wpa_cipher_to_alg(sm->mgmt_group_cipher),
 			   broadcast_ether_addr, keyidx, 0,
 			   bigtk_elem + 2, 6, bigtk, bigtk_len,
 			   KEY_FLAG_GROUP_RX) < 0) {

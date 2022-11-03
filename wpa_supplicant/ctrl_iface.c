@@ -5655,23 +5655,23 @@ static void wpa_supplicant_ctrl_iface_drop_sa(struct wpa_supplicant *wpa_s)
 {
 	wpa_printf(MSG_DEBUG, "Dropping SA without deauthentication");
 	/* MLME-DELETEKEYS.request */
-	wpa_drv_set_key(wpa_s, WPA_ALG_NONE, NULL, 0, 0, NULL, 0, NULL,
+	wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, NULL, 0, 0, NULL, 0, NULL,
 			0, KEY_FLAG_GROUP);
-	wpa_drv_set_key(wpa_s, WPA_ALG_NONE, NULL, 1, 0, NULL, 0, NULL,
+	wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, NULL, 1, 0, NULL, 0, NULL,
 			0, KEY_FLAG_GROUP);
-	wpa_drv_set_key(wpa_s, WPA_ALG_NONE, NULL, 2, 0, NULL, 0, NULL,
+	wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, NULL, 2, 0, NULL, 0, NULL,
 			0, KEY_FLAG_GROUP);
-	wpa_drv_set_key(wpa_s, WPA_ALG_NONE, NULL, 3, 0, NULL, 0, NULL,
+	wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, NULL, 3, 0, NULL, 0, NULL,
 			0, KEY_FLAG_GROUP);
-	wpa_drv_set_key(wpa_s, WPA_ALG_NONE, NULL, 4, 0, NULL, 0, NULL,
+	wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, NULL, 4, 0, NULL, 0, NULL,
 			0, KEY_FLAG_GROUP);
-	wpa_drv_set_key(wpa_s, WPA_ALG_NONE, NULL, 5, 0, NULL, 0, NULL,
+	wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, NULL, 5, 0, NULL, 0, NULL,
 			0, KEY_FLAG_GROUP);
 
-	wpa_drv_set_key(wpa_s, WPA_ALG_NONE, wpa_s->bssid, 0, 0, NULL, 0, NULL,
-			0, KEY_FLAG_PAIRWISE);
+	wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, wpa_s->bssid, 0, 0, NULL, 0,
+			NULL, 0, KEY_FLAG_PAIRWISE);
 	if (wpa_sm_ext_key_id(wpa_s->wpa))
-		wpa_drv_set_key(wpa_s, WPA_ALG_NONE, wpa_s->bssid, 1, 0,
+		wpa_drv_set_key(wpa_s, -1, WPA_ALG_NONE, wpa_s->bssid, 1, 0,
 				NULL, 0, NULL, 0, KEY_FLAG_PAIRWISE);
 	/* MLME-SETPROTECTION.request(None) */
 	wpa_drv_mlme_setprotection(wpa_s, wpa_s->bssid,
@@ -9996,14 +9996,15 @@ static int wpas_ctrl_reset_pn(struct wpa_supplicant *wpa_s)
 
 	/* First, use a zero key to avoid any possible duplicate key avoidance
 	 * in the driver. */
-	if (wpa_drv_set_key(wpa_s, wpa_s->last_tk_alg, wpa_s->last_tk_addr,
+	if (wpa_drv_set_key(wpa_s, -1, wpa_s->last_tk_alg, wpa_s->last_tk_addr,
 			    wpa_s->last_tk_key_idx, 1, zero, 6,
 			    zero, wpa_s->last_tk_len,
 			    KEY_FLAG_PAIRWISE_RX_TX) < 0)
 		return -1;
 
 	/* Set the previously configured key to reset its TSC/RSC */
-	return wpa_drv_set_key(wpa_s, wpa_s->last_tk_alg, wpa_s->last_tk_addr,
+	return wpa_drv_set_key(wpa_s, -1, wpa_s->last_tk_alg,
+			       wpa_s->last_tk_addr,
 			       wpa_s->last_tk_key_idx, 1, zero, 6,
 			       wpa_s->last_tk, wpa_s->last_tk_len,
 			       KEY_FLAG_PAIRWISE_RX_TX);
