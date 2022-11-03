@@ -296,7 +296,7 @@ struct sta_info {
 #endif /* CONFIG_AIRTIME_POLICY */
 
 #ifdef CONFIG_PASN
-	struct wpas_pasn *pasn;
+	struct pasn_data *pasn;
 #endif /* CONFIG_PASN */
 };
 

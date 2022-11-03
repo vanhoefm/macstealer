@@ -28,7 +28,7 @@
 #ifdef CONFIG_PASN
 #ifdef CONFIG_SAE
 
-static int pasn_wd_handle_sae_commit(struct wpas_pasn *pasn,
+static int pasn_wd_handle_sae_commit(struct pasn_data *pasn,
 				     const u8 *own_addr, const u8 *peer_addr,
 				     struct wpabuf *wd)
 {
@@ -104,7 +104,7 @@ static int pasn_wd_handle_sae_commit(struct wpas_pasn *pasn,
 }
 
 
-static int pasn_wd_handle_sae_confirm(struct wpas_pasn *pasn,
+static int pasn_wd_handle_sae_confirm(struct pasn_data *pasn,
 				      const u8 *peer_addr, struct wpabuf *wd)
 {
 	const u8 *data;
@@ -163,7 +163,7 @@ static int pasn_wd_handle_sae_confirm(struct wpas_pasn *pasn,
 }
 
 
-static struct wpabuf * pasn_get_sae_wd(struct wpas_pasn *pasn)
+static struct wpabuf * pasn_get_sae_wd(struct pasn_data *pasn)
 {
 	struct wpabuf *buf = NULL;
 	u8 *len_ptr;
@@ -206,7 +206,7 @@ static struct wpabuf * pasn_get_sae_wd(struct wpas_pasn *pasn)
 
 #ifdef CONFIG_FILS
 
-static struct wpabuf * pasn_get_fils_wd(struct wpas_pasn *pasn)
+static struct wpabuf * pasn_get_fils_wd(struct pasn_data *pasn)
 {
 	struct pasn_fils *fils = &pasn->fils;
 	struct wpabuf *buf = NULL;
@@ -255,7 +255,7 @@ static struct wpabuf * pasn_get_fils_wd(struct wpas_pasn *pasn)
 
 #endif /* CONFIG_FILS */
 
-static struct wpabuf * pasn_get_wrapped_data(struct wpas_pasn *pasn)
+static struct wpabuf * pasn_get_wrapped_data(struct pasn_data *pasn)
 {
 	switch (pasn->akmp) {
 	case WPA_KEY_MGMT_PASN:
@@ -288,7 +288,7 @@ static struct wpabuf * pasn_get_wrapped_data(struct wpas_pasn *pasn)
 
 
 static int
-pasn_derive_keys(struct wpas_pasn *pasn,
+pasn_derive_keys(struct pasn_data *pasn,
 		 const u8 *own_addr, const u8 *peer_addr,
 		 const u8 *cached_pmk, size_t cached_pmk_len,
 		 struct wpa_pasn_params_data *pasn_data,
@@ -359,7 +359,7 @@ pasn_derive_keys(struct wpas_pasn *pasn,
 }
 
 
-static void handle_auth_pasn_comeback(struct wpas_pasn *pasn,
+static void handle_auth_pasn_comeback(struct pasn_data *pasn,
 				      const u8 *own_addr, const u8 *peer_addr,
 				      u16 group)
 {
@@ -411,7 +411,7 @@ static void handle_auth_pasn_comeback(struct wpas_pasn *pasn,
 }
 
 
-int handle_auth_pasn_resp(struct wpas_pasn *pasn, const u8 *own_addr,
+int handle_auth_pasn_resp(struct pasn_data *pasn, const u8 *own_addr,
 			  const u8 *peer_addr,
 			  struct rsn_pmksa_cache_entry *pmksa, u16 status)
 {
@@ -584,7 +584,7 @@ fail:
 }
 
 
-int handle_auth_pasn_1(struct wpas_pasn *pasn,
+int handle_auth_pasn_1(struct pasn_data *pasn,
 		       const u8 *own_addr, const u8 *peer_addr,
 		       const struct ieee80211_mgmt *mgmt, size_t len)
 {
@@ -889,7 +889,7 @@ send_resp:
 }
 
 
-int handle_auth_pasn_3(struct wpas_pasn *pasn, const u8 *own_addr,
+int handle_auth_pasn_3(struct pasn_data *pasn, const u8 *own_addr,
 		       const u8 *peer_addr,
 		       const struct ieee80211_mgmt *mgmt, size_t len)
 {

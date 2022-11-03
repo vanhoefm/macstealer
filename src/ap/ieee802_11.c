@@ -2282,7 +2282,7 @@ static void pasn_fils_auth_resp(struct hostapd_data *hapd,
 				struct wpabuf *erp_resp,
 				const u8 *msk, size_t msk_len)
 {
-	struct wpas_pasn *pasn = sta->pasn;
+	struct pasn_data *pasn = sta->pasn;
 	struct pasn_fils *fils = &pasn->fils;
 	u8 pmk[PMK_LEN_MAX];
 	size_t pmk_len;
@@ -2362,7 +2362,7 @@ static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 	wpa_printf(MSG_DEBUG, "PASN: FILS: RADIUS is not configured. Fail");
 	return -1;
 #else /* CONFIG_NO_RADIUS */
-	struct wpas_pasn *pasn = sta->pasn;
+	struct pasn_data *pasn = sta->pasn;
 	struct pasn_fils *fils = &pasn->fils;
 	struct ieee802_11_elems elems;
 	struct wpa_ie_data rsne_data;
@@ -2494,7 +2494,7 @@ static int hapd_pasn_send_mlme(void *ctx, const u8 *data, size_t data_len,
 static void hapd_initialize_pasn(struct hostapd_data *hapd,
 				 struct sta_info *sta)
 {
-	struct wpas_pasn *pasn = sta->pasn;
+	struct pasn_data *pasn = sta->pasn;
 
 	pasn->cb_ctx = hapd;
 	pasn->send_mgmt = hapd_pasn_send_mlme;
@@ -2560,7 +2560,7 @@ static void hapd_pasn_update_params(struct hostapd_data *hapd,
 				    const struct ieee80211_mgmt *mgmt,
 				    size_t len)
 {
-	struct wpas_pasn *pasn = sta->pasn;
+	struct pasn_data *pasn = sta->pasn;
 	struct ieee802_11_elems elems;
 	struct wpa_ie_data rsn_data;
 	struct wpa_pasn_params_data pasn_params;

@@ -34,7 +34,7 @@ struct pasn_fils {
 	struct wpabuf *erp_resp;
 };
 
-struct wpas_pasn {
+struct pasn_data {
 	int akmp;
 	int cipher;
 	u16 group;
@@ -146,30 +146,30 @@ struct wpas_pasn {
 
 /* Initiator */
 
-void wpa_pasn_reset(struct wpas_pasn *pasn);
-int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
+void wpa_pasn_reset(struct pasn_data *pasn);
+int wpas_pasn_start(struct pasn_data *pasn, const u8 *own_addr,
 		    const u8 *bssid, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback);
-int wpa_pasn_verify(struct wpas_pasn *pasn, const u8 *own_addr,
+int wpa_pasn_verify(struct pasn_data *pasn, const u8 *own_addr,
 		    const u8 *bssid, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
 		    const struct wpabuf *comeback);
-int wpa_pasn_auth_rx(struct wpas_pasn *pasn, const u8 *data, size_t len,
+int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 		     struct wpa_pasn_params_data *pasn_params);
-int wpa_pasn_auth_tx_status(struct wpas_pasn *pasn,
+int wpa_pasn_auth_tx_status(struct pasn_data *pasn,
 			    const u8 *data, size_t data_len, u8 acked);
 
 /* Responder */
-int handle_auth_pasn_1(struct wpas_pasn *pasn,
+int handle_auth_pasn_1(struct pasn_data *pasn,
 		       const u8 *own_addr, const u8 *peer_addr,
 		       const struct ieee80211_mgmt *mgmt, size_t len);
-int handle_auth_pasn_3(struct wpas_pasn *pasn, const u8 *own_addr,
+int handle_auth_pasn_3(struct pasn_data *pasn, const u8 *own_addr,
 		       const u8 *peer_addr,
 		       const struct ieee80211_mgmt *mgmt, size_t len);
-int handle_auth_pasn_resp(struct wpas_pasn *pasn, const u8 *own_addr,
+int handle_auth_pasn_resp(struct pasn_data *pasn, const u8 *own_addr,
 			  const u8 *peer_addr,
 			  struct rsn_pmksa_cache_entry *pmksa, u16 status);
 

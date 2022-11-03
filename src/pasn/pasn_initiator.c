@@ -28,7 +28,7 @@
 
 #ifdef CONFIG_SAE
 
-static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpas_pasn *pasn)
+static struct wpabuf * wpas_pasn_wd_sae_commit(struct pasn_data *pasn)
 {
 	struct wpabuf *buf = NULL;
 	int ret;
@@ -65,7 +65,7 @@ static struct wpabuf * wpas_pasn_wd_sae_commit(struct wpas_pasn *pasn)
 }
 
 
-static int wpas_pasn_wd_sae_rx(struct wpas_pasn *pasn, struct wpabuf *wd)
+static int wpas_pasn_wd_sae_rx(struct pasn_data *pasn, struct wpabuf *wd)
 {
 	const u8 *data;
 	size_t buf_len;
@@ -164,7 +164,7 @@ static int wpas_pasn_wd_sae_rx(struct wpas_pasn *pasn, struct wpabuf *wd)
 }
 
 
-static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpas_pasn *pasn)
+static struct wpabuf * wpas_pasn_wd_sae_confirm(struct pasn_data *pasn)
 {
 	struct wpabuf *buf = NULL;
 
@@ -190,7 +190,7 @@ static struct wpabuf * wpas_pasn_wd_sae_confirm(struct wpas_pasn *pasn)
 
 #ifdef CONFIG_FILS
 
-static struct wpabuf * wpas_pasn_fils_build_auth(struct wpas_pasn *pasn)
+static struct wpabuf * wpas_pasn_fils_build_auth(struct pasn_data *pasn)
 {
 	struct wpabuf *buf = NULL;
 	struct wpabuf *erp_msg;
@@ -271,7 +271,7 @@ fail:
 }
 
 
-static struct wpabuf * wpas_pasn_wd_fils_auth(struct wpas_pasn *pasn)
+static struct wpabuf * wpas_pasn_wd_fils_auth(struct pasn_data *pasn)
 {
 	wpa_printf(MSG_DEBUG, "PASN: FILS: wrapped data - completed=%u",
 		   pasn->fils.completed);
@@ -290,7 +290,7 @@ static struct wpabuf * wpas_pasn_wd_fils_auth(struct wpas_pasn *pasn)
 }
 
 
-static int wpas_pasn_wd_fils_rx(struct wpas_pasn *pasn, struct wpabuf *wd)
+static int wpas_pasn_wd_fils_rx(struct pasn_data *pasn, struct wpabuf *wd)
 {
 	struct ieee802_11_elems elems;
 	struct wpa_ie_data rsne_data;
@@ -440,7 +440,7 @@ static int wpas_pasn_wd_fils_rx(struct wpas_pasn *pasn, struct wpabuf *wd)
 #endif /* CONFIG_FILS */
 
 
-static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpas_pasn *pasn)
+static struct wpabuf * wpas_pasn_get_wrapped_data(struct pasn_data *pasn)
 {
 	if (pasn->using_pmksa)
 		return NULL;
@@ -482,7 +482,7 @@ static struct wpabuf * wpas_pasn_get_wrapped_data(struct wpas_pasn *pasn)
 }
 
 
-static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
+static u8 wpas_pasn_get_wrapped_data_format(struct pasn_data *pasn)
 {
 	if (pasn->using_pmksa)
 		return WPA_PASN_WRAPPED_DATA_NO;
@@ -510,7 +510,7 @@ static u8 wpas_pasn_get_wrapped_data_format(struct wpas_pasn *pasn)
 }
 
 
-static struct wpabuf * wpas_pasn_build_auth_1(struct wpas_pasn *pasn,
+static struct wpabuf * wpas_pasn_build_auth_1(struct pasn_data *pasn,
 					      const struct wpabuf *comeback,
 					      bool verify)
 {
@@ -608,7 +608,7 @@ fail:
 }
 
 
-static struct wpabuf * wpas_pasn_build_auth_3(struct wpas_pasn *pasn)
+static struct wpabuf * wpas_pasn_build_auth_3(struct pasn_data *pasn)
 {
 	struct wpabuf *buf, *wrapped_data_buf = NULL;
 	u8 mic[WPA_PASN_MAX_MIC_LEN];
@@ -686,7 +686,7 @@ fail:
 }
 
 
-void wpa_pasn_reset(struct wpas_pasn *pasn)
+void wpa_pasn_reset(struct pasn_data *pasn)
 {
 	wpa_printf(MSG_DEBUG, "PASN: Reset");
 
@@ -744,7 +744,7 @@ void wpa_pasn_reset(struct wpas_pasn *pasn)
 }
 
 
-static int wpas_pasn_set_pmk(struct wpas_pasn *pasn,
+static int wpas_pasn_set_pmk(struct pasn_data *pasn,
 			     struct wpa_ie_data *rsn_data,
 			     struct wpa_pasn_params_data *pasn_data,
 			     struct wpabuf *wrapped_data)
@@ -857,7 +857,7 @@ static int wpas_pasn_set_pmk(struct wpas_pasn *pasn,
 }
 
 
-static int wpas_pasn_send_auth_1(struct wpas_pasn *pasn, const u8 *own_addr,
+static int wpas_pasn_send_auth_1(struct pasn_data *pasn, const u8 *own_addr,
 				 const u8 *bssid, int akmp, int cipher,
 				 u16 group, int freq,
 				 const u8 *beacon_rsne, u8 beacon_rsne_len,
@@ -925,7 +925,7 @@ fail:
 }
 
 
-int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
+int wpas_pasn_start(struct pasn_data *pasn, const u8 *own_addr,
 		    const u8 *bssid, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
@@ -989,7 +989,7 @@ int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
  * provides support to construct PASN Authentication frames for pairing
  * verification.
  */
-int wpa_pasn_verify(struct wpas_pasn *pasn, const u8 *own_addr,
+int wpa_pasn_verify(struct pasn_data *pasn, const u8 *own_addr,
 		    const u8 *bssid, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
@@ -1002,7 +1002,7 @@ int wpa_pasn_verify(struct wpas_pasn *pasn, const u8 *own_addr,
 }
 
 
-int wpa_pasn_auth_rx(struct wpas_pasn *pasn, const u8 *data, size_t len,
+int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 		     struct wpa_pasn_params_data *pasn_params)
 
 {
@@ -1312,7 +1312,7 @@ fail:
 }
 
 
-int wpa_pasn_auth_tx_status(struct wpas_pasn *pasn,
+int wpa_pasn_auth_tx_status(struct pasn_data *pasn,
 			    const u8 *data, size_t data_len, u8 acked)
 
 {

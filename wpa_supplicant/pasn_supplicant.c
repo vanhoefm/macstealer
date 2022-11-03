@@ -424,7 +424,7 @@ static void wpas_pasn_delete_peers(struct wpa_supplicant *wpa_s,
 }
 
 
-static void wpas_pasn_initiate_eapol(struct wpas_pasn *pasn,
+static void wpas_pasn_initiate_eapol(struct pasn_data *pasn,
 				     struct wpa_ssid *ssid)
 {
 	struct eapol_config eapol_conf;
@@ -445,7 +445,7 @@ static void wpas_pasn_initiate_eapol(struct wpas_pasn *pasn,
 
 static void wpas_pasn_reset(struct wpa_supplicant *wpa_s)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct pasn_data *pasn = &wpa_s->pasn;
 
 	wpas_pasn_cancel_auth_work(wpa_s);
 	wpa_s->pasn_auth_work = NULL;
@@ -502,7 +502,7 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 {
 	struct wpa_supplicant *wpa_s = work->wpa_s;
 	struct wpa_pasn_auth_work *awork = work->ctx;
-	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct pasn_data *pasn = &wpa_s->pasn;
 	struct wpa_ssid *ssid;
 	struct wpa_bss *bss;
 	const u8 *rsne, *rsnxe;
@@ -739,7 +739,7 @@ int wpas_pasn_auth_start(struct wpa_supplicant *wpa_s,
 
 void wpas_pasn_auth_stop(struct wpa_supplicant *wpa_s)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct pasn_data *pasn = &wpa_s->pasn;
 
 	if (!wpa_s->pasn.ecdh)
 		return;
@@ -755,7 +755,7 @@ void wpas_pasn_auth_stop(struct wpa_supplicant *wpa_s)
 
 
 static int wpas_pasn_immediate_retry(struct wpa_supplicant *wpa_s,
-				     struct wpas_pasn *pasn,
+				     struct pasn_data *pasn,
 				     struct wpa_pasn_params_data *params)
 {
 	int akmp = pasn->akmp;
@@ -786,7 +786,7 @@ static void wpas_pasn_deauth_cb(struct ptksa_cache_entry *entry)
 int wpas_pasn_auth_rx(struct wpa_supplicant *wpa_s,
 		      const struct ieee80211_mgmt *mgmt, size_t len)
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct pasn_data *pasn = &wpa_s->pasn;
 	struct wpa_pasn_params_data pasn_data;
 	int ret;
 
@@ -877,7 +877,7 @@ int wpas_pasn_auth_tx_status(struct wpa_supplicant *wpa_s,
 			     const u8 *data, size_t data_len, u8 acked)
 
 {
-	struct wpas_pasn *pasn = &wpa_s->pasn;
+	struct pasn_data *pasn = &wpa_s->pasn;
 	int ret;
 
 	if (!wpa_s->pasn_auth_work) {

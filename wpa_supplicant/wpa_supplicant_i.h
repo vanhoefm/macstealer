@@ -1500,7 +1500,7 @@ struct wpa_supplicant {
 	bool mscs_setup_done;
 
 #ifdef CONFIG_PASN
-	struct wpas_pasn pasn;
+	struct pasn_data pasn;
 	struct wpa_radio_work *pasn_auth_work;
 	unsigned int pasn_count;
 	struct pasn_auth *pasn_params;
