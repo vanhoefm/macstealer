@@ -705,6 +705,53 @@ static int wpa_handle_ext_key_id(struct wpa_sm *sm,
 }
 
 
+static u8 * rsn_add_kde(u8 *pos, u32 kde, const u8 *data, size_t data_len)
+{
+	*pos++ = WLAN_EID_VENDOR_SPECIFIC;
+	*pos++ = RSN_SELECTOR_LEN + data_len;
+	RSN_SELECTOR_PUT(pos, kde);
+	pos += RSN_SELECTOR_LEN;
+	os_memcpy(pos, data, data_len);
+	pos += data_len;
+
+	return pos;
+}
+
+
+static size_t wpa_mlo_link_kde_len(struct wpa_sm *sm)
+{
+	int i;
+	unsigned int num_links = 0;
+
+	for (i = 0; i < MAX_NUM_MLO_LINKS; i++) {
+		if (sm->mlo.assoc_link_id != i && (sm->mlo.req_links & BIT(i)))
+			num_links++;
+	}
+
+	return num_links * (RSN_SELECTOR_LEN + 1 + ETH_ALEN + 2);
+}
+
+
+static u8 * wpa_mlo_link_kde(struct wpa_sm *sm, u8 *pos)
+{
+	int i;
+	u8 hdr[1 + ETH_ALEN];
+
+	for (i = 0; i < MAX_NUM_MLO_LINKS; i++) {
+		if (sm->mlo.assoc_link_id == i || !(sm->mlo.req_links & BIT(i)))
+			continue;
+
+		wpa_printf(MSG_DEBUG,
+			   "MLO: Add MLO Link %d KDE in EAPOL-Key 2/4", i);
+		hdr[0] = i & 0xF; /* LinkID; no RSNE or RSNXE */
+		os_memcpy(&hdr[1], sm->mlo.links[i].addr, ETH_ALEN);
+		pos = rsn_add_kde(pos, RSN_KEY_DATA_MLO_LINK, hdr, sizeof(hdr));
+	}
+
+	return pos;
+}
+
+
 static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 					  const unsigned char *src_addr,
 					  const struct wpa_eapol_key *key,
@@ -717,6 +764,7 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 	int res;
 	u8 *kde, *kde_buf = NULL;
 	size_t kde_len;
+	size_t mlo_kde_len = 0;
 
 	if (encrypted == FRAME_NOT_ENCRYPTED && sm->tk_set &&
 	    wpa_sm_pmf_enabled(sm)) {
@@ -796,13 +844,19 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 	}
 	sm->tptk_set = 1;
 
+	/* Add MLO Link KDE and MAC KDE in M2 for ML connection */
+	if (sm->mlo.valid_links)
+		mlo_kde_len = wpa_mlo_link_kde_len(sm) +
+			RSN_SELECTOR_LEN + ETH_ALEN + 2;
+
 	kde = sm->assoc_wpa_ie;
 	kde_len = sm->assoc_wpa_ie_len;
 	kde_buf = os_malloc(kde_len +
 			    2 + RSN_SELECTOR_LEN + 3 +
 			    sm->assoc_rsnxe_len +
 			    2 + RSN_SELECTOR_LEN + 1 +
-			    2 + RSN_SELECTOR_LEN + 2);
+			    2 + RSN_SELECTOR_LEN + 2 + mlo_kde_len);
+
 	if (!kde_buf)
 		goto failed;
 	os_memcpy(kde_buf, kde, kde_len);
@@ -875,6 +929,21 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 		kde_len = pos - kde;
 	}
 #endif /* CONFIG_DPP2 */
+
+	if (sm->mlo.valid_links) {
+		u8 *pos;
+
+		/* Add MAC KDE */
+		wpa_printf(MSG_DEBUG, "MLO: Add MAC KDE into EAPOL-Key 2/4");
+		pos = kde + kde_len;
+		pos = rsn_add_kde(pos, RSN_KEY_DATA_MAC_ADDR, sm->own_addr,
+				  ETH_ALEN);
+
+		/* Add MLO Link KDE */
+		wpa_printf(MSG_DEBUG, "Add MLO Link KDE(s) into EAPOL-Key 2/4");
+		pos = wpa_mlo_link_kde(sm, pos);
+		kde_len = pos - kde;
+	}
 
 	if (wpa_supplicant_send_2_of_4(sm, sm->bssid, key, ver, sm->snonce,
 				       kde, kde_len, ptk) < 0)
@@ -1684,13 +1753,32 @@ int wpa_supplicant_send_4_of_4(struct wpa_sm *sm, const unsigned char *dst,
 	size_t mic_len, hdrlen, rlen;
 	struct wpa_eapol_key *reply;
 	u8 *rbuf, *key_mic;
+	u8 *kde = NULL;
+	size_t kde_len = 0;
+
+	if (sm->mlo.valid_links) {
+		u8 *pos;
+
+		kde = os_malloc(RSN_SELECTOR_LEN + ETH_ALEN + 2);
+		if (!kde)
+			return -1;
+
+		/* Add MAC KDE */
+		wpa_printf(MSG_DEBUG, "MLO: Add MAC KDE into EAPOL-Key 4/4");
+		pos = kde;
+		pos = rsn_add_kde(pos, RSN_KEY_DATA_MAC_ADDR, sm->own_addr,
+				  ETH_ALEN);
+		kde_len = pos - kde;
+	}
 
 	mic_len = wpa_mic_len(sm->key_mgmt, sm->pmk_len);
 	hdrlen = sizeof(*reply) + mic_len + 2;
 	rbuf = wpa_sm_alloc_eapol(sm, IEEE802_1X_TYPE_EAPOL_KEY, NULL,
-				  hdrlen, &rlen, (void *) &reply);
-	if (rbuf == NULL)
+				  hdrlen + kde_len, &rlen, (void *) &reply);
+	if (!rbuf) {
+		os_free(kde);
 		return -1;
+	}
 
 	reply->type = (sm->proto == WPA_PROTO_RSN ||
 		       sm->proto == WPA_PROTO_OSEN) ?
@@ -1710,7 +1798,11 @@ int wpa_supplicant_send_4_of_4(struct wpa_sm *sm, const unsigned char *dst,
 		  WPA_REPLAY_COUNTER_LEN);
 
 	key_mic = (u8 *) (reply + 1);
-	WPA_PUT_BE16(key_mic + mic_len, 0);
+	WPA_PUT_BE16(key_mic + mic_len, kde_len); /* Key Data length */
+	if (kde) {
+		os_memcpy(key_mic + mic_len + 2, kde, kde_len); /* Key Data */
+		os_free(kde);
+	}
 
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "WPA: Sending EAPOL-Key 4/4");
 	return wpa_eapol_key_send(sm, ptk, ver, dst, ETH_P_EAPOL, rbuf, rlen,
