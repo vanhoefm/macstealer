@@ -149,6 +149,7 @@ struct p2p_device {
 	struct wpabuf *go_neg_conf;
 
 	int sd_pending_bcast_queries;
+	bool support_6ghz;
 };
 
 struct p2p_sd_query {
@@ -864,6 +865,8 @@ void p2p_continue_find(struct p2p_data *p2p);
 struct p2p_device * p2p_add_dev_from_go_neg_req(struct p2p_data *p2p,
 						const u8 *addr,
 						struct p2p_message *msg);
+void p2p_update_peer_6ghz_capab(struct p2p_device *dev,
+				const struct p2p_message *msg);
 void p2p_add_dev_info(struct p2p_data *p2p, const u8 *addr,
 		      struct p2p_device *dev, struct p2p_message *msg);
 int p2p_add_device(struct p2p_data *p2p, const u8 *addr, int freq,

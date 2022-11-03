@@ -904,6 +904,9 @@ void p2p_process_go_neg_req(struct p2p_data *p2p, const u8 *sa,
 		p2p_add_dev_info(p2p, sa, dev, &msg);
 	}
 
+	if (dev)
+		p2p_update_peer_6ghz_capab(dev, &msg);
+
 	if (p2p->go_neg_peer && p2p->go_neg_peer == dev)
 		eloop_cancel_timeout(p2p_go_neg_wait_timeout, p2p, NULL);
 
@@ -1230,6 +1233,7 @@ void p2p_process_go_neg_resp(struct p2p_data *p2p, const u8 *sa,
 		return;
 	}
 	dev->flags &= ~P2P_DEV_WAIT_GO_NEG_RESPONSE;
+	p2p_update_peer_6ghz_capab(dev, &msg);
 
 	if (msg.dialog_token != dev->dialog_token) {
 		p2p_dbg(p2p, "Unexpected Dialog Token %u (expected %u)",
@@ -1524,6 +1528,8 @@ void p2p_process_go_neg_conf(struct p2p_data *p2p, const u8 *sa,
 		p2p_parse_free(&msg);
 		return;
 	}
+
+	p2p_update_peer_6ghz_capab(dev, &msg);
 
 	if (dev->go_state == REMOTE_GO && msg.group_id) {
 		/* Store SSID for Provisioning step */
