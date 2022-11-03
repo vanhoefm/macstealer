@@ -2788,6 +2788,106 @@ static int wpa_supplicant_send_2_of_2(struct wpa_sm *sm,
 }
 
 
+static void wpa_supplicant_process_mlo_1_of_2(struct wpa_sm *sm,
+					      const unsigned char *src_addr,
+					      const struct wpa_eapol_key *key,
+					      const u8 *key_data,
+					      size_t key_data_len, u16 ver)
+{
+	u16 key_info;
+	u8 i;
+	struct wpa_eapol_ie_parse ie;
+
+	if (!sm->msg_3_of_4_ok && !wpa_fils_is_completed(sm)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"MLO RSN: Group Key Handshake started prior to completion of 4-way handshake");
+		goto failed;
+	}
+
+	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "MLO RSN: RX message 1 of Group "
+		"Key Handshake from " MACSTR " (ver=%d)", MAC2STR(src_addr),
+		ver);
+
+	key_info = WPA_GET_BE16(key->key_info);
+
+	wpa_sm_set_state(sm, WPA_GROUP_HANDSHAKE);
+
+	wpa_hexdump_key(MSG_DEBUG, "MLO RSN: msg 1/2 key data", key_data,
+			key_data_len);
+	if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0)
+		goto failed;
+
+	if (!ie.valid_mlo_gtks) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"MLO RSN: No MLO GTK KDE in Group Key msg 1/2");
+		goto failed;
+	}
+
+	if (!(key_info & WPA_KEY_INFO_ENCR_KEY_DATA)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"MLO RSN: MLO GTK KDE in unencrypted key data");
+		goto failed;
+	}
+
+#ifdef CONFIG_OCV
+	if (wpa_sm_ocv_enabled(sm)) {
+		struct wpa_channel_info ci;
+
+		if (wpa_sm_channel_info(sm, &ci) != 0) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"Failed to get channel info to validate received OCI in EAPOL-Key group msg 1/2");
+			goto failed;
+		}
+
+		if (ocv_verify_tx_params(ie.oci, ie.oci_len, &ci,
+					 channel_width_to_int(ci.chanwidth),
+					 ci.seg1_idx) != OCI_SUCCESS) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_INFO, OCV_FAILURE
+				"addr=" MACSTR " frame=eapol-key-g1 error=%s",
+				MAC2STR(sm->bssid), ocv_errorstr);
+			goto failed;
+		}
+	}
+#endif /* CONFIG_OCV */
+
+	if (mlo_ieee80211w_set_keys(sm, &ie) < 0)
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"MLO RSN: Failed to configure MLO IGTK");
+
+	for (i = 0; i < MAX_NUM_MLO_LINKS; i++) {
+		if (!(sm->mlo.valid_links & BIT(i)))
+			continue;
+
+		/*
+		 * AP may send group keys for subset of the all links during
+		 * rekey
+		 */
+		if (!ie.mlo_gtk[i])
+			continue;
+
+		if (wpa_supplicant_mlo_gtk(sm, i, ie.mlo_gtk[i],
+					   ie.mlo_gtk_len[i], key_info))
+			goto failed;
+	}
+
+	if (wpa_supplicant_send_2_of_2(sm, key, ver, key_info) < 0)
+		goto failed;
+
+	wpa_msg(sm->ctx->msg_ctx, MSG_INFO, "MLO RSN: Group rekeying completed "
+		"with " MACSTR " [GTK=%s]", MAC2STR(sm->mlo.ap_mld_addr),
+		wpa_cipher_txt(sm->group_cipher));
+	wpa_sm_cancel_auth_timeout(sm);
+	wpa_sm_set_state(sm, WPA_COMPLETED);
+
+	wpa_sm_set_rekey_offload(sm);
+
+	return;
+
+failed:
+	wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
+}
+
+
 static void wpa_supplicant_process_1_of_2(struct wpa_sm *sm,
 					  const unsigned char *src_addr,
 					  const struct wpa_eapol_key *key,
@@ -3420,9 +3520,16 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 		if ((mic_len && (key_info & WPA_KEY_INFO_MIC)) ||
 		    (!mic_len && (key_info & WPA_KEY_INFO_ENCR_KEY_DATA))) {
 			/* 1/2 Group Key Handshake */
-			wpa_supplicant_process_1_of_2(sm, src_addr, key,
-						      key_data, key_data_len,
-						      ver);
+			if (sm->mlo.valid_links)
+				wpa_supplicant_process_mlo_1_of_2(sm, src_addr,
+								  key, key_data,
+								  key_data_len,
+								  ver);
+			else
+				wpa_supplicant_process_1_of_2(sm, src_addr, key,
+							      key_data,
+							      key_data_len,
+							      ver);
 		} else {
 			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
 				"WPA: EAPOL-Key (Group) without Mic/Encr bit - "
