@@ -494,6 +494,7 @@ static int wpa_ft_install_ptk(struct wpa_sm *sm, const u8 *bssid)
 	alg = wpa_cipher_to_alg(sm->pairwise_cipher);
 	keylen = wpa_cipher_key_len(sm->pairwise_cipher);
 
+	/* TODO: AP MLD address for MLO */
 	if (wpa_sm_set_key(sm, alg, bssid, 0, 1, null_rsc, sizeof(null_rsc),
 			   (u8 *) sm->ptk.tk, keylen,
 			   KEY_FLAG_PAIRWISE_RX_TX) < 0) {

@@ -1068,13 +1068,13 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 		wpa_hexdump(MSG_DEBUG, "WPA: RSC", key_rsc, rsclen);
 	}
 
-	if (wpa_sm_set_key(sm, alg, sm->bssid, sm->keyidx_active, 1, key_rsc,
-			   rsclen, sm->ptk.tk, keylen,
+	if (wpa_sm_set_key(sm, alg, wpa_sm_get_auth_addr(sm), sm->keyidx_active,
+			   1, key_rsc, rsclen, sm->ptk.tk, keylen,
 			   KEY_FLAG_PAIRWISE | key_flag) < 0) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-			"WPA: Failed to set PTK to the driver (alg=%d keylen=%d bssid="
+			"WPA: Failed to set PTK to the driver (alg=%d keylen=%d auth_addr="
 			MACSTR " idx=%d key_flag=0x%x)",
-			alg, keylen, MAC2STR(sm->bssid),
+			alg, keylen, MAC2STR(wpa_sm_get_auth_addr(sm)),
 			sm->keyidx_active, key_flag);
 		return -1;
 	}
@@ -1114,14 +1114,16 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 static int wpa_supplicant_activate_ptk(struct wpa_sm *sm)
 {
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
-		"WPA: Activate PTK (idx=%d bssid=" MACSTR ")",
-		sm->keyidx_active, MAC2STR(sm->bssid));
+		"WPA: Activate PTK (idx=%d auth_addr=" MACSTR ")",
+		sm->keyidx_active, MAC2STR(wpa_sm_get_auth_addr(sm)));
 
-	if (wpa_sm_set_key(sm, 0, sm->bssid, sm->keyidx_active, 0, NULL, 0,
-			   NULL, 0, KEY_FLAG_PAIRWISE_RX_TX_MODIFY) < 0) {
+	if (wpa_sm_set_key(sm, 0, wpa_sm_get_auth_addr(sm), sm->keyidx_active,
+			   0, NULL, 0, NULL, 0,
+			   KEY_FLAG_PAIRWISE_RX_TX_MODIFY) < 0) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-			"WPA: Failed to activate PTK for TX (idx=%d bssid="
-			MACSTR ")", sm->keyidx_active, MAC2STR(sm->bssid));
+			"WPA: Failed to activate PTK for TX (idx=%d auth_addr="
+			MACSTR ")", sm->keyidx_active,
+			MAC2STR(wpa_sm_get_auth_addr(sm)));
 		return -1;
 	}
 	return 0;
@@ -5234,12 +5236,13 @@ int fils_process_assoc_resp(struct wpa_sm *sm, const u8 *resp, size_t len)
 	rsclen = wpa_cipher_rsc_len(sm->pairwise_cipher);
 	wpa_hexdump_key(MSG_DEBUG, "FILS: Set TK to driver",
 			sm->ptk.tk, keylen);
-	if (wpa_sm_set_key(sm, alg, sm->bssid, 0, 1, null_rsc, rsclen,
+	if (wpa_sm_set_key(sm, alg, wpa_sm_get_auth_addr(sm), 0, 1,
+			   null_rsc, rsclen,
 			   sm->ptk.tk, keylen, KEY_FLAG_PAIRWISE_RX_TX) < 0) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-			"FILS: Failed to set PTK to the driver (alg=%d keylen=%d bssid="
+			"FILS: Failed to set PTK to the driver (alg=%d keylen=%d auth_addr="
 			MACSTR ")",
-			alg, keylen, MAC2STR(sm->bssid));
+			alg, keylen, MAC2STR(wpa_sm_get_auth_addr(sm)));
 		goto fail;
 	}
 
