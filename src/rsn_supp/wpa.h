@@ -150,6 +150,12 @@ struct wpa_sm_link {
 	u8 bssid[ETH_ALEN];
 	u8 *ap_rsne, *ap_rsnxe;
 	size_t ap_rsne_len, ap_rsnxe_len;
+	struct wpa_gtk gtk;
+	struct wpa_gtk gtk_wnm_sleep;
+	struct wpa_igtk igtk;
+	struct wpa_igtk igtk_wnm_sleep;
+	struct wpa_bigtk bigtk;
+	struct wpa_bigtk bigtk_wnm_sleep;
 };
 
 struct wpa_sm_mlo {
