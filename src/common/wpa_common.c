@@ -4102,4 +4102,27 @@ void wpa_pasn_add_rsnxe(struct wpabuf *buf, u16 capab)
 		wpabuf_put_u8(buf, capab);
 }
 
+
+/*
+ * wpa_pasn_add_extra_ies - Add protocol specific IEs in Authentication
+ * frame for PASN.
+ *
+ * @buf: Buffer in which the elements will be added
+ * @extra_ies: Protocol specific elements to add
+ * @len: Length of the elements
+ * Returns: 0 on success, -1 on failure
+ */
+
+int wpa_pasn_add_extra_ies(struct wpabuf *buf, const u8 *extra_ies, size_t len)
+{
+	if (!len || !extra_ies || !buf)
+		return 0;
+
+	if (wpabuf_tailroom(buf) < sizeof(len))
+		return -1;
+
+	wpabuf_put_data(buf, extra_ies, len);
+	return 0;
+}
+
 #endif /* CONFIG_PASN */

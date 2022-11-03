@@ -579,6 +579,8 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct wpas_pasn *pasn,
 
 	wpa_pasn_add_rsnxe(buf, pasn->rsnxe_capab);
 
+	wpa_pasn_add_extra_ies(buf, pasn->extra_ies, pasn->extra_ies_len);
+
 	ret = pasn_auth_frame_hash(pasn->akmp, pasn->cipher,
 				   wpabuf_head_u8(buf) + IEEE80211_HDRLEN,
 				   wpabuf_len(buf) - IEEE80211_HDRLEN,

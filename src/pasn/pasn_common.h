@@ -116,6 +116,13 @@ struct wpas_pasn {
 	u8 custom_pmkid[PMKID_LEN];
 
 	/**
+	 * Extra elements to add into Authentication frames. These can be used,
+	 * e.g., for Wi-Fi Aware use cases.
+	 */
+	const u8 *extra_ies;
+	size_t extra_ies_len;
+
+	/**
 	 * send_mgmt - Function handler to transmit a Management frame
 	 * @ctx: Callback context from cb_ctx
 	 * @frame_buf : Frame to transmit

@@ -491,6 +491,8 @@ int handle_auth_pasn_resp(struct wpas_pasn *pasn, const u8 *own_addr,
 	if (rsnxe_ie)
 		wpabuf_put_data(buf, rsnxe_ie, 2 + rsnxe_ie[1]);
 
+	wpa_pasn_add_extra_ies(buf, pasn->extra_ies, pasn->extra_ies_len);
+
 	/* Add the mic */
 	mic_len = pasn_mic_len(pasn->akmp, pasn->cipher);
 	wpabuf_put_u8(buf, WLAN_EID_MIC);
