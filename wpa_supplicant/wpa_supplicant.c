@@ -403,6 +403,7 @@ void wpa_supplicant_set_non_wpa_policy(struct wpa_supplicant *wpa_s,
 #ifdef CONFIG_WEP
 	int i;
 #endif /* CONFIG_WEP */
+	struct wpa_sm_mlo mlo;
 
 	if (ssid->key_mgmt & WPA_KEY_MGMT_WPS)
 		wpa_s->key_mgmt = WPA_KEY_MGMT_WPS;
@@ -443,6 +444,8 @@ void wpa_supplicant_set_non_wpa_policy(struct wpa_supplicant *wpa_s,
 			 wpa_s->mgmt_group_cipher);
 
 	pmksa_cache_clear_current(wpa_s->wpa);
+	os_memset(&mlo, 0, sizeof(mlo));
+	wpa_sm_set_mlo_params(wpa_s->wpa, &mlo);
 }
 
 

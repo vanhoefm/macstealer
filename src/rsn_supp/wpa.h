@@ -145,6 +145,21 @@ struct rsn_supp_config {
 	bool force_kdk_derivation;
 };
 
+struct wpa_sm_link {
+	u8 addr[ETH_ALEN];
+	u8 bssid[ETH_ALEN];
+	u8 *ap_rsne, *ap_rsnxe;
+	size_t ap_rsne_len, ap_rsnxe_len;
+};
+
+struct wpa_sm_mlo {
+	u8 ap_mld_addr[ETH_ALEN];
+	u8 assoc_link_id;
+	u16 valid_links; /* bitmap of accepted links */
+	u16 req_links; /* bitmap of requested links */
+	struct wpa_sm_link links[MAX_NUM_MLD_LINKS];
+};
+
 #ifndef CONFIG_NO_WPA
 
 struct wpa_sm * wpa_sm_init(struct wpa_sm_ctx *ctx);
@@ -224,6 +239,7 @@ void wpa_sm_set_ptk_kck_kek(struct wpa_sm *sm,
 			    const u8 *ptk_kek, size_t ptk_kek_len);
 int wpa_fils_is_completed(struct wpa_sm *sm);
 void wpa_sm_pmksa_cache_reconfig(struct wpa_sm *sm);
+int wpa_sm_set_mlo_params(struct wpa_sm *sm, const struct wpa_sm_mlo *mlo);
 
 #else /* CONFIG_NO_WPA */
 
@@ -436,6 +452,12 @@ static inline int wpa_fils_is_completed(struct wpa_sm *sm)
 
 static inline void wpa_sm_pmksa_cache_reconfig(struct wpa_sm *sm)
 {
+}
+
+static inline int wpa_sm_set_mlo_params(struct wpa_sm *sm,
+					const struct wpa_sm_mlo *mlo)
+{
+	return 0;
 }
 
 #endif /* CONFIG_NO_WPA */

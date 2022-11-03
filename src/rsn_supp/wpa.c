@@ -37,6 +37,27 @@
 static const u8 null_rsc[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
+static void wpa_hexdump_link(int level, u8 link_id, const char *title,
+			     const void *buf, size_t len)
+{
+	char *link_title = NULL;
+
+	if (link_id >= MAX_NUM_MLD_LINKS)
+		goto out;
+
+	link_title = os_malloc(os_strlen(title) + 20);
+	if (!link_title)
+		goto out;
+
+	os_snprintf(link_title, os_strlen(title) + 20, "MLO link[%u]: %s",
+		    link_id, title);
+
+out:
+	wpa_hexdump(level, link_title ? link_title : title, buf, len);
+	os_free(link_title);
+}
+
+
 /**
  * wpa_eapol_key_send - Send WPA/RSN EAPOL-Key message
  * @sm: Pointer to WPA state machine data from wpa_sm_init()
@@ -3006,6 +3027,8 @@ struct wpa_sm * wpa_sm_init(struct wpa_sm_ctx *ctx)
  */
 void wpa_sm_deinit(struct wpa_sm *sm)
 {
+	int i;
+
 	if (sm == NULL)
 		return;
 	pmksa_cache_deinit(sm->pmksa);
@@ -3016,6 +3039,10 @@ void wpa_sm_deinit(struct wpa_sm *sm)
 	os_free(sm->ap_wpa_ie);
 	os_free(sm->ap_rsn_ie);
 	os_free(sm->ap_rsnxe);
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		os_free(sm->mlo.links[i].ap_rsne);
+		os_free(sm->mlo.links[i].ap_rsnxe);
+	}
 	wpa_sm_drop_sa(sm);
 	os_free(sm->ctx);
 #ifdef CONFIG_IEEE80211R
@@ -3301,6 +3328,81 @@ void wpa_sm_set_config(struct wpa_sm *sm, struct rsn_supp_config *config)
 		sm->beacon_prot = 0;
 		sm->force_kdk_derivation = false;
 	}
+}
+
+
+int wpa_sm_set_mlo_params(struct wpa_sm *sm, const struct wpa_sm_mlo *mlo)
+{
+	int i;
+
+	if (!sm)
+		return -1;
+
+	os_memcpy(sm->mlo.ap_mld_addr, mlo->ap_mld_addr, ETH_ALEN);
+	sm->mlo.assoc_link_id =  mlo->assoc_link_id;
+	sm->mlo.valid_links = mlo->valid_links;
+	sm->mlo.req_links = mlo->req_links;
+
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		const u8 *ie;
+		size_t len;
+
+		if (sm->mlo.req_links & BIT(i)) {
+			if (!mlo->links[i].ap_rsne ||
+			    mlo->links[i].ap_rsne_len == 0) {
+				wpa_dbg(sm->ctx->msg_ctx, MSG_INFO,
+					"RSN: No RSNE for AP MLO link %d with BSSID "
+					MACSTR,
+					i, MAC2STR(mlo->links[i].bssid));
+				return -1;
+
+			}
+			os_memcpy(sm->mlo.links[i].addr, mlo->links[i].addr,
+				  ETH_ALEN);
+			os_memcpy(sm->mlo.links[i].bssid, mlo->links[i].bssid,
+				  ETH_ALEN);
+		}
+
+		ie = mlo->links[i].ap_rsne;
+		len = mlo->links[i].ap_rsne_len;
+		os_free(sm->mlo.links[i].ap_rsne);
+		if (!ie || len == 0) {
+			wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+				"RSN: Clearing MLO link[%u] AP RSNE", i);
+			sm->mlo.links[i].ap_rsne = NULL;
+			sm->mlo.links[i].ap_rsne_len = 0;
+		} else {
+			wpa_hexdump_link(MSG_DEBUG, i, "RSN: Set AP RSNE",
+					 ie, len);
+			sm->mlo.links[i].ap_rsne = os_memdup(ie, len);
+			if (!sm->mlo.links[i].ap_rsne) {
+				sm->mlo.links[i].ap_rsne_len = 0;
+				return -1;
+			}
+			sm->mlo.links[i].ap_rsne_len = len;
+		}
+
+		ie = mlo->links[i].ap_rsnxe;
+		len = mlo->links[i].ap_rsnxe_len;
+		os_free(sm->mlo.links[i].ap_rsnxe);
+		if (!ie || len == 0) {
+			wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+				"RSN: Clearing MLO link[%u] AP RSNXE", i);
+			sm->mlo.links[i].ap_rsnxe = NULL;
+			sm->mlo.links[i].ap_rsnxe_len = 0;
+		} else {
+			wpa_hexdump_link(MSG_DEBUG, i, "RSN: Set AP RSNXE", ie,
+					 len);
+			sm->mlo.links[i].ap_rsnxe = os_memdup(ie, len);
+			if (!sm->mlo.links[i].ap_rsnxe) {
+				sm->mlo.links[i].ap_rsnxe_len = 0;
+				return -1;
+			}
+			sm->mlo.links[i].ap_rsnxe_len = len;
+		}
+	}
+
+	return 0;
 }
 
 
