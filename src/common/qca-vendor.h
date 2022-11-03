@@ -2822,7 +2822,7 @@ enum qca_wlan_vendor_attr_config {
 	 * 0 - Default behavior.
 	 * 1 - Enable the periodic sounding for Tx beamformer.
 	 */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_BEAMFORMER_PERIODIC_SOUNDING = 84,
+	QCA_WLAN_VENDOR_ATTR_CONFIG_BEAMFORMER_PERIODIC_SOUNDING = 85,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
