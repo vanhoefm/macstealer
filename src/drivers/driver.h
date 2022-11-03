@@ -2741,7 +2741,8 @@ struct weighted_pcl {
 };
 
 struct driver_sta_mlo_info {
-	u16 valid_links; /* bitmap of valid link IDs */
+	u16 req_links; /* bitmap of requested link IDs */
+	u16 valid_links; /* bitmap of accepted link IDs */
 	u8 assoc_link_id;
 	u8 ap_mld_addr[ETH_ALEN];
 	struct {
