@@ -1649,20 +1649,23 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 		if (pad_len)
 			*pos++ = 0xdd;
 
-		wpa_hexdump_key(MSG_DEBUG, "Plaintext EAPOL-Key Key Data",
+		wpa_hexdump_key(MSG_DEBUG,
+				"Plaintext EAPOL-Key Key Data (+ padding)",
 				buf, key_data_len);
 		if (version == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES ||
 		    wpa_use_aes_key_wrap(sm->wpa_key_mgmt) ||
 		    version == WPA_KEY_INFO_TYPE_AES_128_CMAC) {
-			wpa_printf(MSG_DEBUG,
-				   "WPA: Encrypt Key Data using AES-WRAP (KEK length %zu)",
-				   sm->PTK.kek_len);
+			wpa_hexdump_key(MSG_DEBUG, "RSN: AES-WRAP using KEK",
+					sm->PTK.kek, sm->PTK.kek_len);
 			if (aes_wrap(sm->PTK.kek, sm->PTK.kek_len,
 				     (key_data_len - 8) / 8, buf, key_data)) {
 				os_free(hdr);
 				bin_clear_free(buf, key_data_len);
 				return;
 			}
+			wpa_hexdump(MSG_DEBUG,
+				    "RSN: Encrypted Key Data from AES-WRAP",
+				    key_data, key_data_len);
 			WPA_PUT_BE16(key_mic + mic_len, key_data_len);
 #ifndef CONFIG_NO_RC4
 		} else if (sm->PTK.kek_len == 16) {
@@ -1713,6 +1716,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 	}
 
 	wpa_auth_set_eapol(wpa_auth, sm->addr, WPA_EAPOL_inc_EapolFramesTx, 1);
+	wpa_hexdump(MSG_DEBUG, "Send EAPOL-Key msg", hdr, len);
 	wpa_auth_send_eapol(wpa_auth, sm->addr, (u8 *) hdr, len,
 			    sm->pairwise_set);
 	os_free(hdr);
