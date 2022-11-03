@@ -1987,7 +1987,7 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 
 		sa = pmksa_cache_add(sm->pmksa, sm->pmk, sm->pmk_len, NULL,
 				     sm->ptk.kck, sm->ptk.kck_len,
-				     sm->bssid, sm->own_addr,
+				     wpa_sm_get_auth_addr(sm), sm->own_addr,
 				     sm->network_ctx, sm->key_mgmt, NULL);
 		if (!sm->cur_pmksa)
 			sm->cur_pmksa = sa;
