@@ -852,6 +852,16 @@ enum qca_radiotap_vendor_ids {
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_sr.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_MLO_PEER_PRIM_NETDEV_EVENT: Subcommand used to
+ *	notify application layer about the primary netdev of an MLO connection.
+ *	In some implementations, MLO has multiple netdevs out of which one
+ *	netdev is designated as primary to provide a unified interface to the
+ *	bridge. In those implementations this event is sent on every MLO peer
+ *	connection.
+ *
+ *	The attributes used with this event are defined in
+ *	enum qca_wlan_vendor_attr_mlo_peer_prim_netdev_event.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -1056,6 +1066,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_SCS_RULE_CONFIG = 218,
 	QCA_NL80211_VENDOR_SUBCMD_GET_SAR_CAPABILITY = 219,
 	QCA_NL80211_VENDOR_SUBCMD_SR = 220,
+	QCA_NL80211_VENDOR_SUBCMD_MLO_PEER_PRIM_NETDEV_EVENT = 221,
 };
 
 /* Compatibility defines for previously used subcmd names.
@@ -13679,6 +13690,30 @@ enum qca_wlan_vendor_attr_sr {
 	QCA_WLAN_VENDOR_ATTR_SR_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_SR_MAX =
 	QCA_WLAN_VENDOR_ATTR_SR_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_mlo_peer_prim_netdev_event - Defines the attributes
+ * used in the QCA_NL80211_VENDOR_SUBCMD_MLO_PEER_PRIM_NETDEV_EVENT subcommand.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_MACADDR: 6 byte MAC address
+ * used by the peer on the link that corresponds to the link used for sending
+ * the event notification.
+ * @QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_MLD_MAC_ADDR: 6 byte
+ * MLD MAC address of the peer.
+ * @QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_PRIM_IFINDEX: u32 attribute,
+ * used to pass ifindex of the primary netdev.
+ */
+enum qca_wlan_vendor_attr_mlo_peer_prim_netdev_event {
+	QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_MACADDR = 1,
+	QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_MLD_MAC_ADDR = 2,
+	QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_PRIM_IFINDEX = 3,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_MAX =
+	QCA_WLAN_VENDOR_ATTR_MLO_PEER_PRIM_NETDEV_EVENT_AFTER_LAST - 1,
 };
 
 #endif /* QCA_VENDOR_H */
