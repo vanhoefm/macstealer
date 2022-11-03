@@ -641,7 +641,7 @@ static int wpa_derive_ptk(struct wpa_sm *sm, const unsigned char *src_addr,
 		kdk_len = 0;
 
 	ret = wpa_pmk_to_ptk(sm->pmk, sm->pmk_len, "Pairwise key expansion",
-			     sm->own_addr, sm->bssid, sm->snonce,
+			     sm->own_addr, wpa_sm_get_auth_addr(sm), sm->snonce,
 			     key->key_nonce, ptk, akmp,
 			     sm->pairwise_cipher, z, z_len,
 			     kdk_len);
@@ -4279,6 +4279,12 @@ unsigned int wpa_sm_get_key_mgmt(struct wpa_sm *sm)
 }
 
 
+const u8 * wpa_sm_get_auth_addr(struct wpa_sm *sm)
+{
+	return sm->mlo.valid_links ? sm->mlo.ap_mld_addr : sm->bssid;
+}
+
+
 #ifdef CONFIG_FILS
 
 struct wpabuf * fils_build_auth(struct wpa_sm *sm, int dh_group, const u8 *md)
@@ -4662,7 +4668,8 @@ int fils_process_auth(struct wpa_sm *sm, const u8 *bssid, const u8 *data,
 	else
 		kdk_len = 0;
 
-	if (fils_pmk_to_ptk(sm->pmk, sm->pmk_len, sm->own_addr, sm->bssid,
+	if (fils_pmk_to_ptk(sm->pmk, sm->pmk_len, sm->own_addr,
+			    wpa_sm_get_auth_addr(sm),
 			    sm->fils_nonce, sm->fils_anonce,
 			    dh_ss ? wpabuf_head(dh_ss) : NULL,
 			    dh_ss ? wpabuf_len(dh_ss) : 0,

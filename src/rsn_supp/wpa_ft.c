@@ -81,7 +81,7 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		kdk_len = 0;
 
 	ret = wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce,
-				anonce, sm->own_addr, sm->bssid,
+				anonce, sm->own_addr, wpa_sm_get_auth_addr(sm),
 				sm->pmk_r1_name, ptk, ptk_name, sm->key_mgmt,
 				sm->pairwise_cipher, kdk_len);
 	if (ret) {
@@ -695,6 +695,7 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 	else
 		kdk_len = 0;
 
+	/* TODO: AP MLD address for MLO */
 	if (wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len, sm->snonce,
 			      parse.fte_anonce, sm->own_addr, bssid,
 			      sm->pmk_r1_name, &sm->ptk, ptk_name, sm->key_mgmt,
