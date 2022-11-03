@@ -770,6 +770,13 @@ static u8 * wpa_mlo_link_kde(struct wpa_sm *sm, u8 *pos)
 }
 
 
+static bool is_valid_ap_mld_mac_kde(struct wpa_sm *sm, const u8 *mac_kde)
+{
+	return mac_kde &&
+		os_memcmp(mac_kde, sm->mlo.ap_mld_addr, ETH_ALEN) == 0;
+}
+
+
 static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 					  const unsigned char *src_addr,
 					  const struct wpa_eapol_key *key,
@@ -823,6 +830,12 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 			wpa_hexdump(MSG_DEBUG, "RSN: PMKID from "
 				    "Authenticator", ie.pmkid, PMKID_LEN);
 		}
+	}
+
+	if (sm->mlo.valid_links && !is_valid_ap_mld_mac_kde(sm, ie.mac_addr)) {
+		wpa_printf(MSG_INFO,
+			   "RSN: Discard EAPOL-Key msg 1/4 with invalid AP MLD MAC address KDE");
+		return;
 	}
 
 	res = wpa_supplicant_get_pmk(sm, src_addr, ie.pmkid);
@@ -2131,6 +2144,144 @@ int wpa_supplicant_send_4_of_4(struct wpa_sm *sm, const unsigned char *dst,
 }
 
 
+static int wpa_supplicant_validate_link_kde(struct wpa_sm *sm, u8 link_id,
+					    const u8 *link_kde,
+					    size_t link_kde_len)
+{
+	size_t rsne_len = 0, rsnxe_len = 0;
+	const u8 *rsne = NULL, *rsnxe = NULL;
+
+	if (!link_kde ||
+	    link_kde_len < RSN_MLO_LINK_KDE_LINK_MAC_INDEX + ETH_ALEN) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: MLO Link KDE is not found for link ID %d",
+			link_id);
+		return -1;
+	}
+
+	if (os_memcmp(sm->mlo.links[link_id].bssid,
+		      &link_kde[RSN_MLO_LINK_KDE_LINK_MAC_INDEX],
+		      ETH_ALEN) != 0) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: MLO Link %u MAC address (" MACSTR
+			") not matching association response (" MACSTR ")",
+			link_id,
+			MAC2STR(&link_kde[RSN_MLO_LINK_KDE_LINK_MAC_INDEX]),
+			MAC2STR(sm->mlo.links[link_id].bssid));
+		return -1;
+	}
+
+	if (link_kde[0] & RSN_MLO_LINK_KDE_LI_RSNE_INFO) {
+		rsne = link_kde + RSN_MLO_LINK_KDE_FIXED_LENGTH;
+		if (link_kde_len < RSN_MLO_LINK_KDE_FIXED_LENGTH + 2 ||
+		    link_kde_len <
+		    (size_t) (RSN_MLO_LINK_KDE_FIXED_LENGTH + 2 + rsne[1])) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+				"RSN: No room for link %u RSNE in MLO Link KDE",
+				link_id);
+			return -1;
+		}
+
+		rsne_len = rsne[1] + 2;
+	}
+
+	if (!rsne) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: RSNE not present in MLO Link %u KDE", link_id);
+		return -1;
+	}
+
+	if (link_kde[0] & RSN_MLO_LINK_KDE_LI_RSNXE_INFO) {
+		rsnxe = link_kde + RSN_MLO_LINK_KDE_FIXED_LENGTH + rsne_len;
+		if (link_kde_len <
+		    (RSN_MLO_LINK_KDE_FIXED_LENGTH + rsne_len + 2) ||
+		    link_kde_len <
+		    (RSN_MLO_LINK_KDE_FIXED_LENGTH + rsne_len + 2 + rsnxe[1])) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+				"RSN: No room for link %u RSNXE in MLO Link KDE",
+				link_id);
+			return -1;
+		}
+
+		rsnxe_len = rsnxe[1] + 2;
+	}
+
+	if (wpa_compare_rsn_ie(wpa_key_mgmt_ft(sm->key_mgmt),
+			       sm->mlo.links[link_id].ap_rsne,
+			       sm->mlo.links[link_id].ap_rsne_len,
+			       rsne, rsne_len)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN MLO: IE in 3/4 msg does not match with IE in Beacon/ProbeResp for link ID %u",
+			link_id);
+		wpa_hexdump(MSG_INFO, "RSNE in Beacon/ProbeResp",
+			    sm->mlo.links[link_id].ap_rsne,
+			    sm->mlo.links[link_id].ap_rsne_len);
+		wpa_hexdump(MSG_INFO, "RSNE in EAPOL-Key msg 3/4",
+			    rsne, rsne_len);
+		return -1;
+	}
+
+	if ((sm->mlo.links[link_id].ap_rsnxe && !rsnxe) ||
+	    (!sm->mlo.links[link_id].ap_rsnxe && rsnxe) ||
+	    (sm->mlo.links[link_id].ap_rsnxe && rsnxe &&
+	     (sm->mlo.links[link_id].ap_rsnxe_len != rsnxe_len ||
+	      os_memcmp(sm->mlo.links[link_id].ap_rsnxe, rsnxe,
+			sm->mlo.links[link_id].ap_rsnxe_len) != 0))) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN MLO: RSNXE mismatch between Beacon/ProbeResp and EAPOL-Key msg 3/4 for link ID %u",
+			link_id);
+		wpa_hexdump(MSG_INFO, "RSNXE in Beacon/ProbeResp",
+			    sm->mlo.links[link_id].ap_rsnxe,
+			    sm->mlo.links[link_id].ap_rsnxe_len);
+		wpa_hexdump(MSG_INFO, "RSNXE in EAPOL-Key msg 3/4",
+			    rsnxe, rsnxe_len);
+		wpa_sm_deauthenticate(sm, WLAN_REASON_IE_IN_4WAY_DIFFERS);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+static int wpa_validate_mlo_ieee80211w_kdes(struct wpa_sm *sm,
+					    u8 link_id,
+					    struct wpa_eapol_ie_parse *ie)
+{
+	if (!ie->mlo_igtk[link_id]) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
+			"RSN: IGTK not found for link ID %u", link_id);
+		return -1;
+	}
+
+	if (ie->mlo_igtk_len[link_id] != RSN_MLO_IGTK_KDE_PREFIX_LENGTH +
+	    (unsigned int) wpa_cipher_key_len(sm->mgmt_group_cipher)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN MLO: Invalid IGTK KDE length %lu for link ID %u",
+			(unsigned long) ie->mlo_igtk_len, link_id);
+		return -1;
+	}
+
+	if (!sm->beacon_prot)
+		return 0;
+
+	if (!ie->mlo_bigtk[link_id]) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
+			"RSN: BIGTK not found for link ID %u", link_id);
+		return -1;
+	}
+
+	if (ie->mlo_bigtk_len[link_id] != RSN_MLO_BIGTK_KDE_PREFIX_LENGTH +
+	    (unsigned int) wpa_cipher_key_len(sm->mgmt_group_cipher)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"RSN MLO: Invalid BIGTK KDE length %lu for link ID %u",
+			(unsigned long) ie->mlo_bigtk_len, link_id);
+		return -1;
+	}
+
+	return 0;
+}
+
+
 static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 					  const struct wpa_eapol_key *key,
 					  u16 ver, const u8 *key_data,
@@ -2139,6 +2290,7 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 	u16 key_info, keylen;
 	struct wpa_eapol_ie_parse ie;
 	bool mlo = sm->mlo.valid_links;
+	int i;
 
 	wpa_sm_set_state(sm, WPA_4WAY_HANDSHAKE);
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
@@ -2166,6 +2318,35 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 			"RSN MLO: Invalid key info (0x%x) in EAPOL-Key msg 3/4",
 			key_info);
 		goto failed;
+	}
+
+	if (mlo && !is_valid_ap_mld_mac_kde(sm, ie.mac_addr)) {
+		wpa_printf(MSG_DEBUG, "RSN: Invalid AP MLD MAC address KDE");
+		goto failed;
+	}
+
+	for (i = 0; mlo && i < MAX_NUM_MLD_LINKS; i++) {
+		if (!(sm->mlo.req_links & BIT(i)))
+			continue;
+
+		if (wpa_supplicant_validate_link_kde(sm, i, ie.mlo_link[i],
+						     ie.mlo_link_len[i]) < 0)
+			goto failed;
+
+		if (!(sm->mlo.valid_links & BIT(i)))
+			continue;
+
+		if (!ie.mlo_gtk[i]) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
+				"RSN: GTK not found for link ID %u", i);
+			goto failed;
+		}
+
+		if (!wpa_sm_pmf_enabled(sm))
+			continue;
+
+		if (wpa_validate_mlo_ieee80211w_kdes(sm, i, &ie) < 0)
+			goto failed;
 	}
 
 #ifdef CONFIG_IEEE80211R
