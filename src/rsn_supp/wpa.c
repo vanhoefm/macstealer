@@ -976,8 +976,8 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 		kde_len = pos - kde;
 	}
 
-	if (wpa_supplicant_send_2_of_4(sm, sm->bssid, key, ver, sm->snonce,
-				       kde, kde_len, ptk) < 0)
+	if (wpa_supplicant_send_2_of_4(sm, wpa_sm_get_auth_addr(sm), key, ver,
+				       sm->snonce, kde, kde_len, ptk) < 0)
 		goto failed;
 
 	os_free(kde_buf);
@@ -2447,10 +2447,9 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 	    wpa_supplicant_install_ptk(sm, key, KEY_FLAG_RX))
 		goto failed;
 
-	if (wpa_supplicant_send_4_of_4(sm, sm->bssid, key, ver, key_info,
-				       &sm->ptk) < 0) {
+	if (wpa_supplicant_send_4_of_4(sm, wpa_sm_get_auth_addr(sm), key, ver,
+				       key_info, &sm->ptk) < 0)
 		goto failed;
-	}
 
 	/* SNonce was successfully used in msg 3/4, so mark it to be renewed
 	 * for the next 4-Way Handshake. If msg 3 is received again, the old
