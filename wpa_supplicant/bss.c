@@ -992,6 +992,14 @@ void wpa_bss_flush_by_age(struct wpa_supplicant *wpa_s, int age)
 		if (wpa_bss_in_use(wpa_s, bss))
 			continue;
 
+		if (wpa_s->reassoc_same_ess &&
+		    wpa_s->wpa_state != WPA_COMPLETED &&
+		    wpa_s->last_ssid &&
+		    bss->ssid_len == wpa_s->last_ssid->ssid_len &&
+		    os_memcmp(bss->ssid, wpa_s->last_ssid->ssid,
+			      bss->ssid_len) == 0)
+			continue;
+
 		if (os_reltime_before(&bss->last_update, &t)) {
 			wpa_bss_remove(wpa_s, bss, __func__);
 		} else
