@@ -1267,7 +1267,8 @@ ssid_list_set:
 
 		params.freqs = os_calloc(num + 1, sizeof(int));
 		if (params.freqs) {
-			num = get_shared_radio_freqs(wpa_s, params.freqs, num);
+			num = get_shared_radio_freqs(wpa_s, params.freqs, num,
+						     false);
 			if (num > 0) {
 				wpa_dbg(wpa_s, MSG_DEBUG, "Scan only the "
 					"current operating channels since "
@@ -1357,7 +1358,13 @@ scan:
 
 		params.freqs = os_calloc(num + 1, sizeof(int));
 		if (params.freqs) {
-			num = get_shared_radio_freqs(wpa_s, params.freqs, num);
+			/*
+			 * Exclude the operating frequency of the current
+			 * interface since we're looking to transition off of
+			 * it.
+			 */
+			num = get_shared_radio_freqs(wpa_s, params.freqs, num,
+						     true);
 			if (num > 0 && num == wpa_s->num_multichan_concurrent) {
 				wpa_dbg(wpa_s, MSG_DEBUG, "Scan only the current operating channels since all channels are already used");
 			} else {

@@ -1802,9 +1802,10 @@ void dump_freq_data(struct wpa_supplicant *wpa_s, const char *title,
 
 int get_shared_radio_freqs_data(struct wpa_supplicant *wpa_s,
 				struct wpa_used_freq_data *freqs_data,
-				unsigned int len);
+				unsigned int len, bool exclude_current);
 int get_shared_radio_freqs(struct wpa_supplicant *wpa_s,
-			   int *freq_array, unsigned int len);
+			   int *freq_array, unsigned int len,
+			   bool exclude_current);
 
 void wpas_network_reenabled(void *eloop_ctx, void *timeout_ctx);
 

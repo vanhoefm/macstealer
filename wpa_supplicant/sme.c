@@ -895,7 +895,7 @@ no_fils:
 	 */
 	if (wpa_s->num_multichan_concurrent < 2) {
 		int freq, num;
-		num = get_shared_radio_freqs(wpa_s, &freq, 1);
+		num = get_shared_radio_freqs(wpa_s, &freq, 1, false);
 		if (num > 0 && freq > 0 && freq != params.freq) {
 			wpa_printf(MSG_DEBUG,
 				   "Conflicting frequency found (%d != %d)",

@@ -4129,7 +4129,7 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 	 */
 	if (wpa_s->num_multichan_concurrent < 2) {
 		int freq, num;
-		num = get_shared_radio_freqs(wpa_s, &freq, 1);
+		num = get_shared_radio_freqs(wpa_s, &freq, 1, false);
 		if (num > 0 && freq > 0 && freq != params.freq.freq) {
 			wpa_printf(MSG_DEBUG,
 				   "Assoc conflicting freq found (%d != %d)",
@@ -8419,7 +8419,7 @@ void dump_freq_data(struct wpa_supplicant *wpa_s, const char *title,
  */
 int get_shared_radio_freqs_data(struct wpa_supplicant *wpa_s,
 				struct wpa_used_freq_data *freqs_data,
-				unsigned int len)
+				unsigned int len, bool exclude_current)
 {
 	struct wpa_supplicant *ifs;
 	u8 bssid[ETH_ALEN];
@@ -8434,6 +8434,9 @@ int get_shared_radio_freqs_data(struct wpa_supplicant *wpa_s,
 			 radio_list) {
 		if (idx == len)
 			break;
+
+		if (exclude_current && ifs == wpa_s)
+			continue;
 
 		if (ifs->current_ssid == NULL || ifs->assoc_freq == 0)
 			continue;
@@ -8472,7 +8475,8 @@ int get_shared_radio_freqs_data(struct wpa_supplicant *wpa_s,
  * are using the same radio as the current interface.
  */
 int get_shared_radio_freqs(struct wpa_supplicant *wpa_s,
-			   int *freq_array, unsigned int len)
+			   int *freq_array, unsigned int len,
+			   bool exclude_current)
 {
 	struct wpa_used_freq_data *freqs_data;
 	int num, i;
@@ -8483,7 +8487,8 @@ int get_shared_radio_freqs(struct wpa_supplicant *wpa_s,
 	if (!freqs_data)
 		return -1;
 
-	num = get_shared_radio_freqs_data(wpa_s, freqs_data, len);
+	num = get_shared_radio_freqs_data(wpa_s, freqs_data, len,
+					  exclude_current);
 	for (i = 0; i < num; i++)
 		freq_array[i] = freqs_data[i].freq;
 
