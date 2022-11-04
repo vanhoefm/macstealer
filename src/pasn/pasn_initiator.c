@@ -859,7 +859,7 @@ int wpas_pasn_start(struct wpas_pasn *pasn, const u8 *own_addr,
 		    const u8 *bssid, int akmp, int cipher, u16 group,
 		    int freq, const u8 *beacon_rsne, u8 beacon_rsne_len,
 		    const u8 *beacon_rsnxe, u8 beacon_rsnxe_len,
-		    struct wpabuf *comeback)
+		    const struct wpabuf *comeback)
 {
 	struct wpabuf *frame;
 	int ret;
