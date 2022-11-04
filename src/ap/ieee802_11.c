@@ -2520,6 +2520,7 @@ static void hapd_initialize_pasn(struct hostapd_data *hapd,
 	pasn->comeback_idx = hapd->comeback_idx;
 	pasn->comeback_key =  hapd->comeback_key;
 	pasn->comeback_pending_idx = hapd->comeback_pending_idx;
+	os_memcpy(pasn->bssid, hapd->own_addr, ETH_ALEN);
 }
 
 

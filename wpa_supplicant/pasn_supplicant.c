@@ -647,8 +647,8 @@ static void wpas_pasn_auth_start_cb(struct wpa_radio_work *work, int deinit)
 
 
 	ret = wpas_pasn_start(pasn, awork->own_addr, awork->peer_addr,
-			      awork->akmp, awork->cipher, awork->group,
-			      bss->freq, rsne, *(rsne + 1) + 2,
+			      awork->peer_addr, awork->akmp, awork->cipher,
+			      awork->group, bss->freq, rsne, *(rsne + 1) + 2,
 			      rsnxe, rsnxe ? *(rsnxe + 1) + 2 : 0,
 			      awork->comeback);
 	if (ret) {

@@ -374,7 +374,7 @@ static void handle_auth_pasn_comeback(struct pasn_data *pasn,
 	if (!buf)
 		return;
 
-	wpa_pasn_build_auth_header(buf, own_addr, own_addr, peer_addr, 2,
+	wpa_pasn_build_auth_header(buf, pasn->bssid, own_addr, peer_addr, 2,
 				   WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY);
 
 	/*
@@ -432,7 +432,7 @@ int handle_auth_pasn_resp(struct pasn_data *pasn, const u8 *own_addr,
 	if (!buf)
 		goto fail;
 
-	wpa_pasn_build_auth_header(buf, own_addr, own_addr, peer_addr, 2,
+	wpa_pasn_build_auth_header(buf, pasn->bssid, own_addr, peer_addr, 2,
 				   status);
 
 	if (status != WLAN_STATUS_SUCCESS)
