@@ -2272,6 +2272,7 @@ wpas_dpp_rx_presence_announcement(struct wpa_supplicant *wpa_s, const u8 *src,
 	u16 r_bootstrap_len;
 	struct dpp_bootstrap_info *peer_bi;
 	struct dpp_authentication *auth;
+	unsigned int wait_time, max_wait_time;
 
 	if (!wpa_s->dpp)
 		return;
@@ -2303,6 +2304,9 @@ wpas_dpp_rx_presence_announcement(struct wpa_supplicant *wpa_s, const u8 *src,
 		return;
 	}
 
+	wpa_printf(MSG_DEBUG, "DPP: Start Authentication exchange with " MACSTR
+		   " based on the received Presence Announcement",
+		   MAC2STR(src));
 	auth = dpp_auth_init(wpa_s->dpp, wpa_s, peer_bi, NULL,
 			     DPP_CAPAB_CONFIGURATOR, freq, NULL, 0);
 	if (!auth)
@@ -2318,6 +2322,13 @@ wpas_dpp_rx_presence_announcement(struct wpa_supplicant *wpa_s, const u8 *src,
 	/* The source address of the Presence Announcement frame overrides any
 	 * MAC address information from the bootstrapping information. */
 	os_memcpy(auth->peer_mac_addr, src, ETH_ALEN);
+
+	wait_time = wpa_s->max_remain_on_chan;
+	max_wait_time = wpa_s->dpp_resp_wait_time ?
+		wpa_s->dpp_resp_wait_time : 2000;
+	if (wait_time > max_wait_time)
+		wait_time = max_wait_time;
+	wpas_dpp_stop_listen_for_tx(wpa_s, freq, wait_time);
 
 	wpa_s->dpp_auth = auth;
 	if (wpas_dpp_auth_init_next(wpa_s) < 0) {
