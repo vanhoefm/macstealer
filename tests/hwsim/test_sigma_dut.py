@@ -539,7 +539,8 @@ def run_sigma_dut_sae_pw_id_ft(dev, apdev, over_ds=False):
         params['r1_key_holder'] = bssid
         hapd2 = hostapd.add_ap(apdev[1], params)
         bssid = hapd2.own_addr()
-        sigma_dut_cmd_check("sta_reassoc,interface,%s,Channel,1,bssid,%s" % (ifname, bssid))
+        sigma_dut_cmd_check("sta_reassoc,interface,%s,Channel,1,bssid,%s" % (ifname, bssid),
+                            timeout=20)
         dev[0].wait_connected()
 
         sigma_dut_cmd_check("sta_disconnect,interface," + ifname)
@@ -5874,7 +5875,8 @@ def test_sigma_dut_ft_rsnxe_used_mismatch(dev, apdev):
         hapd2 = hostapd.add_ap(apdev[1], params)
         bssid2 = hapd2.own_addr()
 
-        sigma_dut_cmd_check("sta_reassoc,interface,%s,Channel,1,bssid,%s" % (ifname, bssid2))
+        sigma_dut_cmd_check("sta_reassoc,interface,%s,Channel,1,bssid,%s" % (ifname, bssid2),
+                            timeout=20)
         count = 0
         for i in range(5):
             ev = dev[0].wait_event(["Trying to associate",
