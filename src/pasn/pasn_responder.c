@@ -624,7 +624,7 @@ int handle_auth_pasn_1(struct pasn_data *pasn,
 	ret = wpa_parse_wpa_ie_rsn(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
 				   &rsn_data);
 	if (ret) {
-		wpa_printf(MSG_DEBUG, "PASN: Failed parsing RNSE");
+		wpa_printf(MSG_DEBUG, "PASN: Failed parsing RSNE");
 		status = WLAN_STATUS_INVALID_RSNIE;
 		goto send_resp;
 	}

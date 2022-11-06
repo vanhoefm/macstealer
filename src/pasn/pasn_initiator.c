@@ -349,7 +349,7 @@ static int wpas_pasn_wd_fils_rx(struct pasn_data *pasn, struct wpabuf *wd)
 	ret = wpa_parse_wpa_ie(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
 			       &rsne_data);
 	if (ret) {
-		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed parsing RNSE");
+		wpa_printf(MSG_DEBUG, "PASN: FILS: Failed parsing RSNE");
 		return -1;
 	}
 
@@ -1140,7 +1140,7 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 	ret = wpa_parse_wpa_ie(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
 			       &rsn_data);
 	if (ret) {
-		wpa_printf(MSG_DEBUG, "PASN: Failed parsing RNSE");
+		wpa_printf(MSG_DEBUG, "PASN: Failed parsing RSNE");
 		goto fail;
 	}
 
