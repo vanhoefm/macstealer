@@ -1002,6 +1002,35 @@ int wpa_pasn_verify(struct pasn_data *pasn, const u8 *own_addr,
 }
 
 
+static bool is_pasn_auth_frame(struct pasn_data *pasn,
+			       const struct ieee80211_mgmt *mgmt,
+			       size_t len)
+{
+	u16 fc;
+
+	if (!mgmt || len < offsetof(struct ieee80211_mgmt, u.auth.variable))
+		return false;
+
+	/* Not an Authentication frame; do nothing */
+	fc = le_to_host16(mgmt->frame_control);
+	if (WLAN_FC_GET_TYPE(fc) != WLAN_FC_TYPE_MGMT ||
+	    WLAN_FC_GET_STYPE(fc) != WLAN_FC_STYPE_AUTH)
+		return false;
+
+	/* Not our frame; do nothing */
+	if (os_memcmp(mgmt->da, pasn->own_addr, ETH_ALEN) != 0 ||
+	    os_memcmp(mgmt->sa, pasn->bssid, ETH_ALEN) != 0 ||
+	    os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN) != 0)
+		return false;
+
+	/* Not PASN; do nothing */
+	if (mgmt->u.auth.auth_alg != host_to_le16(WLAN_AUTH_PASN))
+		return false;
+
+	return true;
+}
+
+
 int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 		     struct wpa_pasn_params_data *pasn_params)
 
@@ -1015,25 +1044,8 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 	u8 mic_len;
 	u16 status;
 	int ret, inc_y;
-	u16 fc = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
-			      (WLAN_FC_STYPE_AUTH << 4));
 
-	if (!mgmt ||
-	    len < offsetof(struct ieee80211_mgmt, u.auth.variable))
-		return -2;
-
-	/* Not an Authentication frame; do nothing */
-	if ((mgmt->frame_control & fc) != fc)
-		return -2;
-
-	/* Not our frame; do nothing */
-	if (os_memcmp(mgmt->da, pasn->own_addr, ETH_ALEN) != 0 ||
-	    os_memcmp(mgmt->sa, pasn->bssid, ETH_ALEN) != 0 ||
-	    os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN) != 0)
-		return -2;
-
-	/* Not PASN; do nothing */
-	if (mgmt->u.auth.auth_alg != host_to_le16(WLAN_AUTH_PASN))
+	if (!is_pasn_auth_frame(pasn, mgmt, len))
 		return -2;
 
 	if (mgmt->u.auth.auth_transaction !=
@@ -1316,28 +1328,12 @@ int wpa_pasn_auth_tx_status(struct pasn_data *pasn,
 			    const u8 *data, size_t data_len, u8 acked)
 
 {
-	const struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *) data;
-	u16 fc = host_to_le16((WLAN_FC_TYPE_MGMT << 2) |
-			      (WLAN_FC_STYPE_AUTH << 4));
+	const struct ieee80211_mgmt *mgmt =
+		(const struct ieee80211_mgmt *) data;
 
 	wpa_printf(MSG_DEBUG, "PASN: auth_tx_status: acked=%u", acked);
 
-	if (!mgmt ||
-	    data_len < offsetof(struct ieee80211_mgmt, u.auth.variable))
-		return -1;
-
-	/* Not an authentication frame; do nothing */
-	if ((mgmt->frame_control & fc) != fc)
-		return -1;
-
-	/* Not our frame; do nothing */
-	if (os_memcmp(mgmt->da, pasn->bssid, ETH_ALEN) ||
-	    os_memcmp(mgmt->sa, pasn->own_addr, ETH_ALEN) ||
-	    os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN))
-		return -1;
-
-	/* Not PASN; do nothing */
-	if (mgmt->u.auth.auth_alg !=  host_to_le16(WLAN_AUTH_PASN))
+	if (!is_pasn_auth_frame(pasn, mgmt, data_len))
 		return -1;
 
 	if (mgmt->u.auth.auth_transaction != host_to_le16(pasn->trans_seq)) {
