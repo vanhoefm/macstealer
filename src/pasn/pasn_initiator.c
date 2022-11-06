@@ -1132,6 +1132,11 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 		goto fail;
 	}
 
+	if (!elems.rsn_ie) {
+		wpa_printf(MSG_DEBUG, "PASN: Missing RSNE");
+		goto fail;
+	}
+
 	ret = wpa_parse_wpa_ie(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
 			       &rsn_data);
 	if (ret) {

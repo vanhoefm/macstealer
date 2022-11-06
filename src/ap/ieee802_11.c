@@ -2414,7 +2414,7 @@ static int pasn_wd_handle_fils(struct hostapd_data *hapd, struct sta_info *sta,
 	}
 
 	if (!elems.rsn_ie || !elems.fils_nonce || !elems.fils_nonce ||
-	    !elems.wrapped_data) {
+	    !elems.wrapped_data || !elems.fils_session) {
 		wpa_printf(MSG_DEBUG, "PASN: FILS: Missing IEs");
 		return -1;
 	}
@@ -2575,7 +2575,8 @@ static void hapd_pasn_update_params(struct hostapd_data *hapd,
 		return;
 	}
 
-	if (wpa_parse_wpa_ie_rsn(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
+	if (!elems.rsn_ie ||
+	    wpa_parse_wpa_ie_rsn(elems.rsn_ie - 2, elems.rsn_ie_len + 2,
 				 &rsn_data)) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed parsing RNSE");
 		return;
@@ -2604,7 +2605,8 @@ static void hapd_pasn_update_params(struct hostapd_data *hapd,
 	if (pasn->akmp != WPA_KEY_MGMT_FILS_SHA256 &&
 	    pasn->akmp != WPA_KEY_MGMT_FILS_SHA384)
 		return;
-	if (wpa_pasn_parse_parameter_ie(elems.pasn_params - 3,
+	if (!elems.pasn_params ||
+	    wpa_pasn_parse_parameter_ie(elems.pasn_params - 3,
 					elems.pasn_params_len + 3,
 					false, &pasn_params)) {
 		wpa_printf(MSG_DEBUG,
