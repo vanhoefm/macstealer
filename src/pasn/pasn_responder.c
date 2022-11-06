@@ -899,6 +899,8 @@ int handle_auth_pasn_3(struct pasn_data *pasn, const u8 *own_addr,
 	u8 mic[WPA_PASN_MAX_MIC_LEN], out_mic[WPA_PASN_MAX_MIC_LEN];
 	u8 mic_len;
 	int ret;
+	u8 *copy = NULL;
+	size_t copy_len, mic_offset;
 
 	if (ieee802_11_parse_elems(mgmt->u.auth.variable,
 				   len - offsetof(struct ieee80211_mgmt,
@@ -915,12 +917,8 @@ int handle_auth_pasn_3(struct pasn_data *pasn, const u8 *own_addr,
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Invalid MIC. Expecting len=%u", mic_len);
 		goto fail;
-	} else {
-		os_memcpy(mic, elems.mic, mic_len);
-		/* TODO: Clean this up.. Should not modify received frame
-		 * buffer. */
-		os_memset((u8 *) elems.mic, 0, mic_len);
 	}
+	os_memcpy(mic, elems.mic, mic_len);
 
 	if (!elems.pasn_params || !elems.pasn_params_len) {
 		wpa_printf(MSG_DEBUG,
@@ -944,12 +942,21 @@ int handle_auth_pasn_3(struct pasn_data *pasn, const u8 *own_addr,
 	}
 
 	/* Verify the MIC */
+	copy_len = len - offsetof(struct ieee80211_mgmt, u.auth);
+	mic_offset = elems.mic - (const u8 *) &mgmt->u.auth;
+	copy_len = len - offsetof(struct ieee80211_mgmt, u.auth);
+	if (mic_offset + mic_len > copy_len)
+		goto fail;
+	copy = os_memdup(&mgmt->u.auth, copy_len);
+	if (!copy)
+		goto fail;
+	os_memset(copy + mic_offset, 0, mic_len);
 	ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
 		       peer_addr, own_addr,
 		       pasn->hash, mic_len * 2,
-		       (u8 *) &mgmt->u.auth,
-		       len - offsetof(struct ieee80211_mgmt, u.auth),
-		       out_mic);
+		       copy, copy_len, out_mic);
+	os_free(copy);
+	copy = NULL;
 
 	wpa_hexdump_key(MSG_DEBUG, "PASN: Frame MIC", mic, mic_len);
 	if (ret || os_memcmp(mic, out_mic, mic_len) != 0) {
@@ -996,6 +1003,7 @@ int handle_auth_pasn_3(struct pasn_data *pasn, const u8 *own_addr,
 	return 0;
 
 fail:
+	os_free(copy);
 	return -1;
 }
 

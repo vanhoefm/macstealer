@@ -1044,6 +1044,8 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 	u8 mic_len;
 	u16 status;
 	int ret, inc_y;
+	u8 *copy = NULL;
+	size_t mic_offset, copy_len;
 
 	if (!is_pasn_auth_frame(pasn, mgmt, len))
 		return -2;
@@ -1083,12 +1085,8 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 				   "PASN: Invalid MIC. Expecting len=%u",
 				   mic_len);
 			goto fail;
-		} else {
-			os_memcpy(mic, elems.mic, mic_len);
-			/* TODO: Clean this up.. Should not be modifying the
-			 * received message buffer. */
-			os_memset((u8 *) elems.mic, 0, mic_len);
 		}
+		os_memcpy(mic, elems.mic, mic_len);
 	}
 
 	if (!elems.pasn_params || !elems.pasn_params_len) {
@@ -1225,15 +1223,25 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 	wpabuf_free(secret);
 	secret = NULL;
 
+	/* Use a copy of the message since we need to clear the MIC field */
+	if (!elems.mic)
+		goto fail;
+	mic_offset = elems.mic - (const u8 *) &mgmt->u.auth;
+	copy_len = len - offsetof(struct ieee80211_mgmt, u.auth);
+	if (mic_offset + mic_len > copy_len)
+		goto fail;
+	copy = os_memdup(&mgmt->u.auth, copy_len);
+	if (!copy)
+		goto fail;
+	os_memset(copy + mic_offset, 0, mic_len);
+
 	if (pasn->beacon_rsne_rsnxe) {
 		/* Verify the MIC */
 		ret = pasn_mic(pasn->ptk.kck, pasn->akmp, pasn->cipher,
 			       pasn->bssid, pasn->own_addr,
 			       wpabuf_head(pasn->beacon_rsne_rsnxe),
 			       wpabuf_len(pasn->beacon_rsne_rsnxe),
-			       (u8 *) &mgmt->u.auth,
-			       len - offsetof(struct ieee80211_mgmt, u.auth),
-			       out_mic);
+			       copy, copy_len, out_mic);
 	} else {
 		u8 *rsne_rsnxe;
 		size_t rsne_rsnxe_len = 0;
@@ -1268,12 +1276,12 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 			       pasn->bssid, pasn->own_addr,
 			       rsne_rsnxe,
 			       rsne_rsnxe_len,
-			       (u8 *) &mgmt->u.auth,
-			       len - offsetof(struct ieee80211_mgmt, u.auth),
-			       out_mic);
+			       copy, copy_len, out_mic);
 
 		os_free(rsne_rsnxe);
 	}
+	os_free(copy);
+	copy = NULL;
 
 	wpa_hexdump_key(MSG_DEBUG, "PASN: Frame MIC", mic, mic_len);
 	if (ret || os_memcmp(mic, out_mic, mic_len) != 0) {
@@ -1309,6 +1317,7 @@ fail:
 	wpa_printf(MSG_DEBUG, "PASN: Failed RX processing - terminating");
 	wpabuf_free(wrapped_data);
 	wpabuf_free(secret);
+	os_free(copy);
 
 	/*
 	 * TODO: In case of an error the standard allows to silently drop
