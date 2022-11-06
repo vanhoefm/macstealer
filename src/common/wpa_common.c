@@ -2063,7 +2063,7 @@ int wpa_derive_pmk_r0(const u8 *xxkey, size_t xxkey_len,
 {
 	u8 buf[1 + SSID_MAX_LEN + MOBILITY_DOMAIN_ID_LEN + 1 +
 	       FT_R0KH_ID_MAX_LEN + ETH_ALEN];
-	u8 *pos, r0_key_data[64], hash[64];
+	u8 *pos, r0_key_data[64 + 16], hash[64];
 	const u8 *addr[2];
 	size_t len[2];
 	size_t q, r0_key_data_len;
