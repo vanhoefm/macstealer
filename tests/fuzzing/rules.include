@@ -5,10 +5,17 @@ FUZZ_CFLAGS =
 
 ifdef LIBFUZZER
 CC ?= clang
+ifeq ($(CC),cc)
+CC = clang
+endif
 #FUZZ_FLAGS ?= -fsanitize=fuzzer,address,signed-integer-overflow,unsigned-integer-overflow
 FUZZ_FLAGS ?= -fsanitize=fuzzer,address
 ifndef CFLAGS
 FUZZ_CFLAGS += $(FUZZ_FLAGS)
+else
+ifeq ($(CFLAGS),-MMD -O2 -Wall -g)
+FUZZ_CFLAGS += $(FUZZ_FLAGS)
+endif
 endif
 endif
 
