@@ -11,7 +11,7 @@ import os
 import tempfile
 
 import hostapd
-from utils import skip_with_fips
+from utils import *
 from wpasupplicant import WpaSupplicant
 from test_ap_hs20 import hs20_ap_params
 from test_ap_hs20 import interworking_select
@@ -110,3 +110,16 @@ def test_ext_password_file_psk(dev, apdev):
             raise Exception("No connection result reported")
         if "CTRL-EVENT-CONNECTED" in ev:
             raise Exception("Unexpected connection")
+
+@remote_compatible
+def test_ext_password_sae(dev, apdev):
+    """External password storage for SAE"""
+    check_sae_capab(dev[0])
+    params = hostapd.wpa2_params(ssid="ext-pw-sae", passphrase="12345678")
+    params['wpa_key_mgmt'] = 'SAE'
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].set("ext_password_backend", "test:sae1=12345678")
+    dev[0].set("sae_groups", "")
+    dev[0].connect("ext-pw-sae", raw_psk="ext:sae1", key_mgmt="SAE",
+                   scan_freq="2412")
