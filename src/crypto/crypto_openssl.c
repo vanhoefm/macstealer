@@ -5020,8 +5020,8 @@ static int hpke_encap(struct hpke_context *ctx, struct crypto_ec_key *pk_r,
 	EVP_PKEY_CTX *pctx = NULL;
 	struct crypto_ec_key *sk_e;
 	int res = -1;
-	u8 dhss[HPKE_MAX_SHARED_SECRET_LEN + 16];
-	size_t dhss_len;
+	u8 *dhss = NULL;
+	size_t dhss_len = 0;
 	struct wpabuf *enc_buf = NULL, *pk_rm = NULL;
 
 	/* skE, pkE = GenerateKeyPair() */
@@ -5038,10 +5038,13 @@ static int hpke_encap(struct hpke_context *ctx, struct crypto_ec_key *pk_r,
 	if (!pctx ||
 	    EVP_PKEY_derive_init(pctx) != 1 ||
 	    EVP_PKEY_derive_set_peer(pctx, (EVP_PKEY *) pk_r) != 1 ||
+	    EVP_PKEY_derive(pctx, NULL, &dhss_len) != 1 ||
+	    !(dhss = os_malloc(dhss_len)) ||
 	    EVP_PKEY_derive(pctx, dhss, &dhss_len) != 1 ||
 	    dhss_len > HPKE_MAX_SHARED_SECRET_LEN) {
-		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_derive failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: hpke_encap: EVP_PKEY_derive failed (dhss_len=%zu): %s",
+			   dhss_len, ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
 	}
 
@@ -5063,7 +5066,7 @@ static int hpke_encap(struct hpke_context *ctx, struct crypto_ec_key *pk_r,
 				      wpabuf_head(pk_rm),
 				      wpabuf_len(pk_rm), shared_secret);
 fail:
-	forced_memzero(dhss, sizeof(dhss));
+	bin_clear_free(dhss, dhss_len);
 	crypto_ec_key_deinit(sk_e);
 	EVP_PKEY_CTX_free(pctx);
 	wpabuf_free(enc_buf);
@@ -5184,8 +5187,8 @@ static int hpke_decap(struct hpke_context *ctx, const u8 *enc,
 	size_t len;
 	int res = -1;
 	struct crypto_ec_key *pk_e = NULL;
-	u8 dhss[HPKE_MAX_SHARED_SECRET_LEN + 16];
-	size_t dhss_len;
+	u8 *dhss = NULL;
+	size_t dhss_len = 0;
 
 	/* pkE = DeserializePublicKey(enc) */
 	if (enc_ct_len < ctx->n_pk)
@@ -5198,15 +5201,17 @@ static int hpke_decap(struct hpke_context *ctx, const u8 *enc,
 	if (!pk_e)
 		return -1; /* invalid public key point */
 	/* dh = DH(skR, pkE) */
-	dhss_len = sizeof(dhss);
 	pctx = EVP_PKEY_CTX_new((EVP_PKEY *) sk_r, NULL);
 	if (!pctx ||
 	    EVP_PKEY_derive_init(pctx) != 1 ||
 	    EVP_PKEY_derive_set_peer(pctx, (EVP_PKEY *) pk_e) != 1 ||
+	    EVP_PKEY_derive(pctx, NULL, &dhss_len) != 1 ||
+	    !(dhss = os_malloc(dhss_len)) ||
 	    EVP_PKEY_derive(pctx, dhss, &dhss_len) != 1 ||
 	    dhss_len > HPKE_MAX_SHARED_SECRET_LEN) {
-		wpa_printf(MSG_INFO, "OpenSSL: EVP_PKEY_derive failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
+		wpa_printf(MSG_INFO,
+			   "OpenSSL: hpke_decap: EVP_PKEY_derive failed (dhss_len=%zu): %s",
+			   dhss_len, ERR_error_string(ERR_get_error(), NULL));
 		goto fail;
 	}
 
@@ -5221,7 +5226,7 @@ static int hpke_decap(struct hpke_context *ctx, const u8 *enc,
 				      wpabuf_head(pk_rm),
 				      wpabuf_len(pk_rm), shared_secret);
 fail:
-	forced_memzero(dhss, sizeof(dhss));
+	bin_clear_free(dhss, dhss_len);
 	crypto_ec_key_deinit(pk_e);
 	EVP_PKEY_CTX_free(pctx);
 	wpabuf_free(pk_rm);
