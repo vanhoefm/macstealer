@@ -4856,10 +4856,8 @@ hpke_labeled_expand(struct hpke_context *ctx, bool kem, const u8 *prk,
 	pos += suite_id_len;
 	os_memcpy(pos, label, label_len);
 	pos += label_len;
-	if (info && info_len) {
+	if (info && info_len)
 		os_memcpy(pos, info, info_len);
-		pos += info_len;
-	}
 
 	pos = out;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
