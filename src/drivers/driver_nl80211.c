@@ -12267,9 +12267,10 @@ static int nl80211_send_pasn_resp(void *priv, struct pasn_auth *params)
 			    ETH_ALEN, params->peer[i].peer_addr))
 			goto fail;
 
-		if (params->peer[i].status == 0)
-			nla_put_flag(msg,
-				     QCA_WLAN_VENDOR_ATTR_PASN_PEER_STATUS_SUCCESS);
+		if (params->peer[i].status == 0 &&
+		    nla_put_flag(msg,
+				 QCA_WLAN_VENDOR_ATTR_PASN_PEER_STATUS_SUCCESS))
+			goto fail;
 
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: Own address[%u]: " MACSTR
