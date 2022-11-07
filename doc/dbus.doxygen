@@ -41,6 +41,8 @@ registered in the bus with fi.w1.wpa_supplicant1 name.
 	      <tr><td>BridgeIfname</td><td>s</td><td>Name of the bridge interface to control, e.g., br0</td><td>No</td>
 	      <tr><td>Driver</td><td>s</td><td>Driver name which the interface uses, e.g., nl80211</td><td>No</td>
 	      <tr><td>ConfigFile</td><td>s</td><td>Configuration file path</td><td>No</td>
+	      <tr><td>Create</td><td>b</td><td>Whether to create a new interface in the kernel</td><td>No</td>
+	      <tr><td>Type</td><td>s</td><td>Interface type to create (sta or ap)</td><td>No</td>
 	    </table>
 	  </dd>
 	</dl>

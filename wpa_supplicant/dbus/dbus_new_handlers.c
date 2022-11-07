@@ -704,6 +704,8 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 	char *ifname = NULL;
 	char *confname = NULL;
 	char *bridge_ifname = NULL;
+	bool create_iface = false;
+	enum wpa_driver_if_type if_type = WPA_IF_STATION;
 
 	dbus_message_iter_init(message, &iter);
 
@@ -740,6 +742,19 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 			wpa_dbus_dict_entry_clear(&entry);
 			if (bridge_ifname == NULL)
 				goto oom;
+		} else if (os_strcmp(entry.key, "Create") == 0 &&
+			   entry.type == DBUS_TYPE_BOOLEAN) {
+			create_iface = entry.bool_value;
+			wpa_dbus_dict_entry_clear(&entry);
+		} else if (os_strcmp(entry.key, "Type") == 0 &&
+			   entry.type == DBUS_TYPE_STRING) {
+			if (os_strcmp(entry.str_value, "sta") == 0)
+				if_type = WPA_IF_STATION;
+			else if (os_strcmp(entry.str_value, "ap") == 0)
+				if_type = WPA_IF_AP_BSS;
+			else
+				goto error;
+			wpa_dbus_dict_entry_clear(&entry);
 		} else {
 			wpa_dbus_dict_entry_clear(&entry);
 			goto error;
@@ -761,6 +776,23 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 		struct wpa_supplicant *wpa_s;
 		struct wpa_interface iface;
 
+		if (create_iface) {
+			u8 mac_addr[ETH_ALEN];
+
+			wpa_printf(MSG_DEBUG,
+				   "%s[dbus]: creating an interface '%s'",
+				   __func__, ifname);
+			if (!global->ifaces ||
+			    wpa_drv_if_add(global->ifaces, if_type, ifname,
+					   NULL, NULL, NULL, mac_addr,
+					   NULL) < 0) {
+				reply = wpas_dbus_error_unknown_error(
+					message,
+					"interface creation failed.");
+				goto out;
+			}
+		}
+
 		os_memset(&iface, 0, sizeof(iface));
 		iface.driver = driver;
 		iface.ifname = ifname;
@@ -771,6 +803,9 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 		if (wpa_s && wpa_s->dbus_new_path) {
 			const char *path = wpa_s->dbus_new_path;
 
+			wpa_s->added_vif = create_iface;
+			wpa_s->added_vif_type = create_iface ? if_type :
+				WPA_IF_MAX;
 			reply = dbus_message_new_method_return(message);
 			dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH,
 						 &path, DBUS_TYPE_INVALID);
@@ -778,6 +813,9 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 			reply = wpas_dbus_error_unknown_error(
 				message,
 				"wpa_supplicant couldn't grab this interface.");
+			if (create_iface)
+				wpa_drv_if_remove(global->ifaces, if_type,
+						  ifname);
 		}
 	}
 
@@ -814,19 +852,36 @@ DBusMessage * wpas_dbus_handler_remove_interface(DBusMessage *message,
 	struct wpa_supplicant *wpa_s;
 	char *path;
 	DBusMessage *reply = NULL;
+	bool delete_iface;
 
 	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 			      DBUS_TYPE_INVALID);
 
 	wpa_s = get_iface_by_dbus_path(global, path);
-	if (wpa_s == NULL)
+	if (!wpa_s) {
 		reply = wpas_dbus_error_iface_unknown(message);
-	else if (wpa_supplicant_remove_iface(global, wpa_s, 0)) {
+		goto out;
+	}
+	delete_iface = wpa_s->added_vif;
+	if (wpa_supplicant_remove_iface(global, wpa_s, 0)) {
 		reply = wpas_dbus_error_unknown_error(
 			message,
 			"wpa_supplicant couldn't remove this interface.");
+		goto out;
 	}
 
+	if (delete_iface) {
+		wpa_printf(MSG_DEBUG, "%s[dbus]: deleting the interface '%s'",
+			   __func__, wpa_s->ifname);
+		if (wpa_drv_if_remove(global->ifaces, wpa_s->added_vif_type,
+				      wpa_s->ifname)) {
+			reply = wpas_dbus_error_unknown_error(
+				message,
+				"wpa_supplicant couldn't delete this interface.");
+		}
+	}
+
+out:
 	return reply;
 }
 
