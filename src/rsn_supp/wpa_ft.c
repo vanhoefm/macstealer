@@ -89,6 +89,9 @@ int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		return ret;
 	}
 
+	os_memcpy(sm->key_mobility_domain, sm->mobility_domain,
+		  MOBILITY_DOMAIN_ID_LEN);
+
 #ifdef CONFIG_PASN
 	if (sm->secure_ltf &&
 	    ieee802_11_rsnx_capab(sm->ap_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF))
@@ -704,6 +707,9 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 			      kdk_len) < 0)
 		return -1;
 
+	os_memcpy(sm->key_mobility_domain, sm->mobility_domain,
+		  MOBILITY_DOMAIN_ID_LEN);
+
 #ifdef CONFIG_PASN
 	if (sm->secure_ltf &&
 	    ieee802_11_rsnx_capab(sm->ap_rsnxe, WLAN_RSNX_CAPAB_SECURE_LTF) &&
@@ -1258,13 +1264,23 @@ int wpa_ft_validate_reassoc_resp(struct wpa_sm *sm, const u8 *ies,
  * @sm: Pointer to WPA state machine data from wpa_sm_init()
  * @target_ap: Target AP Address
  * @mdie: Mobility Domain IE from the target AP
+ * @force: Whether to force the request and ignore mobility domain differences
+ *	(only for testing purposes)
  * Returns: 0 on success, -1 on failure
  */
 int wpa_ft_start_over_ds(struct wpa_sm *sm, const u8 *target_ap,
-			 const u8 *mdie)
+			 const u8 *mdie, bool force)
 {
 	u8 *ft_ies;
 	size_t ft_ies_len;
+
+	if (!force &&
+	    (!mdie || mdie[1] < 3 || !wpa_sm_has_ft_keys(sm, mdie + 2))) {
+		wpa_printf(MSG_DEBUG, "FT: Cannot use over-the DS with " MACSTR
+			   " - no keys matching the mobility domain",
+			   MAC2STR(target_ap));
+		return -1;
+	}
 
 	wpa_printf(MSG_DEBUG, "FT: Request over-the-DS with " MACSTR,
 		   MAC2STR(target_ap));

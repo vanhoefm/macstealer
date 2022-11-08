@@ -1317,6 +1317,7 @@ static int wpa_supplicant_ctrl_iface_ft_ds(
 	u8 target_ap[ETH_ALEN];
 	struct wpa_bss *bss;
 	const u8 *mdie;
+	bool force = os_strstr(addr, " force") != NULL;
 
 	if (hwaddr_aton(addr, target_ap)) {
 		wpa_printf(MSG_DEBUG, "CTRL_IFACE FT_DS: invalid "
@@ -1332,7 +1333,7 @@ static int wpa_supplicant_ctrl_iface_ft_ds(
 	else
 		mdie = NULL;
 
-	return wpa_ft_start_over_ds(wpa_s->wpa, target_ap, mdie);
+	return wpa_ft_start_over_ds(wpa_s->wpa, target_ap, mdie, force);
 }
 #endif /* CONFIG_IEEE80211R */
 

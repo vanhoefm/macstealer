@@ -3490,7 +3490,7 @@ pfs_fail:
 			}
 #ifdef CONFIG_SME
 			if (len > 0 && wpa_s->sme.ft_used &&
-			    wpa_sm_has_ptk(wpa_s->wpa)) {
+			    wpa_sm_has_ft_keys(wpa_s->wpa, md)) {
 				wpa_dbg(wpa_s, MSG_DEBUG,
 					"SME: Trying to use FT over-the-air");
 				algs |= WPA_AUTH_ALG_FT;

@@ -4770,12 +4770,21 @@ void wpa_sm_drop_sa(struct wpa_sm *sm)
 }
 
 
-int wpa_sm_has_ptk(struct wpa_sm *sm)
+#ifdef CONFIG_IEEE80211R
+bool wpa_sm_has_ft_keys(struct wpa_sm *sm, const u8 *md)
 {
-	if (sm == NULL)
-		return 0;
+	if (!sm)
+		return false;
+	if (!wpa_key_mgmt_ft(sm->key_mgmt) ||
+	    os_memcmp(md, sm->key_mobility_domain,
+		      MOBILITY_DOMAIN_ID_LEN) != 0) {
+		/* Do not allow FT protocol to be used even if we were to have
+		 * an PTK since the mobility domain has changed. */
+		return false;
+	}
 	return sm->ptk_set;
 }
+#endif /* CONFIG_IEEE80211R */
 
 
 int wpa_sm_has_ptk_installed(struct wpa_sm *sm)
@@ -5484,6 +5493,9 @@ static int fils_ft_build_assoc_req_rsne(struct wpa_sm *sm, struct wpabuf *buf)
 		return -1;
 	}
 	os_memcpy(pos, sm->pmk_r1_name, WPA_PMK_NAME_LEN);
+
+	os_memcpy(sm->key_mobility_domain, sm->mobility_domain,
+		  MOBILITY_DOMAIN_ID_LEN);
 
 	if (sm->mgmt_group_cipher == WPA_CIPHER_AES_128_CMAC) {
 		/* Management Group Cipher Suite */

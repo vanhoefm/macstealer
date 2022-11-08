@@ -150,6 +150,7 @@ struct wpa_sm {
 	size_t pmk_r1_len;
 	u8 pmk_r1_name[WPA_PMK_NAME_LEN];
 	u8 mobility_domain[MOBILITY_DOMAIN_ID_LEN];
+	u8 key_mobility_domain[MOBILITY_DOMAIN_ID_LEN];
 	u8 r0kh_id[FT_R0KH_ID_MAX_LEN];
 	size_t r0kh_id_len;
 	u8 r1kh_id[FT_R1KH_ID_LEN];

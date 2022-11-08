@@ -1244,9 +1244,12 @@ class WpaSupplicant:
         if check_bssid and self.get_status_field('bssid') != bssid:
             raise Exception("Did not roam to correct BSSID")
 
-    def roam_over_ds(self, bssid, fail_test=False):
+    def roam_over_ds(self, bssid, fail_test=False, force=False):
         self.dump_monitor()
-        if "OK" not in self.request("FT_DS " + bssid):
+        cmd = "FT_DS " + bssid
+        if force:
+            cmd += " force"
+        if "OK" not in self.request(cmd):
             raise Exception("FT_DS failed")
         if fail_test:
             ev = self.wait_event(["CTRL-EVENT-CONNECTED"], timeout=1)

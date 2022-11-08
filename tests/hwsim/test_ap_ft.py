@@ -849,7 +849,7 @@ def test_ap_ft_over_ds_unknown_target(dev, apdev):
 
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    scan_freq="2412")
-    dev[0].roam_over_ds("02:11:22:33:44:55", fail_test=True)
+    dev[0].roam_over_ds("02:11:22:33:44:55", fail_test=True, force=True)
 
 @remote_compatible
 def test_ap_ft_over_ds_unexpected(dev, apdev):
@@ -3002,7 +3002,7 @@ def test_ap_ft_internal_rrb_check(dev, apdev):
 
     # Try over_ds roaming to non-WPA-enabled AP.
     # If hostapd does not check hapd->wpa_auth internally, it will crash now.
-    dev[0].roam_over_ds(apdev[1]['bssid'], fail_test=True)
+    dev[0].roam_over_ds(apdev[1]['bssid'], fail_test=True, force=True)
 
 def test_ap_ft_extra_ie(dev, apdev):
     """WPA2-PSK-FT AP with WPA2-PSK enabled and unexpected MDE"""

@@ -229,7 +229,7 @@ struct rsn_pmksa_cache_entry * wpa_sm_pmksa_cache_get(struct wpa_sm *sm,
 						      const u8 *pmkid,
 						      const void *network_ctx,
 						      int akmp);
-int wpa_sm_has_ptk(struct wpa_sm *sm);
+bool wpa_sm_has_ft_keys(struct wpa_sm *sm, const u8 *md);
 int wpa_sm_has_ptk_installed(struct wpa_sm *sm);
 
 void wpa_sm_update_replay_ctr(struct wpa_sm *sm, const u8 *replay_ctr);
@@ -483,7 +483,7 @@ void wpa_reset_ft_completed(struct wpa_sm *sm);
 int wpa_ft_validate_reassoc_resp(struct wpa_sm *sm, const u8 *ies,
 				 size_t ies_len, const u8 *src_addr);
 int wpa_ft_start_over_ds(struct wpa_sm *sm, const u8 *target_ap,
-			 const u8 *mdie);
+			 const u8 *mdie, bool force);
 
 #ifdef CONFIG_PASN
 
