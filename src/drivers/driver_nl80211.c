@@ -9104,10 +9104,14 @@ static const char * nl80211_get_radio_name(void *priv)
 
 
 static int nl80211_pmkid(struct i802_bss *bss, int cmd,
-			 struct wpa_pmkid_params *params)
+			 struct wpa_pmkid_params *params, bool skip_pmk)
 {
 	struct nl_msg *msg;
-	const size_t PMK_MAX_LEN = 48; /* current cfg80211 limit */
+
+	if (cmd == NL80211_CMD_SET_PMKSA)
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: NL80211_CMD_SET_PMKSA with skip_pmk=%s pmk_len=%zu",
+			   skip_pmk ? "true" : "false", params->pmk_len);
 
 	if (!(msg = nl80211_bss_msg(bss, 0, cmd)) ||
 	    (params->pmkid &&
@@ -9126,7 +9130,7 @@ static int nl80211_pmkid(struct i802_bss *bss, int cmd,
 	     nla_put_u8(msg, NL80211_ATTR_PMK_REAUTH_THRESHOLD,
 			params->pmk_reauth_threshold)) ||
 	    (cmd != NL80211_CMD_DEL_PMKSA &&
-	     params->pmk_len && params->pmk_len <= PMK_MAX_LEN &&
+	     params->pmk_len && !skip_pmk &&
 	     nla_put(msg, NL80211_ATTR_PMK, params->pmk_len, params->pmk))) {
 		nl80211_nlmsg_clear(msg);
 		nlmsg_free(msg);
@@ -9140,6 +9144,9 @@ static int nl80211_pmkid(struct i802_bss *bss, int cmd,
 static int nl80211_add_pmkid(void *priv, struct wpa_pmkid_params *params)
 {
 	struct i802_bss *bss = priv;
+	const size_t PMK_MAX_LEN = 64; /* current cfg80211 limit */
+	const size_t LEGACY_PMK_MAX_LEN = 48; /* old cfg80211 limit */
+	bool skip_pmk = params->pmk_len > PMK_MAX_LEN;
 	int ret;
 
 	if (params->bssid)
@@ -9152,7 +9159,15 @@ static int nl80211_add_pmkid(void *priv, struct wpa_pmkid_params *params)
 			   wpa_ssid_txt(params->ssid, params->ssid_len));
 	}
 
-	ret = nl80211_pmkid(bss, NL80211_CMD_SET_PMKSA, params);
+	ret = nl80211_pmkid(bss, NL80211_CMD_SET_PMKSA, params, skip_pmk);
+	/*
+	 * Try again by skipping PMK if the first attempt failed with ERANGE
+	 * error, PMK was not skipped, and PMK length is greater than the
+	 * legacy kernel maximum allowed limit.
+	 */
+	if (ret == -ERANGE && !skip_pmk &&
+	    params->pmk_len > LEGACY_PMK_MAX_LEN)
+		ret = nl80211_pmkid(bss, NL80211_CMD_SET_PMKSA, params, true);
 	if (ret < 0) {
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: NL80211_CMD_SET_PMKSA failed: %d (%s)",
@@ -9178,7 +9193,7 @@ static int nl80211_remove_pmkid(void *priv, struct wpa_pmkid_params *params)
 			   wpa_ssid_txt(params->ssid, params->ssid_len));
 	}
 
-	ret = nl80211_pmkid(bss, NL80211_CMD_DEL_PMKSA, params);
+	ret = nl80211_pmkid(bss, NL80211_CMD_DEL_PMKSA, params, true);
 	if (ret < 0) {
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: NL80211_CMD_DEL_PMKSA failed: %d (%s)",
