@@ -2624,6 +2624,8 @@ static void wpas_dpp_rx_peer_disc_resp(struct wpa_supplicant *wpa_s,
 		return;
 	}
 
+	os_memset(&intro, 0, sizeof(intro));
+
 	trans_id = dpp_get_attr(buf, len, DPP_ATTR_TRANSACTION_ID,
 			       &trans_id_len);
 	if (!trans_id || trans_id_len != 1) {
@@ -2735,7 +2737,7 @@ static void wpas_dpp_rx_peer_disc_resp(struct wpa_supplicant *wpa_s,
 		wpa_supplicant_req_scan(wpa_s, 0, 0);
 	}
 fail:
-	os_memset(&intro, 0, sizeof(intro));
+	dpp_peer_intro_deinit(&intro);
 }
 
 
