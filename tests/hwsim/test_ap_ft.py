@@ -37,7 +37,7 @@ def ft_base_mixed():
               "rsn_pairwise": "CCMP"}
     return params
 
-def ft_params(rsn=True, ssid=None, passphrase=None):
+def ft_params(rsn=True, ssid=None, passphrase=None, mobility_domain="a1b2"):
     if rsn:
         params = ft_base_rsn()
     else:
@@ -47,7 +47,7 @@ def ft_params(rsn=True, ssid=None, passphrase=None):
     if passphrase:
         params["wpa_passphrase"] = passphrase
 
-    params["mobility_domain"] = "a1b2"
+    params["mobility_domain"] = mobility_domain
     params["r0_key_lifetime"] = "10000"
     params["pmk_r1_push"] = "1"
     params["reassociation_deadline"] = "1000"
@@ -77,14 +77,15 @@ def ft_params1_old_key(rsn=True, ssid=None, passphrase=None):
     params['r1kh'] = "02:00:00:00:04:00 00:01:02:03:04:06 200102030405060708090a0b0c0d0e0f"
     return params
 
-def ft_params2a(rsn=True, ssid=None, passphrase=None):
-    params = ft_params(rsn, ssid, passphrase)
+def ft_params2a(rsn=True, ssid=None, passphrase=None, mobility_domain="a1b2"):
+    params = ft_params(rsn, ssid, passphrase, mobility_domain)
     params['nas_identifier'] = "nas2.w1.fi"
     params['r1_key_holder'] = "000102030406"
     return params
 
-def ft_params2(rsn=True, ssid=None, passphrase=None, discovery=False):
-    params = ft_params2a(rsn, ssid, passphrase)
+def ft_params2(rsn=True, ssid=None, passphrase=None, discovery=False,
+               mobility_domain="a1b2"):
+    params = ft_params2a(rsn, ssid, passphrase, mobility_domain)
     if discovery:
         params['r0kh'] = "ff:ff:ff:ff:ff:ff * 100102030405060708090a0b0c0d0e0f100102030405060708090a0b0c0d0e0f"
         params['r1kh'] = "00:00:00:00:00:00 00:00:00:00:00:00 100102030405060708090a0b0c0d0e0f100102030405060708090a0b0c0d0e0f"
@@ -3574,3 +3575,37 @@ def test_ap_ft_sae_skip_prune_assoc(dev, apdev):
     """WPA2-PSK-FT-SAE AP with skip_prune_assoc"""
     hapd0, hapd1 = start_ft_sae(dev[0], apdev, skip_prune_assoc=True)
     run_roams(dev[0], apdev, hapd0, hapd1, "test-ft", "12345678", sae=True)
+
+def test_ap_ft_diff_mobility_domain(dev, apdev):
+    """WPA2-PSK-FT AP and different mobility domain"""
+    ssid = "test-ft"
+    passphrase = "12345678"
+
+    params = ft_params1(ssid=ssid, passphrase=passphrase)
+    hapd0 = hostapd.add_ap(apdev[0], params)
+    params = ft_params2(ssid=ssid, passphrase=passphrase,
+                        mobility_domain="c3d4")
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    run_roams(dev[0], apdev, hapd0, hapd1, ssid, passphrase)
+
+def test_ap_ft_diff_mobility_domain_over_ds(dev, apdev):
+    """WPA2-PSK-FT AP and different mobility domain (over DS)"""
+    ssid = "test-ft"
+    passphrase = "12345678"
+
+    params = ft_params1(ssid=ssid, passphrase=passphrase)
+    hapd0 = hostapd.add_ap(apdev[0], params)
+    params = ft_params2(ssid=ssid, passphrase=passphrase,
+                        mobility_domain="c3d4")
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    dev[0].connect(ssid, proto="WPA2", key_mgmt="FT-PSK", psk=passphrase,
+                   scan_freq="2412")
+    if dev[0].get_status_field('bssid') == apdev[0]['bssid']:
+        dst = apdev[1]['bssid']
+    else:
+        dst = apdev[0]['bssid']
+    dev[0].scan_for_bss(dst, freq="2412")
+    if "FAIL" not in dev[0].request("FT_DS " + dst):
+        raise Exception("FT_DS to another mobility domain accepted")
