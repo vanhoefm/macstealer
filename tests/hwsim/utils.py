@@ -133,6 +133,12 @@ def check_fils_sk_pfs_capa(dev):
     if capa is None or "FILS-SK-PFS" not in capa:
         raise HwsimSkip("FILS-SK-PFS not supported")
 
+def check_imsi_privacy_support(dev):
+    tls = dev.request("GET tls_library")
+    if tls.startswith("OpenSSL"):
+        return
+    raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+
 def check_tls_tod(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("OpenSSL") and not tls.startswith("internal"):

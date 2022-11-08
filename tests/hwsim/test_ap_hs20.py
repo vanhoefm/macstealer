@@ -543,9 +543,7 @@ def hs20_simulated_sim(dev, ap, method, imsi_privacy=False,
     params = {'imsi': "555444-333222111", 'eap': method,
               'milenage': "5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123"}
     if imsi_privacy:
-        tls = dev.request("GET tls_library")
-        if not tls.startswith("OpenSSL"):
-            raise HwsimSkip("IMSI privacy not supported with this TLS library: " + tls)
+        check_imsi_privacy_support(dev)
         params['imsi_privacy_cert'] = "auth_serv/imsi-privacy-cert.pem"
         if imsi_privacy_attr:
             params['imsi_privacy_attr'] = "Identifier=1234567"
