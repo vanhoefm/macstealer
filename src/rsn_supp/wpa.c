@@ -4119,8 +4119,10 @@ int wpa_sm_set_mlo_params(struct wpa_sm *sm, const struct wpa_sm_mlo *mlo)
 		len = mlo->links[i].ap_rsne_len;
 		os_free(sm->mlo.links[i].ap_rsne);
 		if (!ie || len == 0) {
-			wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
-				"RSN: Clearing MLO link[%u] AP RSNE", i);
+			if (sm->mlo.links[i].ap_rsne)
+				wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+					"RSN: Clearing MLO link[%u] AP RSNE",
+					i);
 			sm->mlo.links[i].ap_rsne = NULL;
 			sm->mlo.links[i].ap_rsne_len = 0;
 		} else {
@@ -4138,8 +4140,10 @@ int wpa_sm_set_mlo_params(struct wpa_sm *sm, const struct wpa_sm_mlo *mlo)
 		len = mlo->links[i].ap_rsnxe_len;
 		os_free(sm->mlo.links[i].ap_rsnxe);
 		if (!ie || len == 0) {
-			wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
-				"RSN: Clearing MLO link[%u] AP RSNXE", i);
+			if (sm->mlo.links[i].ap_rsnxe)
+				wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+					"RSN: Clearing MLO link[%u] AP RSNXE",
+					i);
 			sm->mlo.links[i].ap_rsnxe = NULL;
 			sm->mlo.links[i].ap_rsnxe_len = 0;
 		} else {
