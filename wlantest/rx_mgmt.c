@@ -298,11 +298,7 @@ static void process_ft_auth(struct wlantest *wt, struct wlantest_bss *bss,
 			      sta->pairwise_cipher, 0) < 0)
 		return;
 
-	add_note(wt, MSG_DEBUG, "Derived new PTK");
-	os_memcpy(&sta->ptk, &ptk, sizeof(ptk));
-	sta->ptk_set = 1;
-	os_memset(sta->rsc_tods, 0, sizeof(sta->rsc_tods));
-	os_memset(sta->rsc_fromds, 0, sizeof(sta->rsc_fromds));
+	sta_new_ptk(wt, sta, &ptk);
 }
 
 
@@ -1823,11 +1819,7 @@ static void rx_mgmt_action_ft_response(struct wlantest *wt,
 			      0) < 0)
 		return;
 
-	add_note(wt, MSG_DEBUG, "Derived new PTK");
-	os_memcpy(&new_sta->ptk, &ptk, sizeof(ptk));
-	new_sta->ptk_set = 1;
-	os_memset(new_sta->rsc_tods, 0, sizeof(new_sta->rsc_tods));
-	os_memset(new_sta->rsc_fromds, 0, sizeof(new_sta->rsc_fromds));
+	sta_new_ptk(wt, new_sta, &ptk);
 	os_memcpy(new_sta->snonce, parse.fte_snonce, WPA_NONCE_LEN);
 	os_memcpy(new_sta->anonce, parse.fte_anonce, WPA_NONCE_LEN);
 }

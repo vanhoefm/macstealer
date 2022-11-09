@@ -248,14 +248,7 @@ static int try_pmk(struct wlantest *wt, struct wlantest_bss *bss,
 		sta->tptk_set = 1;
 		return 0;
 	}
-	add_note(wt, MSG_DEBUG, "Derived new PTK");
-	os_memcpy(&sta->ptk, &ptk, sizeof(ptk));
-	wpa_hexdump(MSG_DEBUG, "PTK:KCK", sta->ptk.kck, sta->ptk.kck_len);
-	wpa_hexdump(MSG_DEBUG, "PTK:KEK", sta->ptk.kek, sta->ptk.kek_len);
-	wpa_hexdump(MSG_DEBUG, "PTK:TK", sta->ptk.tk, sta->ptk.tk_len);
-	sta->ptk_set = 1;
-	os_memset(sta->rsc_tods, 0, sizeof(sta->rsc_tods));
-	os_memset(sta->rsc_fromds, 0, sizeof(sta->rsc_fromds));
+	sta_new_ptk(wt, sta, &ptk);
 	return 0;
 }
 
