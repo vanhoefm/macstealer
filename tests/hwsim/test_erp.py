@@ -127,10 +127,10 @@ def start_erp_as(erp_domain="example.com", msk_dump=None, tls13=False,
     apdev = {'ifname': 'as-erp'}
     return hostapd.add_ap(apdev, params, driver="none")
 
-def test_erp_radius(dev, apdev):
+def test_erp_radius(dev, apdev, params):
     """ERP enabled on RADIUS server and peer"""
     check_erp_capa(dev[0])
-    start_erp_as()
+    start_erp_as(msk_dump=params['prefix'] + ".msk")
     params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
     params['auth_server_port'] = "18128"
     params['erp_send_reauth_start'] = '1'
