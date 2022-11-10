@@ -2691,6 +2691,7 @@ static void wpas_dpp_rx_peer_disc_resp(struct wpa_supplicant *wpa_s,
 	if (!entry)
 		goto fail;
 	os_memcpy(entry->aa, src, ETH_ALEN);
+	os_memcpy(entry->spa, wpa_s->own_addr, ETH_ALEN);
 	os_memcpy(entry->pmkid, intro.pmkid, PMKID_LEN);
 	os_memcpy(entry->pmk, intro.pmk, intro.pmk_len);
 	entry->pmk_len = intro.pmk_len;
@@ -3853,6 +3854,7 @@ wpas_dpp_rx_priv_peer_intro_notify(struct wpa_supplicant *wpa_s,
 		goto fail;
 	entry->dpp_pfs = peer_version >= 2;
 	os_memcpy(entry->aa, src, ETH_ALEN);
+	os_memcpy(entry->spa, wpa_s->own_addr, ETH_ALEN);
 	os_memcpy(entry->pmkid, intro.pmkid, PMKID_LEN);
 	os_memcpy(entry->pmk, intro.pmk, intro.pmk_len);
 	entry->pmk_len = intro.pmk_len;

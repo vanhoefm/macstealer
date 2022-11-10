@@ -224,6 +224,7 @@ pmksa_cache_add(struct rsn_pmksa_cache *pmksa, const u8 *pmk, size_t pmk_len,
 		os_memcpy(entry->fils_cache_id, cache_id, FILS_CACHE_ID_LEN);
 	}
 	os_memcpy(entry->aa, aa, ETH_ALEN);
+	os_memcpy(entry->spa, spa, ETH_ALEN);
 	entry->network_ctx = network_ctx;
 
 	return pmksa_cache_add_entry(pmksa, entry);
@@ -241,7 +242,8 @@ pmksa_cache_add_entry(struct rsn_pmksa_cache *pmksa,
 	pos = pmksa->pmksa;
 	prev = NULL;
 	while (pos) {
-		if (os_memcmp(entry->aa, pos->aa, ETH_ALEN) == 0) {
+		if (os_memcmp(entry->aa, pos->aa, ETH_ALEN) == 0 &&
+		    os_memcmp(entry->spa, pos->spa, ETH_ALEN) == 0) {
 			if (pos->pmk_len == entry->pmk_len &&
 			    os_memcmp_const(pos->pmk, entry->pmk,
 					    entry->pmk_len) == 0 &&
@@ -323,7 +325,8 @@ pmksa_cache_add_entry(struct rsn_pmksa_cache *pmksa,
 	}
 	pmksa->pmksa_count++;
 	wpa_printf(MSG_DEBUG, "RSN: Added PMKSA cache entry for " MACSTR
-		   " network_ctx=%p akmp=0x%x", MAC2STR(entry->aa),
+		   " spa=" MACSTR " network_ctx=%p akmp=0x%x",
+		   MAC2STR(entry->aa), MAC2STR(entry->spa),
 		   entry->network_ctx, entry->akmp);
 
 	if (!pmksa->sm)

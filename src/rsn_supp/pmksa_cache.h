@@ -20,6 +20,7 @@ struct rsn_pmksa_cache_entry {
 	os_time_t expiration;
 	int akmp; /* WPA_KEY_MGMT_* */
 	u8 aa[ETH_ALEN];
+	u8 spa[ETH_ALEN];
 
 	/*
 	 * If FILS Cache Identifier is included (fils_cache_id_set), this PMKSA
