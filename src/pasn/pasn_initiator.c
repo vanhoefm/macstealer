@@ -553,7 +553,7 @@ static struct wpabuf * wpas_pasn_build_auth_1(struct pasn_data *pasn,
 		struct rsn_pmksa_cache_entry *pmksa;
 
 		pmksa = pmksa_cache_get(pasn->pmksa, pasn->peer_addr,
-					NULL, NULL, pasn->akmp);
+					pasn->own_addr, NULL, NULL, pasn->akmp);
 		if (pmksa && pasn->custom_pmkid_valid)
 			pmkid = pasn->custom_pmkid;
 		else if (pmksa)
@@ -795,6 +795,7 @@ static int wpas_pasn_set_pmk(struct pasn_data *pasn,
 		}
 
 		pmksa = pmksa_cache_get(pasn->pmksa, pasn->peer_addr,
+					pasn->own_addr,
 					pmkid, NULL, pasn->akmp);
 		if (pmksa) {
 			wpa_printf(MSG_DEBUG, "PASN: Using PMKSA");

@@ -330,7 +330,8 @@ void rsn_preauth_candidate_process(struct wpa_sm *sm)
 	dl_list_for_each_safe(candidate, n, &sm->pmksa_candidates,
 			      struct rsn_pmksa_candidate, list) {
 		struct rsn_pmksa_cache_entry *p = NULL;
-		p = pmksa_cache_get(sm->pmksa, candidate->bssid, NULL, NULL, 0);
+		p = pmksa_cache_get(sm->pmksa, candidate->bssid, sm->own_addr,
+				    NULL, NULL, 0);
 		if (os_memcmp(sm->bssid, candidate->bssid, ETH_ALEN) != 0 &&
 		    (p == NULL || p->opportunistic)) {
 			wpa_msg(sm->ctx->msg_ctx, MSG_DEBUG, "RSN: PMKSA "
@@ -491,7 +492,7 @@ void rsn_preauth_scan_result(struct wpa_sm *sm, const u8 *bssid,
 	if (wpa_parse_wpa_ie(rsn, 2 + rsn[1], &ie))
 		return;
 
-	pmksa = pmksa_cache_get(sm->pmksa, bssid, NULL, NULL, 0);
+	pmksa = pmksa_cache_get(sm->pmksa, bssid, sm->own_addr, NULL, NULL, 0);
 	if (pmksa && (!pmksa->opportunistic ||
 		      !(ie.capabilities & WPA_CAPABILITY_PREAUTH)))
 		return;

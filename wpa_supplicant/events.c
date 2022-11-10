@@ -1515,7 +1515,8 @@ skip_assoc_disallow:
 
 #ifdef CONFIG_DPP
 	if ((ssid->key_mgmt & WPA_KEY_MGMT_DPP) &&
-	    !wpa_sm_pmksa_exists(wpa_s->wpa, bss->bssid, ssid) &&
+	    !wpa_sm_pmksa_exists(wpa_s->wpa, bss->bssid, wpa_s->own_addr,
+				 ssid) &&
 	    (!ssid->dpp_connector || !ssid->dpp_netaccesskey ||
 	     !ssid->dpp_csign)) {
 		if (debug_print)

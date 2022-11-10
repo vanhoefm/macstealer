@@ -4358,7 +4358,7 @@ int wpas_dpp_check_connect(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 	if (rsn && wpa_parse_wpa_ie(rsn, 2 + rsn[1], &ied) == 0 &&
 	    !(ied.key_mgmt & WPA_KEY_MGMT_DPP))
 		return 0; /* AP does not support DPP AKM - continue */
-	if (wpa_sm_pmksa_exists(wpa_s->wpa, bss->bssid, ssid))
+	if (wpa_sm_pmksa_exists(wpa_s->wpa, bss->bssid, wpa_s->own_addr, ssid))
 		return 0; /* PMKSA exists for DPP AKM - continue */
 
 	if (!ssid->dpp_connector || !ssid->dpp_netaccesskey ||

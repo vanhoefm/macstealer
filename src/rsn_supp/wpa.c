@@ -318,7 +318,8 @@ static int wpa_supplicant_get_pmk(struct wpa_sm *sm,
 		 * not have enough time to get the association information
 		 * event before receiving this 1/4 message, so try to find a
 		 * matching PMKSA cache entry here. */
-		sm->cur_pmksa = pmksa_cache_get(sm->pmksa, src_addr, pmkid,
+		sm->cur_pmksa = pmksa_cache_get(sm->pmksa, src_addr,
+						sm->own_addr, pmkid,
 						NULL, 0);
 		if (sm->cur_pmksa) {
 			wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
@@ -434,8 +435,8 @@ static int wpa_supplicant_get_pmk(struct wpa_sm *sm,
 						     fils_cache_id);
 			}
 			if (!sm->cur_pmksa && pmkid &&
-			    pmksa_cache_get(sm->pmksa, src_addr, pmkid, NULL,
-				    0)) {
+			    pmksa_cache_get(sm->pmksa, src_addr, sm->own_addr,
+					    pmkid, NULL, 0)) {
 				wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
 					"RSN: the new PMK matches with the "
 					"PMKID");
@@ -4731,10 +4732,11 @@ void wpa_sm_pmksa_cache_add(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
 }
 
 
-int wpa_sm_pmksa_exists(struct wpa_sm *sm, const u8 *bssid,
+int wpa_sm_pmksa_exists(struct wpa_sm *sm, const u8 *bssid, const u8 *own_addr,
 			const void *network_ctx)
 {
-	return pmksa_cache_get(sm->pmksa, bssid, NULL, network_ctx, 0) != NULL;
+	return pmksa_cache_get(sm->pmksa, bssid, own_addr, NULL, network_ctx,
+			       0) != NULL;
 }
 
 
@@ -4744,7 +4746,8 @@ struct rsn_pmksa_cache_entry * wpa_sm_pmksa_cache_get(struct wpa_sm *sm,
 						      const void *network_ctx,
 						      int akmp)
 {
-	return pmksa_cache_get(sm->pmksa, aa, pmkid, network_ctx, akmp);
+	return pmksa_cache_get(sm->pmksa, aa, sm->own_addr, pmkid, network_ctx,
+			       akmp);
 }
 
 
