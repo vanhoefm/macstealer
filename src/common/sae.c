@@ -1967,8 +1967,10 @@ static u16 sae_parse_commit_element_ecc(struct sae_data *sae, const u8 **pos,
 	crypto_ec_point_deinit(sae->tmp->peer_commit_element_ecc, 0);
 	sae->tmp->peer_commit_element_ecc =
 		crypto_ec_point_from_bin(sae->tmp->ec, *pos);
-	if (sae->tmp->peer_commit_element_ecc == NULL)
+	if (!sae->tmp->peer_commit_element_ecc) {
+		wpa_printf(MSG_DEBUG, "SAE: Peer element is not a valid point");
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+	}
 
 	if (!crypto_ec_point_is_on_curve(sae->tmp->ec,
 					 sae->tmp->peer_commit_element_ecc)) {
