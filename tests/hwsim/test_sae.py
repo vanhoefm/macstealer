@@ -2948,3 +2948,37 @@ def test_sae_akms(dev, apdev):
     dev[2].set("sae_groups", "19")
     dev[2].connect("test-sae", psk="12345678", key_mgmt="SAE",
                    ieee80211w="2", scan_freq="2412")
+
+def test_sae_ext_key_h2e_rejected_group(dev, apdev):
+    """SAE-EXT-KEY, H2E, and rejected groups indication"""
+    run_sae_ext_key_h2e_rejected_group(dev, apdev, "19", "20 19", "20")
+
+def test_sae_ext_key_h2e_rejected_group2(dev, apdev):
+    """SAE-EXT-KEY, H2E, and rejected groups indication (2)"""
+    run_sae_ext_key_h2e_rejected_group(dev, apdev, "20", "19 20", "19")
+
+def run_sae_ext_key_h2e_rejected_group(dev, apdev, ap_groups, sta_groups,
+                                       rejected_groups):
+    check_sae_capab(dev[0])
+    params = hostapd.wpa2_params(ssid="sae-pwe", passphrase="12345678")
+    params['wpa_key_mgmt'] = 'SAE-EXT-KEY'
+    params['sae_groups'] = ap_groups
+    params['sae_pwe'] = "1"
+    params['ieee80211w'] = "2"
+    hapd = hostapd.add_ap(apdev[0], params)
+    try:
+        dev[0].set("sae_groups", sta_groups)
+        dev[0].set("sae_pwe", "1")
+        dev[0].connect("sae-pwe", psk="12345678", key_mgmt="SAE-EXT-KEY",
+                       ieee80211w="2", scan_freq="2412")
+        addr = dev[0].own_addr()
+        hapd.wait_sta(addr)
+        sta = hapd.get_sta(addr)
+        if 'sae_rejected_groups' not in sta:
+            raise Exception("No sae_rejected_groups")
+        val = sta['sae_rejected_groups']
+        if val != rejected_groups:
+            raise Exception("Unexpected sae_rejected_groups value: " + val)
+    finally:
+        dev[0].set("sae_groups", "")
+        dev[0].set("sae_pwe", "0")
