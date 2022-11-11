@@ -781,8 +781,14 @@ static int wpas_pasn_immediate_retry(struct wpa_supplicant *wpa_s,
 static void wpas_pasn_deauth_cb(struct ptksa_cache_entry *entry)
 {
 	struct wpa_supplicant *wpa_s = entry->ctx;
+	u8 own_addr[ETH_ALEN];
+	u8 peer_addr[ETH_ALEN];
 
-	wpas_pasn_deauthenticate(wpa_s, entry->own_addr, entry->addr);
+	/* Use a copy of the addresses from the entry to avoid issues with the
+	 * entry getting freed during deauthentication processing. */
+	os_memcpy(own_addr, entry->own_addr, ETH_ALEN);
+	os_memcpy(peer_addr, entry->addr, ETH_ALEN);
+	wpas_pasn_deauthenticate(wpa_s, own_addr, peer_addr);
 }
 
 
