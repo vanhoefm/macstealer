@@ -1733,9 +1733,6 @@ static int _mlo_ieee80211w_set_keys(struct wpa_sm *sm, u8 link_id,
 {
 	size_t len;
 
-	if (!wpa_cipher_valid_mgmt_group(sm->mgmt_group_cipher))
-		return 0;
-
 	if (ie->mlo_igtk[link_id]) {
 		len = wpa_cipher_key_len(sm->mgmt_group_cipher);
 		if (ie->mlo_igtk_len[link_id] !=
@@ -1772,6 +1769,10 @@ static int mlo_ieee80211w_set_keys(struct wpa_sm *sm,
 				   struct wpa_eapol_ie_parse *ie)
 {
 	u8 i;
+
+	if (!wpa_cipher_valid_mgmt_group(sm->mgmt_group_cipher) ||
+	    sm->mgmt_group_cipher == WPA_CIPHER_GTK_NOT_USED)
+		return 0;
 
 	for (i = 0; i < MAX_NUM_MLO_LINKS; i++) {
 		if (!(sm->mlo.valid_links & BIT(i)))
@@ -2248,13 +2249,8 @@ static int wpa_validate_mlo_ieee80211w_kdes(struct wpa_sm *sm,
 					    u8 link_id,
 					    struct wpa_eapol_ie_parse *ie)
 {
-	if (!ie->mlo_igtk[link_id]) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
-			"RSN: IGTK not found for link ID %u", link_id);
-		return -1;
-	}
-
-	if (ie->mlo_igtk_len[link_id] != RSN_MLO_IGTK_KDE_PREFIX_LENGTH +
+	if (ie->mlo_igtk[link_id] &&
+	    ie->mlo_igtk_len[link_id] != RSN_MLO_IGTK_KDE_PREFIX_LENGTH +
 	    (unsigned int) wpa_cipher_key_len(sm->mgmt_group_cipher)) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
 			"RSN MLO: Invalid IGTK KDE length %lu for link ID %u",
@@ -2265,13 +2261,8 @@ static int wpa_validate_mlo_ieee80211w_kdes(struct wpa_sm *sm,
 	if (!sm->beacon_prot)
 		return 0;
 
-	if (!ie->mlo_bigtk[link_id]) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
-			"RSN: BIGTK not found for link ID %u", link_id);
-		return -1;
-	}
-
-	if (ie->mlo_bigtk_len[link_id] != RSN_MLO_BIGTK_KDE_PREFIX_LENGTH +
+	if (ie->mlo_bigtk[link_id] &&
+	    ie->mlo_bigtk_len[link_id] != RSN_MLO_BIGTK_KDE_PREFIX_LENGTH +
 	    (unsigned int) wpa_cipher_key_len(sm->mgmt_group_cipher)) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
 			"RSN MLO: Invalid BIGTK KDE length %lu for link ID %u",
@@ -2343,10 +2334,9 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 			goto failed;
 		}
 
-		if (!wpa_sm_pmf_enabled(sm))
-			continue;
-
-		if (wpa_validate_mlo_ieee80211w_kdes(sm, i, &ie) < 0)
+		if (sm->mgmt_group_cipher != WPA_CIPHER_GTK_NOT_USED &&
+		    wpa_cipher_valid_mgmt_group(sm->mgmt_group_cipher) &&
+		    wpa_validate_mlo_ieee80211w_kdes(sm, i, &ie) < 0)
 			goto failed;
 	}
 
