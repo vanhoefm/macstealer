@@ -252,6 +252,13 @@ static int hostapd_cli_cmd_relog(struct wpa_ctrl *ctrl, int argc, char *argv[])
 }
 
 
+static int hostapd_cli_cmd_close_log(struct wpa_ctrl *ctrl, int argc,
+				     char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "CLOSE_LOG");
+}
+
+
 static int hostapd_cli_cmd_status(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
 	if (argc > 0 && os_strcmp(argv[0], "driver") == 0)
@@ -1572,6 +1579,8 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
 	  "= get MIB variables (dot1x, dot11, radius)" },
 	{ "relog", hostapd_cli_cmd_relog, NULL,
 	  "= reload/truncate debug log output file" },
+	{ "close_log", hostapd_cli_cmd_close_log, NULL,
+	  "= disable debug log output file" },
 	{ "status", hostapd_cli_cmd_status, NULL,
 	  "= show interface status info" },
 	{ "sta", hostapd_cli_cmd_sta, hostapd_complete_stations,
