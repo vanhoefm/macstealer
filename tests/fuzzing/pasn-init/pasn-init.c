@@ -40,7 +40,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	pasn.send_mgmt = pasn_send_mgmt;
 	hwaddr_aton("02:00:00:00:00:00", own_addr);
 	hwaddr_aton("02:00:00:00:03:00", bssid);
-	if (wpas_pasn_start(&pasn, own_addr, bssid, WPA_KEY_MGMT_PASN,
+	if (wpas_pasn_start(&pasn, own_addr, bssid, bssid, WPA_KEY_MGMT_PASN,
 			    WPA_CIPHER_CCMP, 19, 2412, NULL, 0, NULL, 0,
 			    NULL) < 0) {
 		wpa_printf(MSG_ERROR, "wpas_pasn_start failed");
