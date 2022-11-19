@@ -109,8 +109,8 @@ static inline void pmksa_cache_deinit(struct rsn_pmksa_cache *pmksa)
 }
 
 static inline struct rsn_pmksa_cache_entry *
-pmksa_cache_get(struct rsn_pmksa_cache *pmksa, const u8 *aa, const u8 *pmkid,
-		const void *network_ctx, int akmp)
+pmksa_cache_get(struct rsn_pmksa_cache *pmksa, const u8 *aa, const u8 *spa,
+		const u8 *pmkid, const void *network_ctx, int akmp)
 {
 	return NULL;
 }
