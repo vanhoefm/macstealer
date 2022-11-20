@@ -468,7 +468,8 @@ static void wpa_tdls_generate_tpk(struct wpa_tdls_peer *peer,
  * @rsne: Pointer to the beginning of RSNE used for handshake
  * @rsne_len: Length of RSNE in octets
  * @timeoutie: Pointer to the beginning of Timeout IE used for handshake
- * @ftie: Pointer to the beginning of FT IE
+ * @fte: Pointer to the beginning of FTE
+ * @fre_len: Length of FTE in octets
  * @mic: Pointer for writing MIC
  *
  * Calculate MIC for TDLS frame.
@@ -476,14 +477,14 @@ static void wpa_tdls_generate_tpk(struct wpa_tdls_peer *peer,
 static int wpa_tdls_ftie_mic(const u8 *kck, u8 trans_seq, const u8 *lnkid,
 			     const u8 *rsne, size_t rsne_len,
 			     const u8 *timeoutie,
-			     const u8 *ftie, u8 *mic)
+			     const u8 *fte, size_t fte_len, u8 *mic)
 {
 	u8 *buf, *pos;
 	struct wpa_tdls_ftie *_ftie;
 	const struct wpa_tdls_lnkid *_lnkid;
 	int ret;
 	int len = 2 * ETH_ALEN + 1 + 2 + lnkid[1] + rsne_len +
-		2 + timeoutie[1] + 2 + ftie[1];
+		2 + timeoutie[1] + fte_len;
 	buf = os_zalloc(len);
 	if (!buf) {
 		wpa_printf(MSG_WARNING, "TDLS: No memory for MIC calculation");
@@ -510,10 +511,10 @@ static int wpa_tdls_ftie_mic(const u8 *kck, u8 trans_seq, const u8 *lnkid,
 	os_memcpy(pos, timeoutie, 2 + timeoutie[1]);
 	pos += 2 + timeoutie[1];
 	/* 7) FTIE, with the MIC field of the FTIE set to 0 */
-	os_memcpy(pos, ftie, 2 + ftie[1]);
+	os_memcpy(pos, fte, fte_len);
 	_ftie = (struct wpa_tdls_ftie *) pos;
 	os_memset(_ftie->mic, 0, TDLS_MIC_LEN);
-	pos += 2 + ftie[1];
+	pos += fte_len;
 
 	wpa_hexdump(MSG_DEBUG, "TDLS: Data for FTIE MIC", buf, pos - buf);
 	wpa_hexdump_key(MSG_DEBUG, "TDLS: KCK", kck, 16);
@@ -531,14 +532,15 @@ static int wpa_tdls_ftie_mic(const u8 *kck, u8 trans_seq, const u8 *lnkid,
  * @rcode: Reason code for Teardown
  * @dtoken: Dialog Token used for that particular link
  * @lnkid: Pointer to the beginning of Link Identifier IE
- * @ftie: Pointer to the beginning of FT IE
+ * @fte: Pointer to the beginning of FTE
+ * @fre_len: Length of FTE in octets
  * @mic: Pointer for writing MIC
  *
  * Calculate MIC for TDLS frame.
  */
 static int wpa_tdls_key_mic_teardown(const u8 *kck, u8 trans_seq, u16 rcode,
 				     u8 dtoken, const u8 *lnkid,
-				     const u8 *ftie, u8 *mic)
+				     const u8 *fte, size_t fte_len, u8 *mic)
 {
 	u8 *buf, *pos;
 	struct wpa_tdls_ftie *_ftie;
@@ -549,7 +551,7 @@ static int wpa_tdls_key_mic_teardown(const u8 *kck, u8 trans_seq, u16 rcode,
 		return -1;
 
 	len = 2 + lnkid[1] + sizeof(rcode) + sizeof(dtoken) +
-		sizeof(trans_seq) + 2 + ftie[1];
+		sizeof(trans_seq) + fte_len;
 
 	buf = os_zalloc(len);
 	if (!buf) {
@@ -569,10 +571,10 @@ static int wpa_tdls_key_mic_teardown(const u8 *kck, u8 trans_seq, u16 rcode,
 	/* 4) Transaction Sequence number */
 	*pos++ = trans_seq;
 	/* 7) FTIE, with the MIC field of the FTIE set to 0 */
-	os_memcpy(pos, ftie, 2 + ftie[1]);
+	os_memcpy(pos, fte, fte_len);
 	_ftie = (struct wpa_tdls_ftie *) pos;
 	os_memset(_ftie->mic, 0, TDLS_MIC_LEN);
-	pos += 2 + ftie[1];
+	pos += fte_len;
 
 	wpa_hexdump(MSG_DEBUG, "TDLS: Data for FTIE MIC", buf, pos - buf);
 	wpa_hexdump_key(MSG_DEBUG, "TDLS: KCK", kck, 16);
@@ -586,14 +588,15 @@ static int wpa_tdls_key_mic_teardown(const u8 *kck, u8 trans_seq, u16 rcode,
 static int wpa_supplicant_verify_tdls_mic(u8 trans_seq,
 					  struct wpa_tdls_peer *peer,
 					  const u8 *lnkid, const u8 *timeoutie,
-					  const struct wpa_tdls_ftie *ftie)
+					  const struct wpa_tdls_ftie *ftie,
+					  size_t fte_len)
 {
 	u8 mic[16];
 
 	if (peer->tpk_set) {
 		wpa_tdls_ftie_mic(peer->tpk.kck, trans_seq, lnkid,
 				  peer->rsnie_p, peer->rsnie_p_len, timeoutie,
-				  (const u8 *) ftie, mic);
+				  (const u8 *) ftie, fte_len, mic);
 		if (os_memcmp_const(mic, ftie->mic, 16) != 0) {
 			wpa_printf(MSG_INFO, "TDLS: Invalid MIC in FTIE - "
 				   "dropping packet");
@@ -614,13 +617,14 @@ static int wpa_supplicant_verify_tdls_mic(u8 trans_seq,
 
 static int wpa_supplicant_verify_tdls_mic_teardown(
 	u8 trans_seq, u16 rcode, u8 dtoken, struct wpa_tdls_peer *peer,
-	const u8 *lnkid, const struct wpa_tdls_ftie *ftie)
+	const u8 *lnkid, const struct wpa_tdls_ftie *ftie, size_t fte_len)
 {
 	u8 mic[16];
 
 	if (peer->tpk_set) {
 		wpa_tdls_key_mic_teardown(peer->tpk.kck, trans_seq, rcode,
-					  dtoken, lnkid, (u8 *) ftie, mic);
+					  dtoken, lnkid, (const u8 *) ftie,
+					  fte_len, mic);
 		if (os_memcmp_const(mic, ftie->mic, 16) != 0) {
 			wpa_printf(MSG_INFO, "TDLS: Invalid MIC in Teardown - "
 				   "dropping packet");
@@ -832,7 +836,8 @@ static int wpa_tdls_send_teardown(struct wpa_sm *sm, const u8 *addr,
 	/* compute MIC before sending */
 	wpa_tdls_linkid(sm, peer, &lnkid);
 	wpa_tdls_key_mic_teardown(peer->tpk.kck, 4, reason_code,
-				  dialog_token, (u8 *) &lnkid, (u8 *) ftie,
+				  dialog_token, (const u8 *) &lnkid,
+				  (const u8 *) ftie, 2 + ftie->ie_len,
 				  ftie->mic);
 
 skip_ies:
@@ -1002,7 +1007,8 @@ static int wpa_tdls_recv_teardown(struct wpa_sm *sm, const u8 *src_addr,
 	/* Process MIC check to see if TDLS Teardown is right */
 	if (wpa_supplicant_verify_tdls_mic_teardown(4, reason_code,
 						    peer->dtoken, peer,
-						    (u8 *) lnkid, ftie) < 0) {
+						    (const u8 *) lnkid,
+						    ftie, kde.ftie_len) < 0) {
 		wpa_printf(MSG_DEBUG, "TDLS: MIC failure for TDLS "
 			   "Teardown Request from " MACSTR, MAC2STR(src_addr));
 		return -1;
@@ -1324,7 +1330,7 @@ static int wpa_tdls_send_tpk_m2(struct wpa_sm *sm,
 	/* compute MIC before sending */
 	wpa_tdls_ftie_mic(peer->tpk.kck, 2, (const u8 *) lnkid, peer->rsnie_p,
 			  peer->rsnie_p_len, (const u8 *) &timeoutie,
-			  (const u8 *) ftie, ftie->mic);
+			  (const u8 *) ftie, 2 + ftie->ie_len, ftie->mic);
 #ifdef CONFIG_TDLS_TESTING
 	if (tdls_testing & TDLS_TESTING_WRONG_MIC) {
 		wpa_printf(MSG_DEBUG, "TDLS: Testing - use wrong MIC");
@@ -1415,7 +1421,7 @@ static int wpa_tdls_send_tpk_m3(struct wpa_sm *sm,
 	/* compute MIC before sending */
 	wpa_tdls_ftie_mic(peer->tpk.kck, 3, (const u8 *) lnkid, peer->rsnie_p,
 			  peer->rsnie_p_len, (const u8 *) &timeoutie,
-			  (const u8 *) ftie, ftie->mic);
+			  (const u8 *) ftie, 2 + ftie->ie_len, ftie->mic);
 #ifdef CONFIG_TDLS_TESTING
 	if (tdls_testing & TDLS_TESTING_WRONG_MIC) {
 		wpa_printf(MSG_DEBUG, "TDLS: Testing - use wrong MIC");
@@ -2487,8 +2493,9 @@ static int wpa_tdls_process_tpk_m2(struct wpa_sm *sm, const u8 *src_addr,
 	wpa_tdls_generate_tpk(peer, sm->own_addr, sm->bssid);
 
 	/* Process MIC check to see if TPK M2 is right */
-	if (wpa_supplicant_verify_tdls_mic(2, peer, (u8 *) lnkid,
-					   (u8 *) timeoutie, ftie) < 0) {
+	if (wpa_supplicant_verify_tdls_mic(2, peer, (const u8 *) lnkid,
+					   (const u8 *) timeoutie, ftie,
+					   kde.ftie_len) < 0) {
 		/* Discard the frame */
 		wpa_tdls_del_key(sm, peer);
 		wpa_tdls_disable_peer_link(sm, peer);
@@ -2661,8 +2668,9 @@ static int wpa_tdls_process_tpk_m3(struct wpa_sm *sm, const u8 *src_addr,
 		goto error;
 	}
 
-	if (wpa_supplicant_verify_tdls_mic(3, peer, (u8 *) lnkid,
-					   (u8 *) timeoutie, ftie) < 0) {
+	if (wpa_supplicant_verify_tdls_mic(3, peer, (const u8 *) lnkid,
+					   (const u8 *) timeoutie, ftie,
+					   kde.ftie_len) < 0) {
 		wpa_tdls_del_key(sm, peer);
 		goto error;
 	}
