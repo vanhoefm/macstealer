@@ -1618,6 +1618,9 @@ def run_dpp_akm(dev, apdev, pmk_len):
     if "OK" not in hapd.request(cmd):
         raise Exception("PMKSA_ADD failed (hostapd)")
 
+    cmd = "PMKSA_ADD %d %s %s %s 30240 43200 %d 0" % (id, bssid, pmkid, pmk, akmp)
+    if "OK" not in dev[0].request(cmd):
+        raise Exception("PMKSA_ADD failed (wpa_supplicant)")
     dev[0].select_network(id, freq="2412")
     dev[0].wait_connected()
     val = dev[0].get_status_field("key_mgmt")
