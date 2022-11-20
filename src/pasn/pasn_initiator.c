@@ -1010,7 +1010,7 @@ int wpa_pasn_verify(struct pasn_data *pasn, const u8 *own_addr,
 
 static bool is_pasn_auth_frame(struct pasn_data *pasn,
 			       const struct ieee80211_mgmt *mgmt,
-			       size_t len)
+			       size_t len, bool rx)
 {
 	u16 fc;
 
@@ -1024,9 +1024,15 @@ static bool is_pasn_auth_frame(struct pasn_data *pasn,
 		return false;
 
 	/* Not our frame; do nothing */
-	if (os_memcmp(mgmt->da, pasn->own_addr, ETH_ALEN) != 0 ||
-	    os_memcmp(mgmt->sa, pasn->peer_addr, ETH_ALEN) != 0 ||
-	    os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN) != 0)
+	if (os_memcmp(mgmt->bssid, pasn->bssid, ETH_ALEN) != 0)
+		return false;
+
+	if (rx && (os_memcmp(mgmt->da, pasn->own_addr, ETH_ALEN) != 0 ||
+		   os_memcmp(mgmt->sa, pasn->peer_addr, ETH_ALEN) != 0))
+		return false;
+
+	if (!rx && (os_memcmp(mgmt->sa, pasn->own_addr, ETH_ALEN) != 0 ||
+		    os_memcmp(mgmt->da, pasn->peer_addr, ETH_ALEN) != 0))
 		return false;
 
 	/* Not PASN; do nothing */
@@ -1053,7 +1059,7 @@ int wpa_pasn_auth_rx(struct pasn_data *pasn, const u8 *data, size_t len,
 	u8 *copy = NULL;
 	size_t mic_offset, copy_len;
 
-	if (!is_pasn_auth_frame(pasn, mgmt, len))
+	if (!is_pasn_auth_frame(pasn, mgmt, len, true))
 		return -2;
 
 	if (mgmt->u.auth.auth_transaction !=
@@ -1353,7 +1359,7 @@ int wpa_pasn_auth_tx_status(struct pasn_data *pasn,
 
 	wpa_printf(MSG_DEBUG, "PASN: auth_tx_status: acked=%u", acked);
 
-	if (!is_pasn_auth_frame(pasn, mgmt, data_len))
+	if (!is_pasn_auth_frame(pasn, mgmt, data_len, false))
 		return -1;
 
 	if (mgmt->u.auth.auth_transaction != host_to_le16(pasn->trans_seq)) {
