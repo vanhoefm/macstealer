@@ -127,8 +127,7 @@ int wpa_sm_set_ft_params(struct wpa_sm *sm, const u8 *ies, size_t ies_len)
 		return 0;
 	}
 
-	if (wpa_ft_parse_ies(ies, ies_len, &ft, sm->key_mgmt,
-			     sm->xxkey_len, false, false) < 0)
+	if (wpa_ft_parse_ies(ies, ies_len, &ft, sm->key_mgmt) < 0)
 		return -1;
 
 	if (ft.mdie_len < MOBILITY_DOMAIN_ID_LEN + 1)
@@ -217,6 +216,7 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 	size_t rsnxe_len;
 	int rsnxe_used;
 	int res;
+	u8 mic_control;
 
 	sm->ft_completed = 0;
 	sm->ft_reassoc_completed = 0;
@@ -348,12 +348,14 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 			   rsnxe_used);
 	}
 #endif /* CONFIG_TESTING_OPTIONS */
+	mic_control = rsnxe_used ? FTE_MIC_CTRL_RSNXE_USED : 0;
 	if (sm->key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
 	    sm->pmk_r0_len == SHA512_MAC_LEN) {
 		struct rsn_ftie_sha512 *ftie;
 
 		ftie = (struct rsn_ftie_sha512 *) pos;
-		ftie->mic_control[0] = !!rsnxe_used;
+		mic_control |= FTE_MIC_LEN_32 << FTE_MIC_CTRL_MIC_LEN_SHIFT;
+		ftie->mic_control[0] = mic_control;
 		fte_mic = ftie->mic;
 		elem_count = &ftie->mic_control[1];
 		pos += sizeof(*ftie);
@@ -366,7 +368,8 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 		struct rsn_ftie_sha384 *ftie;
 
 		ftie = (struct rsn_ftie_sha384 *) pos;
-		ftie->mic_control[0] = !!rsnxe_used;
+		mic_control |= FTE_MIC_LEN_24 << FTE_MIC_CTRL_MIC_LEN_SHIFT;
+		ftie->mic_control[0] = mic_control;
 		fte_mic = ftie->mic;
 		elem_count = &ftie->mic_control[1];
 		pos += sizeof(*ftie);
@@ -377,7 +380,8 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 		struct rsn_ftie *ftie;
 
 		ftie = (struct rsn_ftie *) pos;
-		ftie->mic_control[0] = !!rsnxe_used;
+		mic_control |= FTE_MIC_LEN_16 << FTE_MIC_CTRL_MIC_LEN_SHIFT;
+		ftie->mic_control[0] = mic_control;
 		fte_mic = ftie->mic;
 		elem_count = &ftie->mic_control[1];
 		pos += sizeof(*ftie);
@@ -584,7 +588,7 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 	int ret;
 	const u8 *bssid;
 	const u8 *kck;
-	size_t kck_len, kdk_len, key_len;
+	size_t kck_len, kdk_len;
 
 	wpa_hexdump(MSG_DEBUG, "FT: Response IEs", ies, ies_len);
 	wpa_hexdump(MSG_DEBUG, "FT: RIC IEs", ric_ies, ric_ies_len);
@@ -610,11 +614,7 @@ int wpa_ft_process_response(struct wpa_sm *sm, const u8 *ies, size_t ies_len,
 		return -1;
 	}
 
-	key_len = sm->xxkey_len;
-	if (!key_len)
-		key_len = sm->pmk_r1_len;
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->key_mgmt,
-			     key_len, true, false) < 0) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->key_mgmt) < 0) {
 		wpa_printf(MSG_DEBUG, "FT: Failed to parse IEs");
 		return -1;
 	}
@@ -1032,8 +1032,7 @@ int wpa_ft_validate_reassoc_resp(struct wpa_sm *sm, const u8 *ies,
 		return 0;
 	}
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->key_mgmt,
-			     sm->xxkey_len, true, true) < 0) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->key_mgmt) < 0) {
 		wpa_printf(MSG_DEBUG, "FT: Failed to parse IEs");
 		return -1;
 	}

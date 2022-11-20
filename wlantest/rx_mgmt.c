@@ -250,7 +250,7 @@ static void process_ft_auth(struct wlantest *wt, struct wlantest_bss *bss,
 
 	if (wpa_ft_parse_ies(mgmt->u.auth.variable,
 			     len - IEEE80211_HDRLEN - sizeof(mgmt->u.auth),
-			     &parse, 0, 0, false, false)) {
+			     &parse, 0)) {
 		add_note(wt, MSG_INFO,
 			 "Could not parse FT Authentication Response frame");
 		return;
@@ -829,7 +829,7 @@ static void rx_mgmt_assoc_resp(struct wlantest *wt, const u8 *data, size_t len)
 		sta->state = STATE3;
 	}
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0, 0, false, false) == 0) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0) == 0) {
 		if (parse.r0kh_id) {
 			os_memcpy(bss->r0kh_id, parse.r0kh_id,
 				  parse.r0kh_id_len);
@@ -925,8 +925,7 @@ static void rx_mgmt_reassoc_req(struct wlantest *wt, const u8 *data,
 
 		use_sha384 = wpa_key_mgmt_sha384(sta->key_mgmt);
 
-		if (wpa_ft_parse_ies(ie, ie_len, &parse, sta->key_mgmt,
-				     0, false, false) < 0) {
+		if (wpa_ft_parse_ies(ie, ie_len, &parse, sta->key_mgmt) < 0) {
 			add_note(wt, MSG_INFO, "FT: Failed to parse FT IEs");
 			return;
 		}
@@ -1419,8 +1418,7 @@ static void rx_mgmt_reassoc_resp(struct wlantest *wt, const u8 *data,
 
 		use_sha384 = wpa_key_mgmt_sha384(sta->key_mgmt);
 
-		if (wpa_ft_parse_ies(ies, ies_len, &parse, sta->key_mgmt,
-				     0, false, false) < 0) {
+		if (wpa_ft_parse_ies(ies, ies_len, &parse, sta->key_mgmt) < 0) {
 			add_note(wt, MSG_INFO, "FT: Failed to parse FT IEs");
 			return;
 		}
@@ -1730,7 +1728,7 @@ static void rx_mgmt_action_ft_request(struct wlantest *wt,
 	ies_len = len - (24 + 2 + 2 * ETH_ALEN);
 	wpa_hexdump(MSG_DEBUG, "FT Request frame body", ies, ies_len);
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0, 0, false, false)) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0)) {
 		add_note(wt, MSG_INFO, "Could not parse FT Request frame body");
 		return;
 	}
@@ -1779,7 +1777,7 @@ static void rx_mgmt_action_ft_response(struct wlantest *wt,
 	ies_len = len - (24 + 2 + 2 * ETH_ALEN);
 	wpa_hexdump(MSG_DEBUG, "FT Response frame body", ies, ies_len);
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0, 0, false, false)) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0)) {
 		add_note(wt, MSG_INFO,
 			 "Could not parse FT Response frame body");
 		return;

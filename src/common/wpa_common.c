@@ -1090,19 +1090,46 @@ static int wpa_ft_parse_ftie(const u8 *ie, size_t ie_len,
 }
 
 
-static int wpa_ft_parse_fte(const u8 *ie, size_t len, size_t mic_len,
+static int wpa_ft_parse_fte(int key_mgmt, const u8 *ie, size_t len,
 			    struct wpa_ft_ies *parse)
 {
+	size_t mic_len;
+	u8 mic_len_info;
 	const u8 *pos = ie;
 	const u8 *end = pos + len;
 
 	wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC Control", pos, 2);
-	parse->fte_rsnxe_used = pos[0] & 0x01;
+	parse->fte_rsnxe_used = pos[0] & FTE_MIC_CTRL_RSNXE_USED;
+	mic_len_info = (pos[0] & FTE_MIC_CTRL_MIC_LEN_MASK) >>
+		FTE_MIC_CTRL_MIC_LEN_SHIFT;
 	parse->fte_elem_count = pos[1];
 	pos += 2;
 
-	if (mic_len > (size_t) (end - pos))
+	if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY) {
+		switch (mic_len_info) {
+		case FTE_MIC_LEN_16:
+			mic_len = 16;
+			break;
+		case FTE_MIC_LEN_24:
+			mic_len = 24;
+			break;
+		case FTE_MIC_LEN_32:
+			mic_len = 32;
+			break;
+		default:
+			wpa_printf(MSG_DEBUG,
+				   "FT: Unknown MIC Length subfield value %u",
+				   mic_len_info);
+			return -1;
+		}
+	} else {
+		mic_len = wpa_key_mgmt_sha384(key_mgmt) ? 24 : 16;
+	}
+	if (mic_len > (size_t) (end - pos)) {
+		wpa_printf(MSG_DEBUG, "FT: No room for %zu octet MIC in FTE",
+			   mic_len);
 		return -1;
+	}
 	wpa_hexdump(MSG_DEBUG, "FT: FTE-MIC", pos, mic_len);
 	parse->fte_mic = pos;
 	parse->fte_mic_len = mic_len;
@@ -1124,8 +1151,7 @@ static int wpa_ft_parse_fte(const u8 *ie, size_t len, size_t mic_len,
 
 
 int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
-		     int key_mgmt, size_t key_len, bool need_r0kh_id,
-		     bool need_r1kh_id)
+		     int key_mgmt)
 {
 	const u8 *end, *pos;
 	struct wpa_ie_data data;
@@ -1195,49 +1221,7 @@ int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
 			prot_ie_count = pos[1]; /* Element Count field in
 						 * MIC Control */
 
-			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
-			    (key_len == SHA512_MAC_LEN || !key_len)) {
-				wpa_printf(MSG_DEBUG,
-					   "FT: Trying to parse FTE for FT-SAE-EXT-KEY - SHA512");
-				if (wpa_ft_parse_fte(pos, len, 32, parse) ==
-				    0 &&
-				    (!need_r0kh_id || parse->r0kh_id) &&
-				    (!need_r1kh_id || parse->r1kh_id))
-					break;
-			}
-			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
-			    (key_len == SHA384_MAC_LEN || !key_len)) {
-				wpa_printf(MSG_DEBUG,
-					   "FT: Trying to parse FTE for FT-SAE-EXT-KEY - SHA384");
-				if (wpa_ft_parse_fte(pos, len, 24, parse) ==
-				    0 &&
-				    (!need_r0kh_id || parse->r0kh_id) &&
-				    (!need_r1kh_id || parse->r1kh_id))
-					break;
-			}
-			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
-			    (key_len == SHA256_MAC_LEN || !key_len)) {
-				wpa_printf(MSG_DEBUG,
-					   "FT: Trying to parse FTE for FT-SAE-EXT-KEY - SHA256");
-				if (wpa_ft_parse_fte(pos, len, 16, parse) ==
-				    0 &&
-				    (!need_r0kh_id || parse->r0kh_id) &&
-				    (!need_r1kh_id || parse->r1kh_id))
-					break;
-			}
-			if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY) {
-				wpa_printf(MSG_DEBUG,
-					   "FT: Failed to parse FTE for FT-SAE-EXT-KEY");
-				return -1;
-			}
-
-			if (wpa_key_mgmt_sha384(key_mgmt)) {
-				if (wpa_ft_parse_fte(pos, len, 24, parse) < 0)
-					return -1;
-				break;
-			}
-
-			if (wpa_ft_parse_fte(pos, len, 16, parse) < 0)
+			if (wpa_ft_parse_fte(key_mgmt, pos, len, parse) < 0)
 				return -1;
 			break;
 		case WLAN_EID_TIMEOUT_INTERVAL:

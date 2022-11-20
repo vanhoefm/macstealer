@@ -814,6 +814,7 @@ int wpa_write_ftie(struct wpa_auth_config *conf, int key_mgmt, size_t key_len,
 {
 	u8 *pos = buf, *ielen;
 	size_t hdrlen;
+	u16 mic_control = rsnxe_used ? FTE_MIC_CTRL_RSNXE_USED : 0;
 
 	if (key_mgmt == WPA_KEY_MGMT_FT_SAE_EXT_KEY &&
 	    key_len == SHA256_MAC_LEN)
@@ -842,7 +843,8 @@ int wpa_write_ftie(struct wpa_auth_config *conf, int key_mgmt, size_t key_len,
 
 		os_memset(hdr, 0, sizeof(*hdr));
 		pos += sizeof(*hdr);
-		WPA_PUT_LE16(hdr->mic_control, !!rsnxe_used);
+		mic_control |= FTE_MIC_LEN_32 << FTE_MIC_CTRL_MIC_LEN_SHIFT;
+		WPA_PUT_LE16(hdr->mic_control, mic_control);
 		if (anonce)
 			os_memcpy(hdr->anonce, anonce, WPA_NONCE_LEN);
 		if (snonce)
@@ -854,7 +856,8 @@ int wpa_write_ftie(struct wpa_auth_config *conf, int key_mgmt, size_t key_len,
 
 		os_memset(hdr, 0, sizeof(*hdr));
 		pos += sizeof(*hdr);
-		WPA_PUT_LE16(hdr->mic_control, !!rsnxe_used);
+		mic_control |= FTE_MIC_LEN_24 << FTE_MIC_CTRL_MIC_LEN_SHIFT;
+		WPA_PUT_LE16(hdr->mic_control, mic_control);
 		if (anonce)
 			os_memcpy(hdr->anonce, anonce, WPA_NONCE_LEN);
 		if (snonce)
@@ -864,7 +867,8 @@ int wpa_write_ftie(struct wpa_auth_config *conf, int key_mgmt, size_t key_len,
 
 		os_memset(hdr, 0, sizeof(*hdr));
 		pos += sizeof(*hdr);
-		WPA_PUT_LE16(hdr->mic_control, !!rsnxe_used);
+		mic_control |= FTE_MIC_LEN_16 << FTE_MIC_CTRL_MIC_LEN_SHIFT;
+		WPA_PUT_LE16(hdr->mic_control, mic_control);
 		if (anonce)
 			os_memcpy(hdr->anonce, anonce, WPA_NONCE_LEN);
 		if (snonce)
@@ -2788,8 +2792,8 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
 		*elem_count = 3; /* Information element count */
 
 	ric_start = pos;
-	if (wpa_ft_parse_ies(req_ies, req_ies_len, &parse, sm->wpa_key_mgmt,
-			     key_len, false, false) == 0 && parse.ric) {
+	if (wpa_ft_parse_ies(req_ies, req_ies_len, &parse,
+			     sm->wpa_key_mgmt) == 0 && parse.ric) {
 		pos = wpa_ft_process_ric(sm, pos, end, parse.ric,
 					 parse.ric_len);
 		if (auth_alg == WLAN_AUTH_FT)
@@ -3165,7 +3169,7 @@ static int wpa_ft_process_auth_req(struct wpa_state_machine *sm,
 	wpa_hexdump(MSG_DEBUG, "FT: Received authentication frame IEs",
 		    ies, ies_len);
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0, 0, false, false)) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, 0)) {
 		wpa_printf(MSG_DEBUG, "FT: Failed to parse FT IEs");
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 	}
@@ -3463,8 +3467,7 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 
 	wpa_hexdump(MSG_DEBUG, "FT: Reassoc Req IEs", ies, ies_len);
 
-	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->wpa_key_mgmt,
-			     sm->pmk_r1_len, true, true) < 0) {
+	if (wpa_ft_parse_ies(ies, ies_len, &parse, sm->wpa_key_mgmt) < 0) {
 		wpa_printf(MSG_DEBUG, "FT: Failed to parse FT IEs");
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 	}

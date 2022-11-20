@@ -186,6 +186,18 @@ WPA_CIPHER_BIP_CMAC_256)
 #define FT_R1KH_ID_LEN 6
 #define WPA_PMK_NAME_LEN 16
 
+/* FTE - MIC Control - RSNXE Used */
+#define FTE_MIC_CTRL_RSNXE_USED BIT(0)
+#define FTE_MIC_CTRL_MIC_LEN_MASK (BIT(1) | BIT(2) | BIT(3))
+#define FTE_MIC_CTRL_MIC_LEN_SHIFT 1
+
+/* FTE - MIC Length subfield values */
+enum ft_mic_len_subfield {
+	FTE_MIC_LEN_16 = 0,
+	FTE_MIC_LEN_24 = 1,
+	FTE_MIC_LEN_32 = 2,
+};
+
 
 /* IEEE 802.11, 8.5.2 EAPOL-Key frames */
 #define WPA_KEY_INFO_TYPE_MASK ((u16) (BIT(0) | BIT(1) | BIT(2)))
@@ -612,8 +624,7 @@ struct wpa_pasn_params_data {
 #define WPA_PASN_PUBKEY_UNCOMPRESSED 0x04
 
 int wpa_ft_parse_ies(const u8 *ies, size_t ies_len, struct wpa_ft_ies *parse,
-		     int key_mgmt, size_t key_len, bool need_r0kh_id,
-		     bool need_r1kh_id);
+		     int key_mgmt);
 
 struct wpa_eapol_ie_parse {
 	const u8 *wpa_ie;
