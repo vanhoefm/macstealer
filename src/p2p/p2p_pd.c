@@ -365,7 +365,7 @@ static struct wpabuf * p2p_build_prov_disc_resp(struct p2p_data *p2p,
 		    (conncap & (P2PS_SETUP_CLIENT | P2PS_SETUP_GROUP_OWNER))) {
 			bool is_6ghz_capab;
 
-			is_6ghz_capab = is_p2p_6ghz_capable(p2p) &&
+			is_6ghz_capab = is_p2p_6ghz_capable(p2p) && dev &&
 				p2p_is_peer_6ghz_capab(
 					p2p, dev->info.p2p_device_addr);
 			p2p_buf_add_channel_list(buf, p2p->cfg->country,
