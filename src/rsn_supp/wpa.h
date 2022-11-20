@@ -19,6 +19,7 @@ struct eapol_sm;
 struct wpa_config_blob;
 struct hostapd_freq_params;
 struct wpa_channel_info;
+struct rsn_pmksa_cache_entry;
 enum frame_encryption;
 
 struct wpa_sm_ctx {
@@ -98,6 +99,8 @@ struct wpa_sm_ctx {
 			       const u8 *peer_addr, size_t ltf_keyseed_len,
 			       const u8 *ltf_keyseed);
 #endif /* CONFIG_PASN */
+	void (*notify_pmksa_cache_entry)(void *ctx,
+					 struct rsn_pmksa_cache_entry *entry);
 };
 
 

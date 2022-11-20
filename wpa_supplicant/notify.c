@@ -17,6 +17,7 @@
 #include "dbus/dbus_common.h"
 #include "dbus/dbus_new.h"
 #include "rsn_supp/wpa.h"
+#include "rsn_supp/pmksa_cache.h"
 #include "fst/fst.h"
 #include "crypto/tls.h"
 #include "bss.h"
@@ -976,3 +977,10 @@ void wpas_notify_interworking_select_done(struct wpa_supplicant *wpa_s)
 }
 
 #endif /* CONFIG_INTERWORKING */
+
+
+void wpas_notify_pmk_cache_added(struct wpa_supplicant *wpa_s,
+				 struct rsn_pmksa_cache_entry *entry)
+{
+	/* TODO: Notify external entities of the added PMKSA cache entry */
+}

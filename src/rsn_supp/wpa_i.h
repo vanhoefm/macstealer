@@ -497,6 +497,14 @@ static inline int wpa_sm_set_ltf_keyseed(struct wpa_sm *sm, const u8 *own_addr,
 }
 #endif /* CONFIG_PASN */
 
+static inline void
+wpa_sm_notify_pmksa_cache_entry(struct wpa_sm *sm,
+				struct rsn_pmksa_cache_entry *entry)
+{
+	if (sm->ctx->notify_pmksa_cache_entry)
+		sm->ctx->notify_pmksa_cache_entry(sm->ctx->ctx, entry);
+}
+
 int wpa_eapol_key_send(struct wpa_sm *sm, struct wpa_ptk *ptk,
 		       int ver, const u8 *dest, u16 proto,
 		       u8 *msg, size_t msg_len, u8 *key_mic);

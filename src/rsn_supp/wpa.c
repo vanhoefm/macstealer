@@ -3969,6 +3969,15 @@ static bool wpa_sm_pmksa_is_current_cb(struct rsn_pmksa_cache_entry *entry,
 }
 
 
+static void wpa_sm_pmksa_notify_cb(struct rsn_pmksa_cache_entry *entry,
+				   void *ctx)
+{
+	struct wpa_sm *sm = ctx;
+
+	wpa_sm_notify_pmksa_cache_entry(sm, entry);
+}
+
+
 /**
  * wpa_sm_init - Initialize WPA state machine
  * @ctx: Context pointer for callbacks; this needs to be an allocated buffer
@@ -3993,7 +4002,8 @@ struct wpa_sm * wpa_sm_init(struct wpa_sm_ctx *ctx)
 	sm->dot11RSNAConfigSATimeout = 60;
 
 	sm->pmksa = pmksa_cache_init(wpa_sm_pmksa_free_cb,
-				     wpa_sm_pmksa_is_current_cb, sm, sm);
+				     wpa_sm_pmksa_is_current_cb,
+				     wpa_sm_pmksa_notify_cb, sm, sm);
 	if (sm->pmksa == NULL) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
 			"RSN: PMKSA cache initialization failed");

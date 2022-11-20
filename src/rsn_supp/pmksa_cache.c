@@ -28,6 +28,7 @@ struct rsn_pmksa_cache {
 			enum pmksa_free_reason reason);
 	bool (*is_current_cb)(struct rsn_pmksa_cache_entry *entry,
 			      void *ctx);
+	void (*notify_cb)(struct rsn_pmksa_cache_entry *entry, void *ctx);
 	void *ctx;
 };
 
@@ -359,6 +360,9 @@ pmksa_cache_add_entry(struct rsn_pmksa_cache *pmksa,
 
 	if (!pmksa->sm)
 		return entry;
+
+	if (pmksa->notify_cb)
+		pmksa->notify_cb(entry, pmksa->ctx);
 
 	wpa_sm_add_pmkid(pmksa->sm, entry->network_ctx, entry->aa, entry->pmkid,
 			 entry->fils_cache_id_set ? entry->fils_cache_id : NULL,
@@ -754,6 +758,8 @@ pmksa_cache_init(void (*free_cb)(struct rsn_pmksa_cache_entry *entry,
 				 void *ctx, enum pmksa_free_reason reason),
 		 bool (*is_current_cb)(struct rsn_pmksa_cache_entry *entry,
 				       void *ctx),
+		 void (*notify_cb)(struct rsn_pmksa_cache_entry *entry,
+				   void *ctx),
 		 void *ctx, struct wpa_sm *sm)
 {
 	struct rsn_pmksa_cache *pmksa;
@@ -762,6 +768,7 @@ pmksa_cache_init(void (*free_cb)(struct rsn_pmksa_cache_entry *entry,
 	if (pmksa) {
 		pmksa->free_cb = free_cb;
 		pmksa->is_current_cb = is_current_cb;
+		pmksa->notify_cb = notify_cb;
 		pmksa->ctx = ctx;
 		pmksa->sm = sm;
 	}
