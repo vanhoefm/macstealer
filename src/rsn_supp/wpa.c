@@ -4751,6 +4751,14 @@ struct rsn_pmksa_cache_entry * wpa_sm_pmksa_cache_get(struct wpa_sm *sm,
 }
 
 
+void wpa_sm_pmksa_cache_remove(struct wpa_sm *sm,
+			       struct rsn_pmksa_cache_entry *entry)
+{
+	if (sm && sm->pmksa)
+		pmksa_cache_remove(sm->pmksa, entry);
+}
+
+
 void wpa_sm_drop_sa(struct wpa_sm *sm)
 {
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "WPA: Clear old PMK and PTK");

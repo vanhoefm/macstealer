@@ -2300,6 +2300,34 @@ void sme_event_assoc_reject(struct wpa_supplicant *wpa_s,
 	}
 #endif /* CONFIG_SAE */
 
+#ifdef CONFIG_DPP
+	if (wpa_s->current_ssid &&
+	    wpa_s->current_ssid->key_mgmt == WPA_KEY_MGMT_DPP &&
+	    !data->assoc_reject.timed_out &&
+	    data->assoc_reject.status_code == WLAN_STATUS_INVALID_PMKID) {
+		struct rsn_pmksa_cache_entry *pmksa;
+
+		pmksa = pmksa_cache_get_current(wpa_s->wpa);
+		if (pmksa) {
+			wpa_dbg(wpa_s, MSG_DEBUG,
+				"DPP: Drop PMKSA cache entry for the BSS due to invalid PMKID report");
+			wpa_sm_pmksa_cache_remove(wpa_s->wpa, pmksa);
+		}
+		wpa_sm_aborted_cached(wpa_s->wpa);
+		if (wpa_s->current_bss) {
+			struct wpa_bss *bss = wpa_s->current_bss;
+			struct wpa_ssid *ssid = wpa_s->current_ssid;
+
+			wpa_dbg(wpa_s, MSG_DEBUG,
+				"DPP: Try network introduction again");
+			wpas_connect_work_done(wpa_s);
+			wpa_supplicant_mark_disassoc(wpa_s);
+			wpa_supplicant_connect(wpa_s, bss, ssid);
+			return;
+		}
+	}
+#endif /* CONFIG_DPP */
+
 	/*
 	 * For now, unconditionally terminate the previous authentication. In
 	 * theory, this should not be needed, but mac80211 gets quite confused
