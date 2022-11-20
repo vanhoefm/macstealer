@@ -1701,6 +1701,48 @@ def test_dpp_network_introduction_expired(dev, apdev):
     dev[0].request("RECONNECT")
     dev[0].wait_connected()
 
+def test_dpp_network_introduction_clear_ap(dev, apdev):
+    """DPP network introduction with PMKSA cleared on AP"""
+    check_dpp_capab(dev[0])
+    check_dpp_capab(dev[1])
+
+    params = {"ssid": "dpp",
+              "wpa": "2",
+              "wpa_key_mgmt": "DPP",
+              "ieee80211w": "2",
+              "rsn_pairwise": "CCMP",
+              "dpp_connector": params1_ap_connector,
+              "dpp_csign": params1_csign,
+              "dpp_netaccesskey": params1_ap_netaccesskey}
+    try:
+        hapd = hostapd.add_ap(apdev[0], params)
+    except:
+        raise HwsimSkip("DPP not supported")
+
+    id = dev[0].connect("dpp", key_mgmt="DPP", scan_freq="2412",
+                        ieee80211w="2",
+                        dpp_csign=params1_csign,
+                        dpp_connector=params1_sta_connector,
+                        dpp_netaccesskey=params1_sta_netaccesskey)
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    dev[0].request("RECONNECT")
+    ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED", "DPP-INTRO"], timeout=10)
+    if ev is None:
+        raise Exception("Reconnection timed out")
+    if "DPP-INTRO" in ev:
+        raise Exception("Unexpected network introduction on reconnection")
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+
+    hapd.request("PMKSA_FLUSH")
+    dev[0].request("RECONNECT")
+    ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED", "DPP-INTRO"], timeout=10)
+    if ev is None:
+        raise Exception("Reconnection timed out")
+    if "DPP-INTRO" not in ev:
+        raise Exception("No network introduction on reconnection(2)")
+
 def test_dpp_and_sae_akm(dev, apdev):
     """DPP and SAE AKMs"""
     check_dpp_capab(dev[0])
