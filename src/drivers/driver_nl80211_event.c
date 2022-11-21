@@ -814,7 +814,7 @@ static void mlme_event_connect(struct wpa_driver_nl80211_data *drv,
 	}
 
 	drv->associated = 1;
-	drv->sta_mlo_info.valid_links = 0;
+	os_memset(&drv->sta_mlo_info, 0, sizeof(drv->sta_mlo_info));
 	nl80211_parse_mlo_info(drv, qca_roam_auth, addr, mlo_links, req_ie,
 			       resp_ie);
 	if (!drv->sta_mlo_info.valid_links && addr) {
