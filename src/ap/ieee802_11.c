@@ -5838,6 +5838,19 @@ static void handle_action_cb(struct hostapd_data *hapd,
 		return;
 	}
 
+#ifdef CONFIG_HS20
+	if (ok && len >= IEEE80211_HDRLEN + 2 &&
+	    mgmt->u.action.category == WLAN_ACTION_WNM &&
+	    mgmt->u.action.u.vs_public_action.action == WNM_NOTIFICATION_REQ &&
+	    sta->hs20_deauth_on_ack) {
+		wpa_printf(MSG_DEBUG, "HS 2.0: Deauthenticate STA " MACSTR
+			   " on acknowledging the WNM-Notification",
+			   MAC2STR(sta->addr));
+		ap_sta_session_timeout(hapd, sta, 0);
+		return;
+	}
+#endif /* CONFIG_HS20 */
+
 	if (len < 24 + 5 + sizeof(*report))
 		return;
 	report = (const struct rrm_measurement_report_element *)

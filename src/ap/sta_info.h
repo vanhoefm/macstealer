@@ -118,6 +118,7 @@ struct sta_info {
 	unsigned int qos_map_enabled:1;
 	unsigned int remediation:1;
 	unsigned int hs20_deauth_requested:1;
+	unsigned int hs20_deauth_on_ack:1;
 	unsigned int session_timeout_set:1;
 	unsigned int radius_das_match:1;
 	unsigned int ecsa_supported:1;

@@ -1709,23 +1709,35 @@ static void ieee802_1x_hs20_sub_rem(struct sta_info *sta, u8 *pos, size_t len)
 
 
 static void ieee802_1x_hs20_deauth_req(struct hostapd_data *hapd,
-				       struct sta_info *sta, u8 *pos,
+				       struct sta_info *sta, const u8 *pos,
 				       size_t len)
 {
+	size_t url_len;
+	unsigned int timeout;
+
 	if (len < 3)
 		return; /* Malformed information */
+	url_len = len - 3;
 	sta->hs20_deauth_requested = 1;
+	sta->hs20_deauth_on_ack = url_len == 0;
 	wpa_printf(MSG_DEBUG,
-		   "HS 2.0: Deauthentication request - Code %u  Re-auth Delay %u",
-		   *pos, WPA_GET_LE16(pos + 1));
+		   "HS 2.0: Deauthentication request - Code %u  Re-auth Delay %u  URL length %zu",
+		   *pos, WPA_GET_LE16(pos + 1), url_len);
 	wpabuf_free(sta->hs20_deauth_req);
 	sta->hs20_deauth_req = wpabuf_alloc(len + 1);
 	if (sta->hs20_deauth_req) {
 		wpabuf_put_data(sta->hs20_deauth_req, pos, 3);
-		wpabuf_put_u8(sta->hs20_deauth_req, len - 3);
-		wpabuf_put_data(sta->hs20_deauth_req, pos + 3, len - 3);
+		wpabuf_put_u8(sta->hs20_deauth_req, url_len);
+		wpabuf_put_data(sta->hs20_deauth_req, pos + 3, url_len);
 	}
-	ap_sta_session_timeout(hapd, sta, hapd->conf->hs20_deauth_req_timeout);
+	timeout = hapd->conf->hs20_deauth_req_timeout;
+	/* If there is no URL, no need to provide time to fetch it. Use a short
+	 * timeout here to allow maximum time for completing 4-way handshake and
+	 * WNM-Notification delivery. Acknowledgement of the frame will result
+	 * in cutting this wait further. */
+	if (!url_len && timeout > 2)
+		timeout = 2;
+	ap_sta_session_timeout(hapd, sta, timeout);
 }
 
 
@@ -1813,6 +1825,7 @@ static void ieee802_1x_check_hs20(struct hostapd_data *hapd,
 	buf = NULL;
 	sta->remediation = 0;
 	sta->hs20_deauth_requested = 0;
+	sta->hs20_deauth_on_ack = 0;
 
 	for (;;) {
 		if (radius_msg_get_attr_ptr(msg, RADIUS_ATTR_VENDOR_SPECIFIC,
