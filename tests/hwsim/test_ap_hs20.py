@@ -2587,7 +2587,15 @@ def test_ap_hs20_deauth_req_from_radius(dev, apdev):
     finally:
         dev[0].request("SET pmf 0")
 
-def _test_ap_hs20_deauth_req_from_radius(dev, apdev):
+def test_ap_hs20_deauth_req_from_radius_url(dev, apdev):
+    """Hotspot 2.0 connection and deauthentication request from RADIUS with URL"""
+    check_eap_capa(dev[0], "MSCHAPV2")
+    try:
+        _test_ap_hs20_deauth_req_from_radius(dev, apdev, url=True)
+    finally:
+        dev[0].set("pmf", "0")
+
+def _test_ap_hs20_deauth_req_from_radius(dev, apdev, url=False):
     bssid = apdev[0]['bssid']
     params = hs20_ap_params()
     params['nai_realm'] = ["0,example.com,21[2:4]"]
@@ -2596,17 +2604,20 @@ def _test_ap_hs20_deauth_req_from_radius(dev, apdev):
 
     dev[0].request("SET pmf 2")
     dev[0].hs20_enable()
+    user = "hs20-deauth-test-url" if url else "hs20-deauth-test"
     dev[0].add_cred_values({'realm': "example.com",
-                            'username': "hs20-deauth-test",
+                            'username': user,
                             'password': "password"})
     interworking_select(dev[0], bssid, freq="2412")
     interworking_connect(dev[0], bssid, "TTLS")
     ev = dev[0].wait_event(["HS20-DEAUTH-IMMINENT-NOTICE"], timeout=5)
     if ev is None:
         raise Exception("Timeout on deauth imminent notice")
-    if " 1 100" not in ev:
-        raise Exception("Unexpected deauth imminent contents")
-    dev[0].wait_disconnected(timeout=3)
+    if not url and ev.split(' ', 1)[1] != "1 100 ":
+        raise Exception("Unexpected deauth imminent contents: " + ev)
+    if url and ev.split(' ', 1)[1] != "0 0 https://example.com/deauth/":
+        raise Exception("Unexpected deauth imminent contents: " + ev)
+    dev[0].wait_disconnected(timeout=3 if url else 1)
 
 def test_ap_hs20_deauth_req_without_pmf(dev, apdev):
     """Hotspot 2.0 connection and deauthentication request without PMF"""
