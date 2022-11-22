@@ -2856,6 +2856,16 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_BEAMFORMER_PERIODIC_SOUNDING = 85,
 
+	/* 8-bit unsigned value, whenever wifi calling (wfc) begins or ends,
+	 * userspace sends this information to the driver/firmware to configure
+	 * wfc state. The driver/firmware uses this information to
+	 * optimize power savings, rate adaption, roaming, etc.
+	 *
+	 * 1 - wfc is on.
+	 * 0 - wfc is off.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_WFC_STATE = 86,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
