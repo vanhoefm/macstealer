@@ -5140,6 +5140,24 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	If this flag is not specified, a full scan shall include all the
  *	supported frequencies irrespective of the ones part of an earlier
  *	partial scan.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_FULL_SCAN_6GHZ_ONLY_ON_PRIOR_DISCOVERY: Unsigned 8-bit
+ *	value.
+ *	During the roam scan, if there are no desired APs found in the partial
+ *	frequency list, an immediate full scan on all the supported frequencies
+ *	is initiated as a fallback. This full scan would add the 2.4/5/6 GHz
+ *	frequencies, including all PSC frequencies by default. This attribute
+ *	controls the inclusion of the 6 GHz PSC frequencies for the full scan
+ *	as following.
+ *	1 - Full scan to include the supported 6 GHz PSC frequencies only on the
+ *	   prior discovery of any 6 GHz frequency support in the environment.
+ *	   This discovery can happen through a prior RNR, 11k neighbor
+ *	request, 11v BTM request, host scan, etc.
+ *	0 - Default behavior. Full scan to include all the supported 6 GHz
+ *	   PSC frequencies regardless of whether 6 GHz BSSs have been
+ *	   discovered.
+ *	The default behavior if this flag is not specified is to include all
+ *	the supported 6 GHz PSC frequencies in the roam full scan.
  */
 enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_ENABLE = 1,
@@ -5168,6 +5186,7 @@ enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_LINKSPEED_THRESHOLD = 24,
 	QCA_ATTR_ROAM_CONTROL_HO_DELAY_FOR_RX = 25,
 	QCA_ATTR_ROAM_CONTROL_FULL_SCAN_NO_REUSE_PARTIAL_SCAN_FREQ = 26,
+	QCA_ATTR_ROAM_CONTROL_FULL_SCAN_6GHZ_ONLY_ON_PRIOR_DISCOVERY = 27,
 
 	/* keep last */
 	QCA_ATTR_ROAM_CONTROL_AFTER_LAST,
