@@ -1992,6 +1992,7 @@ LOCAL_MODULE = libpasn
 LOCAL_CFLAGS = $(L_CFLAGS)
 LOCAL_SRC_FILES = $(PASNOBJS)
 LOCAL_C_INCLUDES = $(INCLUDES)
+LOCAL_SHARED_LIBRARIES := libc libcutils liblog
 ifeq ($(CONFIG_TLS), openssl)
 LOCAL_SHARED_LIBRARIES := libcrypto libssl
 endif
