@@ -445,6 +445,8 @@ static int dfs_check_chans_radar(struct hostapd_iface *iface,
 	mode = iface->current_mode;
 
 	for (i = 0; i < n_chans; i++) {
+		if (start_chan_idx + i >= mode->num_channels)
+			break;
 		channel = &mode->channels[start_chan_idx + i];
 		if (channel->flag & HOSTAPD_CHAN_RADAR)
 			res++;
@@ -797,6 +799,8 @@ static unsigned int dfs_get_cac_time(struct hostapd_iface *iface,
 	mode = iface->current_mode;
 
 	for (i = 0; i < n_chans; i++) {
+		if (start_chan_idx + i >= mode->num_channels)
+			break;
 		channel = &mode->channels[start_chan_idx + i];
 		if (!(channel->flag & HOSTAPD_CHAN_RADAR))
 			continue;
