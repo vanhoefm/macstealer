@@ -1448,7 +1448,7 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
 			}
 
 			if (sae_check_confirm(sta->sae, var, var_len) < 0) {
-				resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
+				resp = WLAN_STATUS_CHALLENGE_FAIL;
 				goto reply;
 			}
 			sta->sae->rc = peer_send_confirm;
