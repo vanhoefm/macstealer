@@ -913,6 +913,14 @@ def test_wpa2_ocv_auto_enable_pmf(dev, apdev):
         dev[0].request("REMOVE_NETWORK all")
         dev[0].wait_disconnected()
 
+def test_wpa2_ocv_auto_enable_pmf_on_sta(dev, apdev):
+    """OCV on 2.4 GHz with PMF getting enabled automatically on STA"""
+    params = {"channel": "1",
+              "ieee80211w": "1",
+              "ocv": "1"}
+    hapd, ssid, passphrase = ocv_setup_ap(apdev[0], params)
+    dev[0].connect(ssid, psk=passphrase, scan_freq="2412", ocv="1")
+
 def test_wpa2_ocv_sta_override_eapol(dev, apdev):
     """OCV on 2.4 GHz and STA override EAPOL-Key msg 2/4"""
     params = {"channel": "1",
