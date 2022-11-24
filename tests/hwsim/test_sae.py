@@ -2982,3 +2982,43 @@ def run_sae_ext_key_h2e_rejected_group(dev, apdev, ap_groups, sta_groups,
     finally:
         dev[0].set("sae_groups", "")
         dev[0].set("sae_pwe", "0")
+
+def test_sae_pref_ap_wrong_password(dev, apdev):
+    """SAE and preferred AP using wrong password"""
+    check_sae_capab(dev[0])
+
+    params = hostapd.wpa3_params(ssid="test-sae", password="correct")
+    params['ieee80211n'] = '0'
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    params = hostapd.wpa3_params(ssid="test-sae", password="wrong")
+    hapd2 = hostapd.add_ap(apdev[1], params)
+
+    dev[0].scan_for_bss(hapd.own_addr(), freq=2412)
+    dev[0].scan_for_bss(hapd2.own_addr(), freq=2412)
+
+    dev[0].set("sae_groups", "")
+    dev[0].connect("test-sae", sae_password="correct", key_mgmt="SAE",
+                   ieee80211w="2", scan_freq="2412")
+
+def test_sae_pref_ap_wrong_password2(dev, apdev):
+    """SAE and preferred AP using wrong password (2)"""
+    check_sae_capab(dev[0])
+
+    params = hostapd.wpa3_params(ssid="test-sae", password="wrong")
+    hapd2 = hostapd.add_ap(apdev[1], params)
+
+    dev[0].scan_for_bss(hapd2.own_addr(), freq=2412)
+
+    dev[0].set("sae_groups", "")
+    dev[0].connect("test-sae", sae_password="correct", key_mgmt="SAE",
+                   ieee80211w="2", scan_freq="2412", wait_connect=False)
+    ev = dev[0].wait_event(["CTRL-EVENT-SSID-TEMP-DISABLED"], timeout=30)
+    if ev is None:
+        raise Exception("Temporary disabled of SSID not seen")
+
+    params = hostapd.wpa3_params(ssid="test-sae", password="correct")
+    params['ieee80211n'] = '0'
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].wait_connected(timeout=40)
