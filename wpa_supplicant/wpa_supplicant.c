@@ -8226,6 +8226,13 @@ int wpas_get_ssid_pmf(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 			return NO_MGMT_FRAME_PROTECTION;
 		}
 
+#ifdef CONFIG_OCV
+		/* Enable PMF if OCV is being enabled */
+		if (wpa_s->conf->pmf == NO_MGMT_FRAME_PROTECTION &&
+		    ssid && ssid->ocv)
+			return MGMT_FRAME_PROTECTION_OPTIONAL;
+#endif /* CONFIG_OCV */
+
 		return wpa_s->conf->pmf;
 	}
 
