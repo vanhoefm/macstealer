@@ -10611,3 +10611,29 @@ def test_ap_wps_config_without_wps(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], {"ssid": ssid})
     if "FAIL" not in hapd.request("WPS_CONFIG " + binascii.hexlify(ssid.encode()).decode() + " WPA2PSK CCMP " + binascii.hexlify(b"12345678").decode()):
         raise Exception("WPS_CONFIG command succeeded unexpectedly")
+
+def test_ap_wps_passive_scan(dev, apdev):
+    """WPS PBC provisioning with configured AP and passive scanning"""
+    ssid = "test-wps-conf"
+    hapd = hostapd.add_ap(apdev[0],
+                          {"ssid": ssid, "eap_server": "1", "wps_state": "2",
+                           "wpa_passphrase": "12345678", "wpa": "2",
+                           "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP"})
+    dev[0].scan_for_bss(hapd.own_addr(), freq="2412")
+    hapd.request("WPS_PBC")
+    dev[0].scan_for_bss(hapd.own_addr(), 2412, force_scan=True, passive=True)
+    hapd.set("ext_mgmt_frame_handling", "1")
+    dev[0].dump_monitor()
+    dev[0].request("WPS_PBC " + hapd.own_addr())
+    req = None
+    for i in range(0, 10):
+        req = hapd.mgmt_rx()
+        if req is None:
+            raise Exception("MGMT RX wait timed out")
+        if req['subtype'] == 11:
+            break
+        req = None
+    if not req:
+        raise Exception("Authentication frame not received")
+    hapd.set("ext_mgmt_frame_handling", "0")
+    dev[0].wait_connected(timeout=30)
