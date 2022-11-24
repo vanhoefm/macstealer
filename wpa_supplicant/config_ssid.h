@@ -838,6 +838,14 @@ struct wpa_ssid {
 	struct os_reltime disabled_until;
 
 	/**
+	 * disabled_due_to - BSSID of the disabling failure
+	 *
+	 * This identifies the BSS that failed the connection attempt that
+	 * resulted in the network being temporarily disabled.
+	 */
+	u8 disabled_due_to[ETH_ALEN];
+
+	/**
 	 * parent_cred - Pointer to parent wpa_cred entry
 	 *
 	 * This pointer can be used to delete temporary networks when a wpa_cred

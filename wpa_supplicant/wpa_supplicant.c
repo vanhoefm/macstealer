@@ -2011,7 +2011,7 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 		if (!psk_set) {
 			wpa_msg(wpa_s, MSG_INFO,
 				"No PSK available for association");
-			wpas_auth_failed(wpa_s, "NO_PSK_AVAILABLE");
+			wpas_auth_failed(wpa_s, "NO_PSK_AVAILABLE", NULL);
 			return -1;
 		}
 #ifdef CONFIG_OWE
@@ -7919,7 +7919,7 @@ void wpas_connection_failed(struct wpa_supplicant *wpa_s, const u8 *bssid)
 	if (wpa_s->consecutive_conn_failures > 3 && wpa_s->current_ssid) {
 		wpa_printf(MSG_DEBUG, "Continuous association failures - "
 			   "consider temporary network disabling");
-		wpas_auth_failed(wpa_s, "CONN_FAILED");
+		wpas_auth_failed(wpa_s, "CONN_FAILED", bssid);
 	}
 	/*
 	 * Multiple consecutive connection failures mean that other APs are
@@ -8266,7 +8266,8 @@ int wpas_is_p2p_prioritized(struct wpa_supplicant *wpa_s)
 }
 
 
-void wpas_auth_failed(struct wpa_supplicant *wpa_s, char *reason)
+void wpas_auth_failed(struct wpa_supplicant *wpa_s, const char *reason,
+		      const u8 *bssid)
 {
 	struct wpa_ssid *ssid = wpa_s->current_ssid;
 	int dur;
@@ -8323,6 +8324,9 @@ void wpas_auth_failed(struct wpa_supplicant *wpa_s, char *reason)
 		"id=%d ssid=\"%s\" auth_failures=%u duration=%d reason=%s",
 		ssid->id, wpa_ssid_txt(ssid->ssid, ssid->ssid_len),
 		ssid->auth_failures, dur, reason);
+
+	if (bssid)
+		os_memcpy(ssid->disabled_due_to, bssid, ETH_ALEN);
 }
 
 
@@ -8339,8 +8343,15 @@ void wpas_clear_temp_disabled(struct wpa_supplicant *wpa_s,
 	}
 	ssid->disabled_until.sec = 0;
 	ssid->disabled_until.usec = 0;
-	if (clear_failures)
+	if (clear_failures) {
 		ssid->auth_failures = 0;
+	} else if (!is_zero_ether_addr(ssid->disabled_due_to)) {
+		wpa_printf(MSG_DEBUG, "Mark BSSID " MACSTR
+			   " ignored to allow a lower priority BSS, if any, to be tried next",
+			   MAC2STR(ssid->disabled_due_to));
+		wpa_bssid_ignore_add(wpa_s, ssid->disabled_due_to);
+		os_memset(ssid->disabled_due_to, 0, ETH_ALEN);
+	}
 }
 
 

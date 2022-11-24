@@ -2845,7 +2845,7 @@ static int wpa_supplicant_use_own_rsne_params(struct wpa_supplicant *wpa_s,
 		if (!ssid->psk_set) {
 			wpa_dbg(wpa_s, MSG_INFO,
 				"No PSK available for association");
-			wpas_auth_failed(wpa_s, "NO_PSK_AVAILABLE");
+			wpas_auth_failed(wpa_s, "NO_PSK_AVAILABLE", NULL);
 			return -1;
 		}
 
@@ -3895,7 +3895,7 @@ static void wpa_supplicant_event_disassoc_finish(struct wpa_supplicant *wpa_s,
 			"pre-shared key may be incorrect");
 		if (wpas_p2p_4way_hs_failed(wpa_s) > 0)
 			return; /* P2P group removed */
-		wpas_auth_failed(wpa_s, "WRONG_KEY");
+		wpas_auth_failed(wpa_s, "WRONG_KEY", prev_pending_bssid);
 #ifdef CONFIG_DPP2
 		wpas_dpp_send_conn_status_result(wpa_s,
 						 DPP_STATUS_AUTH_FAILURE);
@@ -4399,7 +4399,7 @@ static void wpas_event_disconnect(struct wpa_supplicant *wpa_s, const u8 *addr,
 		(wpa_s->key_mgmt & WPA_KEY_MGMT_IEEE8021X_NO_WPA)) &&
 	       eapol_sm_failed(wpa_s->eapol))) &&
 	     !wpa_s->eap_expected_failure))
-		wpas_auth_failed(wpa_s, "AUTH_FAILED");
+		wpas_auth_failed(wpa_s, "AUTH_FAILED", addr);
 
 #ifdef CONFIG_P2P
 	if (deauth && reason_code > 0) {
