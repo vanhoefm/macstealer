@@ -2447,7 +2447,7 @@ int wpa_pmk_r1_to_ptk(const u8 *pmk_r1, size_t pmk_r1_len,
  * @akmp: Negotiated key management protocol
  *
  * IEEE Std 802.11-2016 - 12.7.1.3 Pairwise key hierarchy
- * AKM: 00-0F-AC:5, 00-0F-AC:6, 00-0F-AC:14, 00-0F-AC:16
+ * AKM: 00-0F-AC:3, 00-0F-AC:5, 00-0F-AC:6, 00-0F-AC:14, 00-0F-AC:16
  * PMKID = Truncate-128(HMAC-SHA-256(PMK, "PMK Name" || AA || SPA))
  * AKM: 00-0F-AC:11
  * See rsn_pmkid_suite_b()
