@@ -2640,11 +2640,11 @@ static int wpa_supplicant_process_1_of_2_wpa(struct wpa_sm *sm,
 	gd->keyidx = (key_info & WPA_KEY_INFO_KEY_INDEX_MASK) >>
 		WPA_KEY_INFO_KEY_INDEX_SHIFT;
 	if (ver == WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 && sm->ptk.kek_len == 16) {
-#ifdef CONFIG_NO_RC4
+#if defined(CONFIG_NO_RC4) || defined(CONFIG_FIPS)
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
 			"WPA: RC4 not supported in the build");
 		return -1;
-#else /* CONFIG_NO_RC4 */
+#else /* CONFIG_NO_RC4 || CONFIG_FIPS */
 		u8 ek[32];
 		if (key_data_len > sizeof(gd->gtk)) {
 			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
@@ -2662,7 +2662,7 @@ static int wpa_supplicant_process_1_of_2_wpa(struct wpa_sm *sm,
 			return -1;
 		}
 		forced_memzero(ek, sizeof(ek));
-#endif /* CONFIG_NO_RC4 */
+#endif /* CONFIG_NO_RC4 || CONFIG_FIPS */
 	} else if (ver == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
 		if (maxkeylen % 8) {
 			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
@@ -3048,11 +3048,11 @@ static int wpa_supplicant_decrypt_key_data(struct wpa_sm *sm,
 	/* Decrypt key data here so that this operation does not need
 	 * to be implemented separately for each message type. */
 	if (ver == WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 && sm->ptk.kek_len == 16) {
-#ifdef CONFIG_NO_RC4
+#if defined(CONFIG_NO_RC4) || defined(CONFIG_FIPS)
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
 			"WPA: RC4 not supported in the build");
 		return -1;
-#else /* CONFIG_NO_RC4 */
+#else /* CONFIG_NO_RC4 || CONFIG_FIPS */
 		u8 ek[32];
 
 		wpa_printf(MSG_DEBUG, "WPA: Decrypt Key Data using RC4");
@@ -3065,7 +3065,7 @@ static int wpa_supplicant_decrypt_key_data(struct wpa_sm *sm,
 			return -1;
 		}
 		forced_memzero(ek, sizeof(ek));
-#endif /* CONFIG_NO_RC4 */
+#endif /* CONFIG_NO_RC4 || CONFIG_FIPS */
 	} else if (ver == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES ||
 		   ver == WPA_KEY_INFO_TYPE_AES_128_CMAC ||
 		   wpa_use_aes_key_wrap(sm->key_mgmt)) {

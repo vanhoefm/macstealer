@@ -1667,7 +1667,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 				    "RSN: Encrypted Key Data from AES-WRAP",
 				    key_data, key_data_len);
 			WPA_PUT_BE16(key_mic + mic_len, key_data_len);
-#ifndef CONFIG_NO_RC4
+#if !defined(CONFIG_NO_RC4) && !defined(CONFIG_FIPS)
 		} else if (sm->PTK.kek_len == 16) {
 			u8 ek[32];
 
@@ -1681,7 +1681,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 			os_memcpy(key_data, buf, key_data_len);
 			rc4_skip(ek, 32, 256, key_data, key_data_len);
 			WPA_PUT_BE16(key_mic + mic_len, key_data_len);
-#endif /* CONFIG_NO_RC4 */
+#endif /* !(CONFIG_NO_RC4 || CONFIG_FIPS) */
 		} else {
 			os_free(hdr);
 			bin_clear_free(buf, key_data_len);
