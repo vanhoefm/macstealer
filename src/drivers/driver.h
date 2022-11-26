@@ -2978,9 +2978,9 @@ struct wpa_driver_ops {
 	 * poll - Poll driver for association information
 	 * @priv: private driver interface data
 	 *
-	 * This is an option callback that can be used when the driver does not
-	 * provide event mechanism for association events. This is called when
-	 * receiving WPA EAPOL-Key messages that require association
+	 * This is an optional callback that can be used when the driver does
+	 * not provide event mechanism for association events. This is called
+	 * when receiving WPA/RSN EAPOL-Key messages that require association
 	 * information. The driver interface is supposed to generate associnfo
 	 * event before returning from this callback function. In addition, the
 	 * driver interface should generate an association event after having
