@@ -1874,7 +1874,7 @@ def test_ap_wpa2_psk_supp_proto(dev, apdev):
                               replay_counter=counter, key_info=0x13c8)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: Unsupported EAPOL-Key descriptor version 0"])
+    ev = dev[0].wait_event(["RSN: Unsupported EAPOL-Key descriptor version 0"])
     if ev is None:
         raise Exception("Unsupported EAPOL-Key descriptor version 0 not reported")
 
@@ -1884,7 +1884,7 @@ def test_ap_wpa2_psk_supp_proto(dev, apdev):
                               replay_counter=counter, key_info=0x13c9)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: CCMP is used, but EAPOL-Key descriptor version (1) is not 2"])
+    ev = dev[0].wait_event(["RSN: EAPOL-Key descriptor version 1 not allowed without TKIP as the pairwise cipher"])
     if ev is None:
         raise Exception("Not allowed EAPOL-Key descriptor version not reported")
 
@@ -1904,10 +1904,10 @@ def test_ap_wpa2_psk_supp_proto(dev, apdev):
                               replay_counter=counter, key_info=0x13cb)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: CCMP is used, but EAPOL-Key descriptor version (3) is not 2"])
+    ev = dev[0].wait_event(["RSN: CCMP is used, but EAPOL-Key descriptor version (3) is not 2"])
     if ev is None:
         raise Exception("CCMP key descriptor mismatch not reported")
-    ev = dev[0].wait_event(["WPA: Interoperability workaround"])
+    ev = dev[0].wait_event(["RSN: Interoperability workaround"])
     if ev is None:
         raise Exception("AES-128-CMAC workaround not reported")
     ev = dev[0].wait_event(["WPA: Invalid EAPOL-Key MIC - dropping packet"])
@@ -1920,7 +1920,7 @@ def test_ap_wpa2_psk_supp_proto(dev, apdev):
                               replay_counter=counter, key_info=0x13cc)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: Unsupported EAPOL-Key descriptor version 4"])
+    ev = dev[0].wait_event(["RSN: Unsupported EAPOL-Key descriptor version 4"])
     if ev is None:
         raise Exception("Unsupported EAPOL-Key descriptor version 4 not reported")
 
@@ -1930,7 +1930,7 @@ def test_ap_wpa2_psk_supp_proto(dev, apdev):
                               replay_counter=counter, key_info=0x13cf)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: Unsupported EAPOL-Key descriptor version 7"])
+    ev = dev[0].wait_event(["RSN: Unsupported EAPOL-Key descriptor version 7"])
     if ev is None:
         raise Exception("Unsupported EAPOL-Key descriptor version 7 not reported")
 
@@ -1969,7 +1969,7 @@ def test_ap_wpa2_psk_supp_proto(dev, apdev):
                               key_info=0x13ea)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: Ignored EAPOL-Key (Pairwise) with non-zero key index"])
+    ev = dev[0].wait_event(["RSN: Ignored EAPOL-Key (Pairwise) with non-zero key index"])
     if ev is None:
         raise Exception("Non-zero key index not reported")
 

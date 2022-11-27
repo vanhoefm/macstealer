@@ -3251,6 +3251,87 @@ static int wpa_supp_aead_decrypt(struct wpa_sm *sm, u8 *buf, size_t buf_len,
 #endif /* CONFIG_FILS */
 
 
+static int wpa_sm_rx_eapol_wpa(struct wpa_sm *sm, const u8 *src_addr,
+			       struct wpa_eapol_key *key,
+			       enum frame_encryption encrypted,
+			       const u8 *tmp, size_t data_len,
+			       u8 *key_data, size_t key_data_len)
+{
+	u16 key_info, ver;
+
+	key_info = WPA_GET_BE16(key->key_info);
+
+	if (key->type != EAPOL_KEY_TYPE_WPA) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"WPA: Unsupported EAPOL-Key type %d", key->type);
+		return -1;
+	}
+
+	ver = key_info & WPA_KEY_INFO_TYPE_MASK;
+	if (ver != WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 &&
+	    ver != WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"WPA: Unsupported EAPOL-Key descriptor version %d",
+			ver);
+		return -1;
+	}
+
+	if (sm->pairwise_cipher == WPA_CIPHER_CCMP &&
+		   ver != WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"WPA: CCMP is used, but EAPOL-Key descriptor version (%d) is not 2",
+			ver);
+		if (sm->group_cipher != WPA_CIPHER_CCMP &&
+		    !(key_info & WPA_KEY_INFO_KEY_TYPE)) {
+			/* Earlier versions of IEEE 802.11i did not explicitly
+			 * require version 2 descriptor for all EAPOL-Key
+			 * packets, so allow group keys to use version 1 if
+			 * CCMP is not used for them. */
+			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+				"WPA: Backwards compatibility: allow invalid version for non-CCMP group keys");
+		} else
+			return -1;
+	}
+
+	if ((key_info & WPA_KEY_INFO_MIC) &&
+	    wpa_supplicant_verify_eapol_key_mic(sm, key, ver, tmp, data_len))
+		return -1;
+
+	if (key_info & WPA_KEY_INFO_KEY_TYPE) {
+		if (key_info & WPA_KEY_INFO_KEY_INDEX_MASK) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"WPA: Ignored EAPOL-Key (Pairwise) with non-zero key index");
+			return -1;
+		}
+		if (key_info & (WPA_KEY_INFO_MIC |
+				WPA_KEY_INFO_ENCR_KEY_DATA)) {
+			/* 3/4 4-Way Handshake */
+			wpa_supplicant_process_3_of_4(sm, key, ver, key_data,
+						      key_data_len);
+		} else {
+			/* 1/4 4-Way Handshake */
+			wpa_supplicant_process_1_of_4(sm, src_addr, key,
+						      ver, key_data,
+						      key_data_len,
+						      encrypted);
+		}
+	} else {
+		if (key_info & WPA_KEY_INFO_MIC) {
+			/* 1/2 Group Key Handshake */
+			wpa_supplicant_process_1_of_2(sm, src_addr, key,
+						      key_data,
+						      key_data_len,
+						      ver);
+		} else {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"WPA: EAPOL-Key (Group) without Mic/Encr bit - dropped");
+		}
+	}
+
+	return 1;
+}
+
+
 /**
  * wpa_sm_rx_eapol - Process received WPA EAPOL frames
  * @sm: Pointer to WPA state machine data from wpa_sm_init()
@@ -3362,16 +3443,74 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 		goto out;
 	}
 
+	if (sm->rx_replay_counter_set &&
+	    os_memcmp(key->replay_counter, sm->rx_replay_counter,
+		      WPA_REPLAY_COUNTER_LEN) <= 0) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"WPA: EAPOL-Key Replay Counter did not increase - dropping packet");
+		goto out;
+	}
+
 	eapol_sm_notify_lower_layer_success(sm->eapol, 0);
+
 	key_info = WPA_GET_BE16(key->key_info);
+
+	if (key_info & WPA_KEY_INFO_SMK_MESSAGE) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"WPA: Unsupported SMK bit in key_info");
+		goto out;
+	}
+
+	if (!(key_info & WPA_KEY_INFO_ACK)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"WPA: No Ack bit in key_info");
+		goto out;
+	}
+
+	if (key_info & WPA_KEY_INFO_REQUEST) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"WPA: EAPOL-Key with Request bit - dropped");
+		goto out;
+	}
+
+	if (sm->proto == WPA_PROTO_WPA) {
+		ret = wpa_sm_rx_eapol_wpa(sm, src_addr, key, encrypted,
+					  tmp, data_len,
+					  key_data, key_data_len);
+		goto out;
+	}
+
+	if (key->type != EAPOL_KEY_TYPE_RSN) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: Unsupported EAPOL-Key type %d", key->type);
+		goto out;
+	}
+
 	ver = key_info & WPA_KEY_INFO_TYPE_MASK;
 	if (ver != WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 &&
 	    ver != WPA_KEY_INFO_TYPE_AES_128_CMAC &&
 	    ver != WPA_KEY_INFO_TYPE_HMAC_SHA1_AES &&
 	    !wpa_use_akm_defined(sm->key_mgmt)) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"WPA: Unsupported EAPOL-Key descriptor version %d",
+			"RSN: Unsupported EAPOL-Key descriptor version %d",
 			ver);
+		goto out;
+	}
+
+	if (ver == WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 &&
+	    sm->pairwise_cipher != WPA_CIPHER_TKIP) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: EAPOL-Key descriptor version %d not allowed without TKIP as the pairwise cipher",
+			ver);
+		goto out;
+	}
+
+	if (ver == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES &&
+	    (sm->key_mgmt != WPA_KEY_MGMT_IEEE8021X &&
+	     sm->key_mgmt != WPA_KEY_MGMT_PSK)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: EAPOL-Key descriptor version %d not allowed due to negotiated AKM (0x%x)",
+			ver, sm->key_mgmt);
 		goto out;
 	}
 
@@ -3398,63 +3537,28 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 		if (ver != WPA_KEY_INFO_TYPE_AES_128_CMAC &&
 		    !wpa_use_akm_defined(sm->key_mgmt)) {
 			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-				"WPA: AP did not use the "
-				"negotiated AES-128-CMAC");
+				"RSN: AP did not use the negotiated AES-128-CMAC");
 			goto out;
 		}
 	} else if (sm->pairwise_cipher == WPA_CIPHER_CCMP &&
 		   !wpa_use_akm_defined(sm->key_mgmt) &&
 		   ver != WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"WPA: CCMP is used, but EAPOL-Key "
-			"descriptor version (%d) is not 2", ver);
-		if (sm->group_cipher != WPA_CIPHER_CCMP &&
-		    !(key_info & WPA_KEY_INFO_KEY_TYPE)) {
-			/* Earlier versions of IEEE 802.11i did not explicitly
-			 * require version 2 descriptor for all EAPOL-Key
-			 * packets, so allow group keys to use version 1 if
-			 * CCMP is not used for them. */
+			"RSN: CCMP is used, but EAPOL-Key descriptor version (%d) is not 2", ver);
+		if (ver == WPA_KEY_INFO_TYPE_AES_128_CMAC) {
 			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-				"WPA: Backwards compatibility: allow invalid "
-				"version for non-CCMP group keys");
-		} else if (ver == WPA_KEY_INFO_TYPE_AES_128_CMAC) {
+				"RSN: Interoperability workaround: allow incorrect (should have been HMAC-SHA1), but stronger (is AES-128-CMAC), descriptor version to be used");
+		} else {
 			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-				"WPA: Interoperability workaround: allow incorrect (should have been HMAC-SHA1), but stronger (is AES-128-CMAC), descriptor version to be used");
-		} else
+				"RSN: Unexpected descriptor version %u", ver);
 			goto out;
+		}
 	} else if (sm->pairwise_cipher == WPA_CIPHER_GCMP &&
 		   !wpa_use_akm_defined(sm->key_mgmt) &&
 		   ver != WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"WPA: GCMP is used, but EAPOL-Key "
-			"descriptor version (%d) is not 2", ver);
-		goto out;
-	}
-
-	if (sm->rx_replay_counter_set &&
-	    os_memcmp(key->replay_counter, sm->rx_replay_counter,
-		      WPA_REPLAY_COUNTER_LEN) <= 0) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-			"WPA: EAPOL-Key Replay Counter did not increase - "
-			"dropping packet");
-		goto out;
-	}
-
-	if (key_info & WPA_KEY_INFO_SMK_MESSAGE) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"WPA: Unsupported SMK bit in key_info");
-		goto out;
-	}
-
-	if (!(key_info & WPA_KEY_INFO_ACK)) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"WPA: No Ack bit in key_info");
-		goto out;
-	}
-
-	if (key_info & WPA_KEY_INFO_REQUEST) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"WPA: EAPOL-Key with Request bit - dropped");
+			"RSN: GCMP is used, but EAPOL-Key descriptor version (%d) is not 2",
+			ver);
 		goto out;
 	}
 
@@ -3491,8 +3595,7 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 	if (key_info & WPA_KEY_INFO_KEY_TYPE) {
 		if (key_info & WPA_KEY_INFO_KEY_INDEX_MASK) {
 			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-				"WPA: Ignored EAPOL-Key (Pairwise) with "
-				"non-zero key index");
+				"RSN: Ignored EAPOL-Key (Pairwise) with non-zero key index");
 			goto out;
 		}
 		if (key_info & (WPA_KEY_INFO_MIC |
@@ -3523,8 +3626,7 @@ int wpa_sm_rx_eapol(struct wpa_sm *sm, const u8 *src_addr,
 							      ver);
 		} else {
 			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-				"WPA: EAPOL-Key (Group) without Mic/Encr bit - "
-				"dropped");
+				"RSN: EAPOL-Key (Group) without Mic/Encr bit - dropped");
 		}
 	}
 
