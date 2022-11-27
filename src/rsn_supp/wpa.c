@@ -778,6 +778,85 @@ static bool is_valid_ap_mld_mac_kde(struct wpa_sm *sm, const u8 *mac_kde)
 }
 
 
+static void wpas_swap_tkip_mic_keys(struct wpa_ptk *ptk)
+{
+	u8 buf[8];
+
+	/* Supplicant: swap tx/rx Mic keys */
+	os_memcpy(buf, &ptk->tk[16], 8);
+	os_memcpy(&ptk->tk[16], &ptk->tk[24], 8);
+	os_memcpy(&ptk->tk[24], buf, 8);
+	forced_memzero(buf, sizeof(buf));
+}
+
+
+static void wpa_supplicant_process_1_of_4_wpa(struct wpa_sm *sm,
+					      const unsigned char *src_addr,
+					      const struct wpa_eapol_key *key,
+					      u16 ver, const u8 *key_data,
+					      size_t key_data_len,
+					      enum frame_encryption encrypted)
+{
+	struct wpa_eapol_ie_parse ie;
+	struct wpa_ptk *ptk;
+	int res;
+
+	if (wpa_sm_get_network_ctx(sm) == NULL) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"WPA: No SSID info found (msg 1 of 4)");
+		return;
+	}
+
+	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+		"WPA: RX message 1 of 4-Way Handshake from " MACSTR
+		" (ver=%d)", MAC2STR(src_addr), ver);
+
+	os_memset(&ie, 0, sizeof(ie));
+
+	res = wpa_supplicant_get_pmk(sm, src_addr, ie.pmkid);
+	if (res == -2) {
+		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+			"WPA: Do not reply to msg 1/4 - requesting full EAP authentication");
+		return;
+	}
+	if (res)
+		goto failed;
+
+	wpa_sm_set_state(sm, WPA_4WAY_HANDSHAKE);
+
+	if (sm->renew_snonce) {
+		if (random_get_bytes(sm->snonce, WPA_NONCE_LEN)) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"WPA: Failed to get random data for SNonce");
+			goto failed;
+		}
+		sm->renew_snonce = 0;
+		wpa_hexdump(MSG_DEBUG, "WPA: Renewed SNonce",
+			    sm->snonce, WPA_NONCE_LEN);
+	}
+
+	/* Calculate PTK which will be stored as a temporary PTK until it has
+	 * been verified when processing message 3/4. */
+	ptk = &sm->tptk;
+	if (wpa_derive_ptk(sm, src_addr, key, ptk) < 0)
+		goto failed;
+	if (sm->pairwise_cipher == WPA_CIPHER_TKIP)
+		wpas_swap_tkip_mic_keys(ptk);
+	sm->tptk_set = 1;
+
+	if (wpa_supplicant_send_2_of_4(sm, wpa_sm_get_auth_addr(sm), key, ver,
+				       sm->snonce, sm->assoc_wpa_ie,
+				       sm->assoc_wpa_ie_len, ptk) < 0)
+		goto failed;
+
+	os_memcpy(sm->anonce, key->key_nonce, WPA_NONCE_LEN);
+	return;
+
+failed:
+	wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
+}
+
+
 static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 					  const unsigned char *src_addr,
 					  const struct wpa_eapol_key *key,
@@ -818,19 +897,16 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 
 	os_memset(&ie, 0, sizeof(ie));
 
-	if (sm->proto == WPA_PROTO_RSN || sm->proto == WPA_PROTO_OSEN) {
-		/* RSN: msg 1/4 should contain PMKID for the selected PMK */
-		wpa_hexdump(MSG_DEBUG, "RSN: msg 1/4 key data",
-			    key_data, key_data_len);
-		if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0) {
-			wpa_printf(MSG_DEBUG,
-				   "RSN: Discard EAPOL-Key msg 1/4 with invalid IEs/KDEs");
-			return;
-		}
-		if (ie.pmkid) {
-			wpa_hexdump(MSG_DEBUG, "RSN: PMKID from "
-				    "Authenticator", ie.pmkid, PMKID_LEN);
-		}
+	/* RSN: msg 1/4 should contain PMKID for the selected PMK */
+	wpa_hexdump(MSG_DEBUG, "RSN: msg 1/4 key data", key_data, key_data_len);
+	if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0) {
+		wpa_printf(MSG_DEBUG,
+			   "RSN: Discard EAPOL-Key msg 1/4 with invalid IEs/KDEs");
+		return;
+	}
+	if (ie.pmkid) {
+		wpa_hexdump(MSG_DEBUG, "RSN: PMKID from Authenticator",
+			    ie.pmkid, PMKID_LEN);
 	}
 
 	if (sm->mlo.valid_links && !is_valid_ap_mld_mac_kde(sm, ie.mac_addr)) {
@@ -866,14 +942,8 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 	ptk = &sm->tptk;
 	if (wpa_derive_ptk(sm, src_addr, key, ptk) < 0)
 		goto failed;
-	if (sm->pairwise_cipher == WPA_CIPHER_TKIP) {
-		u8 buf[8];
-		/* Supplicant: swap tx/rx Mic keys */
-		os_memcpy(buf, &ptk->tk[16], 8);
-		os_memcpy(&ptk->tk[16], &ptk->tk[24], 8);
-		os_memcpy(&ptk->tk[24], buf, 8);
-		forced_memzero(buf, sizeof(buf));
-	}
+	if (sm->pairwise_cipher == WPA_CIPHER_TKIP)
+		wpas_swap_tkip_mic_keys(ptk);
 	sm->tptk_set = 1;
 
 	/* Add MLO Link KDE and MAC KDE in M2 for ML connection */
@@ -3329,10 +3399,10 @@ static int wpa_sm_rx_eapol_wpa(struct wpa_sm *sm, const u8 *src_addr,
 						      key_data_len);
 		} else {
 			/* 1/4 4-Way Handshake */
-			wpa_supplicant_process_1_of_4(sm, src_addr, key,
-						      ver, key_data,
-						      key_data_len,
-						      encrypted);
+			wpa_supplicant_process_1_of_4_wpa(sm, src_addr, key,
+							  ver, key_data,
+							  key_data_len,
+							  encrypted);
 		}
 	} else {
 		if (key_info & WPA_KEY_INFO_MIC) {
