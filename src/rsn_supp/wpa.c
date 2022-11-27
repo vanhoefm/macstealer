@@ -2344,6 +2344,73 @@ static int wpa_validate_mlo_ieee80211w_kdes(struct wpa_sm *sm,
 }
 
 
+static void wpa_supplicant_process_3_of_4_wpa(struct wpa_sm *sm,
+					      const struct wpa_eapol_key *key,
+					      u16 ver, const u8 *key_data,
+					      size_t key_data_len)
+{
+	u16 key_info, keylen;
+	struct wpa_eapol_ie_parse ie;
+
+	wpa_sm_set_state(sm, WPA_4WAY_HANDSHAKE);
+	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+		"WPA: RX message 3 of 4-Way Handshake from " MACSTR
+		" (ver=%d)", MAC2STR(sm->bssid), ver);
+
+	key_info = WPA_GET_BE16(key->key_info);
+
+	wpa_hexdump(MSG_DEBUG, "WPA: IE KeyData", key_data, key_data_len);
+	if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0)
+		goto failed;
+
+	if (wpa_supplicant_validate_ie(sm, sm->bssid, &ie) < 0)
+		goto failed;
+
+	if (os_memcmp(sm->anonce, key->key_nonce, WPA_NONCE_LEN) != 0) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"WPA: ANonce from message 1 of 4-Way Handshake differs from 3 of 4-Way Handshake - drop packet (src="
+			MACSTR ")", MAC2STR(sm->bssid));
+		goto failed;
+	}
+
+	keylen = WPA_GET_BE16(key->key_length);
+	if (keylen != wpa_cipher_key_len(sm->pairwise_cipher)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"WPA: Invalid %s key length %d (src=" MACSTR ")",
+			wpa_cipher_txt(sm->pairwise_cipher), keylen,
+			MAC2STR(sm->bssid));
+		goto failed;
+	}
+
+	if (wpa_supplicant_send_4_of_4(sm, wpa_sm_get_auth_addr(sm), key, ver,
+				       key_info, &sm->ptk) < 0)
+		goto failed;
+
+	/* SNonce was successfully used in msg 3/4, so mark it to be renewed
+	 * for the next 4-Way Handshake. If msg 3 is received again, the old
+	 * SNonce will still be used to avoid changing PTK. */
+	sm->renew_snonce = 1;
+
+	if ((key_info & WPA_KEY_INFO_INSTALL) &&
+	    wpa_supplicant_install_ptk(sm, key, KEY_FLAG_RX_TX))
+		goto failed;
+
+	if (key_info & WPA_KEY_INFO_SECURE) {
+		wpa_sm_mlme_setprotection(
+			sm, sm->bssid, MLME_SETPROTECTION_PROTECT_TYPE_RX,
+			MLME_SETPROTECTION_KEY_TYPE_PAIRWISE);
+		eapol_sm_notify_portValid(sm->eapol, true);
+	}
+	wpa_sm_set_state(sm, WPA_GROUP_HANDSHAKE);
+
+	sm->msg_3_of_4_ok = 1;
+	return;
+
+failed:
+	wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
+}
+
+
 static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 					  const struct wpa_eapol_key *key,
 					  u16 ver, const u8 *key_data,
@@ -3395,8 +3462,9 @@ static int wpa_sm_rx_eapol_wpa(struct wpa_sm *sm, const u8 *src_addr,
 		if (key_info & (WPA_KEY_INFO_MIC |
 				WPA_KEY_INFO_ENCR_KEY_DATA)) {
 			/* 3/4 4-Way Handshake */
-			wpa_supplicant_process_3_of_4(sm, key, ver, key_data,
-						      key_data_len);
+			wpa_supplicant_process_3_of_4_wpa(sm, key, ver,
+							  key_data,
+							  key_data_len);
 		} else {
 			/* 1/4 4-Way Handshake */
 			wpa_supplicant_process_1_of_4_wpa(sm, src_addr, key,
