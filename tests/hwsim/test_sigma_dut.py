@@ -6054,7 +6054,7 @@ def test_sigma_dut_gtk_rekey(dev, apdev):
 
         dev[0].dump_monitor()
         sigma_dut_cmd_check("dev_exec_action,interface,%s,program,WPA3,KeyRotation,1" % ifname)
-        ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=5)
+        ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=5)
         if ev is None:
             raise Exception("GTK rekeying not seen")
 
@@ -6081,7 +6081,7 @@ def test_sigma_dut_ap_gtk_rekey(dev, apdev, params):
 
             sigma_dut_cmd_check("dev_exec_action,name,AP,interface,%s,program,WPA3,KeyRotation,1" % iface)
 
-            ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=5)
+            ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=5)
             if ev is None:
                 raise Exception("GTK rekeying not seen")
 

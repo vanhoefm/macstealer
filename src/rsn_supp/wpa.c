@@ -2529,173 +2529,6 @@ failed:
 }
 
 
-static int wpa_supplicant_process_1_of_2_rsn(struct wpa_sm *sm,
-					     const u8 *keydata,
-					     size_t keydatalen,
-					     u16 key_info,
-					     struct wpa_gtk_data *gd)
-{
-	int maxkeylen;
-	struct wpa_eapol_ie_parse ie;
-	u16 gtk_len;
-
-	wpa_hexdump_key(MSG_DEBUG, "RSN: msg 1/2 key data",
-			keydata, keydatalen);
-	if (wpa_supplicant_parse_ies(keydata, keydatalen, &ie) < 0)
-		return -1;
-	if (ie.gtk && !(key_info & WPA_KEY_INFO_ENCR_KEY_DATA)) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-			"WPA: GTK IE in unencrypted key data");
-		return -1;
-	}
-	if (ie.gtk == NULL) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"WPA: No GTK IE in Group Key msg 1/2");
-		return -1;
-	}
-	gtk_len = ie.gtk_len;
-	if (gtk_len < 2) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"RSN: Invalid GTK KDE length (%u) in Group Key msg 1/2",
-			gtk_len);
-		return -1;
-	}
-	gtk_len -= 2;
-	if (gtk_len > sizeof(gd->gtk)) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"RSN: Too long GTK in GTK KDE (len=%u)", gtk_len);
-		return -1;
-	}
-	maxkeylen = gd->gtk_len = gtk_len;
-
-#ifdef CONFIG_OCV
-	if (wpa_sm_ocv_enabled(sm)) {
-		struct wpa_channel_info ci;
-
-		if (wpa_sm_channel_info(sm, &ci) != 0) {
-			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-				"Failed to get channel info to validate received OCI in EAPOL-Key group msg 1/2");
-			return -1;
-		}
-
-		if (ocv_verify_tx_params(ie.oci, ie.oci_len, &ci,
-					 channel_width_to_int(ci.chanwidth),
-					 ci.seg1_idx) != OCI_SUCCESS) {
-			wpa_msg(sm->ctx->msg_ctx, MSG_INFO, OCV_FAILURE
-				"addr=" MACSTR " frame=eapol-key-g1 error=%s",
-				MAC2STR(sm->bssid), ocv_errorstr);
-			return -1;
-		}
-	}
-#endif /* CONFIG_OCV */
-
-	if (wpa_supplicant_check_group_cipher(sm, sm->group_cipher,
-					      gtk_len, maxkeylen,
-					      &gd->key_rsc_len, &gd->alg))
-		return -1;
-
-	wpa_hexdump_key(MSG_DEBUG, "RSN: received GTK in group key handshake",
-			ie.gtk, 2 + gtk_len);
-	gd->keyidx = ie.gtk[0] & 0x3;
-	gd->tx = wpa_supplicant_gtk_tx_bit_workaround(sm,
-						      !!(ie.gtk[0] & BIT(2)));
-	os_memcpy(gd->gtk, ie.gtk + 2, gtk_len);
-
-	if (ieee80211w_set_keys(sm, &ie) < 0)
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"RSN: Failed to configure IGTK");
-
-	return 0;
-}
-
-
-static int wpa_supplicant_process_1_of_2_wpa(struct wpa_sm *sm,
-					     const struct wpa_eapol_key *key,
-					     const u8 *key_data,
-					     size_t key_data_len, u16 key_info,
-					     u16 ver, struct wpa_gtk_data *gd)
-{
-	size_t maxkeylen;
-	u16 gtk_len;
-
-	gtk_len = WPA_GET_BE16(key->key_length);
-	maxkeylen = key_data_len;
-	if (ver == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
-		if (maxkeylen < 8) {
-			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-				"WPA: Too short maxkeylen (%lu)",
-				(unsigned long) maxkeylen);
-			return -1;
-		}
-		maxkeylen -= 8;
-	}
-
-	if (gtk_len > maxkeylen ||
-	    wpa_supplicant_check_group_cipher(sm, sm->group_cipher,
-					      gtk_len, maxkeylen,
-					      &gd->key_rsc_len, &gd->alg))
-		return -1;
-
-	gd->gtk_len = gtk_len;
-	gd->keyidx = (key_info & WPA_KEY_INFO_KEY_INDEX_MASK) >>
-		WPA_KEY_INFO_KEY_INDEX_SHIFT;
-	if (ver == WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 && sm->ptk.kek_len == 16) {
-#if defined(CONFIG_NO_RC4) || defined(CONFIG_FIPS)
-		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-			"WPA: RC4 not supported in the build");
-		return -1;
-#else /* CONFIG_NO_RC4 || CONFIG_FIPS */
-		u8 ek[32];
-		if (key_data_len > sizeof(gd->gtk)) {
-			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-				"WPA: RC4 key data too long (%lu)",
-				(unsigned long) key_data_len);
-			return -1;
-		}
-		os_memcpy(ek, key->key_iv, 16);
-		os_memcpy(ek + 16, sm->ptk.kek, sm->ptk.kek_len);
-		os_memcpy(gd->gtk, key_data, key_data_len);
-		if (rc4_skip(ek, 32, 256, gd->gtk, key_data_len)) {
-			forced_memzero(ek, sizeof(ek));
-			wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
-				"WPA: RC4 failed");
-			return -1;
-		}
-		forced_memzero(ek, sizeof(ek));
-#endif /* CONFIG_NO_RC4 || CONFIG_FIPS */
-	} else if (ver == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
-		if (maxkeylen % 8) {
-			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-				"WPA: Unsupported AES-WRAP len %lu",
-				(unsigned long) maxkeylen);
-			return -1;
-		}
-		if (maxkeylen > sizeof(gd->gtk)) {
-			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-				"WPA: AES-WRAP key data "
-				"too long (keydatalen=%lu maxkeylen=%lu)",
-				(unsigned long) key_data_len,
-				(unsigned long) maxkeylen);
-			return -1;
-		}
-		if (aes_unwrap(sm->ptk.kek, sm->ptk.kek_len, maxkeylen / 8,
-			       key_data, gd->gtk)) {
-			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-				"WPA: AES unwrap failed - could not decrypt "
-				"GTK");
-			return -1;
-		}
-	} else {
-		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
-			"WPA: Unsupported key_info type %d", ver);
-		return -1;
-	}
-	gd->tx = wpa_supplicant_gtk_tx_bit_workaround(
-		sm, !!(key_info & WPA_KEY_INFO_TXRX));
-	return 0;
-}
-
-
 static int wpa_supplicant_send_2_of_2(struct wpa_sm *sm,
 				      const struct wpa_eapol_key *key,
 				      int ver, u16 key_info)
@@ -2879,18 +2712,20 @@ failed:
 }
 
 
-static void wpa_supplicant_process_1_of_2(struct wpa_sm *sm,
-					  const unsigned char *src_addr,
-					  const struct wpa_eapol_key *key,
-					  const u8 *key_data,
-					  size_t key_data_len, u16 ver)
+static void wpa_supplicant_process_1_of_2_wpa(struct wpa_sm *sm,
+					      const unsigned char *src_addr,
+					      const struct wpa_eapol_key *key,
+					      const u8 *key_data,
+					      size_t key_data_len, u16 ver)
 {
 	u16 key_info;
-	int rekey, ret;
+	int rekey;
 	struct wpa_gtk_data gd;
 	const u8 *key_rsc;
+	size_t maxkeylen;
+	u16 gtk_len;
 
-	if (!sm->msg_3_of_4_ok && !wpa_fils_is_completed(sm)) {
+	if (!sm->msg_3_of_4_ok) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
 			"WPA: Group Key Handshake started prior to completion of 4-way handshake");
 		goto failed;
@@ -2899,25 +2734,88 @@ static void wpa_supplicant_process_1_of_2(struct wpa_sm *sm,
 	os_memset(&gd, 0, sizeof(gd));
 
 	rekey = wpa_sm_get_state(sm) == WPA_COMPLETED;
-	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "WPA: RX message 1 of Group Key "
-		"Handshake from " MACSTR " (ver=%d)", MAC2STR(src_addr), ver);
+	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+		"WPA: RX message 1 of Group Key Handshake from " MACSTR
+		" (ver=%d)", MAC2STR(src_addr), ver);
 
 	key_info = WPA_GET_BE16(key->key_info);
 
-	if (sm->proto == WPA_PROTO_RSN || sm->proto == WPA_PROTO_OSEN) {
-		ret = wpa_supplicant_process_1_of_2_rsn(sm, key_data,
-							key_data_len, key_info,
-							&gd);
-	} else {
-		ret = wpa_supplicant_process_1_of_2_wpa(sm, key, key_data,
-							key_data_len,
-							key_info, ver, &gd);
+	gtk_len = WPA_GET_BE16(key->key_length);
+	maxkeylen = key_data_len;
+	if (ver == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
+		if (maxkeylen < 8) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+				"WPA: Too short maxkeylen (%lu)",
+				(unsigned long) maxkeylen);
+			goto failed;
+		}
+		maxkeylen -= 8;
 	}
+
+	if (gtk_len > maxkeylen ||
+	    wpa_supplicant_check_group_cipher(sm, sm->group_cipher,
+					      gtk_len, maxkeylen,
+					      &gd.key_rsc_len, &gd.alg))
+		goto failed;
 
 	wpa_sm_set_state(sm, WPA_GROUP_HANDSHAKE);
 
-	if (ret)
+	gd.gtk_len = gtk_len;
+	gd.keyidx = (key_info & WPA_KEY_INFO_KEY_INDEX_MASK) >>
+		WPA_KEY_INFO_KEY_INDEX_SHIFT;
+	if (ver == WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 && sm->ptk.kek_len == 16) {
+#if defined(CONFIG_NO_RC4) || defined(CONFIG_FIPS)
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"WPA: RC4 not supported in the build");
 		goto failed;
+#else /* CONFIG_NO_RC4 || CONFIG_FIPS */
+		u8 ek[32];
+		if (key_data_len > sizeof(gd.gtk)) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"WPA: RC4 key data too long (%lu)",
+				(unsigned long) key_data_len);
+			goto failed;
+		}
+		os_memcpy(ek, key->key_iv, 16);
+		os_memcpy(ek + 16, sm->ptk.kek, sm->ptk.kek_len);
+		os_memcpy(gd.gtk, key_data, key_data_len);
+		if (rc4_skip(ek, 32, 256, gd.gtk, key_data_len)) {
+			forced_memzero(ek, sizeof(ek));
+			wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
+				"WPA: RC4 failed");
+			goto failed;
+		}
+		forced_memzero(ek, sizeof(ek));
+#endif /* CONFIG_NO_RC4 || CONFIG_FIPS */
+	} else if (ver == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES) {
+		if (maxkeylen % 8) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"WPA: Unsupported AES-WRAP len %lu",
+				(unsigned long) maxkeylen);
+			goto failed;
+		}
+		if (maxkeylen > sizeof(gd.gtk)) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"WPA: AES-WRAP key data "
+				"too long (keydatalen=%lu maxkeylen=%lu)",
+				(unsigned long) key_data_len,
+				(unsigned long) maxkeylen);
+			goto failed;
+		}
+		if (aes_unwrap(sm->ptk.kek, sm->ptk.kek_len, maxkeylen / 8,
+			       key_data, gd.gtk)) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"WPA: AES unwrap failed - could not decrypt "
+				"GTK");
+			goto failed;
+		}
+	} else {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"WPA: Unsupported key_info type %d", ver);
+		goto failed;
+	}
+	gd.tx = wpa_supplicant_gtk_tx_bit_workaround(
+		sm, !!(key_info & WPA_KEY_INFO_TXRX));
 
 	key_rsc = key->key_rsc;
 	if (wpa_supplicant_rsc_relaxation(sm, key->key_rsc))
@@ -2929,16 +2827,137 @@ static void wpa_supplicant_process_1_of_2(struct wpa_sm *sm,
 	forced_memzero(&gd, sizeof(gd));
 
 	if (rekey) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO, "WPA: Group rekeying "
-			"completed with " MACSTR " [GTK=%s]",
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"WPA: Group rekeying completed with " MACSTR
+			" [GTK=%s]",
 			MAC2STR(sm->bssid), wpa_cipher_txt(sm->group_cipher));
 		wpa_sm_cancel_auth_timeout(sm);
 		wpa_sm_set_state(sm, WPA_COMPLETED);
 	} else {
 		wpa_supplicant_key_neg_complete(sm, sm->bssid,
-						key_info &
-						WPA_KEY_INFO_SECURE);
+						key_info & WPA_KEY_INFO_SECURE);
 	}
+
+	wpa_sm_set_rekey_offload(sm);
+
+	return;
+
+failed:
+	forced_memzero(&gd, sizeof(gd));
+	wpa_sm_deauthenticate(sm, WLAN_REASON_UNSPECIFIED);
+}
+
+
+static void wpa_supplicant_process_1_of_2(struct wpa_sm *sm,
+					  const unsigned char *src_addr,
+					  const struct wpa_eapol_key *key,
+					  const u8 *key_data,
+					  size_t key_data_len, u16 ver)
+{
+	u16 key_info;
+	struct wpa_gtk_data gd;
+	const u8 *key_rsc;
+	int maxkeylen;
+	struct wpa_eapol_ie_parse ie;
+	u16 gtk_len;
+
+	if (!sm->msg_3_of_4_ok && !wpa_fils_is_completed(sm)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: Group Key Handshake started prior to completion of 4-way handshake");
+		goto failed;
+	}
+
+	os_memset(&gd, 0, sizeof(gd));
+
+	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+		"RSN: RX message 1 of Group Key Handshake from " MACSTR
+		" (ver=%d)", MAC2STR(src_addr), ver);
+
+	key_info = WPA_GET_BE16(key->key_info);
+
+	wpa_hexdump_key(MSG_DEBUG, "RSN: msg 1/2 key data",
+			key_data, key_data_len);
+	if (wpa_supplicant_parse_ies(key_data, key_data_len, &ie) < 0)
+		goto failed;
+
+	wpa_sm_set_state(sm, WPA_GROUP_HANDSHAKE);
+
+	if (ie.gtk && !(key_info & WPA_KEY_INFO_ENCR_KEY_DATA)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+			"RSN: GTK KDE in unencrypted key data");
+		goto failed;
+	}
+	if (!ie.gtk) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: No GTK KDE in Group Key msg 1/2");
+		goto failed;
+	}
+	gtk_len = ie.gtk_len;
+	if (gtk_len < 2) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: Invalid GTK KDE length (%u) in Group Key msg 1/2",
+			gtk_len);
+		goto failed;
+	}
+	gtk_len -= 2;
+	if (gtk_len > sizeof(gd.gtk)) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: Too long GTK in GTK KDE (len=%u)", gtk_len);
+		goto failed;
+	}
+	maxkeylen = gd.gtk_len = gtk_len;
+
+#ifdef CONFIG_OCV
+	if (wpa_sm_ocv_enabled(sm)) {
+		struct wpa_channel_info ci;
+
+		if (wpa_sm_channel_info(sm, &ci) != 0) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
+				"Failed to get channel info to validate received OCI in EAPOL-Key group msg 1/2");
+			goto failed;
+		}
+
+		if (ocv_verify_tx_params(ie.oci, ie.oci_len, &ci,
+					 channel_width_to_int(ci.chanwidth),
+					 ci.seg1_idx) != OCI_SUCCESS) {
+			wpa_msg(sm->ctx->msg_ctx, MSG_INFO, OCV_FAILURE
+				"addr=" MACSTR " frame=eapol-key-g1 error=%s",
+				MAC2STR(sm->bssid), ocv_errorstr);
+			goto failed;
+		}
+	}
+#endif /* CONFIG_OCV */
+
+	if (wpa_supplicant_check_group_cipher(sm, sm->group_cipher,
+					      gtk_len, maxkeylen,
+					      &gd.key_rsc_len, &gd.alg))
+		goto failed;
+
+	wpa_hexdump_key(MSG_DEBUG, "RSN: received GTK in group key handshake",
+			ie.gtk, 2 + gtk_len);
+	gd.keyidx = ie.gtk[0] & 0x3;
+	gd.tx = wpa_supplicant_gtk_tx_bit_workaround(sm,
+						      !!(ie.gtk[0] & BIT(2)));
+	os_memcpy(gd.gtk, ie.gtk + 2, gtk_len);
+
+	if (ieee80211w_set_keys(sm, &ie) < 0)
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+			"RSN: Failed to configure IGTK");
+
+	key_rsc = key->key_rsc;
+	if (wpa_supplicant_rsc_relaxation(sm, key->key_rsc))
+		key_rsc = null_rsc;
+
+	if (wpa_supplicant_install_gtk(sm, &gd, key_rsc, 0) ||
+	    wpa_supplicant_send_2_of_2(sm, key, ver, key_info) < 0)
+		goto failed;
+	forced_memzero(&gd, sizeof(gd));
+
+	wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
+		"RSN: Group rekeying completed with " MACSTR " [GTK=%s]",
+		MAC2STR(sm->bssid), wpa_cipher_txt(sm->group_cipher));
+	wpa_sm_cancel_auth_timeout(sm);
+	wpa_sm_set_state(sm, WPA_COMPLETED);
 
 	wpa_sm_set_rekey_offload(sm);
 
@@ -3318,10 +3337,10 @@ static int wpa_sm_rx_eapol_wpa(struct wpa_sm *sm, const u8 *src_addr,
 	} else {
 		if (key_info & WPA_KEY_INFO_MIC) {
 			/* 1/2 Group Key Handshake */
-			wpa_supplicant_process_1_of_2(sm, src_addr, key,
-						      key_data,
-						      key_data_len,
-						      ver);
+			wpa_supplicant_process_1_of_2_wpa(sm, src_addr, key,
+							  key_data,
+							  key_data_len,
+							  ver);
 		} else {
 			wpa_msg(sm->ctx->msg_ctx, MSG_WARNING,
 				"WPA: EAPOL-Key (Group) without Mic/Encr bit - dropped");

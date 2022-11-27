@@ -227,7 +227,7 @@ def check_wnm_sleep_mode_enter_exit(hapd, dev, interval=None, tfs_req=None,
         time.sleep(0.1)
         if "OK" not in hapd.request("REKEY_GTK"):
             raise Exception("REKEY_GTK failed")
-        ev = dev.wait_event(["WPA: Group rekeying completed"], timeout=0.1)
+        ev = dev.wait_event(["RSN: Group rekeying completed"], timeout=0.1)
         if ev is not None:
                 raise Exception("Unexpected report of GTK rekey during WNM-Sleep Mode")
 
@@ -247,7 +247,7 @@ def check_wnm_sleep_mode_enter_exit(hapd, dev, interval=None, tfs_req=None,
         time.sleep(0.1)
         if "OK" not in hapd.request("REKEY_GTK"):
             raise Exception("REKEY_GTK failed")
-        ev = dev.wait_event(["WPA: Group rekeying completed"], timeout=2)
+        ev = dev.wait_event(["RSN: Group rekeying completed"], timeout=2)
         if ev is None:
                 raise Exception("GTK rekey timed out")
 

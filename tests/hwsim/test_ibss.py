@@ -182,7 +182,7 @@ def test_ibss_rsn_group_rekey(dev):
     dev[1].dump_monitor()
 
     hwsim_utils.test_connectivity(dev[0], dev[1])
-    ev = dev[1].wait_event(["WPA: Group rekeying completed"], timeout=10)
+    ev = dev[1].wait_event(["RSN: Group rekeying completed"], timeout=10)
     if ev is None:
         raise Exception("No group rekeying reported")
     hwsim_utils.test_connectivity(dev[0], dev[1])

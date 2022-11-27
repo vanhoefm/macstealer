@@ -484,7 +484,7 @@ def test_ap_wpa2_gtk_rekey(dev, apdev):
     params['wpa_group_rekey'] = '1'
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
@@ -498,7 +498,7 @@ def test_ap_wpa2_gtk_rekey_request(dev, apdev):
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     if "OK" not in hapd.request("REKEY_GTK"):
         raise Exception("REKEY_GTK failed")
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
@@ -514,7 +514,7 @@ def test_ap_wpa2_gtk_rekey_failure(dev, apdev):
         if "OK" not in hapd.request("REKEY_GTK"):
             raise Exception("REKEY_GTK failed")
         wait_fail_trigger(hapd, "GET_FAIL")
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out")
     dev[0].wait_disconnected()
@@ -532,7 +532,7 @@ def test_ap_wpa2_gtk_rekey_request(dev, apdev):
         if "OK" not in dev[i].request("KEY_REQUEST 0 0"):
             raise Exception("KEY_REQUEST failed")
     for i in range(3):
-        ev = dev[i].wait_event(["WPA: Group rekeying completed"], timeout=2)
+        ev = dev[i].wait_event(["RSN: Group rekeying completed"], timeout=2)
         if ev is None:
             raise Exception("GTK rekey timed out")
     time.sleep(1)
@@ -552,16 +552,16 @@ def test_ap_wpa2_gtk_rekey_fail_1_sta(dev, apdev):
     dev[1].connect(ssid, psk=passphrase, scan_freq="2412")
     dev[2].connect(ssid, psk=passphrase, scan_freq="2412")
 
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=7)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=7)
     if ev is None:
         raise Exception("GTK rekey timed out [0]")
-    ev = dev[2].wait_event(["WPA: Group rekeying completed"], timeout=1)
+    ev = dev[2].wait_event(["RSN: Group rekeying completed"], timeout=1)
     if ev is None:
         raise Exception("GTK rekey timed out [2]")
 
     disconnected = False
     for i in range(10):
-        ev = dev[1].wait_event(["WPA: Group rekeying completed",
+        ev = dev[1].wait_event(["RSN: Group rekeying completed",
                                 "CTRL-EVENT-DISCONNECTED"], timeout=10)
         if ev is None:
             raise Exception("GTK rekey timed out [1]")
@@ -609,7 +609,7 @@ def test_ap_wpa2_gmk_rekey(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     for i in range(0, 3):
-        ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+        ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
         if ev is None:
             raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
@@ -625,7 +625,7 @@ def test_ap_wpa2_strict_rekey(dev, apdev):
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     dev[1].connect(ssid, psk=passphrase, scan_freq="2412")
     dev[1].request("DISCONNECT")
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
@@ -2150,7 +2150,7 @@ def test_ap_wpa2_psk_supp_proto_unexpected_group_msg(dev, apdev):
                               key_info=0x13c2)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: Group Key Handshake started prior to completion of 4-way handshake"])
+    ev = dev[0].wait_event(["RSN: Group Key Handshake started prior to completion of 4-way handshake"])
     if ev is None:
         raise Exception("Unexpected group key message not reported")
     dev[0].wait_disconnected(timeout=1)
@@ -2304,7 +2304,7 @@ def test_ap_wpa2_psk_supp_proto_gtk_keyidx_0_and_3(dev, apdev):
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
     msg = recv_eapol(dev[0])
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"])
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"])
     if ev is None:
         raise Exception("GTK rekeing not reported")
 
@@ -2315,7 +2315,7 @@ def test_ap_wpa2_psk_supp_proto_gtk_keyidx_0_and_3(dev, apdev):
                               key_info=0x03c2)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: GTK IE in unencrypted key data"])
+    ev = dev[0].wait_event(["RSN: GTK KDE in unencrypted key data"])
     if ev is None:
         raise Exception("Unencrypted GTK KDE not reported")
     dev[0].wait_disconnected(timeout=1)
@@ -2356,7 +2356,7 @@ def test_ap_wpa2_psk_supp_proto_no_gtk_in_group_msg(dev, apdev):
                               key_info=0x13c2)
     counter += 1
     send_eapol(dev[0], bssid, build_eapol(msg))
-    ev = dev[0].wait_event(["WPA: No GTK IE in Group Key msg 1/2"])
+    ev = dev[0].wait_event(["RSN: No GTK KDE in Group Key msg 1/2"])
     if ev is None:
         raise Exception("Missing GTK KDE not reported")
     dev[0].wait_disconnected(timeout=1)
@@ -3212,7 +3212,7 @@ def test_ap_wpa2_disable_eapol_retry_group(dev, apdev):
 
     dev[1].request("DISCONNECT")
     dev[1].wait_disconnected()
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out")
     dev[1].request("RECONNECT")

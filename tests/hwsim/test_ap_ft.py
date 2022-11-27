@@ -1999,7 +1999,7 @@ def test_ap_ft_gtk_rekey(dev, apdev):
     dev[0].connect(ssid, psk=passphrase, key_mgmt="FT-PSK", proto="WPA2",
                    ieee80211w="1", scan_freq="2412")
 
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out after initial association")
     hwsim_utils.test_connectivity(dev[0], hapd)
@@ -2014,7 +2014,7 @@ def test_ap_ft_gtk_rekey(dev, apdev):
         raise Exception("Did not connect to correct AP")
     hwsim_utils.test_connectivity(dev[0], hapd1)
 
-    ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
+    ev = dev[0].wait_event(["RSN: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out after FT protocol")
     hwsim_utils.test_connectivity(dev[0], hapd1)
