@@ -160,6 +160,17 @@ def test_ap_config_reload_on_sighup(dev, apdev, params):
     """hostapd configuration reload modification from file on SIGHUP"""
     run_ap_config_reload_on_sighup(dev, apdev, params)
 
+def term_hostapd_pid(pid, pidfile):
+    os.kill(pid, signal.SIGTERM)
+    removed = False
+    for i in range(20):
+        time.sleep(0.1)
+        if not os.path.exists(pidfile):
+            removed = True
+            break
+    if not removed:
+        raise Exception("hostapd PID file not removed on SIGTERM")
+
 def test_ap_config_reload_on_sighup_no_ht(dev, apdev, params):
     """hostapd configuration reload modification from file on SIGHUP (no HT)"""
     run_ap_config_reload_on_sighup(dev, apdev, params, ht=False)
@@ -197,15 +208,7 @@ def run_ap_config_reload_on_sighup(dev, apdev, params, ht=True):
     dev[0].request("REMOVE_NETWORK all")
     dev[0].wait_disconnected()
 
-    os.kill(pid, signal.SIGTERM)
-    removed = False
-    for i in range(20):
-        time.sleep(0.1)
-        if not os.path.exists(pidfile):
-            removed = True
-            break
-    if not removed:
-        raise Exception("hostapd PID file not removed on SIGTERM")
+    term_hostapd_pid(pid, pidfile)
 
     if ht and "dd180050f202" not in bss['ie']:
             raise Exception("Missing WMM IE after reload")
@@ -268,7 +271,7 @@ def test_ap_config_reload_on_sighup_bss_changes(dev, apdev, params):
     dev[0].dump_monitor()
     dev[1].dump_monitor()
 
-    os.kill(pid, signal.SIGTERM)
+    term_hostapd_pid(pid, pidfile)
 
 def test_ap_config_reload_on_sighup_config_id(dev, apdev, params):
     """hostapd configuration reload when a config_id is provided"""
@@ -305,7 +308,7 @@ def test_ap_config_reload_on_sighup_config_id(dev, apdev, params):
     dev[0].dump_monitor()
     dev[0].connect("test-a", key_mgmt="NONE", scan_freq="2412")
 
-    os.kill(pid, signal.SIGTERM)
+    term_hostapd_pid(pid, pidfile)
 
 def test_ap_config_reload_before_enable(dev, apdev, params):
     """hostapd configuration reload before enable"""
