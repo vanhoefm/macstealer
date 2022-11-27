@@ -332,6 +332,118 @@ error:
 }
 
 
+static int set_cred_property(struct wpa_cred *cred,
+			     struct wpa_dbus_dict_entry *entry)
+{
+	size_t size;
+	int ret;
+	char *value;
+
+	if (entry->type == DBUS_TYPE_ARRAY &&
+	    entry->array_type == DBUS_TYPE_STRING) {
+		dbus_uint32_t i;
+
+		if (entry->array_len <= 0)
+			return -1;
+
+		for (i = 0; i < entry->array_len; i++) {
+			if (should_quote_opt(entry->key)) {
+				size = os_strlen(entry->strarray_value[i]);
+
+				size += 3;
+				value = os_zalloc(size);
+				if (!value)
+					return -1;
+
+				ret = os_snprintf(value, size, "\"%s\"",
+						  entry->strarray_value[i]);
+				if (os_snprintf_error(size, ret)) {
+					os_free(value);
+					return -1;
+				}
+			} else {
+				value = os_strdup(entry->strarray_value[i]);
+				if (!value)
+					return -1;
+			}
+
+			ret = wpa_config_set_cred(cred, entry->key, value, 0);
+			os_free(value);
+			if (ret < 0)
+				return -1;
+		}
+		return 0;
+	}
+
+	if (entry->type == DBUS_TYPE_ARRAY &&
+	    entry->array_type == DBUS_TYPE_BYTE) {
+		if (entry->array_len <= 0)
+			return -1;
+
+		size = entry->array_len * 2 + 1;
+		value = os_zalloc(size);
+		if (!value)
+			return -1;
+
+		ret = wpa_snprintf_hex(value, size,
+				       (u8 *) entry->bytearray_value,
+				       entry->array_len);
+		if (ret <= 0) {
+			os_free(value);
+			return -1;
+		}
+	} else if (entry->type == DBUS_TYPE_STRING) {
+		if (should_quote_opt(entry->key)) {
+			size = os_strlen(entry->str_value);
+
+			size += 3;
+			value = os_zalloc(size);
+			if (!value)
+				return -1;
+
+			ret = os_snprintf(value, size, "\"%s\"",
+					  entry->str_value);
+			if (os_snprintf_error(size, ret)) {
+				os_free(value);
+				return -1;
+			}
+		} else {
+			value = os_strdup(entry->str_value);
+			if (!value)
+				return -1;
+		}
+	} else if (entry->type == DBUS_TYPE_UINT32) {
+		size = 50;
+		value = os_zalloc(size);
+		if (!value)
+			return -1;
+
+		ret = os_snprintf(value, size, "%u", entry->uint32_value);
+		if (os_snprintf_error(size, ret)) {
+			os_free(value);
+			return -1;
+		}
+	} else if (entry->type == DBUS_TYPE_INT32) {
+		size = 50;
+		value = os_zalloc(size);
+		if (!value)
+			return -1;
+
+		ret = os_snprintf(value, size, "%d", entry->int32_value);
+		if (os_snprintf_error(size, ret)) {
+			os_free(value);
+			return -1;
+		}
+	} else {
+		return -1;
+	}
+
+	ret = wpa_config_set_cred(cred, entry->key, value, 0);
+	os_free(value);
+	return ret;
+}
+
+
 /**
  * set_cred_properties - Set the properties of a configured credential
  * @wpa_s: wpa_supplicant structure for a network interface
@@ -348,125 +460,28 @@ static dbus_bool_t set_cred_properties(struct wpa_supplicant *wpa_s,
 {
 	struct wpa_dbus_dict_entry entry = { .type = DBUS_TYPE_STRING };
 	DBusMessageIter	iter_dict;
-	char *value = NULL;
 
 	if (!wpa_dbus_dict_open_read(iter, &iter_dict, error))
 		return FALSE;
 
 	while (wpa_dbus_dict_has_dict_entry(&iter_dict)) {
-		size_t size = 50;
-		int ret;
+		int res;
 
-		if (!wpa_dbus_dict_get_entry(&iter_dict, &entry))
-			goto error;
-
-		value = NULL;
-		if (entry.type == DBUS_TYPE_ARRAY &&
-		    entry.array_type == DBUS_TYPE_BYTE) {
-			if (entry.array_len <= 0)
-				goto error;
-
-			size = entry.array_len * 2 + 1;
-			value = os_zalloc(size);
-			if (!value)
-				goto error;
-
-			ret = wpa_snprintf_hex(value, size,
-					       (u8 *) entry.bytearray_value,
-					       entry.array_len);
-			if (ret <= 0)
-				goto error;
-		} else if (entry.type == DBUS_TYPE_STRING) {
-			if (should_quote_opt(entry.key)) {
-				size = os_strlen(entry.str_value);
-
-				size += 3;
-				value = os_zalloc(size);
-				if (!value)
-					goto error;
-
-				ret = os_snprintf(value, size, "\"%s\"",
-						  entry.str_value);
-				if (os_snprintf_error(size, ret))
-					goto error;
-			} else {
-				value = os_strdup(entry.str_value);
-				if (!value)
-					goto error;
-			}
-		} else if (entry.type == DBUS_TYPE_UINT32) {
-			value = os_zalloc(size);
-			if (!value)
-				goto error;
-
-			ret = os_snprintf(value, size, "%u",
-					  entry.uint32_value);
-			if (os_snprintf_error(size, ret))
-				goto error;
-		} else if (entry.type == DBUS_TYPE_INT32) {
-			value = os_zalloc(size);
-			if (!value)
-				goto error;
-
-			ret = os_snprintf(value, size, "%d",
-					  entry.int32_value);
-			if (os_snprintf_error(size, ret))
-				goto error;
-		} else if (entry.type == DBUS_TYPE_ARRAY &&
-			   entry.array_type == DBUS_TYPE_STRING) {
-			dbus_uint32_t i;
-
-			if (entry.array_len <= 0)
-				goto error;
-
-			for (i = 0; i < entry.array_len; i++) {
-				if (should_quote_opt(entry.key)) {
-					size = os_strlen(entry.strarray_value[i]);
-
-					size += 3;
-					value = os_zalloc(size);
-					if (!value)
-						goto error;
-
-					ret = os_snprintf(value, size, "\"%s\"",
-							  entry.strarray_value[i]);
-					if (os_snprintf_error(size, ret))
-						goto error;
-				} else {
-					value = os_strdup(entry.strarray_value[i]);
-					if (!value)
-						goto error;
-				}
-
-				ret = wpa_config_set_cred(cred, entry.key, value, 0);
-				if (ret < 0)
-					goto error;
-				os_free(value);
-				value = NULL;
-			}
-			wpa_dbus_dict_entry_clear(&entry);
-			continue;
+		if (!wpa_dbus_dict_get_entry(&iter_dict, &entry)) {
+			res = -1;
 		} else {
-			goto error;
+			res = set_cred_property(cred, &entry);
+			wpa_dbus_dict_entry_clear(&entry);
 		}
 
-		ret = wpa_config_set_cred(cred, entry.key, value, 0);
-		if (ret < 0)
-			goto error;
-
-		os_free(value);
-		value = NULL;
-		wpa_dbus_dict_entry_clear(&entry);
+		if (res < 0) {
+			dbus_set_error_const(error, DBUS_ERROR_INVALID_ARGS,
+					     "invalid message format");
+			return FALSE;
+		}
 	}
 
 	return TRUE;
-
-error:
-	os_free(value);
-	wpa_dbus_dict_entry_clear(&entry);
-	dbus_set_error_const(error, DBUS_ERROR_INVALID_ARGS,
-			     "invalid message format");
-	return FALSE;
 }
 
 
