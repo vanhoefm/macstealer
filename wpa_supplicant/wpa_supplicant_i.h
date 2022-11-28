@@ -1500,6 +1500,10 @@ struct wpa_supplicant {
 	struct robust_av_data robust_av;
 	bool mscs_setup_done;
 
+	bool wps_scan_done; /* Set upon receiving scan results event */
+	bool supp_pbc_active; /* Set for interface when PBC is triggered */
+	bool wps_overlap;
+
 #ifdef CONFIG_PASN
 	struct pasn_data pasn;
 	struct wpa_radio_work *pasn_auth_work;
@@ -1752,6 +1756,7 @@ void wpa_supplicant_stop_countermeasures(void *eloop_ctx, void *sock_ctx);
 void wpa_supplicant_delayed_mic_error_report(void *eloop_ctx, void *sock_ctx);
 void wnm_bss_keep_alive_deinit(struct wpa_supplicant *wpa_s);
 int wpa_supplicant_fast_associate(struct wpa_supplicant *wpa_s);
+int wpa_wps_supplicant_fast_associate(struct wpa_supplicant *wpa_s);
 struct wpa_bss * wpa_supplicant_pick_network(struct wpa_supplicant *wpa_s,
 					     struct wpa_ssid **selected_ssid);
 int wpas_temp_disabled(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid);

@@ -299,6 +299,8 @@ int wpa_supplicant_trigger_scan(struct wpa_supplicant *wpa_s,
 		return -1;
 	}
 
+	wpa_s->wps_scan_done = false;
+
 	return 0;
 }
 

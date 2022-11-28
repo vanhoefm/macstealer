@@ -1013,6 +1013,7 @@ static void wpas_wps_timeout(void *eloop_ctx, void *timeout_ctx)
 	 * during an EAP-WSC exchange).
 	 */
 	wpas_notify_wps_event_fail(wpa_s, &data.fail);
+	wpa_s->supp_pbc_active = false;
 	wpas_clear_wps(wpa_s);
 }
 
@@ -1215,6 +1216,8 @@ int wpas_wps_start_pbc(struct wpa_supplicant *wpa_s, const u8 *bssid,
 		ssid->eap.fragment_size = wpa_s->wps_fragment_size;
 	if (multi_ap_backhaul_sta)
 		ssid->multi_ap_backhaul_sta = 1;
+	wpa_s->supp_pbc_active = true;
+	wpa_s->wps_overlap = false;
 	wpa_supplicant_wps_event(wpa_s, WPS_EV_PBC_ACTIVE, NULL);
 	eloop_register_timeout(WPS_PBC_WALK_TIME, 0, wpas_wps_timeout,
 			       wpa_s, NULL);
@@ -1382,6 +1385,7 @@ int wpas_wps_cancel(struct wpa_supplicant *wpa_s)
 			wpas_clear_wps(wpa_s);
 	}
 
+	wpa_s->supp_pbc_active = false;
 	wpa_msg(wpa_s, MSG_INFO, WPS_EVENT_CANCEL);
 	wpa_s->after_wps = 0;
 
@@ -1839,9 +1843,40 @@ int wpas_wps_ssid_wildcard_ok(struct wpa_supplicant *wpa_s,
 }
 
 
+static bool wpas_wps_is_pbc_overlap(struct wps_ap_info *ap,
+				    struct wpa_bss *selected,
+				    struct wpa_ssid *ssid,
+				    const u8 *sel_uuid)
+{
+	if (!ap->pbc_active ||
+	    os_memcmp(selected->bssid, ap->bssid, ETH_ALEN) == 0)
+		return false;
+
+	if (!is_zero_ether_addr(ssid->bssid) &&
+	    os_memcmp(ap->bssid, ssid->bssid, ETH_ALEN) != 0) {
+		wpa_printf(MSG_DEBUG, "WPS: Ignore another BSS " MACSTR
+			   " in active PBC mode due to local BSSID limitation",
+			   MAC2STR(ap->bssid));
+		return 0;
+	}
+
+	wpa_printf(MSG_DEBUG, "WPS: Another BSS in active PBC mode: " MACSTR,
+		   MAC2STR(ap->bssid));
+	wpa_hexdump(MSG_DEBUG, "WPS: UUID of the other BSS",
+		    ap->uuid, UUID_LEN);
+	if (!sel_uuid || os_memcmp(sel_uuid, ap->uuid, UUID_LEN) != 0)
+		return true;
+
+	/* TODO: verify that this is reasonable dual-band situation */
+
+	return false;
+}
+
+
 int wpas_wps_scan_pbc_overlap(struct wpa_supplicant *wpa_s,
 			      struct wpa_bss *selected, struct wpa_ssid *ssid)
 {
+	struct wpa_supplicant *iface;
 	const u8 *sel_uuid;
 	struct wpabuf *wps_ie;
 	int ret = 0;
@@ -1870,36 +1905,21 @@ int wpas_wps_scan_pbc_overlap(struct wpa_supplicant *wpa_s,
 		sel_uuid = NULL;
 	}
 
-	for (i = 0; i < wpa_s->num_wps_ap; i++) {
-		struct wps_ap_info *ap = &wpa_s->wps_ap[i];
+	for (iface = wpa_s->global->ifaces; iface; iface = iface->next) {
+		for (i = 0; i < iface->num_wps_ap; i++) {
+			struct wps_ap_info *ap = &iface->wps_ap[i];
 
-		if (!ap->pbc_active ||
-		    os_memcmp(selected->bssid, ap->bssid, ETH_ALEN) == 0)
-			continue;
-
-		if (!is_zero_ether_addr(ssid->bssid) &&
-		    os_memcmp(ap->bssid, ssid->bssid, ETH_ALEN) != 0) {
-			wpa_printf(MSG_DEBUG, "WPS: Ignore another BSS " MACSTR
-				   " in active PBC mode due to local BSSID limitation",
-				   MAC2STR(ap->bssid));
-			continue;
+			if (wpas_wps_is_pbc_overlap(ap, selected, ssid,
+						    sel_uuid)) {
+				ret = 1; /* PBC overlap */
+				wpa_msg(iface, MSG_INFO,
+					"WPS: PBC overlap detected: "
+					MACSTR " and " MACSTR,
+					MAC2STR(selected->bssid),
+					MAC2STR(ap->bssid));
+				break;
+			}
 		}
-
-		wpa_printf(MSG_DEBUG, "WPS: Another BSS in active PBC mode: "
-			   MACSTR, MAC2STR(ap->bssid));
-		wpa_hexdump(MSG_DEBUG, "WPS: UUID of the other BSS",
-			    ap->uuid, UUID_LEN);
-		if (sel_uuid == NULL ||
-		    os_memcmp(sel_uuid, ap->uuid, UUID_LEN) != 0) {
-			ret = 1; /* PBC overlap */
-			wpa_msg(wpa_s, MSG_INFO, "WPS: PBC overlap detected: "
-				MACSTR " and " MACSTR,
-				MAC2STR(selected->bssid),
-				MAC2STR(ap->bssid));
-			break;
-		}
-
-		/* TODO: verify that this is reasonable dual-band situation */
 	}
 
 	wpabuf_free(wps_ie);
@@ -3004,6 +3024,48 @@ void wpas_wps_update_ap_info(struct wpa_supplicant *wpa_s,
 		wpas_wps_update_ap_info_bss(wpa_s, scan_res->res[i]);
 
 	wpas_wps_dump_ap_info(wpa_s);
+}
+
+
+bool wpas_wps_partner_link_scan_done(struct wpa_supplicant *wpa_s)
+{
+	struct wpa_global *global = wpa_s->global;
+	struct wpa_supplicant *iface;
+
+	for (iface = global->ifaces; iface; iface = iface->next) {
+		if (iface == wpa_s)
+			continue;
+
+		if (!iface->supp_pbc_active)
+			continue;
+
+		/* Scan results are available for both links. While the current
+		 * link will proceed for network selection, ensure the partner
+		 * link also gets an attempt at network selection and connect
+		 * with the selected BSS. */
+		if (iface->wps_scan_done)
+			wpa_wps_supplicant_fast_associate(iface);
+		else
+			return false;
+	}
+
+	return true;
+}
+
+
+bool wpas_wps_partner_link_overlap_detect(struct wpa_supplicant *wpa_s)
+{
+	struct wpa_global *global = wpa_s->global;
+	struct wpa_supplicant *iface;
+
+	for (iface = global->ifaces; iface; iface = iface->next) {
+		if (iface == wpa_s)
+			continue;
+		if (iface->wps_overlap)
+			return true;
+	}
+
+	return false;
 }
 
 

@@ -389,6 +389,7 @@ void wpa_supplicant_mark_disassoc(struct wpa_supplicant *wpa_s)
 	if (wpa_s->enabled_4addr_mode && wpa_drv_set_4addr_mode(wpa_s, 0) == 0)
 		wpa_s->enabled_4addr_mode = 0;
 
+	wpa_s->wps_scan_done = false;
 	wpas_reset_mlo_info(wpa_s);
 }
 
@@ -1807,10 +1808,12 @@ int wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 			   struct wpa_bss *selected,
 			   struct wpa_ssid *ssid)
 {
-	if (wpas_wps_scan_pbc_overlap(wpa_s, selected, ssid)) {
+	if (wpas_wps_partner_link_overlap_detect(wpa_s) ||
+	    wpas_wps_scan_pbc_overlap(wpa_s, selected, ssid)) {
 		wpa_msg(wpa_s, MSG_INFO, WPS_EVENT_OVERLAP
 			"PBC session overlap");
 		wpas_notify_wps_event_pbc_overlap(wpa_s);
+		wpa_s->wps_overlap = true;
 #ifdef CONFIG_P2P
 		if (wpa_s->p2p_group_interface == P2P_GROUP_INTERFACE_CLIENT ||
 		    wpa_s->p2p_in_provisioning) {
@@ -2314,6 +2317,9 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 		}
 	}
 
+	if (wpa_s->supp_pbc_active && !wpas_wps_partner_link_scan_done(wpa_s))
+		return ret;
+
 	return wpas_select_network_from_last_scan(wpa_s, 1, own_request);
 
 scan_work_done:
@@ -2380,6 +2386,8 @@ static int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
 			wpa_dbg(wpa_s, MSG_DEBUG, "Connect failed");
 			return -1;
 		}
+		wpa_s->supp_pbc_active = false;
+
 		if (new_scan)
 			wpa_supplicant_rsn_preauth_scan_results(wpa_s);
 		/*
@@ -2545,6 +2553,17 @@ int wpa_supplicant_fast_associate(struct wpa_supplicant *wpa_s)
 	return wpas_select_network_from_last_scan(wpa_s, 0, 1);
 #endif /* CONFIG_NO_SCAN_PROCESSING */
 }
+
+
+int wpa_wps_supplicant_fast_associate(struct wpa_supplicant *wpa_s)
+{
+#ifdef CONFIG_NO_SCAN_PROCESSING
+	return -1;
+#else /* CONFIG_NO_SCAN_PROCESSING */
+	return wpas_select_network_from_last_scan(wpa_s, 1, 1);
+#endif /* CONFIG_NO_SCAN_PROCESSING */
+}
+
 
 #ifdef CONFIG_WNM
 
@@ -5302,6 +5321,7 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			os_reltime_sub(&now, &wpa_s->scan_start_time, &diff);
 			wpa_s->scan_start_time.sec = 0;
 			wpa_s->scan_start_time.usec = 0;
+			wpa_s->wps_scan_done = true;
 			wpa_dbg(wpa_s, MSG_DEBUG, "Scan completed in %ld.%06ld seconds",
 				diff.sec, diff.usec);
 		}
