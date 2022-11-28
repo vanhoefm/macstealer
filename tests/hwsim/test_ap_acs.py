@@ -145,16 +145,23 @@ def test_ap_acs_40mhz(dev, apdev):
     """Automatic channel selection for 40 MHz channel"""
     run_ap_acs_40mhz(dev, apdev, '[HT40+]')
 
+def test_ap_acs_40mhz_he(dev, apdev):
+    """Automatic channel selection for 40 MHz channel (HE)"""
+    run_ap_acs_40mhz(dev, apdev, '[HT40+]', he=True, allow20=True)
+
 def test_ap_acs_40mhz_plus_or_minus(dev, apdev):
     """Automatic channel selection for 40 MHz channel (plus or minus)"""
     run_ap_acs_40mhz(dev, apdev, '[HT40+][HT40-]')
 
-def run_ap_acs_40mhz(dev, apdev, ht_capab):
+def run_ap_acs_40mhz(dev, apdev, ht_capab, he=False, allow20=False):
     clear_scan_cache(apdev[0])
     force_prev_ap_on_24g(apdev[0])
     params = hostapd.wpa2_params(ssid="test-acs", passphrase="12345678")
     params['channel'] = '0'
     params['ht_capab'] = ht_capab
+    if he:
+        params['ieee80211ax'] = '1'
+        params['he_oper_chwidth'] = '0'
     hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
     wait_acs(hapd)
 
@@ -163,7 +170,10 @@ def run_ap_acs_40mhz(dev, apdev, ht_capab):
         raise Exception("Unexpected frequency")
     sec = hapd.get_status_field("secondary_channel")
     if int(sec) == 0:
-        raise Exception("Secondary channel not set")
+        if allow20:
+            logger.info("Fallback to 20 MHz detected")
+        else:
+            raise Exception("Secondary channel not set")
 
     dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
 
