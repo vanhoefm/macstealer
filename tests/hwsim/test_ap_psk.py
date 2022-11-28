@@ -758,6 +758,52 @@ def test_ap_wpa2_ext_add_to_bridge(dev, apdev):
         hostapd.cmd_execute(apdev[0], ['brctl', 'delif', br_ifname, ifname])
         hostapd.cmd_execute(apdev[0], ['brctl', 'delbr', br_ifname])
 
+def test_ap_wpa2_second_bss_bridge_exists(dev, apdev):
+    """hostapd behavior with second BSS bridge interface already existing"""
+    ifname = apdev[0]['ifname']
+    ifname2 = apdev[0]['ifname'] + "b"
+    br_ifname = 'ext-ap-br0'
+    fname = '/tmp/hwsim-bss.conf'
+    try:
+        ssid1 = "test-wpa2-psk-1"
+        ssid2 = "test-wpa2-psk-2"
+        passphrase = "12345678"
+        hostapd.cmd_execute(apdev[0], ['brctl', 'addbr', br_ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'setfd', br_ifname, '0'])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'up'])
+        params = hostapd.wpa2_params(ssid=ssid1, passphrase=passphrase)
+        params['driver_params'] = "control_port=0"
+        hapd = hostapd.add_ap(apdev[0], params)
+
+        with open(fname, 'w') as f:
+            f.write("driver=nl80211\n")
+            f.write("hw_mode=g\n")
+            f.write("channel=1\n")
+            f.write("ieee80211n=1\n")
+            f.write("interface=%s\n" % ifname2)
+            f.write("bridge=%s\n" % br_ifname)
+            f.write("bssid=02:00:00:00:03:01\n")
+            f.write("ctrl_interface=/var/run/hostapd\n")
+            f.write("ssid=%s\n" % ssid2)
+            f.write("wpa=2\n")
+            f.write("wpa_passphrase=%s\n" % passphrase)
+            f.write("wpa_key_mgmt=WPA-PSK\n")
+            f.write("rsn_pairwise=CCMP\n")
+        hostapd.add_bss(apdev[0], ifname2, fname)
+
+        dev[0].connect(ssid1, psk=passphrase, scan_freq="2412")
+        dev[1].connect(ssid2, psk=passphrase, scan_freq="2412")
+    finally:
+        try:
+            os.remove(fname)
+        except:
+            pass
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'down'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delif', br_ifname, ifname2])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delbr', br_ifname])
+
 def setup_psk_ext(dev, apdev, wpa_ptk_rekey=None):
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
