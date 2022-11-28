@@ -628,6 +628,17 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
 	if (!ctrl)
 		return -1;
 
+	if (type == DPP_PA_PRESENCE_ANNOUNCEMENT ||
+	    type == DPP_PA_RECONFIG_ANNOUNCEMENT) {
+		conn = dpp_relay_match_ctrl(ctrl, src, freq, type);
+		if (conn &&
+		    (!conn->auth || conn->auth->waiting_auth_resp)) {
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Use existing TCP connection to Controller since no Auth Resp seen on it yet");
+			return dpp_relay_tx(conn, hdr, buf, len);
+		}
+	}
+
 	wpa_printf(MSG_DEBUG,
 		   "DPP: Authentication Request for a configured Controller");
 	conn = dpp_relay_new_conn(ctrl, src, freq);
