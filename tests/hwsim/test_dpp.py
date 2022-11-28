@@ -5514,6 +5514,15 @@ def test_dpp_controller_relay_chirp(dev, apdev, params):
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
         dev[1].request("DPP_CONTROLLER_STOP")
 
+def test_dpp_controller_relay_chirp_duplicate(dev, apdev, params):
+    """DPP Controller/Relay with chirping (duplicate)"""
+    try:
+        run_dpp_controller_relay(dev, apdev, params, chirp=True,
+                                 duplicate=True)
+    finally:
+        dev[0].set("dpp_config_processing", "0", allow_fail=True)
+        dev[1].request("DPP_CONTROLLER_STOP")
+
 def test_dpp_controller_relay_discover(dev, apdev, params):
     """DPP Controller/Relay with need to discover Controller"""
     try:
@@ -5522,7 +5531,8 @@ def test_dpp_controller_relay_discover(dev, apdev, params):
         dev[0].set("dpp_config_processing", "0", allow_fail=True)
         dev[1].request("DPP_CONTROLLER_STOP")
 
-def run_dpp_controller_relay(dev, apdev, params, chirp=False, discover=False):
+def run_dpp_controller_relay(dev, apdev, params, chirp=False, discover=False,
+                             duplicate=False):
     check_dpp_capab(dev[0], min_ver=2)
     check_dpp_capab(dev[1], min_ver=2)
     cap_lo = params['prefix'] + ".lo.pcap"
@@ -5581,8 +5591,21 @@ def run_dpp_controller_relay(dev, apdev, params, chirp=False, discover=False):
         uri = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id1)
         idc = dev[1].dpp_qr_code(uri)
         dev[1].dpp_bootstrap_set(idc, conf="sta-dpp", configurator=conf_id)
+        if duplicate:
+            relay.set("ext_mgmt_frame_handling", "1")
         if "OK" not in dev[0].request("DPP_CHIRP own=%d iter=5" % id1):
             raise Exception("DPP_CHIRP failed")
+        if duplicate:
+            for i in range(10):
+                msg = relay.mgmt_rx(timeout=10)
+                if msg is None:
+                    raise Exception("MGMT RX wait timed out")
+                relay.request("MGMT_RX_PROCESS freq=2462 datarate=0 ssi_signal=-30 frame=" + binascii.hexlify(msg['frame']).decode())
+                if msg['subtype'] == 13:
+                    # Process duplicate Presence Announcement
+                    relay.request("MGMT_RX_PROCESS freq=2462 datarate=0 ssi_signal=-30 frame=" + binascii.hexlify(msg['frame']).decode())
+                    break
+            relay.set("ext_mgmt_frame_handling", "0")
         ev = relay.wait_event(["DPP-RX"], timeout=10)
         if ev is None:
             raise Exception("Presence Announcement not seen")
