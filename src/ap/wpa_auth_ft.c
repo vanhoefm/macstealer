@@ -2736,7 +2736,8 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
 		snonce = NULL;
 	}
 	rsnxe_used = (auth_alg == WLAN_AUTH_FT) &&
-		(conf->sae_pwe == 1 || conf->sae_pwe == 2);
+		(conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+		 conf->sae_pwe == SAE_PWE_BOTH);
 #ifdef CONFIG_TESTING_OPTIONS
 	if (sm->wpa_auth->conf.ft_rsnxe_used) {
 		rsnxe_used = sm->wpa_auth->conf.ft_rsnxe_used == 1;
@@ -3626,7 +3627,8 @@ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
 	}
 
 	if (parse.fte_rsnxe_used &&
-	    (conf->sae_pwe == 1 || conf->sae_pwe == 2) &&
+	    (conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+	     conf->sae_pwe == SAE_PWE_BOTH) &&
 	    !parse.rsnxe) {
 		wpa_printf(MSG_INFO,
 			   "FT: FTE indicated that STA uses RSNXE, but RSNXE was not included");

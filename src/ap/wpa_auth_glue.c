@@ -196,10 +196,10 @@ static void hostapd_wpa_auth_conf(struct hostapd_bss_config *conf,
 #endif /* CONFIG_FILS */
 	wconf->sae_pwe = conf->sae_pwe;
 	sae_pw_id = hostapd_sae_pw_id_in_use(conf);
-	if (sae_pw_id == 2 && wconf->sae_pwe != 3)
-		wconf->sae_pwe = 1;
-	else if (sae_pw_id == 1 && wconf->sae_pwe == 0)
-		wconf->sae_pwe = 2;
+	if (sae_pw_id == 2 && wconf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK)
+		wconf->sae_pwe = SAE_PWE_HASH_TO_ELEMENT;
+	else if (sae_pw_id == 1 && wconf->sae_pwe == SAE_PWE_HUNT_AND_PECK)
+		wconf->sae_pwe = SAE_PWE_BOTH;
 #ifdef CONFIG_SAE_PK
 	wconf->sae_pk = hostapd_sae_pk_in_use(conf);
 #endif /* CONFIG_SAE_PK */

@@ -1287,7 +1287,7 @@ struct wpa_config {
 	 * 1 = hash-to-element only
 	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
 	 */
-	int sae_pwe;
+	enum sae_pwe sae_pwe;
 
 	/**
 	 * sae_pmkid_in_assoc - Whether to include PMKID in SAE Assoc Req

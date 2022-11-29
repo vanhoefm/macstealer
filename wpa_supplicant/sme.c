@@ -186,10 +186,11 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 			rsnxe_capa = rsnxe[2];
 	}
 
-	if (ssid->sae_password_id && wpa_s->conf->sae_pwe != 3)
+	if (ssid->sae_password_id &&
+	    wpa_s->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK)
 		use_pt = 1;
 	if (wpa_key_mgmt_sae_ext_key(wpa_s->key_mgmt) &&
-	    wpa_s->conf->sae_pwe != 3)
+	    wpa_s->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK)
 		use_pt = 1;
 #ifdef CONFIG_SAE_PK
 	if ((rsnxe_capa & BIT(WLAN_RSNX_CAPAB_SAE_PK)) &&
@@ -209,12 +210,14 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	}
 #endif /* CONFIG_SAE_PK */
 
-	if (use_pt || wpa_s->conf->sae_pwe == 1 || wpa_s->conf->sae_pwe == 2) {
+	if (use_pt || wpa_s->conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+	    wpa_s->conf->sae_pwe == SAE_PWE_BOTH) {
 		use_pt = !!(rsnxe_capa & BIT(WLAN_RSNX_CAPAB_SAE_H2E));
 
-		if ((wpa_s->conf->sae_pwe == 1 || ssid->sae_password_id ||
+		if ((wpa_s->conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+		     ssid->sae_password_id ||
 		     wpa_key_mgmt_sae_ext_key(wpa_s->key_mgmt)) &&
-		    wpa_s->conf->sae_pwe != 3 &&
+		    wpa_s->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK &&
 		    !use_pt) {
 			wpa_printf(MSG_DEBUG,
 				   "SAE: Cannot use H2E with the selected AP");

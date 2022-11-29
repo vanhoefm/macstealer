@@ -106,7 +106,7 @@ struct wpa_sm {
 	int rsn_enabled; /* Whether RSN is enabled in configuration */
 	int mfp; /* 0 = disabled, 1 = optional, 2 = mandatory */
 	int ocv; /* Operating Channel Validation */
-	int sae_pwe; /* SAE PWE generation options */
+	enum sae_pwe sae_pwe; /* SAE PWE generation options */
 
 	unsigned int sae_pk:1; /* whether SAE-PK is used */
 	unsigned int secure_ltf:1;

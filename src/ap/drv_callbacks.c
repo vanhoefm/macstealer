@@ -451,7 +451,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 		}
 #endif /* CONFIG_IEEE80211R_AP */
 #ifdef CONFIG_SAE
-		if (hapd->conf->sae_pwe == 2 &&
+		if (hapd->conf->sae_pwe == SAE_PWE_BOTH &&
 		    sta->auth_alg == WLAN_AUTH_SAE &&
 		    sta->sae && !sta->sae->h2e &&
 		    ieee802_11_rsnx_capab_len(elems.rsnxe, elems.rsnxe_len,

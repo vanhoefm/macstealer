@@ -479,10 +479,11 @@ int hostapd_setup_sae_pt(struct hostapd_bss_config *conf)
 	struct hostapd_ssid *ssid = &conf->ssid;
 	struct sae_password_entry *pw;
 
-	if ((conf->sae_pwe == 0 && !hostapd_sae_pw_id_in_use(conf) &&
+	if ((conf->sae_pwe == SAE_PWE_HUNT_AND_PECK &&
+	     !hostapd_sae_pw_id_in_use(conf) &&
 	     !wpa_key_mgmt_sae_ext_key(conf->wpa_key_mgmt) &&
 	     !hostapd_sae_pk_in_use(conf)) ||
-	    conf->sae_pwe == 3 ||
+	    conf->sae_pwe == SAE_PWE_FORCE_HUNT_AND_PECK ||
 	    !wpa_key_mgmt_sae(conf->wpa_key_mgmt))
 		return 0; /* PT not needed */
 
@@ -1211,9 +1212,10 @@ static bool hostapd_config_check_bss_6g(struct hostapd_bss_config *bss)
 	}
 
 #ifdef CONFIG_SAE
-	if (wpa_key_mgmt_sae(bss->wpa_key_mgmt) && !bss->sae_pwe) {
+	if (wpa_key_mgmt_sae(bss->wpa_key_mgmt) &&
+	    bss->sae_pwe == SAE_PWE_HUNT_AND_PECK) {
 		wpa_printf(MSG_INFO, "SAE: Enabling SAE H2E on 6 GHz");
-		bss->sae_pwe = 2;
+		bss->sae_pwe = SAE_PWE_BOTH;
 	}
 #endif /* CONFIG_SAE */
 

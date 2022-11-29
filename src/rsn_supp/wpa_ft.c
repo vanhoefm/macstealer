@@ -340,7 +340,8 @@ static u8 * wpa_ft_gen_req_ies(struct wpa_sm *sm, size_t *len,
 	*pos++ = WLAN_EID_FAST_BSS_TRANSITION;
 	ftie_len = pos++;
 	rsnxe_used = wpa_key_mgmt_sae(sm->key_mgmt) && anonce &&
-		(sm->sae_pwe == 1 || sm->sae_pwe == 2);
+		(sm->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+		 sm->sae_pwe == SAE_PWE_BOTH);
 #ifdef CONFIG_TESTING_OPTIONS
 	if (anonce && sm->ft_rsnxe_used) {
 		rsnxe_used = sm->ft_rsnxe_used == 1;
@@ -1191,7 +1192,8 @@ int wpa_ft_validate_reassoc_resp(struct wpa_sm *sm, const u8 *ies,
 	}
 
 	own_rsnxe_used = wpa_key_mgmt_sae(sm->key_mgmt) &&
-		(sm->sae_pwe == 1 || sm->sae_pwe == 2);
+		(sm->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+		 sm->sae_pwe == SAE_PWE_BOTH);
 	if ((sm->ap_rsnxe && !parse.rsnxe && own_rsnxe_used) ||
 	    (!sm->ap_rsnxe && parse.rsnxe) ||
 	    (sm->ap_rsnxe && parse.rsnxe &&

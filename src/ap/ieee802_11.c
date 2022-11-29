@@ -115,9 +115,9 @@ u8 * hostapd_eid_supp_rates(struct hostapd_data *hapd, u8 *eid)
 		num++;
 	if (hapd->iconf->ieee80211ac && hapd->iconf->require_vht)
 		num++;
-	h2e_required = (hapd->conf->sae_pwe == 1 ||
+	h2e_required = (hapd->conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
 			hostapd_sae_pw_id_in_use(hapd->conf) == 2) &&
-		hapd->conf->sae_pwe != 3 &&
+		hapd->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK &&
 		wpa_key_mgmt_sae(hapd->conf->wpa_key_mgmt);
 	if (h2e_required)
 		num++;
@@ -170,9 +170,9 @@ u8 * hostapd_eid_ext_supp_rates(struct hostapd_data *hapd, u8 *eid)
 		num++;
 	if (hapd->iconf->ieee80211ac && hapd->iconf->require_vht)
 		num++;
-	h2e_required = (hapd->conf->sae_pwe == 1 ||
+	h2e_required = (hapd->conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
 			hostapd_sae_pw_id_in_use(hapd->conf) == 2) &&
-		hapd->conf->sae_pwe != 3 &&
+		hapd->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK &&
 		wpa_key_mgmt_sae(hapd->conf->wpa_key_mgmt);
 	if (h2e_required)
 		num++;
@@ -558,7 +558,7 @@ static struct wpabuf * auth_build_sae_commit(struct hostapd_data *hapd,
 #endif /* CONFIG_SAE_PK */
 	}
 
-	if (rx_id && hapd->conf->sae_pwe != 3)
+	if (rx_id && hapd->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK)
 		use_pt = 1;
 	else if (status_code == WLAN_STATUS_SUCCESS)
 		use_pt = 0;
@@ -1099,31 +1099,32 @@ static void sae_pick_next_group(struct hostapd_data *hapd, struct sta_info *sta)
 
 static int sae_status_success(struct hostapd_data *hapd, u16 status_code)
 {
-	int sae_pwe = hapd->conf->sae_pwe;
+	enum sae_pwe sae_pwe = hapd->conf->sae_pwe;
 	int id_in_use;
 	bool sae_pk = false;
 
 	id_in_use = hostapd_sae_pw_id_in_use(hapd->conf);
-	if (id_in_use == 2 && sae_pwe != 3)
-		sae_pwe = 1;
-	else if (id_in_use == 1 && sae_pwe == 0)
-		sae_pwe = 2;
+	if (id_in_use == 2 && sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK)
+		sae_pwe = SAE_PWE_HASH_TO_ELEMENT;
+	else if (id_in_use == 1 && sae_pwe == SAE_PWE_HUNT_AND_PECK)
+		sae_pwe = SAE_PWE_BOTH;
 #ifdef CONFIG_SAE_PK
 	sae_pk = hostapd_sae_pk_in_use(hapd->conf);
-	if (sae_pwe == 0 && sae_pk)
-		sae_pwe = 2;
+	if (sae_pwe == SAE_PWE_HUNT_AND_PECK && sae_pk)
+		sae_pwe = SAE_PWE_BOTH;
 #endif /* CONFIG_SAE_PK */
-	if (sae_pwe == 0 &&
+	if (sae_pwe == SAE_PWE_HUNT_AND_PECK &&
 	    (hapd->conf->wpa_key_mgmt &
 	     (WPA_KEY_MGMT_SAE_EXT_KEY | WPA_KEY_MGMT_FT_SAE_EXT_KEY)))
-		sae_pwe = 2;
+		sae_pwe = SAE_PWE_BOTH;
 
-	return ((sae_pwe == 0 || sae_pwe == 3) &&
+	return ((sae_pwe == SAE_PWE_HUNT_AND_PECK ||
+		 sae_pwe == SAE_PWE_FORCE_HUNT_AND_PECK) &&
 		status_code == WLAN_STATUS_SUCCESS) ||
-		(sae_pwe == 1 &&
+		(sae_pwe == SAE_PWE_HASH_TO_ELEMENT &&
 		 (status_code == WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
 		  (sae_pk && status_code == WLAN_STATUS_SAE_PK))) ||
-		(sae_pwe == 2 &&
+		(sae_pwe == SAE_PWE_BOTH &&
 		 (status_code == WLAN_STATUS_SUCCESS ||
 		  status_code == WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
 		  (sae_pk && status_code == WLAN_STATUS_SAE_PK)));
@@ -3849,7 +3850,7 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 			return WLAN_STATUS_NOT_SUPPORTED_AUTH_ALG;
 		}
 
-		if (hapd->conf->sae_pwe == 2 &&
+		if (hapd->conf->sae_pwe == SAE_PWE_BOTH &&
 		    sta->auth_alg == WLAN_AUTH_SAE &&
 		    sta->sae && !sta->sae->h2e &&
 		    ieee802_11_rsnx_capab_len(elems.rsnxe, elems.rsnxe_len,

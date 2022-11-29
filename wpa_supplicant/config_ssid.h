@@ -47,7 +47,7 @@
 #define DEFAULT_MAX_OPER_CHWIDTH -1
 
 /* Consider global sae_pwe for SAE mechanism for PWE derivation */
-#define DEFAULT_SAE_PWE 4
+#define DEFAULT_SAE_PWE SAE_PWE_NOT_SET
 
 struct psk_list_entry {
 	struct dl_list list;
@@ -1223,7 +1223,7 @@ struct wpa_ssid {
 	 * 1 = hash-to-element only
 	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
 	 */
-	int sae_pwe;
+	enum sae_pwe sae_pwe;
 
 	/**
 	 * disable_eht - Disable EHT (IEEE 802.11be) for this network

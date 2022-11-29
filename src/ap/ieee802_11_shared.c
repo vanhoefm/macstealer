@@ -1062,10 +1062,11 @@ u8 * hostapd_eid_rsnxe(struct hostapd_data *hapd, u8 *eid, size_t len)
 #endif /* CONFIG_SAE_PK */
 
 	if (wpa_key_mgmt_sae(hapd->conf->wpa_key_mgmt) &&
-	    (hapd->conf->sae_pwe == 1 || hapd->conf->sae_pwe == 2 ||
+	    (hapd->conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+	     hapd->conf->sae_pwe == SAE_PWE_BOTH ||
 	     hostapd_sae_pw_id_in_use(hapd->conf) || sae_pk ||
 	     wpa_key_mgmt_sae_ext_key(hapd->conf->wpa_key_mgmt)) &&
-	    hapd->conf->sae_pwe != 3) {
+	    hapd->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK) {
 		capab |= BIT(WLAN_RSNX_CAPAB_SAE_H2E);
 #ifdef CONFIG_SAE_PK
 		if (sae_pk)

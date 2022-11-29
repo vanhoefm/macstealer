@@ -4535,18 +4535,18 @@ static int nl80211_set_multicast_to_unicast(struct i802_bss *bss,
 
 
 #ifdef CONFIG_SAE
-static int nl80211_put_sae_pwe(struct nl_msg *msg, int pwe)
+static int nl80211_put_sae_pwe(struct nl_msg *msg, enum sae_pwe pwe)
 {
 	u8 sae_pwe;
 
 	wpa_printf(MSG_DEBUG, "nl802111: sae_pwe=%d", pwe);
-	if (pwe == 0)
+	if (pwe == SAE_PWE_HUNT_AND_PECK)
 		sae_pwe = NL80211_SAE_PWE_HUNT_AND_PECK;
-	else if (pwe == 1)
+	else if (pwe == SAE_PWE_HASH_TO_ELEMENT)
 		sae_pwe = NL80211_SAE_PWE_HASH_TO_ELEMENT;
-	else if (pwe == 2)
+	else if (pwe == SAE_PWE_BOTH)
 		sae_pwe = NL80211_SAE_PWE_BOTH;
-	else if (pwe == 3)
+	else if (pwe == SAE_PWE_FORCE_HUNT_AND_PECK)
 		return 0; /* special test mode */
 	else
 		return -1;
