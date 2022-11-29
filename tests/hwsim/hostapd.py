@@ -282,6 +282,7 @@ class Hostapd:
             raise Exception("AP did not report STA connection")
         if addr and addr not in ev:
             raise Exception("Unexpected STA address in connection event: " + ev)
+        return ev
 
     def wait_ptkinitdone(self, addr, timeout=2):
         while timeout > 0:

@@ -1632,6 +1632,7 @@ params1_ap_connector = "eyJ0eXAiOiJkcHBDb24iLCJraWQiOiJzOEFrYjg5bTV4UGhoYk5UbTVm
 params1_ap_netaccesskey = "30770201010420f6531d17f29dfab655b7c9e923478d5a345164c489aadd44a3519c3e9dcc792da00a06082a8648ce3d030107a14403420004d3cab13525c6e15ce0056a5c506309839b37a2520d4d19444f98438ba0c972f751a85a5c0cc911940131786d4c1c9879893d9086fdf4fd3b43f32aa125154932"
 params1_sta_connector = "eyJ0eXAiOiJkcHBDb24iLCJraWQiOiJzOEFrYjg5bTV4UGhoYk5UbTVmVVo0eVBzNU5VMkdxYXNRY3hXUWhtQVFRIiwiYWxnIjoiRVMyNTYifQ.eyJncm91cHMiOlt7Imdyb3VwSWQiOiIqIiwibmV0Um9sZSI6InN0YSJ9XSwibmV0QWNjZXNzS2V5Ijp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiZWMzR3NqQ3lQMzVBUUZOQUJJdEltQnN4WXVyMGJZX1dES1lfSE9zUGdjNCIsInkiOiJTRS1HVllkdWVnTFhLMU1TQXZNMEx2QWdLREpTNWoyQVhCbE9PMTdUSTRBIn19.PDK9zsGlK-e1pEOmNxVeJfCS8pNeay6ckIS1TXCQsR64AR-9wFPCNVjqOxWvVKltehyMFqVAtOcv0IrjtMJFqQ"
 params1_sta_netaccesskey = "30770201010420bc33380c26fd2168b69cd8242ed1df07ba89aa4813f8d4e8523de6ca3f8dd28ba00a06082a8648ce3d030107a1440342000479cdc6b230b23f7e40405340048b48981b3162eaf46d8fd60ca63f1ceb0f81ce484f8655876e7a02d72b531202f3342ef020283252e63d805c194e3b5ed32380"
+params1_sta_pk_hash = "38f1ba82b3b49ef1c9ab616e5e94a914c75af3a4d6e25b7f112741e530f3b8e6"
 
 def test_dpp_network_introduction(dev, apdev):
     """DPP network introduction"""
@@ -1659,6 +1660,16 @@ def test_dpp_network_introduction(dev, apdev):
     val = dev[0].get_status_field("key_mgmt")
     if val != "DPP":
         raise Exception("Unexpected key_mgmt: " + val)
+
+    ev = hapd.wait_sta(dev[0].own_addr())
+    if "dpp_pkhash=" + params1_sta_pk_hash not in ev:
+        raise Exception("dpp_pkhash not reported correctly: " + ev)
+
+    sta = hapd.get_sta(dev[0].own_addr())
+    if 'dpp_pkhash' not in sta:
+        raise Exception("dpp_pkhash not included in STA info")
+    if sta['dpp_pkhash'] != params1_sta_pk_hash:
+        raise Exception("Incorrect dpp_pkhash in STA info: " + sta['dpp_pkhash'])
 
 def test_dpp_network_introduction_expired(dev, apdev):
     """DPP network introduction with expired netaccesskey"""
@@ -1949,8 +1960,10 @@ def run_dpp_ap_config(dev, apdev, curve=None, conf_curve=None,
                              passphrase="secret SAE password")
     else:
         dev[0].dpp_auth_init(uri=uri1, conf="sta-dpp", configurator=conf_id)
-    wait_auth_success(dev[1], dev[0], configurator=dev[0], enrollee=dev[1],
-                      stop_responder=True)
+    res = wait_auth_success(dev[1], dev[0],
+                            configurator=dev[0], enrollee=dev[1],
+                            stop_responder=True)
+    sta_pk_hash = res['initiator-auth-success-pkhash']
 
     ev = dev[1].wait_event(["DPP-CONFOBJ-SSID"], timeout=1)
     if ev is None:
@@ -1996,6 +2009,31 @@ def run_dpp_ap_config(dev, apdev, curve=None, conf_curve=None,
     logger.info("Check data connection")
     dev[1].select_network(id, freq="2412")
     dev[1].wait_connected()
+
+    if not sae:
+        ev = hapd.wait_sta(dev[1].own_addr())
+        if "dpp_pkhash=" + sta_pk_hash not in ev:
+            raise Exception("dpp_pkhash not reported correctly: " + ev)
+
+        sta = hapd.get_sta(dev[1].own_addr())
+        if 'dpp_pkhash' not in sta:
+            raise Exception("dpp_pkhash not included in STA info")
+        if sta['dpp_pkhash'] != sta_pk_hash:
+            raise Exception("Incorrect dpp_pkhash in STA info: " + sta['dpp_pkhash'])
+
+        dev[1].request("DISCONNECT")
+        dev[1].wait_disconnected()
+        dev[1].request("RECONNECT")
+        dev[1].wait_connected()
+        ev = hapd.wait_sta(dev[1].own_addr())
+        if "dpp_pkhash=" + sta_pk_hash not in ev:
+            raise Exception("dpp_pkhash not reported correctly(2): " + ev)
+
+        sta = hapd.get_sta(dev[1].own_addr())
+        if 'dpp_pkhash' not in sta:
+            raise Exception("dpp_pkhash not included in STA info(2)")
+        if sta['dpp_pkhash'] != sta_pk_hash:
+            raise Exception("Incorrect dpp_pkhash in STA info(2): " + sta['dpp_pkhash'])
 
 def test_dpp_auto_connect_1(dev, apdev):
     """DPP and auto connect (1)"""
@@ -4685,9 +4723,19 @@ def wait_auth_success(responder, initiator, configurator=None, enrollee=None,
     ev = responder.wait_event(["DPP-AUTH-SUCCESS", "DPP-FAIL"], timeout=timeout)
     if ev is None or "DPP-AUTH-SUCCESS" not in ev:
         raise Exception("DPP authentication did not succeed (Responder)")
+    for i in ev.split(' '):
+        a = i.split('=')
+        if len(a) < 2:
+            continue
+        res['responder-auth-success-' + a[0]] = a[1]
     ev = initiator.wait_event(["DPP-AUTH-SUCCESS", "DPP-FAIL"], timeout=5)
     if ev is None or "DPP-AUTH-SUCCESS" not in ev:
         raise Exception("DPP authentication did not succeed (Initiator)")
+    for i in ev.split(' '):
+        a = i.split('=')
+        if len(a) < 2:
+            continue
+        res['initiator-auth-success-' + a[0]] = a[1]
     if configurator:
         ev = configurator.wait_event(["DPP-CONF-SENT",
                                       "DPP-CONF-FAILED"], timeout=5)
