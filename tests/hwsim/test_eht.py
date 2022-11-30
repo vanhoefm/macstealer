@@ -28,3 +28,28 @@ def test_eht_open(dev, apdev):
     status = dev[0].request("STATUS")
     if "wifi_generation=7" not in status:
         raise Exception("STA STATUS did not indicate wifi_generation=7")
+
+def test_prefer_eht_20(dev, apdev):
+    params = {"ssid": "eht",
+              "channel": "1",
+              "ieee80211ax": "1",
+              "ieee80211be" : "1",
+              "ieee80211n": "1"}
+    try:
+        hapd0 = hostapd.add_ap(apdev[0], params)
+
+        params["ieee80211be"] = "0"
+        hapd1 = hostapd.add_ap(apdev[1], params)
+    except Exception as e:
+        if isinstance(e, Exception) and \
+           str(e) == "Failed to set hostapd parameter ieee80211be":
+            raise HwsimSkip("EHT not supported")
+        raise
+
+    dev[0].connect("eht", key_mgmt="NONE")
+    if dev[0].get_status_field('bssid') != apdev[0]['bssid']:
+        raise Exception("dev[0] connected to unexpected AP")
+
+    est = dev[0].get_bss(apdev[0]['bssid'])['est_throughput']
+    if est != "172103":
+      raise Exception("Unexpected BSS1 est_throughput: " + est)
