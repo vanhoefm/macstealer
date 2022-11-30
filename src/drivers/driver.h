@@ -898,6 +898,38 @@ struct wpa_driver_sta_auth_params {
 	size_t fils_kek_len;
 };
 
+struct wpa_driver_mld_params {
+	/**
+	 * mld_addr - AP's MLD address
+	 */
+	const u8 *mld_addr;
+
+	/**
+	 * valid_links - The valid links including the association link
+	 */
+	u16 valid_links;
+
+	/**
+	 * assoc_link_id - The link on which the association is performed
+	 */
+	u8 assoc_link_id;
+
+	/**
+	 * mld_links - Link information
+	 *
+	 * Should include information on all the requested links for association
+	 * including the link on which the association should take place.
+	 * For the association link, the ies and ies_len should be NULL and
+	 * 0 respectively.
+	 */
+	struct {
+		int freq;
+		const u8 *bssid;
+		const u8 *ies;
+		size_t ies_len;
+	} mld_links[MAX_NUM_MLD_LINKS];
+};
+
 /**
  * struct wpa_driver_associate_params - Association parameters
  * Data for struct wpa_driver_ops::associate().
@@ -1271,6 +1303,11 @@ struct wpa_driver_associate_params {
 	 * disable_eht - Disable EHT for this connection
 	 */
 	int disable_eht;
+
+	/*
+	 * mld_params - MLD association parameters
+	 */
+	struct wpa_driver_mld_params mld_params;
 };
 
 enum hide_ssid {
