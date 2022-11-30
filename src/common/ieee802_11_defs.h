@@ -2515,6 +2515,8 @@ struct ieee80211_eht_capabilities {
 	u8 optional[EHT_MCS_NSS_CAPAB_LEN + EHT_PPE_THRESH_CAPAB_LEN];
 } STRUCT_PACKED;
 
+#define IEEE80211_EHT_CAPAB_MIN_LEN (2 + 9)
+
 /* IEEE P802.11be/D2.1, 9.4.2.312 - Multi-Link element */
 
 /* Figure 9-1002f: Multi-Link Control field */
