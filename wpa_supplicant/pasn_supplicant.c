@@ -420,8 +420,8 @@ static void wpas_pasn_delete_peers(struct wpa_supplicant *wpa_s,
 
 	for (i = 0; i < pasn_params->num_peers; i++) {
 		peer = &pasn_params->peer[i];
-		wpas_pasn_deauthenticate(wpa_s, peer->own_addr,
-					 peer->peer_addr);
+		ptksa_cache_flush(wpa_s->ptksa, peer->peer_addr,
+				  WPA_CIPHER_NONE);
 	}
 }
 
