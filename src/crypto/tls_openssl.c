@@ -5377,6 +5377,10 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 			   __func__, ERR_error_string(err, NULL));
 	}
 
+	if (tls_set_conn_flags(conn, params->flags,
+			       params->openssl_ciphers) < 0)
+		return -1;
+
 	if (engine_id) {
 		wpa_printf(MSG_DEBUG, "SSL: Initializing TLS engine %s",
 			   engine_id);
@@ -5474,10 +5478,6 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 #endif /* OPENSSL_NO_EC */
 #endif /* OPENSSL_IS_BORINGSSL */
 	}
-
-	if (tls_set_conn_flags(conn, params->flags,
-			       params->openssl_ciphers) < 0)
-		return -1;
 
 #ifdef OPENSSL_IS_BORINGSSL
 	if (params->flags & TLS_CONN_REQUEST_OCSP) {
