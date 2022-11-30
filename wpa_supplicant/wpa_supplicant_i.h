@@ -687,8 +687,8 @@ struct wpa_supplicant {
 	unsigned int assoc_freq;
 	u8 ap_mld_addr[ETH_ALEN];
 	u8 mlo_assoc_link_id;
-	u8 valid_links; /* bitmap of valid MLO link IDs */
-	struct {
+	u16 valid_links; /* bitmap of valid MLO link IDs */
+	struct ml_sta_link_info {
 		u8 addr[ETH_ALEN];
 		u8 bssid[ETH_ALEN];
 		unsigned int freq;
