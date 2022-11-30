@@ -466,6 +466,8 @@ extern "C" {
 #define WPA_BSS_MASK_UPDATE_IDX		BIT(22)
 #define WPA_BSS_MASK_BEACON_IE		BIT(23)
 #define WPA_BSS_MASK_FILS_INDICATION	BIT(24)
+#define WPA_BSS_MASK_RNR		BIT(25)
+#define WPA_BSS_MASK_ML			BIT(26)
 
 
 /* VENDOR_ELEM_* frame id values */
