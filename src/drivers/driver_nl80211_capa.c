@@ -1140,6 +1140,9 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 	if (tb[NL80211_ATTR_MBSSID_CONFIG])
 		wiphy_info_mbssid(capa, tb[NL80211_ATTR_MBSSID_CONFIG]);
 
+	if (tb[NL80211_ATTR_MLO_SUPPORT])
+		capa->flags2 |= WPA_DRIVER_FLAGS2_MLO;
+
 	return NL_SKIP;
 }
 
