@@ -2149,9 +2149,7 @@ int crypto_bignum_sqrmod(const struct crypto_bignum *a,
 int crypto_bignum_rshift(const struct crypto_bignum *a, int n,
 			 struct crypto_bignum *r)
 {
-	/* Note: BN_rshift() does not modify the first argument even though it
-	 * has not been marked const. */
-	return BN_rshift((BIGNUM *) a, (BIGNUM *) r, n) == 1 ? 0 : -1;
+	return BN_rshift((BIGNUM *) r, (const BIGNUM *) a, n) == 1 ? 0 : -1;
 }
 
 
