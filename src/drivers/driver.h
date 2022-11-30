@@ -720,6 +720,21 @@ struct wpa_driver_auth_params {
 	 * auth_data_len - Length of auth_data buffer in octets
 	 */
 	size_t auth_data_len;
+
+	/**
+	 * mld - Establish an MLD connection
+	 */
+	bool mld;
+
+	/**
+	 * mld_link_id - The link ID of the MLD AP to which we are associating
+	 */
+	u8 mld_link_id;
+
+	/**
+	 * The MLD AP address
+	 */
+	const u8 *ap_mld_addr;
 };
 
 /**
