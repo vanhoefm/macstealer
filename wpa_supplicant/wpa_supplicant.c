@@ -6814,12 +6814,24 @@ static int wpa_supplicant_init_iface(struct wpa_supplicant *wpa_s,
 			os_free(wpa_s->conf->ctrl_interface);
 			wpa_s->conf->ctrl_interface =
 				os_strdup(iface->ctrl_interface);
+			if (!wpa_s->conf->ctrl_interface) {
+				wpa_printf(MSG_ERROR,
+					   "Failed to duplicate control interface '%s'.",
+					   iface->ctrl_interface);
+				return -1;
+			}
 		}
 
 		if (iface->driver_param) {
 			os_free(wpa_s->conf->driver_param);
 			wpa_s->conf->driver_param =
 				os_strdup(iface->driver_param);
+			if (!wpa_s->conf->driver_param) {
+				wpa_printf(MSG_ERROR,
+					   "Failed to duplicate driver param '%s'.",
+					   iface->driver_param);
+				return -1;
+			}
 		}
 
 		if (iface->p2p_mgmt && !iface->ctrl_interface) {
@@ -7582,26 +7594,63 @@ struct wpa_global * wpa_supplicant_init(struct wpa_params *params)
 	global->params.daemonize = params->daemonize;
 	global->params.wait_for_monitor = params->wait_for_monitor;
 	global->params.dbus_ctrl_interface = params->dbus_ctrl_interface;
-	if (params->pid_file)
+
+	if (params->pid_file) {
 		global->params.pid_file = os_strdup(params->pid_file);
-	if (params->ctrl_interface)
+		if (!global->params.pid_file) {
+			wpa_supplicant_deinit(global);
+			return NULL;
+		}
+	}
+
+	if (params->ctrl_interface) {
 		global->params.ctrl_interface =
 			os_strdup(params->ctrl_interface);
-	if (params->ctrl_interface_group)
+		if (!global->params.ctrl_interface) {
+			wpa_supplicant_deinit(global);
+			return NULL;
+		}
+	}
+
+	if (params->ctrl_interface_group) {
 		global->params.ctrl_interface_group =
 			os_strdup(params->ctrl_interface_group);
-	if (params->override_driver)
+		if (!global->params.ctrl_interface_group) {
+			wpa_supplicant_deinit(global);
+			return NULL;
+		}
+	}
+
+	if (params->override_driver) {
 		global->params.override_driver =
 			os_strdup(params->override_driver);
-	if (params->override_ctrl_interface)
+		if (!global->params.override_driver) {
+			wpa_supplicant_deinit(global);
+			return NULL;
+		}
+	}
+
+	if (params->override_ctrl_interface) {
 		global->params.override_ctrl_interface =
 			os_strdup(params->override_ctrl_interface);
+		if (!global->params.override_ctrl_interface) {
+			wpa_supplicant_deinit(global);
+			return NULL;
+		}
+	}
+
 #ifdef CONFIG_MATCH_IFACE
 	global->params.match_iface_count = params->match_iface_count;
 	if (params->match_iface_count) {
 		global->params.match_ifaces =
 			os_calloc(params->match_iface_count,
 				  sizeof(struct wpa_interface));
+		if (!global->params.match_ifaces) {
+			wpa_printf(MSG_ERROR,
+				   "Failed to allocate match interfaces");
+			wpa_supplicant_deinit(global);
+			return NULL;
+		}
 		os_memcpy(global->params.match_ifaces,
 			  params->match_ifaces,
 			  params->match_iface_count *
@@ -7609,9 +7658,15 @@ struct wpa_global * wpa_supplicant_init(struct wpa_params *params)
 	}
 #endif /* CONFIG_MATCH_IFACE */
 #ifdef CONFIG_P2P
-	if (params->conf_p2p_dev)
+	if (params->conf_p2p_dev) {
 		global->params.conf_p2p_dev =
 			os_strdup(params->conf_p2p_dev);
+		if (!global->params.conf_p2p_dev) {
+			wpa_printf(MSG_ERROR, "Failed to allocate conf p2p");
+			wpa_supplicant_deinit(global);
+			return NULL;
+		}
+	}
 #endif /* CONFIG_P2P */
 	wpa_debug_level = global->params.wpa_debug_level =
 		params->wpa_debug_level;
@@ -8075,6 +8130,8 @@ int wpa_supplicant_ctrl_iface_ctrl_rsp_handle(struct wpa_supplicant *wpa_s,
 	case WPA_CTRL_REQ_EAP_IDENTITY:
 		os_free(eap->identity);
 		eap->identity = (u8 *) os_strdup(value);
+		if (!eap->identity)
+			return -1;
 		eap->identity_len = os_strlen(value);
 		eap->pending_req_identity = 0;
 		if (ssid == wpa_s->current_ssid)
@@ -8083,6 +8140,8 @@ int wpa_supplicant_ctrl_iface_ctrl_rsp_handle(struct wpa_supplicant *wpa_s,
 	case WPA_CTRL_REQ_EAP_PASSWORD:
 		bin_clear_free(eap->password, eap->password_len);
 		eap->password = (u8 *) os_strdup(value);
+		if (!eap->password)
+			return -1;
 		eap->password_len = os_strlen(value);
 		eap->pending_req_password = 0;
 		if (ssid == wpa_s->current_ssid)
@@ -8091,6 +8150,8 @@ int wpa_supplicant_ctrl_iface_ctrl_rsp_handle(struct wpa_supplicant *wpa_s,
 	case WPA_CTRL_REQ_EAP_NEW_PASSWORD:
 		bin_clear_free(eap->new_password, eap->new_password_len);
 		eap->new_password = (u8 *) os_strdup(value);
+		if (!eap->new_password)
+			return -1;
 		eap->new_password_len = os_strlen(value);
 		eap->pending_req_new_password = 0;
 		if (ssid == wpa_s->current_ssid)
@@ -8099,6 +8160,8 @@ int wpa_supplicant_ctrl_iface_ctrl_rsp_handle(struct wpa_supplicant *wpa_s,
 	case WPA_CTRL_REQ_EAP_PIN:
 		str_clear_free(eap->cert.pin);
 		eap->cert.pin = os_strdup(value);
+		if (!eap->cert.pin)
+			return -1;
 		eap->pending_req_pin = 0;
 		if (ssid == wpa_s->current_ssid)
 			wpa_s->reassociate = 1;
@@ -8106,6 +8169,8 @@ int wpa_supplicant_ctrl_iface_ctrl_rsp_handle(struct wpa_supplicant *wpa_s,
 	case WPA_CTRL_REQ_EAP_OTP:
 		bin_clear_free(eap->otp, eap->otp_len);
 		eap->otp = (u8 *) os_strdup(value);
+		if (!eap->otp)
+			return -1;
 		eap->otp_len = os_strlen(value);
 		os_free(eap->pending_req_otp);
 		eap->pending_req_otp = NULL;
@@ -8114,6 +8179,8 @@ int wpa_supplicant_ctrl_iface_ctrl_rsp_handle(struct wpa_supplicant *wpa_s,
 	case WPA_CTRL_REQ_EAP_PASSPHRASE:
 		str_clear_free(eap->cert.private_key_passwd);
 		eap->cert.private_key_passwd = os_strdup(value);
+		if (!eap->cert.private_key_passwd)
+			return -1;
 		eap->pending_req_passphrase = 0;
 		if (ssid == wpa_s->current_ssid)
 			wpa_s->reassociate = 1;
@@ -8121,6 +8188,8 @@ int wpa_supplicant_ctrl_iface_ctrl_rsp_handle(struct wpa_supplicant *wpa_s,
 	case WPA_CTRL_REQ_SIM:
 		str_clear_free(eap->external_sim_resp);
 		eap->external_sim_resp = os_strdup(value);
+		if (!eap->external_sim_resp)
+			return -1;
 		eap->pending_req_sim = 0;
 		break;
 	case WPA_CTRL_REQ_PSK_PASSPHRASE:

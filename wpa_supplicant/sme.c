@@ -1393,6 +1393,12 @@ static int sme_sae_auth(struct wpa_supplicant *wpa_s, u16 auth_transaction,
 			token_len = elen - 1;
 		}
 		wpa_s->sme.sae_token = wpabuf_alloc_copy(token_pos, token_len);
+		if (!wpa_s->sme.sae_token) {
+			wpa_dbg(wpa_s, MSG_ERROR,
+				"SME: Failed to allocate SAE token");
+			return -1;
+		}
+
 		wpa_hexdump_buf(MSG_DEBUG, "SME: Requested anti-clogging token",
 				wpa_s->sme.sae_token);
 		if (!external)
