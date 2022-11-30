@@ -1950,7 +1950,7 @@ DBusMessage * wpas_dbus_handler_signal_poll(DBusMessage *message,
 {
 	struct wpa_signal_info si;
 	DBusMessage *reply = NULL;
-	DBusMessageIter iter, iter_dict, variant_iter;
+	DBusMessageIter iter;
 	int ret;
 
 	ret = wpa_drv_signal_poll(wpa_s, &si);
@@ -1965,31 +1965,7 @@ DBusMessage * wpas_dbus_handler_signal_poll(DBusMessage *message,
 
 	dbus_message_iter_init_append(reply, &iter);
 
-	if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
-					      "a{sv}", &variant_iter) ||
-	    !wpa_dbus_dict_open_write(&variant_iter, &iter_dict) ||
-	    !wpa_dbus_dict_append_int32(&iter_dict, "rssi",
-					si.data.signal) ||
-	    !wpa_dbus_dict_append_int32(&iter_dict, "linkspeed",
-					si.data.current_tx_rate / 1000) ||
-	    !wpa_dbus_dict_append_int32(&iter_dict, "noise",
-					si.current_noise) ||
-	    !wpa_dbus_dict_append_uint32(&iter_dict, "frequency",
-					 si.frequency) ||
-	    (si.chanwidth != CHAN_WIDTH_UNKNOWN &&
-	     !wpa_dbus_dict_append_string(
-		     &iter_dict, "width",
-		     channel_width_to_string(si.chanwidth))) ||
-	    (si.center_frq1 > 0 && si.center_frq2 > 0 &&
-	     (!wpa_dbus_dict_append_int32(&iter_dict, "center-frq1",
-					  si.center_frq1) ||
-	      !wpa_dbus_dict_append_int32(&iter_dict, "center-frq2",
-					  si.center_frq2))) ||
-	    (si.data.avg_signal &&
-	     !wpa_dbus_dict_append_int32(&iter_dict, "avg-rssi",
-					 si.data.avg_signal)) ||
-	    !wpa_dbus_dict_close_write(&variant_iter, &iter_dict) ||
-	    !dbus_message_iter_close_container(&iter, &variant_iter))
+	if (wpas_dbus_new_from_signal_information(&iter, &si) != 0)
 		goto nomem;
 
 	return reply;
@@ -6120,3 +6096,28 @@ dbus_bool_t wpas_dbus_getter_mesh_group(
 }
 
 #endif /* CONFIG_MESH */
+
+
+/**
+ * wpas_dbus_getter_signal_change - Get signal change
+ * @iter: Pointer to incoming dbus message iter
+ * @error: Location to store error on failure
+ * @user_data: Function specific data
+ * Returns: TRUE on success, FALSE on failure
+ *
+ * Getter for "SignalChange" property.
+ */
+dbus_bool_t wpas_dbus_getter_signal_change(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
+{
+	struct wpa_supplicant *wpa_s = user_data;
+	struct wpa_signal_info si = wpa_s->last_signal_info;
+
+	if (wpas_dbus_new_from_signal_information(iter, &si) != 0) {
+		dbus_set_error(error, DBUS_ERROR_FAILED,
+			       "%s: error constructing reply", __func__);
+		return FALSE;
+	}
+	return TRUE;
+}

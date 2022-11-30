@@ -647,6 +647,33 @@ fi.w1.wpa_supplicant1.CreateInterface.
 	      <tr><td>avg-rssi</td><td>i</td><td>Average RSSI (dBm)</td><td>No</td>
 	      <tr><td>center-frq1</td><td>i</td><td>VHT segment 1 frequency (MHz)</td><td>No</td>
 	      <tr><td>center-frq2</td><td>i</td><td>VHT segment 2 frequency (MHz)</td><td>No</td>
+	      <tr><td>rx-bytes</td><td>i</td><td>Bytes recieved</td><td>No</td>
+	      <tr><td>tx-bytes</td><td>i</td><td>Bytes sent</td><td>No</td>
+	      <tr><td>rx-packets</td><td>i</td><td>Packets recieved</td><td>No</td>
+	      <tr><td>tx-packets</td><td>i</td><td>Packets sent</td><td>No</td>
+	      <tr><td>beacons</td><td>i</td><td>Beacons received</td><td>No</td>
+	      <tr><td>linkrxspeed</td><td>i</td><td>Link Speed (RX, kbps)</td><td>No</td>
+	      <tr><td>linktxspeed</td><td>i</td><td>Link Speed (TX, kbps)</td><td>No</td>
+	      <tr><td>retries-failed</td><td>i</td><td>Retries (failed)</td><td>No</td>
+	      <tr><td>retries</td><td>i</td><td>Retries</td><td>No</td>
+	      <tr><td>last-ack-rssi</td><td>i</td><td>RSSI of last ACK frame (dBm)</td><td>No</td>
+	      <tr><td>fcs-errors</td><td>i</td><td>FCS errors</td><td>No</td>
+	      <tr><td>beacon-losses</td><td>i</td><td>Beacons lost</td><td>No</td>
+	      <tr><td>expected-throughput</td><td>i</td><td>Expected Throughput (kbps)</td><td>No</td>
+	      <tr><td>rx-drop-misc</td><td>i</td><td>RX packets dropped for unspecified reasons</td><td>No</td>
+	      <tr><td>rx-mpdus</td><td>i</td><td>Recieved packets</td><td>No</td>
+	      <tr><td>rx-he-mcs</td><td>i</td><td>MCS index (rx, he)</td><td>No</td>
+	      <tr><td>tx-he-mcs</td><td>i</td><td>MCS index (tx, he)</td><td>No</td>
+	      <tr><td>rx-vht-mcs</td><td>i</td><td>MCS index (rx, vht)</td><td>No</td>
+	      <tr><td>tx-vht-mcs</td><td>i</td><td>MCS index (tx, vht)</td><td>No</td>
+	      <tr><td>rx-mcs</td><td>i</td><td>MCS index (rx)</td><td>No</td>
+	      <tr><td>tx-mcs</td><td>i</td><td>MCS index (tx)</td><td>No</td>
+	      <tr><td>rx-he-nss</td><td>i</td><td>Number of streams (rx, he)</td><td>No</td>
+	      <tr><td>tx-he-nss</td><td>i</td><td>Number of streams (tx, he)</td><td>No</td>
+	      <tr><td>rx-vht-nss</td><td>i</td><td>Number of streams (rx, vht)</td><td>No</td>
+	      <tr><td>tx-vht-nss</td><td>i</td><td>Number of streams (tx, vht)</td><td>No</td>
+	      <tr><td>avg-beacon-rssi</td><td>i</td><td>Average Beacon RSSI (dBm)</td><td>No</td>
+	      <tr><td>avg-ack-rssi</td><td>i</td><td>Average ACK frame RSSI (dBm)</td><td>No</td>
 	    </table>
 	  </dd>
 	</dl>
@@ -1244,7 +1271,7 @@ fi.w1.wpa_supplicant1.CreateInterface.
 	<h4>Arguments</h4>
 	<dl>
 	  <dt>a{sv} : properties</dt>
-	  <dd>A dictionary with pairs of properties names which have changed and theirs new values. Possible dictionary keys are: "ApScan", "Scanning", "State", "CurrentBSS", "CurrentNetwork"</dd>
+	  <dd>A dictionary with pairs of properties names which have changed and their new values. Possible dictionary keys are: "ApScan", "Scanning", "State", "CurrentBSS", "CurrentNetwork", "SignalChange"</dd>
 	</dl>
       </li>
 

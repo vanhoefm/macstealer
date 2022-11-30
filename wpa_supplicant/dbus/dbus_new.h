@@ -39,6 +39,7 @@ enum wpas_dbus_prop {
 	WPAS_DBUS_PROP_SESSION_LENGTH,
 	WPAS_DBUS_PROP_BSS_TM_STATUS,
 	WPAS_DBUS_PROP_MAC_ADDRESS,
+	WPAS_DBUS_PROP_SIGNAL_CHANGE,
 };
 
 enum wpas_dbus_bss_prop {

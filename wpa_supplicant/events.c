@@ -5781,6 +5781,9 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			data->signal_change.data.signal,
 			data->signal_change.current_noise,
 			data->signal_change.data.current_tx_rate);
+		os_memcpy(&wpa_s->last_signal_info, data,
+			  sizeof(struct wpa_signal_info));
+		wpas_notify_signal_change(wpa_s);
 		break;
 	case EVENT_INTERFACE_MAC_CHANGED:
 		wpa_supplicant_update_mac_addr(wpa_s);

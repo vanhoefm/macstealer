@@ -167,5 +167,6 @@ void wpas_notify_interworking_ap_added(struct wpa_supplicant *wpa_s,
 void wpas_notify_interworking_select_done(struct wpa_supplicant *wpa_s);
 void wpas_notify_pmk_cache_added(struct wpa_supplicant *wpa_s,
 				 struct rsn_pmksa_cache_entry *entry);
+void wpas_notify_signal_change(struct wpa_supplicant *wpa_s);
 
 #endif /* NOTIFY_H */

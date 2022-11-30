@@ -46,6 +46,10 @@ dbus_bool_t wpa_dbus_dict_append_uint32(DBusMessageIter *iter_dict,
 					const char *key,
 					const dbus_uint32_t value);
 
+dbus_bool_t wpa_dbus_dict_append_uint64(DBusMessageIter *iter_dict,
+					const char *key,
+					const dbus_uint64_t value);
+
 dbus_bool_t wpa_dbus_dict_append_object_path(DBusMessageIter *iter_dict,
 					     const char *key,
 					     const char *value);

@@ -993,3 +993,9 @@ void wpas_notify_pmk_cache_added(struct wpa_supplicant *wpa_s,
 {
 	/* TODO: Notify external entities of the added PMKSA cache entry */
 }
+
+
+void wpas_notify_signal_change(struct wpa_supplicant *wpa_s)
+{
+	wpas_dbus_signal_prop_changed(wpa_s, WPAS_DBUS_PROP_SIGNAL_CHANGE);
+}

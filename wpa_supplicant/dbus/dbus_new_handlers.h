@@ -247,6 +247,8 @@ DECLARE_ACCESSOR(wpas_dbus_setter_wps_device_device_type);
 DECLARE_ACCESSOR(wpas_dbus_getter_mesh_peers);
 DECLARE_ACCESSOR(wpas_dbus_getter_mesh_group);
 
+DECLARE_ACCESSOR(wpas_dbus_getter_signal_change);
+
 DBusMessage * wpas_dbus_handler_tdls_discover(DBusMessage *message,
 					      struct wpa_supplicant *wpa_s);
 DBusMessage * wpas_dbus_handler_tdls_setup(DBusMessage *message,

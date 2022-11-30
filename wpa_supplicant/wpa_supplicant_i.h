@@ -1523,6 +1523,8 @@ struct wpa_supplicant {
 	unsigned int enable_dscp_policy_capa:1;
 	unsigned int connection_dscp:1;
 	unsigned int wait_for_dscp_req:1;
+
+	struct wpa_signal_info last_signal_info;
 };
 
 

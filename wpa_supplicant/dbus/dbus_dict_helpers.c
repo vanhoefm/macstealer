@@ -299,6 +299,25 @@ dbus_bool_t wpa_dbus_dict_append_uint32(DBusMessageIter *iter_dict,
 
 
 /**
+ * Add a 64-bit unsigned integer entry to the dict.
+ *
+ * @param iter_dict A valid DBusMessageIter returned from
+ *    wpa_dbus_dict_open_write()
+ * @param key The key of the dict item
+ * @param value The 64-bit unsigned integer value
+ * @return TRUE on success, FALSE on failure
+ *
+ */
+dbus_bool_t wpa_dbus_dict_append_uint64(DBusMessageIter *iter_dict,
+					const char *key,
+					const dbus_uint64_t value)
+{
+	return _wpa_dbus_add_dict_entry_basic(iter_dict, key, DBUS_TYPE_UINT64,
+					      &value);
+}
+
+
+/**
  * Add a DBus object path entry to the dict.
  *
  * @param iter_dict A valid DBusMessageIter returned from
