@@ -2424,7 +2424,7 @@ static int wpa_driver_wext_signal_poll(void *priv, struct wpa_signal_info *si)
 	struct iwreq iwr;
 
 	os_memset(si, 0, sizeof(*si));
-	si->current_signal = -WPA_INVALID_NOISE;
+	si->data.signal = -WPA_INVALID_NOISE;
 	si->current_noise = WPA_INVALID_NOISE;
 	si->chanwidth = CHAN_WIDTH_UNKNOWN;
 
@@ -2440,7 +2440,7 @@ static int wpa_driver_wext_signal_poll(void *priv, struct wpa_signal_info *si)
 		return -1;
 	}
 
-	si->current_signal = stats.qual.level -
+	si->data.signal = stats.qual.level -
 		((stats.qual.updated & IW_QUAL_DBM) ? 0x100 : 0);
 	si->current_noise = stats.qual.noise -
 		((stats.qual.updated & IW_QUAL_DBM) ? 0x100 : 0);

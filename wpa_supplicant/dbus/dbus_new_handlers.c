@@ -1969,9 +1969,9 @@ DBusMessage * wpas_dbus_handler_signal_poll(DBusMessage *message,
 					      "a{sv}", &variant_iter) ||
 	    !wpa_dbus_dict_open_write(&variant_iter, &iter_dict) ||
 	    !wpa_dbus_dict_append_int32(&iter_dict, "rssi",
-					si.current_signal) ||
+					si.data.signal) ||
 	    !wpa_dbus_dict_append_int32(&iter_dict, "linkspeed",
-					si.current_txrate / 1000) ||
+					si.data.current_tx_rate / 1000) ||
 	    !wpa_dbus_dict_append_int32(&iter_dict, "noise",
 					si.current_noise) ||
 	    !wpa_dbus_dict_append_uint32(&iter_dict, "frequency",
@@ -1985,9 +1985,9 @@ DBusMessage * wpas_dbus_handler_signal_poll(DBusMessage *message,
 					  si.center_frq1) ||
 	      !wpa_dbus_dict_append_int32(&iter_dict, "center-frq2",
 					  si.center_frq2))) ||
-	    (si.avg_signal &&
+	    (si.data.avg_signal &&
 	     !wpa_dbus_dict_append_int32(&iter_dict, "avg-rssi",
-					 si.avg_signal)) ||
+					 si.data.avg_signal)) ||
 	    !wpa_dbus_dict_close_write(&variant_iter, &iter_dict) ||
 	    !dbus_message_iter_close_container(&iter, &variant_iter))
 		goto nomem;

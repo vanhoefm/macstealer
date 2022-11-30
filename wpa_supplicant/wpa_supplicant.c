@@ -8964,17 +8964,17 @@ int wpa_drv_signal_poll(struct wpa_supplicant *wpa_s,
 				continue;
 			wpa_printf(MSG_DEBUG,
 				   "Override driver signal_poll information: current_signal: %d->%d avg_signal: %d->%d avg_beacon_signal: %d->%d current_noise: %d->%d",
-				   si->current_signal,
+				   si->data.signal,
 				   dso->si_current_signal,
-				   si->avg_signal,
+				   si->data.avg_signal,
 				   dso->si_avg_signal,
-				   si->avg_beacon_signal,
+				   si->data.avg_beacon_signal,
 				   dso->si_avg_beacon_signal,
 				   si->current_noise,
 				   dso->si_current_noise);
-			si->current_signal = dso->si_current_signal;
-			si->avg_signal = dso->si_avg_signal;
-			si->avg_beacon_signal = dso->si_avg_beacon_signal;
+			si->data.signal = dso->si_current_signal;
+			si->data.avg_signal = dso->si_avg_signal;
+			si->data.avg_beacon_signal = dso->si_avg_beacon_signal;
 			si->current_noise = dso->si_current_noise;
 			break;
 		}

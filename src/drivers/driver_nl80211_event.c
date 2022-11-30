@@ -1834,11 +1834,11 @@ static void nl80211_cqm_event(struct wpa_driver_nl80211_data *drv,
 	 * nl80211_get_link_signal() and nl80211_get_link_noise() set default
 	 * values in case querying the driver fails.
 	 */
-	res = nl80211_get_link_signal(drv, drv->bssid, &ed.signal_change);
+	res = nl80211_get_link_signal(drv, drv->bssid, &ed.signal_change.data);
 	if (res == 0) {
-		wpa_printf(MSG_DEBUG, "nl80211: Signal: %d dBm  txrate: %d",
-			   ed.signal_change.current_signal,
-			   ed.signal_change.current_txrate);
+		wpa_printf(MSG_DEBUG, "nl80211: Signal: %d dBm  txrate: %lu",
+			   ed.signal_change.data.signal,
+			   ed.signal_change.data.current_tx_rate);
 	} else {
 		wpa_printf(MSG_DEBUG,
 			   "nl80211: Querying the driver for signal info failed");

@@ -137,7 +137,7 @@ static void * bgscan_simple_init(struct wpa_supplicant *wpa_s,
 		/* Poll for signal info to set initial scan interval */
 		struct wpa_signal_info siginfo;
 		if (wpa_drv_signal_poll(wpa_s, &siginfo) == 0 &&
-		    siginfo.current_signal >= data->signal_threshold)
+		    siginfo.data.signal >= data->signal_threshold)
 			data->scan_interval = data->long_interval;
 	}
 	wpa_printf(MSG_DEBUG, "bgscan simple: Init scan interval: %d",

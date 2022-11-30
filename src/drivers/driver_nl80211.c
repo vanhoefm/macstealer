@@ -1638,86 +1638,6 @@ try_again:
 }
 
 
-static int get_link_signal(struct nl_msg *msg, void *arg)
-{
-	struct nlattr *tb[NL80211_ATTR_MAX + 1];
-	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
-	struct nlattr *sinfo[NL80211_STA_INFO_MAX + 1];
-	static struct nla_policy policy[NL80211_STA_INFO_MAX + 1] = {
-		[NL80211_STA_INFO_SIGNAL] = { .type = NLA_U8 },
-		[NL80211_STA_INFO_SIGNAL_AVG] = { .type = NLA_U8 },
-		[NL80211_STA_INFO_BEACON_SIGNAL_AVG] = { .type = NLA_U8 },
-	};
-	struct nlattr *rinfo[NL80211_RATE_INFO_MAX + 1];
-	static struct nla_policy rate_policy[NL80211_RATE_INFO_MAX + 1] = {
-		[NL80211_RATE_INFO_BITRATE] = { .type = NLA_U16 },
-		[NL80211_RATE_INFO_MCS] = { .type = NLA_U8 },
-		[NL80211_RATE_INFO_40_MHZ_WIDTH] = { .type = NLA_FLAG },
-		[NL80211_RATE_INFO_SHORT_GI] = { .type = NLA_FLAG },
-	};
-	struct wpa_signal_info *sig_change = arg;
-
-	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
-		  genlmsg_attrlen(gnlh, 0), NULL);
-	if (!tb[NL80211_ATTR_STA_INFO] ||
-	    nla_parse_nested(sinfo, NL80211_STA_INFO_MAX,
-			     tb[NL80211_ATTR_STA_INFO], policy))
-		return NL_SKIP;
-	if (!sinfo[NL80211_STA_INFO_SIGNAL])
-		return NL_SKIP;
-
-	sig_change->current_signal =
-		(s8) nla_get_u8(sinfo[NL80211_STA_INFO_SIGNAL]);
-
-	if (sinfo[NL80211_STA_INFO_SIGNAL_AVG])
-		sig_change->avg_signal =
-			(s8) nla_get_u8(sinfo[NL80211_STA_INFO_SIGNAL_AVG]);
-	else
-		sig_change->avg_signal = 0;
-
-	if (sinfo[NL80211_STA_INFO_BEACON_SIGNAL_AVG])
-		sig_change->avg_beacon_signal =
-			(s8)
-			nla_get_u8(sinfo[NL80211_STA_INFO_BEACON_SIGNAL_AVG]);
-	else
-		sig_change->avg_beacon_signal = 0;
-
-	if (sinfo[NL80211_STA_INFO_TX_BITRATE]) {
-		if (nla_parse_nested(rinfo, NL80211_RATE_INFO_MAX,
-				     sinfo[NL80211_STA_INFO_TX_BITRATE],
-				     rate_policy)) {
-			sig_change->current_txrate = 0;
-		} else {
-			if (rinfo[NL80211_RATE_INFO_BITRATE]) {
-				sig_change->current_txrate =
-					nla_get_u16(rinfo[
-					     NL80211_RATE_INFO_BITRATE]) * 100;
-			}
-		}
-	}
-
-	return NL_SKIP;
-}
-
-
-int nl80211_get_link_signal(struct wpa_driver_nl80211_data *drv,
-			    const u8 *bssid, struct wpa_signal_info *sig)
-{
-	struct nl_msg *msg;
-
-	sig->current_signal = -WPA_INVALID_NOISE;
-	sig->current_txrate = 0;
-
-	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_GET_STATION)) ||
-	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, bssid)) {
-		nlmsg_free(msg);
-		return -ENOBUFS;
-	}
-
-	return send_and_recv_msgs(drv, msg, get_link_signal, sig, NULL, NULL);
-}
-
-
 static int get_link_noise(struct nl_msg *msg, void *arg)
 {
 	struct nlattr *tb[NL80211_ATTR_MAX + 1];
@@ -7272,16 +7192,26 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 		[NL80211_STA_INFO_INACTIVE_TIME] = { .type = NLA_U32 },
 		[NL80211_STA_INFO_RX_BYTES] = { .type = NLA_U32 },
 		[NL80211_STA_INFO_TX_BYTES] = { .type = NLA_U32 },
+		[NL80211_STA_INFO_SIGNAL] = { .type = NLA_U8 },
 		[NL80211_STA_INFO_RX_PACKETS] = { .type = NLA_U32 },
 		[NL80211_STA_INFO_TX_PACKETS] = { .type = NLA_U32 },
+		[NL80211_STA_INFO_TX_RETRIES] = { .type = NLA_U32 },
 		[NL80211_STA_INFO_TX_FAILED] = { .type = NLA_U32 },
+		[NL80211_STA_INFO_SIGNAL_AVG] = { .type = NLA_U8 },
+		[NL80211_STA_INFO_CONNECTED_TIME] = { .type = NLA_U32 },
+		[NL80211_STA_INFO_BEACON_LOSS] = { .type = NLA_U32 },
 		[NL80211_STA_INFO_RX_BYTES64] = { .type = NLA_U64 },
 		[NL80211_STA_INFO_TX_BYTES64] = { .type = NLA_U64 },
-		[NL80211_STA_INFO_SIGNAL] = { .type = NLA_U8 },
-		[NL80211_STA_INFO_ACK_SIGNAL] = { .type = NLA_U8 },
+		[NL80211_STA_INFO_EXPECTED_THROUGHPUT] = { .type = NLA_U32 },
+		[NL80211_STA_INFO_RX_DROP_MISC] = { .type = NLA_U64 },
+		[NL80211_STA_INFO_BEACON_RX] = { .type = NLA_U64 },
+		[NL80211_STA_INFO_BEACON_SIGNAL_AVG] = { .type = NLA_U8},
 		[NL80211_STA_INFO_RX_DURATION] = { .type = NLA_U64 },
+		[NL80211_STA_INFO_ACK_SIGNAL] = { .type = NLA_U8 },
+		[NL80211_STA_INFO_ACK_SIGNAL_AVG] = { .type = NLA_S8 },
+		[NL80211_STA_INFO_RX_MPDUS] = { .type = NLA_U32 },
+		[NL80211_STA_INFO_FCS_ERROR_COUNT] = { .type = NLA_U32 },
 		[NL80211_STA_INFO_TX_DURATION] = { .type = NLA_U64 },
-		[NL80211_STA_INFO_CONNECTED_TIME] = { .type = NLA_U32 },
 	};
 	struct nlattr *rate[NL80211_RATE_INFO_MAX + 1];
 	static struct nla_policy rate_policy[NL80211_RATE_INFO_MAX + 1] = {
@@ -7291,6 +7221,8 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 		[NL80211_RATE_INFO_VHT_MCS] = { .type = NLA_U8 },
 		[NL80211_RATE_INFO_SHORT_GI] = { .type = NLA_FLAG },
 		[NL80211_RATE_INFO_VHT_NSS] = { .type = NLA_U8 },
+		[NL80211_RATE_INFO_HE_MCS] = { .type = NLA_U8 },
+		[NL80211_RATE_INFO_HE_NSS] = { .type = NLA_U8 },
 	};
 
 	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
@@ -7333,34 +7265,62 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 			nla_get_u64(stats[NL80211_STA_INFO_TX_BYTES64]);
 		data->bytes_64bit = 1;
 	}
+	if (stats[NL80211_STA_INFO_SIGNAL])
+		data->signal = (s8) nla_get_u8(stats[NL80211_STA_INFO_SIGNAL]);
 	if (stats[NL80211_STA_INFO_RX_PACKETS])
 		data->rx_packets =
 			nla_get_u32(stats[NL80211_STA_INFO_RX_PACKETS]);
 	if (stats[NL80211_STA_INFO_TX_PACKETS])
 		data->tx_packets =
 			nla_get_u32(stats[NL80211_STA_INFO_TX_PACKETS]);
-	if (stats[NL80211_STA_INFO_RX_DURATION])
-		data->rx_airtime =
-			nla_get_u64(stats[NL80211_STA_INFO_RX_DURATION]);
-	if (stats[NL80211_STA_INFO_TX_DURATION])
-		data->tx_airtime =
-			nla_get_u64(stats[NL80211_STA_INFO_TX_DURATION]);
+	if (stats[NL80211_STA_INFO_TX_RETRIES])
+		data->tx_retry_count =
+			nla_get_u32(stats[NL80211_STA_INFO_TX_FAILED]);
 	if (stats[NL80211_STA_INFO_TX_FAILED])
 		data->tx_retry_failed =
 			nla_get_u32(stats[NL80211_STA_INFO_TX_FAILED]);
-	if (stats[NL80211_STA_INFO_SIGNAL])
-		data->signal = nla_get_u8(stats[NL80211_STA_INFO_SIGNAL]);
-	if (stats[NL80211_STA_INFO_ACK_SIGNAL]) {
-		data->last_ack_rssi =
-			nla_get_u8(stats[NL80211_STA_INFO_ACK_SIGNAL]);
-		data->flags |= STA_DRV_DATA_LAST_ACK_RSSI;
-	}
-
+	if (stats[NL80211_STA_INFO_SIGNAL_AVG])
+		data->avg_signal =
+			(s8) nla_get_u8(stats[NL80211_STA_INFO_SIGNAL_AVG]);
 	if (stats[NL80211_STA_INFO_CONNECTED_TIME]) {
 		data->connected_sec =
 			nla_get_u32(stats[NL80211_STA_INFO_CONNECTED_TIME]);
 		data->flags |= STA_DRV_DATA_CONN_TIME;
 	}
+	if (stats[NL80211_STA_INFO_BEACON_LOSS])
+		data->beacon_loss_count =
+			nla_get_u32(stats[NL80211_STA_INFO_BEACON_LOSS]);
+	if (stats[NL80211_STA_INFO_EXPECTED_THROUGHPUT])
+		data->expected_throughput =
+			nla_get_u32(stats[NL80211_STA_INFO_EXPECTED_THROUGHPUT]);
+	if (stats[NL80211_STA_INFO_RX_DROP_MISC])
+		data->rx_drop_misc =
+			nla_get_u64(stats[NL80211_STA_INFO_RX_DROP_MISC]);
+	if (stats[NL80211_STA_INFO_BEACON_RX])
+		data->beacons_count =
+			nla_get_u64(stats[NL80211_STA_INFO_BEACON_RX]);
+	if (stats[NL80211_STA_INFO_BEACON_SIGNAL_AVG])
+		data->avg_beacon_signal =
+			(s8) nla_get_u8(stats[NL80211_STA_INFO_BEACON_SIGNAL_AVG]);
+	if (stats[NL80211_STA_INFO_RX_DURATION])
+		data->rx_airtime =
+			nla_get_u64(stats[NL80211_STA_INFO_RX_DURATION]);
+	if (stats[NL80211_STA_INFO_ACK_SIGNAL]) {
+		data->last_ack_rssi =
+			nla_get_u8(stats[NL80211_STA_INFO_ACK_SIGNAL]);
+		data->flags |= STA_DRV_DATA_LAST_ACK_RSSI;
+	}
+	if (stats[NL80211_STA_INFO_ACK_SIGNAL_AVG])
+		data->avg_ack_signal =
+			nla_get_s8(stats[NL80211_STA_INFO_ACK_SIGNAL_AVG]);
+	if (stats[NL80211_STA_INFO_RX_MPDUS])
+		data->rx_mpdus = nla_get_u32(stats[NL80211_STA_INFO_RX_MPDUS]);
+	if (stats[NL80211_STA_INFO_FCS_ERROR_COUNT])
+		data->fcs_error_count =
+			nla_get_u32(stats[NL80211_STA_INFO_FCS_ERROR_COUNT]);
+	if (stats[NL80211_STA_INFO_TX_DURATION])
+		data->tx_airtime =
+			nla_get_u64(stats[NL80211_STA_INFO_TX_DURATION]);
 
 	if (stats[NL80211_STA_INFO_TX_BITRATE] &&
 	    nla_parse_nested(rate, NL80211_RATE_INFO_MAX,
@@ -7372,6 +7332,10 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 		else if (rate[NL80211_RATE_INFO_BITRATE])
 			data->current_tx_rate =
 				nla_get_u16(rate[NL80211_RATE_INFO_BITRATE]);
+
+		/* Convert from 100 kbps to kbps; it's a more convenient unit.
+		 * It's also safe up until ~1Tbps. */
+		data->current_tx_rate = data->current_tx_rate * 100;
 
 		if (rate[NL80211_RATE_INFO_MCS]) {
 			data->tx_mcs = nla_get_u8(rate[NL80211_RATE_INFO_MCS]);
@@ -7389,6 +7353,16 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 				nla_get_u8(rate[NL80211_RATE_INFO_VHT_NSS]);
 			data->flags |= STA_DRV_DATA_TX_VHT_NSS;
 		}
+		if (rate[NL80211_RATE_INFO_HE_MCS]) {
+			data->tx_hemcs =
+				nla_get_u8(rate[NL80211_RATE_INFO_HE_MCS]);
+			data->flags |= STA_DRV_DATA_TX_HE_MCS;
+		}
+		if (rate[NL80211_RATE_INFO_HE_NSS]) {
+			data->tx_he_nss =
+				nla_get_u8(rate[NL80211_RATE_INFO_HE_NSS]);
+			data->flags |= STA_DRV_DATA_TX_HE_NSS;
+		}
 	}
 
 	if (stats[NL80211_STA_INFO_RX_BITRATE] &&
@@ -7402,9 +7376,12 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 			data->current_rx_rate =
 				nla_get_u16(rate[NL80211_RATE_INFO_BITRATE]);
 
+		/* Convert from 100 kbps to kbps; it's a more convenient unit.
+		 * It's also safe up until ~1Tbps. */
+		data->current_rx_rate = data->current_rx_rate * 100;
+
 		if (rate[NL80211_RATE_INFO_MCS]) {
-			data->rx_mcs =
-				nla_get_u8(rate[NL80211_RATE_INFO_MCS]);
+			data->rx_mcs = nla_get_u8(rate[NL80211_RATE_INFO_MCS]);
 			data->flags |= STA_DRV_DATA_RX_MCS;
 		}
 		if (rate[NL80211_RATE_INFO_VHT_MCS]) {
@@ -7419,6 +7396,16 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 				nla_get_u8(rate[NL80211_RATE_INFO_VHT_NSS]);
 			data->flags |= STA_DRV_DATA_RX_VHT_NSS;
 		}
+		if (rate[NL80211_RATE_INFO_HE_MCS]) {
+			data->rx_hemcs =
+				nla_get_u8(rate[NL80211_RATE_INFO_HE_MCS]);
+			data->flags |= STA_DRV_DATA_RX_HE_MCS;
+		}
+		if (rate[NL80211_RATE_INFO_HE_NSS]) {
+			data->rx_he_nss =
+				nla_get_u8(rate[NL80211_RATE_INFO_HE_NSS]);
+			data->flags |= STA_DRV_DATA_RX_HE_NSS;
+		}
 	}
 
 	if (stats[NL80211_STA_INFO_TID_STATS])
@@ -7426,6 +7413,26 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 
 	return NL_SKIP;
 }
+
+
+int nl80211_get_link_signal(struct wpa_driver_nl80211_data *drv,
+			    const u8 *bssid,
+			    struct hostap_sta_driver_data *data)
+{
+	struct nl_msg *msg;
+
+	data->signal = -WPA_INVALID_NOISE;
+	data->current_tx_rate = 0;
+
+	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_GET_STATION)) ||
+	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, bssid)) {
+		nlmsg_free(msg);
+		return -ENOBUFS;
+	}
+
+	return send_and_recv_msgs(drv, msg, get_sta_handler, data, NULL, NULL);
+}
+
 
 static int i802_read_sta_data(struct i802_bss *bss,
 			      struct hostap_sta_driver_data *data,
@@ -8841,12 +8848,12 @@ static int nl80211_signal_poll(void *priv, struct wpa_signal_info *si)
 	int res;
 
 	os_memset(si, 0, sizeof(*si));
-	res = nl80211_get_link_signal(drv, drv->bssid, si);
+	res = nl80211_get_link_signal(drv, drv->bssid, &si->data);
 	if (res) {
 		if (drv->nlmode != NL80211_IFTYPE_ADHOC &&
 		    drv->nlmode != NL80211_IFTYPE_MESH_POINT)
 			return res;
-		si->current_signal = 0;
+		si->data.signal = 0;
 	}
 
 	res = nl80211_get_channel_width(drv, si);
@@ -8995,7 +9002,7 @@ static int nl80211_mlo_signal_poll(void *priv,
 
 		res = nl80211_get_link_signal(drv,
 					      drv->sta_mlo_info.links[i].bssid,
-					      &mlo_si->links[i]);
+					      &mlo_si->links[i].data);
 		if (res != 0)
 			return res;
 

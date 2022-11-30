@@ -2272,14 +2272,19 @@ struct hostapd_data;
 #define STA_DRV_DATA_RX_SHORT_GI BIT(7)
 #define STA_DRV_DATA_LAST_ACK_RSSI BIT(8)
 #define STA_DRV_DATA_CONN_TIME BIT(9)
+#define STA_DRV_DATA_TX_HE_MCS BIT(10)
+#define STA_DRV_DATA_RX_HE_MCS BIT(11)
+#define STA_DRV_DATA_TX_HE_NSS BIT(12)
+#define STA_DRV_DATA_RX_HE_NSS BIT(13)
 
 struct hostap_sta_driver_data {
 	unsigned long rx_packets, tx_packets;
 	unsigned long long rx_bytes, tx_bytes;
 	unsigned long long rx_airtime, tx_airtime;
+	unsigned long long beacons_count;
 	int bytes_64bit; /* whether 64-bit byte counters are supported */
-	unsigned long current_tx_rate;
-	unsigned long current_rx_rate;
+	unsigned long current_tx_rate; /* in kbps */
+	unsigned long current_rx_rate; /* in kbps */
 	unsigned long inactive_msec;
 	unsigned long connected_sec;
 	unsigned long flags; /* bitfield of STA_DRV_DATA_* */
@@ -2289,13 +2294,25 @@ struct hostap_sta_driver_data {
 	s8 last_ack_rssi;
 	unsigned long backlog_packets;
 	unsigned long backlog_bytes;
-	s8 signal;
+	unsigned long fcs_error_count;
+	unsigned long beacon_loss_count;
+	unsigned long expected_throughput;
+	unsigned long rx_drop_misc;
+	unsigned long rx_mpdus;
+	int signal; /* dBm; or -WPA_INVALID_NOISE */
+	u8 rx_hemcs;
+	u8 tx_hemcs;
 	u8 rx_vhtmcs;
 	u8 tx_vhtmcs;
 	u8 rx_mcs;
 	u8 tx_mcs;
+	u8 rx_he_nss;
+	u8 tx_he_nss;
 	u8 rx_vht_nss;
 	u8 tx_vht_nss;
+	s8 avg_signal; /* dBm */
+	s8 avg_beacon_signal; /* dBm */
+	s8 avg_ack_signal; /* dBm */
 };
 
 struct hostapd_sta_add_params {
@@ -2422,11 +2439,8 @@ enum smps_mode {
  * @frequency: control frequency
  * @above_threshold: true if the above threshold was crossed
  *	(relevant for a CQM event)
- * @current_signal: in dBm
- * @avg_signal: in dBm
- * @avg_beacon_signal: in dBm
+ * @data: STA information
  * @current_noise: %WPA_INVALID_NOISE if not supported
- * @current_txrate: current TX rate
  * @chanwidth: channel width
  * @center_frq1: center frequency for the first segment
  * @center_frq2: center frequency for the second segment (if relevant)
@@ -2434,11 +2448,8 @@ enum smps_mode {
 struct wpa_signal_info {
 	u32 frequency;
 	int above_threshold;
-	int current_signal;
-	int avg_signal;
-	int avg_beacon_signal;
+	struct hostap_sta_driver_data data;
 	int current_noise;
-	int current_txrate;
 	enum chan_width chanwidth;
 	int center_frq1;
 	int center_frq2;

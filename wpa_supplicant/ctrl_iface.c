@@ -8101,9 +8101,9 @@ static int wpa_supplicant_signal_poll(struct wpa_supplicant *wpa_s, char *buf,
 	pos = buf;
 	end = buf + buflen;
 
-	ret = os_snprintf(pos, end - pos, "RSSI=%d\nLINKSPEED=%d\n"
+	ret = os_snprintf(pos, end - pos, "RSSI=%d\nLINKSPEED=%lu\n"
 			  "NOISE=%d\nFREQUENCY=%u\n",
-			  si.current_signal, si.current_txrate / 1000,
+			  si.data.signal, si.data.current_tx_rate / 1000,
 			  si.current_noise, si.frequency);
 	if (os_snprintf_error(end - pos, ret))
 		return -1;
@@ -8133,17 +8133,18 @@ static int wpa_supplicant_signal_poll(struct wpa_supplicant *wpa_s, char *buf,
 		pos += ret;
 	}
 
-	if (si.avg_signal) {
+	if (si.data.avg_signal) {
 		ret = os_snprintf(pos, end - pos,
-				  "AVG_RSSI=%d\n", si.avg_signal);
+				  "AVG_RSSI=%d\n", si.data.avg_signal);
 		if (os_snprintf_error(end - pos, ret))
 			return -1;
 		pos += ret;
 	}
 
-	if (si.avg_beacon_signal) {
+	if (si.data.avg_beacon_signal) {
 		ret = os_snprintf(pos, end - pos,
-				  "AVG_BEACON_RSSI=%d\n", si.avg_beacon_signal);
+				  "AVG_BEACON_RSSI=%d\n",
+				  si.data.avg_beacon_signal);
 		if (os_snprintf_error(end - pos, ret))
 			return -1;
 		pos += ret;
@@ -11565,10 +11566,10 @@ static int wpas_ctrl_iface_mlo_signal_poll(struct wpa_supplicant *wpa_s,
 			continue;
 
 		ret = os_snprintf(pos, end - pos,
-				  "LINK_ID=%d\nRSSI=%d\nLINKSPEED=%d\n"
+				  "LINK_ID=%d\nRSSI=%d\nLINKSPEED=%lu\n"
 				  "NOISE=%d\nFREQUENCY=%u\n",
-				  i, mlo_si.links[i].current_signal,
-				  mlo_si.links[i].current_txrate / 1000,
+				  i, mlo_si.links[i].data.signal,
+				  mlo_si.links[i].data.current_tx_rate / 1000,
 				  mlo_si.links[i].current_noise,
 				  mlo_si.links[i].frequency);
 		if (os_snprintf_error(end - pos, ret))
@@ -11600,19 +11601,19 @@ static int wpas_ctrl_iface_mlo_signal_poll(struct wpa_supplicant *wpa_s,
 			pos += ret;
 		}
 
-		if (mlo_si.links[i].avg_signal) {
+		if (mlo_si.links[i].data.avg_signal) {
 			ret = os_snprintf(pos, end - pos,
 					  "AVG_RSSI=%d\n",
-					  mlo_si.links[i].avg_signal);
+					  mlo_si.links[i].data.avg_signal);
 			if (os_snprintf_error(end - pos, ret))
 				return -1;
 			pos += ret;
 		}
 
-		if (mlo_si.links[i].avg_beacon_signal) {
-			ret = os_snprintf(pos, end - pos,
-					  "AVG_BEACON_RSSI=%d\n",
-					  mlo_si.links[i].avg_beacon_signal);
+		if (mlo_si.links[i].data.avg_beacon_signal) {
+			ret = os_snprintf(
+				pos, end - pos, "AVG_BEACON_RSSI=%d\n",
+				mlo_si.links[i].data.avg_beacon_signal);
 			if (os_snprintf_error(end - pos, ret))
 				return -1;
 			pos += ret;

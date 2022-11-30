@@ -2004,9 +2004,9 @@ int wpa_supplicant_need_to_roam_within_ess(struct wpa_supplicant *wpa_s,
 	 * information about our currently associated AP.
 	 */
 	if (wpa_drv_signal_poll(wpa_s, &si) == 0 &&
-	    (si.avg_beacon_signal || si.avg_signal)) {
-		cur_level = si.avg_beacon_signal ? si.avg_beacon_signal :
-			si.avg_signal;
+	    (si.data.avg_beacon_signal || si.data.avg_signal)) {
+		cur_level = si.data.avg_beacon_signal ?
+			si.data.avg_beacon_signal : si.data.avg_signal;
 		cur_snr = wpas_get_snr_signal_info(si.frequency, cur_level,
 						   si.current_noise);
 
@@ -5769,18 +5769,18 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		break;
 	case EVENT_SIGNAL_CHANGE:
 		wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_SIGNAL_CHANGE
-			"above=%d signal=%d noise=%d txrate=%d",
+			"above=%d signal=%d noise=%d txrate=%lu",
 			data->signal_change.above_threshold,
-			data->signal_change.current_signal,
+			data->signal_change.data.signal,
 			data->signal_change.current_noise,
-			data->signal_change.current_txrate);
+			data->signal_change.data.current_tx_rate);
 		wpa_bss_update_level(wpa_s->current_bss,
-				     data->signal_change.current_signal);
+				     data->signal_change.data.signal);
 		bgscan_notify_signal_change(
 			wpa_s, data->signal_change.above_threshold,
-			data->signal_change.current_signal,
+			data->signal_change.data.signal,
 			data->signal_change.current_noise,
-			data->signal_change.current_txrate);
+			data->signal_change.data.current_tx_rate);
 		break;
 	case EVENT_INTERFACE_MAC_CHANGED:
 		wpa_supplicant_update_mac_addr(wpa_s);

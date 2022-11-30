@@ -269,7 +269,8 @@ int is_ap_interface(enum nl80211_iftype nlmode);
 int is_sta_interface(enum nl80211_iftype nlmode);
 int wpa_driver_nl80211_authenticate_retry(struct wpa_driver_nl80211_data *drv);
 int nl80211_get_link_signal(struct wpa_driver_nl80211_data *drv,
-			    const u8 *bssid, struct wpa_signal_info *sig);
+			    const u8 *bssid,
+			    struct hostap_sta_driver_data *data);
 int nl80211_get_link_noise(struct wpa_driver_nl80211_data *drv,
 			   struct wpa_signal_info *sig_change);
 int nl80211_get_wiphy_index(struct i802_bss *bss);
