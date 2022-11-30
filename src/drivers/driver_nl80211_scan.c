@@ -911,8 +911,21 @@ static void nl80211_check_bss_status(struct wpa_driver_nl80211_data *drv,
 			   "nl80211: Local state (associated with " MACSTR
 			   ") does not match with BSS state",
 			   MAC2STR(drv->bssid));
-		clear_state_mismatch(drv, r->bssid);
-		clear_state_mismatch(drv, drv->bssid);
+
+		if (os_memcmp(drv->sta_mlo_info.ap_mld_addr, drv->bssid,
+			      ETH_ALEN) != 0) {
+			clear_state_mismatch(drv, r->bssid);
+
+			if (!is_zero_ether_addr(drv->sta_mlo_info.ap_mld_addr))
+				clear_state_mismatch(
+					drv, drv->sta_mlo_info.ap_mld_addr);
+			else
+				clear_state_mismatch(drv, drv->bssid);
+
+		} else {
+			wpa_printf(MSG_DEBUG,
+				   "nl80211: BSSID is the MLD address");
+		}
 	}
 }
 
