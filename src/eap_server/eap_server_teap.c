@@ -1008,6 +1008,13 @@ static int eap_teap_phase2_init(struct eap_sm *sm, struct eap_teap_data *data,
 	if (!data->phase2_method)
 		return -1;
 
+	/* While RFC 7170 does not describe this, EAP-TEAP has been deployed
+	 * with implementations that use the EAP-FAST-MSCHAPv2, instead of the
+	 * EAP-MSCHAPv2, way of deriving the MSK for IMSK. Use that design here
+	 * to interoperate.
+	 */
+	sm->eap_fast_mschapv2 = true;
+
 	sm->init_phase2 = 1;
 	data->phase2_priv = data->phase2_method->init(sm);
 	sm->init_phase2 = 0;
