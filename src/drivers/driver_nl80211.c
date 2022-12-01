@@ -4589,6 +4589,7 @@ static int nl80211_fils_discovery(struct i802_bss *bss, struct nl_msg *msg,
 
 
 #ifdef CONFIG_IEEE80211AX
+
 static int nl80211_unsol_bcast_probe_resp(struct i802_bss *bss,
 					  struct nl_msg *msg,
 					  struct wpa_driver_ap_params *params)
@@ -4618,6 +4619,60 @@ static int nl80211_unsol_bcast_probe_resp(struct i802_bss *bss,
 	nla_nest_end(msg, attr);
 	return 0;
 }
+
+
+static int nl80211_mbssid(struct nl_msg *msg,
+			 struct wpa_driver_ap_params *params)
+{
+	struct nlattr *config, *elems;
+	int ifidx;
+
+	if (!params->mbssid_tx_iface)
+		return 0;
+
+	config = nla_nest_start(msg, NL80211_ATTR_MBSSID_CONFIG);
+	if (!config ||
+	    nla_put_u8(msg, NL80211_MBSSID_CONFIG_ATTR_INDEX,
+		       params->mbssid_index))
+		return -1;
+
+	if (params->mbssid_tx_iface) {
+		ifidx = if_nametoindex(params->mbssid_tx_iface);
+		if (ifidx <= 0 ||
+		    nla_put_u32(msg, NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX,
+				ifidx))
+			return -1;
+	}
+
+	if (params->ema && nla_put_flag(msg, NL80211_MBSSID_CONFIG_ATTR_EMA))
+		return -1;
+
+	nla_nest_end(msg, config);
+
+	if (params->mbssid_elem_count && params->mbssid_elem_len &&
+	    params->mbssid_elem_offset && *params->mbssid_elem_offset) {
+		u8 i, **offs = params->mbssid_elem_offset;
+
+		elems = nla_nest_start(msg, NL80211_ATTR_MBSSID_ELEMS);
+		if (!elems)
+			return -1;
+
+		for (i = 0; i < params->mbssid_elem_count - 1; i++) {
+			if (nla_put(msg, i + 1, offs[i + 1] - offs[i], offs[i]))
+				return -1;
+		}
+
+		if (nla_put(msg, i + 1,
+			    *offs + params->mbssid_elem_len - offs[i],
+			    offs[i]))
+			return -1;
+
+		nla_nest_end(msg, elems);
+	}
+
+	return 0;
+}
+
 #endif /* CONFIG_IEEE80211AX */
 
 
@@ -4915,6 +4970,9 @@ static int wpa_driver_nl80211_set_ap(void *priv,
 
 	if (params->unsol_bcast_probe_resp_interval &&
 	    nl80211_unsol_bcast_probe_resp(bss, msg, params) < 0)
+		goto fail;
+
+	if (nl80211_mbssid(msg, params) < 0)
 		goto fail;
 #endif /* CONFIG_IEEE80211AX */
 
