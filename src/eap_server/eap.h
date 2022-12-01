@@ -209,6 +209,7 @@ struct eap_config {
 		EAP_TEAP_ID_REQUEST_MACHINE_ACCEPT_USER = 4,
 		EAP_TEAP_ID_REQUIRE_USER_AND_MACHINE = 5,
 	} eap_teap_id;
+	int eap_teap_method_sequence;
 
 	/**
 	 * eap_sim_aka_result_ind - EAP-SIM/AKA protected success indication
