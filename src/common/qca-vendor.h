@@ -8430,6 +8430,25 @@ enum qca_wlan_keep_alive_data_type {
 };
 
 /**
+ * enum eht_mcs_config - EHT MCS support configuration
+ *
+ * Configures the EHT Tx/Rx MCS map in EHT Capability element.
+ * These values are used in the driver to configure the EHT MCS map to advertise
+ * Tx/Rx MCS map in EHT capability and these values are applied for all the
+ * streams supported by the device.
+ * @EHT_MCS0_7: EHT MCS 0 to 7 support
+ * @EHT_MCS0_9: EHT MCS 0 to 9 support
+ * @EHT_MCS0_11: EHT MCS 0 to 11 support
+ * @EHT_MCS0_13: EHT MCS 0 to 13 support
+ */
+enum eht_mcs_config {
+	EHT_MCS0_7 = 0,
+	EHT_MCS0_9 = 1,
+	EHT_MCS0_11 = 2,
+	EHT_MCS0_13 = 3,
+};
+
+/**
  * enum qca_wlan_vendor_attr_he_omi_tx: Represents attributes for
  * HE operating mode control transmit request. These attributes are
  * sent as part of QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_HE_OMI_TX and
@@ -9020,6 +9039,64 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 * This attribute is used for testing purposes.
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BEAMFORMER_PERIODIC_SOUNDING = 59,
+
+	/* 8-bit unsigned value to configure beamformee SS EHT capability
+	 * to indicate the maximum number of spatial streams that the STA
+	 * can receive in an EHT sounding NDP for <= 80 MHz bandwidth.
+	 * The range of the value is 3 to 7.
+	 * This attribute is used to configure the testbed device.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_BEAMFORMEE_SS_80MHZ = 60,
+
+	/* 8-bit unsigned value to configure beamformee SS EHT capability
+	 * to indicate the maximum number of spatial streams that the STA
+	 * can receive in an EHT sounding NDP for 160 MHz bandwidth.
+	 * The range of the value is 3 to 7.
+	 * This attribute is used to configure the testbed device.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_BEAMFORMEE_SS_160MHZ = 61,
+
+	/* 8-bit unsigned value to configure beamformee SS EHT capability
+	 * to indicate the maximum number of spatial streams that the STA
+	 * can receive in an EHT sounding NDP for 320 MHz bandwidth.
+	 * The range of the value is 3 to 7.
+	 * This attribute is used to configure the testbed device.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_BEAMFORMEE_SS_320MHZ = 62,
+
+	/* 8-bit unsigned value to configure the driver to exclude station
+	 * profile in Probe Request frame Multi-Link element.
+	 * 0 - Default behavior, sends the Probe Request frame with station
+	 * profile data included in the Multi-Link element.
+	 * 1 - Exclude station profile in Probe Request frame Multi-Link
+	 * element.
+	 * This attribute is used to configure the testbed device.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EXCLUDE_STA_PROF_IN_PROBE_REQ = 63,
+
+	/* 8-bit unsigned value to configure EHT testbed defaults.
+	 * This attribute is used to configure the testbed device.
+	 * 1 - Set the device EHT capabilities to testbed defaults.
+	 * 0 - Reset the device EHT capabilities to supported config.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_SET_EHT_TESTBED_DEFAULTS = 64,
+
+	/* 8-bit unsigned value to indicate the EHT MCS support.
+	 * Uses enum eht_mcs_config values.
+	 * This attribute is used to configure the testbed device to
+	 * allow the advertised hardware capabilities to be downgraded
+	 * for testing purposes.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_MCS = 65,
+
+	/* 8-bit unsigned value to configure EHT TB Sounding Feedback
+	 * Rate Limit capability.
+	 * This attribute is used to configure the testbed device.
+	 * 0 - Indicates no maximum supported data rate limitation.
+	 * 1 - Indicates the maximum supported data rate is the lower of
+	 * the 1500 Mb/s and the maximum supported data rate.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_TB_SOUNDING_FB_RL = 66,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_AFTER_LAST,
