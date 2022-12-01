@@ -6725,8 +6725,20 @@ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
 }
 
 
+static bool mbssid_known_bss(unsigned int i, const u8 *known_bss,
+			     size_t known_bss_len)
+{
+	if (!known_bss || known_bss_len <= i / 8)
+		return false;
+	known_bss = &known_bss[i / 8];
+	return *known_bss & (u8) (BIT(i % 8));
+}
+
+
 static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
-					  u32 frame_type, size_t *bss_index)
+					  u32 frame_type, size_t *bss_index,
+					  const u8 *known_bss,
+					  size_t known_bss_len)
 {
 	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
 	size_t len = 3, i;
@@ -6737,7 +6749,8 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
 		size_t nontx_profile_len, auth_len;
 		u8 ie_count = 0;
 
-		if (!bss || !bss->conf || !bss->started)
+		if (!bss || !bss->conf || !bss->started ||
+		    mbssid_known_bss(i, known_bss, known_bss_len))
 			continue;
 
 		/*
@@ -6786,7 +6799,8 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
 
 
 size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
-			      u8 *elem_count)
+			      u8 *elem_count, const u8 *known_bss,
+			      size_t known_bss_len)
 {
 	size_t len = 0, bss_index = 1;
 
@@ -6806,7 +6820,8 @@ size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
 
 	while (bss_index < hapd->iface->num_bss) {
 		len += hostapd_eid_mbssid_elem_len(hapd, frame_type,
-						   &bss_index);
+						   &bss_index, known_bss,
+						   known_bss_len);
 
 		if (frame_type == WLAN_FC_STYPE_BEACON)
 			*elem_count += 1;
@@ -6817,7 +6832,8 @@ size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
 
 static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
 				    u32 frame_type, u8 max_bssid_indicator,
-				    size_t *bss_index, u8 elem_count)
+				    size_t *bss_index, u8 elem_count,
+				    const u8 *known_bss, size_t known_bss_len)
 {
 	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
 	size_t i;
@@ -6836,7 +6852,8 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
 		size_t auth_len = 0;
 		u16 capab_info;
 
-		if (!bss || !bss->conf || !bss->started)
+		if (!bss || !bss->conf || !bss->started ||
+		    mbssid_known_bss(i, known_bss, known_bss_len))
 			continue;
 		conf = bss->conf;
 
@@ -6919,7 +6936,8 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
 
 u8 * hostapd_eid_mbssid(struct hostapd_data *hapd, u8 *eid, u8 *end,
 			unsigned int frame_stype, u8 elem_count,
-			u8 **elem_offset)
+			u8 **elem_offset,
+			const u8 *known_bss, size_t known_bss_len)
 {
 	size_t bss_index = 1;
 	u8 elem_index = 0;
@@ -6948,7 +6966,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_data *hapd, u8 *eid, u8 *end,
 		}
 		eid = hostapd_eid_mbssid_elem(hapd, eid, end, frame_stype,
 					      hostapd_max_bssid_indicator(hapd),
-					      &bss_index, elem_count);
+					      &bss_index, elem_count,
+					      known_bss, known_bss_len);
 	}
 
 	return eid;

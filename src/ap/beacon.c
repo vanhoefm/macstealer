@@ -478,7 +478,8 @@ ieee802_11_build_ap_params_mbssid(struct hostapd_data *hapd,
 		goto fail;
 
 	tx_bss = hostapd_mbssid_get_tx_bss(hapd);
-	len = hostapd_eid_mbssid_len(tx_bss, WLAN_FC_STYPE_BEACON, &elem_count);
+	len = hostapd_eid_mbssid_len(tx_bss, WLAN_FC_STYPE_BEACON, &elem_count,
+				     NULL, 0);
 	if (!len || (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED &&
 		     elem_count > iface->ema_max_periodicity))
 		goto fail;
@@ -492,7 +493,7 @@ ieee802_11_build_ap_params_mbssid(struct hostapd_data *hapd,
 		goto fail;
 
 	end = hostapd_eid_mbssid(tx_bss, elem, elem + len, WLAN_FC_STYPE_BEACON,
-				 elem_count, elem_offset);
+				 elem_count, elem_offset, NULL, 0);
 
 	params->mbssid_tx_iface = tx_bss->conf->iface;
 	params->mbssid_index = hostapd_mbssid_get_bss_index(hapd);
@@ -532,7 +533,8 @@ static u8 * hostapd_eid_mbssid_config(struct hostapd_data *hapd, u8 *eid,
 static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 				   const struct ieee80211_mgmt *req,
 				   int is_p2p, size_t *resp_len,
-				   bool bcast_probe_resp)
+				   bool bcast_probe_resp, const u8 *known_bss,
+				   u8 known_bss_len)
 {
 	struct ieee80211_mgmt *resp;
 	u8 *pos, *epos, *csa_pos;
@@ -586,7 +588,8 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_IEEE80211BE */
 
-	buflen += hostapd_eid_mbssid_len(hapd, WLAN_FC_STYPE_PROBE_RESP, NULL);
+	buflen += hostapd_eid_mbssid_len(hapd, WLAN_FC_STYPE_PROBE_RESP, NULL,
+					 known_bss, known_bss_len);
 	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
 	buflen += hostapd_mbo_ie_len(hapd);
 	buflen += hostapd_eid_owe_trans_len(hapd);
@@ -647,7 +650,7 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	pos = hostapd_get_rsne(hapd, pos, epos - pos);
 	pos = hostapd_eid_bss_load(hapd, pos, epos - pos);
 	pos = hostapd_eid_mbssid(hapd, pos, epos, WLAN_FC_STYPE_PROBE_RESP, 0,
-				 NULL);
+				 NULL, known_bss, known_bss_len);
 	pos = hostapd_eid_rm_enabled_capab(hapd, pos, epos - pos);
 	pos = hostapd_get_mde(hapd, pos, epos - pos);
 
@@ -661,9 +664,11 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	pos = hostapd_eid_ht_capabilities(hapd, pos);
 	pos = hostapd_eid_ht_operation(hapd, pos);
 
-	/* Probe Response frames always include all non-TX profiles */
+	/* Probe Response frames always include all non-TX profiles except
+	 * when a list of known BSSes is included in the Probe Request frame. */
 	pos = hostapd_eid_ext_capab(hapd, pos,
-				    hapd->iconf->mbssid >= MBSSID_ENABLED);
+				    hapd->iconf->mbssid >= MBSSID_ENABLED &&
+				    !known_bss_len);
 
 	pos = hostapd_eid_time_adv(hapd, pos);
 	pos = hostapd_eid_time_zone(hapd, pos);
@@ -1225,7 +1230,8 @@ void handle_probe_req(struct hostapd_data *hapd,
 		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
 
 	resp = hostapd_gen_probe_resp(hapd, mgmt, elems.p2p != NULL,
-				      &resp_len, false);
+				      &resp_len, false, elems.mbssid_known_bss,
+				      elems.mbssid_known_bss_len);
 	if (resp == NULL)
 		return;
 
@@ -1295,7 +1301,7 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
 			   "this");
 
 	/* Generate a Probe Response template for the non-P2P case */
-	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len, false);
+	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len, false, NULL, 0);
 }
 
 #endif /* NEED_AP_MLME */
@@ -1314,7 +1320,7 @@ static u8 * hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
 
 	return hostapd_gen_probe_resp(hapd, NULL, 0,
 				      &params->unsol_bcast_probe_resp_tmpl_len,
-				      true);
+				      true, NULL, 0);
 }
 #endif /* CONFIG_IEEE80211AX */
 

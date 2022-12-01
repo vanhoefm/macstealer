@@ -216,9 +216,11 @@ u16 copy_sta_eht_capab(struct hostapd_data *hapd, struct sta_info *sta,
 		       const u8 *he_capab, size_t he_capab_len,
 		       const u8 *eht_capab, size_t eht_capab_len);
 size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
-			      u8 *elem_count);
+			      u8 *elem_count, const u8 *known_bss,
+			      size_t known_bss_len);
 u8 * hostapd_eid_mbssid(struct hostapd_data *hapd, u8 *eid, u8 *end,
 			unsigned int frame_stype, u8 elem_count,
-			u8 **elem_offset);
+			u8 **elem_offset,
+			const u8 *known_bss, size_t known_bss_len);
 
 #endif /* IEEE802_11_H */

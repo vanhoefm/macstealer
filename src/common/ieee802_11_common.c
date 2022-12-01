@@ -387,6 +387,10 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
 					 show_errors))
 			return -1;
 		break;
+	case WLAN_EID_EXT_KNOWN_BSSID:
+		elems->mbssid_known_bss = pos;
+		elems->mbssid_known_bss_len = elen;
+		break;
 	default:
 		if (show_errors) {
 			wpa_printf(MSG_MSGDUMP,
