@@ -3160,7 +3160,7 @@ int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
 	}
 	if (j == 32)
 		return -1;
-	aid = i * 32 + j + 1;
+	aid = i * 32 + j + (1 << hostapd_max_bssid_indicator(hapd));
 	if (aid > 2007)
 		return -1;
 
