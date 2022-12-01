@@ -1115,18 +1115,55 @@ static int db_table_create_radius_attributes(sqlite3 *db)
 #endif /* CONFIG_NO_RADIUS */
 
 
+static int hostapd_start_beacon(struct hostapd_data *hapd,
+				bool flush_old_stations)
+{
+	struct hostapd_bss_config *conf = hapd->conf;
+
+	if (!conf->start_disabled && ieee802_11_set_beacon(hapd) < 0)
+		return -1;
+
+	if (flush_old_stations && !conf->start_disabled &&
+	    conf->broadcast_deauth) {
+		u8 addr[ETH_ALEN];
+
+		/* Should any previously associated STA not have noticed that
+		 * the AP had stopped and restarted, send one more
+		 * deauthentication notification now that the AP is ready to
+		 * operate. */
+		wpa_dbg(hapd->msg_ctx, MSG_DEBUG,
+			"Deauthenticate all stations at BSS start");
+		os_memset(addr, 0xff, ETH_ALEN);
+		hostapd_drv_sta_deauth(hapd, addr,
+				       WLAN_REASON_PREV_AUTH_NOT_VALID);
+	}
+
+	if (hapd->driver && hapd->driver->set_operstate)
+		hapd->driver->set_operstate(hapd->drv_priv, 1);
+
+	return 0;
+}
+
+
 /**
  * hostapd_setup_bss - Per-BSS setup (initialization)
  * @hapd: Pointer to BSS data
  * @first: Whether this BSS is the first BSS of an interface; -1 = not first,
  *	but interface may exist
+ * @start_beacon: Whether Beacon frame template should be configured and
+ *	transmission of Beaconf rames started at this time. This is used when
+ *	MBSSID element is enabled where the information regarding all BSSes
+ *	should be retrieved before configuring the Beacon frame template. The
+ *	calling functions are responsible for configuring the Beacon frame
+ *	explicitly if this is set to false.
  *
  * This function is used to initialize all per-BSS data structures and
  * resources. This gets called in a loop for each BSS when an interface is
  * initialized. Most of the modules that are initialized here will be
  * deinitialized in hostapd_cleanup().
  */
-static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
+static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
+			     bool start_beacon)
 {
 	struct hostapd_bss_config *conf = hapd->conf;
 	u8 ssid[SSID_MAX_LEN + 1];
@@ -1399,29 +1436,11 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 		return -1;
 	}
 
-	if (!conf->start_disabled && ieee802_11_set_beacon(hapd) < 0)
-		return -1;
-
-	if (flush_old_stations && !conf->start_disabled &&
-	    conf->broadcast_deauth) {
-		u8 addr[ETH_ALEN];
-
-		/* Should any previously associated STA not have noticed that
-		 * the AP had stopped and restarted, send one more
-		 * deauthentication notification now that the AP is ready to
-		 * operate. */
-		wpa_dbg(hapd->msg_ctx, MSG_DEBUG,
-			"Deauthenticate all stations at BSS start");
-		os_memset(addr, 0xff, ETH_ALEN);
-		hostapd_drv_sta_deauth(hapd, addr,
-				       WLAN_REASON_PREV_AUTH_NOT_VALID);
-	}
-
 	if (hapd->wpa_auth && wpa_init_keys(hapd->wpa_auth) < 0)
 		return -1;
 
-	if (hapd->driver && hapd->driver->set_operstate)
-		hapd->driver->set_operstate(hapd->drv_priv, 1);
+	if (start_beacon)
+		return hostapd_start_beacon(hapd, flush_old_stations);
 
 	return 0;
 }
@@ -2146,7 +2165,7 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
 		hapd = iface->bss[j];
 		if (j)
 			os_memcpy(hapd->own_addr, prev_addr, ETH_ALEN);
-		if (hostapd_setup_bss(hapd, j == 0)) {
+		if (hostapd_setup_bss(hapd, j == 0, !iface->conf->mbssid)) {
 			for (;;) {
 				hapd = iface->bss[j];
 				hostapd_bss_deinit_no_free(hapd);
@@ -2160,6 +2179,24 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
 		if (is_zero_ether_addr(hapd->conf->bssid))
 			prev_addr = hapd->own_addr;
 	}
+
+	if (hapd->iconf->mbssid) {
+		for (j = 0; hapd->iconf->mbssid && j < iface->num_bss; j++) {
+			hapd = iface->bss[j];
+			if (hostapd_start_beacon(hapd, true)) {
+				for (;;) {
+					hapd = iface->bss[j];
+					hostapd_bss_deinit_no_free(hapd);
+					hostapd_free_hapd_data(hapd);
+					if (j == 0)
+						break;
+					j--;
+				}
+				goto fail;
+			}
+		}
+	}
+
 	hapd = iface->bss[0];
 
 	hostapd_tx_queue_params(iface);
@@ -3056,7 +3093,7 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
 
 			if (start_ctrl_iface_bss(hapd) < 0 ||
 			    (hapd_iface->state == HAPD_IFACE_ENABLED &&
-			     hostapd_setup_bss(hapd, -1))) {
+			     hostapd_setup_bss(hapd, -1, true))) {
 				hostapd_cleanup(hapd);
 				hapd_iface->bss[hapd_iface->num_bss - 1] = NULL;
 				hapd_iface->conf->num_bss--;
