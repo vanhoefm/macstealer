@@ -462,6 +462,56 @@ static u8 * hostapd_eid_supported_op_classes(struct hostapd_data *hapd, u8 *eid)
 }
 
 
+static int
+ieee802_11_build_ap_params_mbssid(struct hostapd_data *hapd,
+				  struct wpa_driver_ap_params *params)
+{
+	struct hostapd_iface *iface = hapd->iface;
+	struct hostapd_data *tx_bss;
+	size_t len;
+	u8 elem_count = 0, *elem = NULL, **elem_offset = NULL, *end;
+
+	if (!iface->mbssid_max_interfaces ||
+	    iface->num_bss > iface->mbssid_max_interfaces ||
+	    (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED &&
+	     !iface->ema_max_periodicity))
+		goto fail;
+
+	tx_bss = hostapd_mbssid_get_tx_bss(hapd);
+	len = hostapd_eid_mbssid_len(tx_bss, WLAN_FC_STYPE_BEACON, &elem_count);
+	if (!len || (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED &&
+		     elem_count > iface->ema_max_periodicity))
+		goto fail;
+
+	elem = os_zalloc(len);
+	if (!elem)
+		goto fail;
+
+	elem_offset = os_zalloc(elem_count * sizeof(u8 *));
+	if (!elem_offset)
+		goto fail;
+
+	end = hostapd_eid_mbssid(tx_bss, elem, elem + len, WLAN_FC_STYPE_BEACON,
+				 elem_count, elem_offset);
+
+	params->mbssid_tx_iface = tx_bss->conf->iface;
+	params->mbssid_index = hostapd_mbssid_get_bss_index(hapd);
+	params->mbssid_elem = elem;
+	params->mbssid_elem_len = end - elem;
+	params->mbssid_elem_count = elem_count;
+	params->mbssid_elem_offset = elem_offset;
+	if (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED)
+		params->ema = true;
+
+	return 0;
+
+fail:
+	os_free(elem);
+	wpa_printf(MSG_ERROR, "MBSSID: Configuration failed");
+	return -1;
+}
+
+
 static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 				   const struct ieee80211_mgmt *req,
 				   int is_p2p, size_t *resp_len,
@@ -470,6 +520,8 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	struct ieee80211_mgmt *resp;
 	u8 *pos, *epos, *csa_pos;
 	size_t buflen;
+
+	hapd = hostapd_mbssid_get_tx_bss(hapd);
 
 #define MAX_PROBERESP_LEN 768
 	buflen = MAX_PROBERESP_LEN;
@@ -517,6 +569,7 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_IEEE80211BE */
 
+	buflen += hostapd_eid_mbssid_len(hapd, WLAN_FC_STYPE_PROBE_RESP, NULL);
 	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
 	buflen += hostapd_mbo_ie_len(hapd);
 	buflen += hostapd_eid_owe_trans_len(hapd);
@@ -576,6 +629,8 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 
 	pos = hostapd_get_rsne(hapd, pos, epos - pos);
 	pos = hostapd_eid_bss_load(hapd, pos, epos - pos);
+	pos = hostapd_eid_mbssid(hapd, pos, epos, WLAN_FC_STYPE_PROBE_RESP, 0,
+				 NULL);
 	pos = hostapd_eid_rm_enabled_capab(hapd, pos, epos - pos);
 	pos = hostapd_get_mde(hapd, pos, epos - pos);
 
@@ -1141,6 +1196,12 @@ void handle_probe_req(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_TESTING_OPTIONS */
 
+	/* Do not send Probe Response frame from a non-transmitting multiple
+	 * BSSID profile unless the Probe Request frame is directed at that
+	 * particular BSS. */
+	if (hapd != hostapd_mbssid_get_tx_bss(hapd) && res != EXACT_SSID_MATCH)
+		return;
+
 	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
 		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
 
@@ -1167,7 +1228,8 @@ void handle_probe_req(struct hostapd_data *hapd,
 				hapd->cs_c_off_ecsa_proberesp;
 	}
 
-	ret = hostapd_drv_send_mlme(hapd, resp, resp_len, noack,
+	ret = hostapd_drv_send_mlme(hostapd_mbssid_get_tx_bss(hapd), resp,
+				    resp_len, noack,
 				    csa_offs_len ? csa_offs : NULL,
 				    csa_offs_len, 0);
 
@@ -1514,7 +1576,11 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 #ifdef NEED_AP_MLME
 	u16 capab_info;
 	u8 *pos, *tailpos, *tailend, *csa_pos;
+#endif /* NEED_AP_MLME */
 
+	os_memset(params, 0, sizeof(*params));
+
+#ifdef NEED_AP_MLME
 #define BEACON_HEAD_BUF_SIZE 256
 #define BEACON_TAIL_BUF_SIZE 512
 	head = os_zalloc(BEACON_HEAD_BUF_SIZE);
@@ -1654,6 +1720,14 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 
 	tailpos = hostapd_eid_ext_capab(hapd, tailpos);
 
+	if (hapd->iconf->mbssid && hapd->iconf->num_bss > 1 &&
+	    ieee802_11_build_ap_params_mbssid(hapd, params)) {
+		os_free(head);
+		os_free(tail);
+		wpa_printf(MSG_ERROR, "MBSSID: Failed to set beacon data");
+		return -1;
+	}
+
 	/*
 	 * TODO: Time Advertisement element should only be included in some
 	 * DTIM Beacon frames.
@@ -1774,7 +1848,6 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 	resp = hostapd_probe_resp_offloads(hapd, &resp_len);
 #endif /* NEED_AP_MLME */
 
-	os_memset(params, 0, sizeof(*params));
 	params->head = (u8 *) head;
 	params->head_len = head_len;
 	params->tail = tail;
@@ -1877,6 +1950,10 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
 	params->head = NULL;
 	os_free(params->proberesp);
 	params->proberesp = NULL;
+	os_free(params->mbssid_elem);
+	params->mbssid_elem = NULL;
+	os_free(params->mbssid_elem_offset);
+	params->mbssid_elem_offset = NULL;
 #ifdef CONFIG_FILS
 	os_free(params->fd_frame_tmpl);
 	params->fd_frame_tmpl = NULL;
