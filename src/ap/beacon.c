@@ -512,6 +512,23 @@ fail:
 }
 
 
+static u8 * hostapd_eid_mbssid_config(struct hostapd_data *hapd, u8 *eid,
+				      u8 mbssid_elem_count)
+{
+	struct hostapd_iface *iface = hapd->iface;
+
+	if (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED) {
+		*eid++ = WLAN_EID_EXTENSION;
+		*eid++ = 3;
+		*eid++ = WLAN_EID_EXT_MULTIPLE_BSSID_CONFIGURATION;
+		*eid++ = iface->num_bss;
+		*eid++ = mbssid_elem_count;
+	}
+
+	return eid;
+}
+
+
 static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 				   const struct ieee80211_mgmt *req,
 				   int is_p2p, size_t *resp_len,
@@ -1635,6 +1652,9 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_IEEE80211BE */
 
+	if (hapd->iconf->mbssid == ENHANCED_MBSSID_ENABLED &&
+	    hapd == hostapd_mbssid_get_tx_bss(hapd))
+		tail_len += 5; /* Multiple BSSID Configuration element */
 	tail_len += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_BEACON);
 	tail_len += hostapd_mbo_ie_len(hapd);
 	tail_len += hostapd_eid_owe_trans_len(hapd);
@@ -1774,6 +1794,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 	tailpos = hostapd_eid_rnr(hapd, tailpos, WLAN_FC_STYPE_BEACON);
 	tailpos = hostapd_eid_fils_indic(hapd, tailpos, 0);
 	tailpos = hostapd_get_rsnxe(hapd, tailpos, tailend - tailpos);
+	tailpos = hostapd_eid_mbssid_config(hapd, tailpos,
+					    params->mbssid_elem_count);
 
 #ifdef CONFIG_IEEE80211AX
 	if (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax) {
