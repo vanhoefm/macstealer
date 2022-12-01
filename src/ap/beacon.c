@@ -644,7 +644,9 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
 	pos = hostapd_eid_ht_capabilities(hapd, pos);
 	pos = hostapd_eid_ht_operation(hapd, pos);
 
-	pos = hostapd_eid_ext_capab(hapd, pos);
+	/* Probe Response frames always include all non-TX profiles */
+	pos = hostapd_eid_ext_capab(hapd, pos,
+				    hapd->iconf->mbssid >= MBSSID_ENABLED);
 
 	pos = hostapd_eid_time_adv(hapd, pos);
 	pos = hostapd_eid_time_zone(hapd, pos);
@@ -1576,6 +1578,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 #ifdef NEED_AP_MLME
 	u16 capab_info;
 	u8 *pos, *tailpos, *tailend, *csa_pos;
+	bool complete = false;
 #endif /* NEED_AP_MLME */
 
 	os_memset(params, 0, sizeof(*params));
@@ -1718,15 +1721,20 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
 	tailpos = hostapd_eid_ht_capabilities(hapd, tailpos);
 	tailpos = hostapd_eid_ht_operation(hapd, tailpos);
 
-	tailpos = hostapd_eid_ext_capab(hapd, tailpos);
-
-	if (hapd->iconf->mbssid && hapd->iconf->num_bss > 1 &&
-	    ieee802_11_build_ap_params_mbssid(hapd, params)) {
-		os_free(head);
-		os_free(tail);
-		wpa_printf(MSG_ERROR, "MBSSID: Failed to set beacon data");
-		return -1;
+	if (hapd->iconf->mbssid && hapd->iconf->num_bss > 1) {
+		if (ieee802_11_build_ap_params_mbssid(hapd, params)) {
+			os_free(head);
+			os_free(tail);
+			wpa_printf(MSG_ERROR,
+				   "MBSSID: Failed to set beacon data");
+			return -1;
+		}
+		complete = hapd->iconf->mbssid == MBSSID_ENABLED ||
+			(hapd->iconf->mbssid == ENHANCED_MBSSID_ENABLED &&
+			 params->mbssid_elem_count == 1);
 	}
+
+	tailpos = hostapd_eid_ext_capab(hapd, tailpos, complete);
 
 	/*
 	 * TODO: Time Advertisement element should only be included in some

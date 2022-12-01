@@ -45,7 +45,8 @@ static inline int ieee802_11_get_mib_sta(struct hostapd_data *hapd,
 #endif /* NEED_AP_MLME */
 u16 hostapd_own_capab_info(struct hostapd_data *hapd);
 void ap_ht2040_timeout(void *eloop_data, void *user_data);
-u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid);
+u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid,
+			   bool mbssid_complete);
 u8 * hostapd_eid_qos_map_set(struct hostapd_data *hapd, u8 *eid);
 u8 * hostapd_eid_supp_rates(struct hostapd_data *hapd, u8 *eid);
 u8 * hostapd_eid_ext_supp_rates(struct hostapd_data *hapd, u8 *eid);

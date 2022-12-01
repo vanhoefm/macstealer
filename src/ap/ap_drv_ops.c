@@ -92,7 +92,7 @@ int hostapd_build_ap_extra_ies(struct hostapd_data *hapd,
 		goto fail;
 
 	pos = buf;
-	pos = hostapd_eid_ext_capab(hapd, pos);
+	pos = hostapd_eid_ext_capab(hapd, pos, false);
 	if (add_buf_data(&assocresp, buf, pos - buf) < 0)
 		goto fail;
 	pos = hostapd_eid_interworking(hapd, pos);

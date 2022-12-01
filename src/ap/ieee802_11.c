@@ -4350,7 +4350,7 @@ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
 	}
 #endif /* CONFIG_IEEE80211AX */
 
-	p = hostapd_eid_ext_capab(hapd, p);
+	p = hostapd_eid_ext_capab(hapd, p, false);
 	p = hostapd_eid_bss_max_idle_period(hapd, p);
 	if (sta && sta->qos_map_enabled)
 		p = hostapd_eid_qos_map_set(hapd, p);
