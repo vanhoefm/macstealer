@@ -1305,6 +1305,33 @@ static int eap_teap_process_decrypted(struct eap_sm *sm,
 		goto done;
 	}
 
+	if (tlv.crypto_binding) {
+		if (tlv.iresult != TEAP_STATUS_SUCCESS &&
+		    tlv.result != TEAP_STATUS_SUCCESS) {
+			wpa_printf(MSG_DEBUG,
+				   "EAP-TEAP: Unexpected Crypto-Binding TLV without Result TLV or Intermediate-Result TLV indicating success");
+			failed = 1;
+			error = TEAP_ERROR_UNEXPECTED_TLVS_EXCHANGED;
+			goto done;
+		}
+
+		tmp = eap_teap_process_crypto_binding(sm, data, ret,
+						      tlv.crypto_binding,
+						      tlv.crypto_binding_len);
+		if (!tmp) {
+			failed = 1;
+			error = TEAP_ERROR_TUNNEL_COMPROMISE_ERROR;
+		} else {
+			resp = wpabuf_concat(resp, tmp);
+			if (tlv.result == TEAP_STATUS_SUCCESS && !failed)
+				data->result_success_done = 1;
+			if (tlv.iresult == TEAP_STATUS_SUCCESS && !failed) {
+				data->inner_method_done = 0;
+				data->iresult_verified = 1;
+			}
+		}
+	}
+
 	if (tlv.identity_type == TEAP_IDENTITY_TYPE_MACHINE) {
 		struct eap_peer_config *config = eap_get_config(sm);
 
@@ -1357,33 +1384,6 @@ static int eap_teap_process_decrypted(struct eap_sm *sm,
 			if (tlv.iresult == TEAP_STATUS_FAILURE)
 				failed = 1;
 			iresult_added = 1;
-		}
-	}
-
-	if (tlv.crypto_binding) {
-		if (tlv.iresult != TEAP_STATUS_SUCCESS &&
-		    tlv.result != TEAP_STATUS_SUCCESS) {
-			wpa_printf(MSG_DEBUG,
-				   "EAP-TEAP: Unexpected Crypto-Binding TLV without Result TLV or Intermediate-Result TLV indicating success");
-			failed = 1;
-			error = TEAP_ERROR_UNEXPECTED_TLVS_EXCHANGED;
-			goto done;
-		}
-
-		tmp = eap_teap_process_crypto_binding(sm, data, ret,
-						      tlv.crypto_binding,
-						      tlv.crypto_binding_len);
-		if (!tmp) {
-			failed = 1;
-			error = TEAP_ERROR_TUNNEL_COMPROMISE_ERROR;
-		} else {
-			resp = wpabuf_concat(resp, tmp);
-			if (tlv.result == TEAP_STATUS_SUCCESS && !failed)
-				data->result_success_done = 1;
-			if (tlv.iresult == TEAP_STATUS_SUCCESS && !failed) {
-				data->inner_method_done = 0;
-				data->iresult_verified = 1;
-			}
 		}
 	}
 
