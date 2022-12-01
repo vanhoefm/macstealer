@@ -91,6 +91,29 @@ int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
 }
 
 
+struct hostapd_data * hostapd_mbssid_get_tx_bss(struct hostapd_data *hapd)
+{
+	if (hapd->iconf->mbssid)
+		return hapd->iface->bss[0];
+
+	return hapd;
+}
+
+
+int hostapd_mbssid_get_bss_index(struct hostapd_data *hapd)
+{
+	if (hapd->iconf->mbssid) {
+		size_t i;
+
+		for (i = 1; i < hapd->iface->num_bss; i++)
+			if (hapd->iface->bss[i] == hapd)
+				return i;
+	}
+
+	return 0;
+}
+
+
 void hostapd_reconfig_encryption(struct hostapd_data *hapd)
 {
 	if (hapd->wpa_auth)
