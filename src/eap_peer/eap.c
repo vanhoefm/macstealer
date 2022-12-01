@@ -267,6 +267,7 @@ SM_STATE(EAP, INITIALIZE)
 	sm->reauthInit = false;
 	sm->erp_seq = (u32) -1;
 	sm->use_machine_cred = 0;
+	sm->eap_fast_mschapv2 = false;
 }
 
 

@@ -365,6 +365,11 @@ struct eap_sm {
 	/* Optional challenges generated in Phase 1 (EAP-FAST) */
 	u8 *peer_challenge, *auth_challenge;
 
+	/* Whether to use the EAP-FAST-MSCHAPv2 instantiation of EAP-MSCHAPv2.
+	 * That variant is otherwise identical, but it generates the MSK using
+	 * MS-MPPE keys in reverse order. */
+	bool eap_fast_mschapv2;
+
 	int num_rounds;
 	int num_rounds_short;
 	int force_disabled;

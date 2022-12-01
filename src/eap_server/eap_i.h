@@ -176,8 +176,14 @@ struct eap_sm {
 		METHOD_PENDING_NONE, METHOD_PENDING_WAIT, METHOD_PENDING_CONT
 	} method_pending;
 
+	/* Optional challenges generated in Phase 1 (EAP-FAST) */
 	u8 *auth_challenge;
 	u8 *peer_challenge;
+
+	/* Whether to use the EAP-FAST-MSCHAPv2 instantiation of EAP-MSCHAPv2.
+	 * That variant is otherwise identical, but it generates the MSK using
+	 * MS-MPPE keys in reverse order. */
+	bool eap_fast_mschapv2;
 
 	struct wpabuf *assoc_wps_ie;
 	struct wpabuf *assoc_p2p_ie;
