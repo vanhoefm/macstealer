@@ -1736,10 +1736,25 @@ static void wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 	if (!sm)
 		return;
 
+	ctr = pairwise ? sm->TimeoutCtr : sm->GTimeoutCtr;
+
+#ifdef CONFIG_TESTING_OPTIONS
+	/* When delay_eapol_tx is true, delay the EAPOL-Key transmission by
+	 * sending it only on the last attempt after all timeouts for the prior
+	 * skipped attemps. */
+	if (wpa_auth->conf.delay_eapol_tx &&
+	    ctr != wpa_auth->conf.wpa_pairwise_update_count) {
+		wpa_msg(sm->wpa_auth->conf.msg_ctx, MSG_INFO,
+			"DELAY-EAPOL-TX-%d", ctr);
+		goto skip_tx;
+	}
+#endif /* CONFIG_TESTING_OPTIONS */
 	__wpa_send_eapol(wpa_auth, sm, key_info, key_rsc, nonce, kde, kde_len,
 			 keyidx, encr, 0);
+#ifdef CONFIG_TESTING_OPTIONS
+skip_tx:
+#endif /* CONFIG_TESTING_OPTIONS */
 
-	ctr = pairwise ? sm->TimeoutCtr : sm->GTimeoutCtr;
 	if (ctr == 1 && wpa_auth->conf.tx_status)
 		timeout_ms = pairwise ? eapol_key_timeout_first :
 			eapol_key_timeout_first_group;

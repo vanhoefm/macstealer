@@ -240,6 +240,7 @@ struct wpa_auth_config {
 	unsigned int gtk_rsc_override_set:1;
 	unsigned int igtk_rsc_override_set:1;
 	int ft_rsnxe_used;
+	bool delay_eapol_tx;
 #endif /* CONFIG_TESTING_OPTIONS */
 	unsigned int oci_freq_override_eapol_m3;
 	unsigned int oci_freq_override_eapol_g1;

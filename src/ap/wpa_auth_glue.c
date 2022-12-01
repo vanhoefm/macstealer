@@ -117,6 +117,7 @@ static void hostapd_wpa_auth_conf(struct hostapd_bss_config *conf,
 #ifdef CONFIG_TESTING_OPTIONS
 	wconf->corrupt_gtk_rekey_mic_probability =
 		iconf->corrupt_gtk_rekey_mic_probability;
+	wconf->delay_eapol_tx = iconf->delay_eapol_tx;
 	if (conf->own_ie_override &&
 	    wpabuf_len(conf->own_ie_override) <= MAX_OWN_IE_OVERRIDE) {
 		wconf->own_ie_override_len = wpabuf_len(conf->own_ie_override);

@@ -1470,3 +1470,47 @@ def test_ap_pmf_sta_global_require2(dev, apdev):
             raise Exception("Unexpected connection")
     finally:
         dev[0].set("pmf", "0")
+
+def test_ap_pmf_drop_robust_mgmt_prior_to_keys_installation(dev, apdev):
+    """Drop non protected Robust Action frames prior to keys installation"""
+    ssid = "test-pmf-required"
+    passphrase = '12345678'
+    params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
+    params['delay_eapol_tx'] = '1'
+    params['ieee80211w'] = '2'
+    params['wpa_pairwise_update_count'] = '5'
+    hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
+
+    # Spectrum management with Channel Switch element
+    msg = {'fc': 0x00d0,
+           'sa': hapd.own_addr(),
+           'da': dev[0].own_addr(),
+           'bssid': hapd.own_addr(),
+           'payload': binascii.unhexlify('00042503000608')
+           }
+
+    dev[0].connect(ssid, psk=passphrase, scan_freq='2412', ieee80211w='1',
+                   wait_connect=False)
+
+    # wait for the first delay before sending the frame
+    ev = hapd.wait_event(['DELAY-EAPOL-TX-1'], timeout=10)
+    if ev is None:
+        raise Exception("EAPOL is not delayed")
+
+    # send the Action frame while connecting (prior to keys installation)
+    hapd.mgmt_tx(msg)
+
+    dev[0].wait_connected(timeout=10, error="Timeout on connection")
+    hapd.wait_sta()
+    hwsim_utils.test_connectivity(dev[0], hapd)
+
+    # Verify no channel switch event
+    ev = dev[0].wait_event(['CTRL-EVENT-STARTED-CHANNEL-SWITCH'], timeout=5)
+    if ev is not None:
+        raise Exception("Unexpected CSA prior to keys installation")
+
+    # Send the frame after keys installation and verify channel switch event
+    hapd.mgmt_tx(msg)
+    ev = dev[0].wait_event(['CTRL-EVENT-STARTED-CHANNEL-SWITCH'], timeout=5)
+    if ev is None:
+        raise Exception("Expected CSA handling after keys installation")
