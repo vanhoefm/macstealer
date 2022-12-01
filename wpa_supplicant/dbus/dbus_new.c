@@ -2344,6 +2344,9 @@ void wpas_dbus_signal_prop_changed(struct wpa_supplicant *wpa_s,
 	case WPAS_DBUS_PROP_BSS_TM_STATUS:
 		prop = "BSSTMStatus";
 		break;
+	case WPAS_DBUS_PROP_MAC_ADDRESS:
+		prop = "MACAddress";
+		break;
 	default:
 		wpa_printf(MSG_ERROR, "dbus: %s: Unknown Property value %d",
 			   __func__, property);
@@ -3938,6 +3941,11 @@ static const struct wpa_dbus_property_desc wpas_dbus_interface_properties[] = {
 	  wpas_dbus_getter_mac_address_randomization_mask,
 	  wpas_dbus_setter_mac_address_randomization_mask,
 	  NULL
+	},
+	{ "MACAddress", WPAS_DBUS_NEW_IFACE_INTERFACE, "ay",
+	  wpas_dbus_getter_mac_address,
+	  NULL,
+	  NULL,
 	},
 	{ NULL, NULL, NULL, NULL, NULL, NULL }
 };

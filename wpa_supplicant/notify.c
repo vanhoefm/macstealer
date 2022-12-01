@@ -213,6 +213,15 @@ void wpas_notify_bssid_changed(struct wpa_supplicant *wpa_s)
 }
 
 
+void wpas_notify_mac_address_changed(struct wpa_supplicant *wpa_s)
+{
+	if (wpa_s->p2p_mgmt)
+		return;
+
+	wpas_dbus_signal_prop_changed(wpa_s, WPAS_DBUS_PROP_MAC_ADDRESS);
+}
+
+
 void wpas_notify_auth_changed(struct wpa_supplicant *wpa_s)
 {
 	if (wpa_s->p2p_mgmt)

@@ -4754,6 +4754,27 @@ dbus_bool_t wpas_dbus_getter_mac_address_randomization_mask(
 
 
 /**
+ * wpas_dbus_getter_mac_address - Get MAC address of an interface
+ * @iter: Pointer to incoming dbus message iter
+ * @error: Location to store error on failure
+ * @user_data: Function specific data
+ * Returns: a list of stations
+ *
+ * Getter for "MACAddress" property.
+ */
+dbus_bool_t wpas_dbus_getter_mac_address(
+	const struct wpa_dbus_property_desc *property_desc,
+	DBusMessageIter *iter, DBusError *error, void *user_data)
+{
+	struct wpa_supplicant *wpa_s = user_data;
+
+	return wpas_dbus_simple_array_property_getter(iter, DBUS_TYPE_BYTE,
+						      wpa_s->own_addr, ETH_ALEN,
+						      error);
+}
+
+
+/**
  * wpas_dbus_getter_sta_address - Return the address of a connected station
  * @iter: Pointer to incoming dbus message iter
  * @error: Location to store error on failure

@@ -5360,6 +5360,10 @@ static int wpas_eapol_needs_l2_packet(struct wpa_supplicant *wpa_s)
 
 int wpa_supplicant_update_mac_addr(struct wpa_supplicant *wpa_s)
 {
+	u8 prev_mac_addr[ETH_ALEN];
+
+	os_memcpy(prev_mac_addr, wpa_s->own_addr, ETH_ALEN);
+
 	if ((!wpa_s->p2p_mgmt ||
 	     !(wpa_s->drv_flags & WPA_DRIVER_FLAGS_DEDICATED_P2P_DEVICE)) &&
 	    !(wpa_s->drv_flags & WPA_DRIVER_FLAGS_P2P_DEDICATED_INTERFACE)) {
@@ -5396,6 +5400,9 @@ int wpa_supplicant_update_mac_addr(struct wpa_supplicant *wpa_s)
 	if (wpa_s->fst)
 		fst_update_mac_addr(wpa_s->fst, wpa_s->own_addr);
 #endif /* CONFIG_FST */
+
+	if (os_memcmp(prev_mac_addr, wpa_s->own_addr, ETH_ALEN) != 0)
+		wpas_notify_mac_address_changed(wpa_s);
 
 	return 0;
 }
