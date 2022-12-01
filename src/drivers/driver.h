@@ -2216,6 +2216,11 @@ struct wpa_driver_capa {
 
 	/* Maximum number of supported AKM suites in commands */
 	unsigned int max_num_akms;
+
+	/* Maximum number of interfaces supported for MBSSID advertisement */
+	unsigned int mbssid_max_interfaces;
+	/* Maximum profile periodicity for enhanced MBSSID advertisement */
+	unsigned int ema_max_periodicity;
 };
 
 

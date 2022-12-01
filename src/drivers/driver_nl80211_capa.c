@@ -875,6 +875,30 @@ err:
 }
 
 
+static void wiphy_info_mbssid(struct wpa_driver_capa *cap, struct nlattr *attr)
+{
+	struct nlattr *config[NL80211_MBSSID_CONFIG_ATTR_MAX + 1];
+
+	if (nla_parse_nested(config, NL80211_MBSSID_CONFIG_ATTR_MAX, attr,
+			     NULL))
+		return;
+
+	if (!config[NL80211_MBSSID_CONFIG_ATTR_MAX_INTERFACES])
+		return;
+
+	cap->mbssid_max_interfaces =
+		nla_get_u8(config[NL80211_MBSSID_CONFIG_ATTR_MAX_INTERFACES]);
+
+	if (config[NL80211_MBSSID_CONFIG_ATTR_MAX_EMA_PROFILE_PERIODICITY])
+		cap->ema_max_periodicity =
+			nla_get_u8(config[NL80211_MBSSID_CONFIG_ATTR_MAX_EMA_PROFILE_PERIODICITY]);
+
+	wpa_printf(MSG_DEBUG,
+		   "mbssid: max interfaces %u, max profile periodicity %u",
+		   cap->mbssid_max_interfaces, cap->ema_max_periodicity);
+}
+
+
 static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 {
 	struct nlattr *tb[NL80211_ATTR_MAX + 1];
@@ -1112,6 +1136,9 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 	if (tb[NL80211_ATTR_MAX_NUM_AKM_SUITES])
 		capa->max_num_akms =
 			nla_get_u16(tb[NL80211_ATTR_MAX_NUM_AKM_SUITES]);
+
+	if (tb[NL80211_ATTR_MBSSID_CONFIG])
+		wiphy_info_mbssid(capa, tb[NL80211_ATTR_MBSSID_CONFIG]);
 
 	return NL_SKIP;
 }

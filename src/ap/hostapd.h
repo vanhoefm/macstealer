@@ -643,6 +643,11 @@ struct hostapd_iface {
 	/* Previous WMM element information */
 	struct hostapd_wmm_ac_params prev_wmm[WMM_AC_NUM];
 
+	/* Maximum number of interfaces supported for MBSSID advertisement */
+	unsigned int mbssid_max_interfaces;
+	/* Maximum profile periodicity for enhanced MBSSID advertisement */
+	unsigned int ema_max_periodicity;
+
 	int (*enable_iface_cb)(struct hostapd_iface *iface);
 	int (*disable_iface_cb)(struct hostapd_iface *iface);
 };
