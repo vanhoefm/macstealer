@@ -6636,6 +6636,14 @@ static u8 * hostapd_eid_rnr_iface(struct hostapd_data *hapd,
 			    reporting_hapd->conf->ssid.short_ssid)
 				bss_param |= RNR_BSS_PARAM_SAME_SSID;
 
+			if (iface->conf->mbssid != MBSSID_DISABLED &&
+			    iface->num_bss > 1) {
+				bss_param |= RNR_BSS_PARAM_MULTIPLE_BSSID;
+				if (i == 0)
+					bss_param |=
+						RNR_BSS_PARAM_TRANSMITTED_BSSID;
+			}
+
 			if (is_6ghz_op_class(hapd->iconf->op_class) &&
 			    bss->conf->unsol_bcast_probe_resp_interval)
 				bss_param |=
