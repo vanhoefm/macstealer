@@ -687,7 +687,7 @@ int handle_auth_pasn_1(struct pasn_data *pasn,
 
 	if (!pasn_params.pubkey || !pasn_params.pubkey_len) {
 		wpa_printf(MSG_DEBUG, "PASN: Invalid public key");
-		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		status = WLAN_STATUS_INVALID_PARAMETERS;
 		goto send_resp;
 	}
 
@@ -702,7 +702,7 @@ int handle_auth_pasn_1(struct pasn_data *pasn,
 
 		if (ret) {
 			wpa_printf(MSG_DEBUG, "PASN: Invalid comeback token");
-			status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+			status = WLAN_STATUS_INVALID_PARAMETERS;
 			goto send_resp;
 		}
 	} else if (pasn->use_anti_clogging) {
@@ -730,7 +730,7 @@ int handle_auth_pasn_1(struct pasn_data *pasn,
 		wpa_printf(MSG_DEBUG,
 			   "PASN: Invalid first octet in pubkey=0x%x",
 			   pasn_params.pubkey[0]);
-		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		status = WLAN_STATUS_INVALID_PUBLIC_KEY;
 		goto send_resp;
 	}
 
@@ -863,7 +863,7 @@ int handle_auth_pasn_1(struct pasn_data *pasn,
 			       &pasn_params, wrapped_data, secret);
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "PASN: Failed to derive keys");
-		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+		status = WLAN_STATUS_PASN_BASE_AKMP_FAILED;
 		goto send_resp;
 	}
 
