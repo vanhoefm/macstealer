@@ -115,6 +115,10 @@ u8 * hostapd_eid_supp_rates(struct hostapd_data *hapd, u8 *eid)
 		num++;
 	if (hapd->iconf->ieee80211ac && hapd->iconf->require_vht)
 		num++;
+#ifdef CONFIG_IEEE80211AX
+	if (hapd->iconf->ieee80211ax && hapd->iconf->require_he)
+		num++;
+#endif /* CONFIG_IEEE80211AX */
 	h2e_required = (hapd->conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
 			hostapd_sae_pw_id_in_use(hapd->conf) == 2) &&
 		hapd->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK &&
@@ -147,6 +151,13 @@ u8 * hostapd_eid_supp_rates(struct hostapd_data *hapd, u8 *eid)
 		*pos++ = 0x80 | BSS_MEMBERSHIP_SELECTOR_VHT_PHY;
 	}
 
+#ifdef CONFIG_IEEE80211AX
+	if (hapd->iconf->ieee80211ax && hapd->iconf->require_he && count < 8) {
+		count++;
+		*pos++ = 0x80 | BSS_MEMBERSHIP_SELECTOR_HE_PHY;
+	}
+#endif /* CONFIG_IEEE80211AX */
+
 	if (h2e_required && count < 8) {
 		count++;
 		*pos++ = 0x80 | BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY;
@@ -171,6 +182,10 @@ u8 * hostapd_eid_ext_supp_rates(struct hostapd_data *hapd, u8 *eid)
 		num++;
 	if (hapd->iconf->ieee80211ac && hapd->iconf->require_vht)
 		num++;
+#ifdef CONFIG_IEEE80211AX
+	if (hapd->iconf->ieee80211ax && hapd->iconf->require_he)
+		num++;
+#endif /* CONFIG_IEEE80211AX */
 	h2e_required = (hapd->conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
 			hostapd_sae_pw_id_in_use(hapd->conf) == 2) &&
 		hapd->conf->sae_pwe != SAE_PWE_FORCE_HUNT_AND_PECK &&
@@ -205,6 +220,14 @@ u8 * hostapd_eid_ext_supp_rates(struct hostapd_data *hapd, u8 *eid)
 		if (count > 8)
 			*pos++ = 0x80 | BSS_MEMBERSHIP_SELECTOR_VHT_PHY;
 	}
+
+#ifdef CONFIG_IEEE80211AX
+	if (hapd->iconf->ieee80211ax && hapd->iconf->require_he) {
+		count++;
+		if (count > 8)
+			*pos++ = 0x80 | BSS_MEMBERSHIP_SELECTOR_HE_PHY;
+	}
+#endif /* CONFIG_IEEE80211AX */
 
 	if (h2e_required) {
 		count++;
@@ -3704,6 +3727,15 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 					 elems.he_capabilities_len);
 		if (resp != WLAN_STATUS_SUCCESS)
 			return resp;
+
+		if (hapd->iconf->require_he && !(sta->flags & WLAN_STA_HE)) {
+			hostapd_logger(hapd, sta->addr,
+				       HOSTAPD_MODULE_IEEE80211,
+				       HOSTAPD_LEVEL_INFO,
+				       "Station does not support mandatory HE PHY - reject association");
+			return WLAN_STATUS_DENIED_HE_NOT_SUPPORTED;
+		}
+
 		if (is_6ghz_op_class(hapd->iconf->op_class)) {
 			if (!(sta->flags & WLAN_STA_HE)) {
 				hostapd_logger(hapd, sta->addr,

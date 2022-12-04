@@ -1107,6 +1107,7 @@ struct hostapd_config {
 	u8 he_6ghz_rx_ant_pat;
 	u8 he_6ghz_tx_ant_pat;
 	u8 he_6ghz_reg_pwr_type;
+	bool require_he;
 #endif /* CONFIG_IEEE80211AX */
 
 	/* VHT enable/disable config from CHAN_SWITCH */
