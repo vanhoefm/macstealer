@@ -964,6 +964,17 @@ static int rate_match(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 				continue;
 			}
 
+			if (flagged && ((rate_ie[j] & 0x7f) ==
+					BSS_MEMBERSHIP_SELECTOR_HE_PHY)) {
+				if (!he_supported(mode, IEEE80211_MODE_INFRA)) {
+					if (debug_print)
+						wpa_dbg(wpa_s, MSG_DEBUG,
+							"   hardware does not support HE PHY");
+					return 0;
+				}
+				continue;
+			}
+
 #ifdef CONFIG_SAE
 			if (flagged && ((rate_ie[j] & 0x7f) ==
 					BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY)) {
