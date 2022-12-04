@@ -2868,12 +2868,37 @@ def test_sae_ext_key_21(dev, apdev):
     """SAE with extended key AKM (group 21)"""
     run_sae_ext_key(dev, apdev, 21)
 
-def run_sae_ext_key(dev, apdev, group):
+def test_sae_ext_key_19_gcmp256(dev, apdev):
+    """SAE with extended key AKM (group 19) with GCMP256 pairwise cipher"""
+    run_sae_ext_key(dev, apdev, 19, cipher="GCMP-256")
+
+def test_sae_ext_key_20_gcmp256(dev, apdev):
+    """SAE with extended key AKM (group 20) with GCMP-256 pairwise cipher"""
+    run_sae_ext_key(dev, apdev, 20, cipher="GCMP-256")
+
+def test_sae_ext_key_21_gcmp256(dev, apdev):
+    """SAE with extended key AKM (group 21) with GCMP-256 pairwise cipher"""
+    run_sae_ext_key(dev, apdev, 21, cipher="GCMP-256")
+
+def test_sae_ext_key_21_gcmp256_gcmp256(dev, apdev):
+    """SAE with extended key AKM (group 21) with GCMP-256 pairwise and group cipher"""
+    run_sae_ext_key(dev, apdev, 21, cipher="GCMP-256", group_cipher="GCMP-256")
+
+def run_sae_ext_key(dev, apdev, group, cipher="CCMP", group_cipher="CCMP"):
     check_sae_capab(dev[0])
+
+    if cipher not in dev[0].get_capability("pairwise"):
+        raise HwsimSkip("Cipher %s not supported" % cipher)
+    if group_cipher not in dev[0].get_capability("group"):
+        raise HwsimSkip("Cipher %s not supported" % group_cipher)
+
     params = hostapd.wpa2_params(ssid="test-sae", passphrase="12345678")
     params['wpa_key_mgmt'] = 'SAE-EXT-KEY'
     params['sae_groups'] = str(group)
     params['ieee80211w'] = '2'
+    params['rsn_pairwise'] = cipher
+    params['group_cipher'] = group_cipher
+
     hapd = hostapd.add_ap(apdev[0], params)
     key_mgmt = hapd.get_config()['key_mgmt']
     if key_mgmt.split(' ')[0] != "SAE-EXT-KEY":
@@ -2881,6 +2906,7 @@ def run_sae_ext_key(dev, apdev, group):
 
     dev[0].set("sae_groups", str(group))
     id = dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE-EXT-KEY",
+                        pairwise=cipher, group=group_cipher,
                         ieee80211w="2", scan_freq="2412")
     hapd.wait_sta()
     if dev[0].get_status_field('sae_group') != str(group):
@@ -2888,7 +2914,7 @@ def run_sae_ext_key(dev, apdev, group):
     bss = dev[0].get_bss(apdev[0]['bssid'])
     if 'flags' not in bss:
         raise Exception("Could not get BSS flags from BSS table")
-    if "[WPA2-SAE-EXT-KEY-CCMP]" not in bss['flags']:
+    if "[WPA2-SAE-EXT-KEY-" + cipher + "]" not in bss['flags']:
         raise Exception("Unexpected BSS flags: " + bss['flags'])
 
     res = hapd.request("STA-FIRST")
