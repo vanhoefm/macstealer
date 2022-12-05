@@ -7432,7 +7432,7 @@ static int get_sta_handler(struct nl_msg *msg, void *arg)
 			nla_get_u32(stats[NL80211_STA_INFO_TX_PACKETS]);
 	if (stats[NL80211_STA_INFO_TX_RETRIES])
 		data->tx_retry_count =
-			nla_get_u32(stats[NL80211_STA_INFO_TX_FAILED]);
+			nla_get_u32(stats[NL80211_STA_INFO_TX_RETRIES]);
 	if (stats[NL80211_STA_INFO_TX_FAILED])
 		data->tx_retry_failed =
 			nla_get_u32(stats[NL80211_STA_INFO_TX_FAILED]);
