@@ -1606,7 +1606,9 @@ static int sae_derive_keys(struct sae_data *sae, const u8 *k)
 	 * (commit-scalar + peer-commit-scalar) mod r part as a bit string by
 	 * zero padding it from left to the length of the order (in full
 	 * octets). */
-	crypto_bignum_to_bin(tmp, val, sizeof(val), sae->tmp->order_len);
+	if (crypto_bignum_to_bin(tmp, val, sizeof(val),
+				 sae->tmp->order_len) < 0)
+		goto fail;
 	wpa_hexdump(MSG_DEBUG, "SAE: PMKID", val, SAE_PMKID_LEN);
 
 #ifdef CONFIG_SAE_PK

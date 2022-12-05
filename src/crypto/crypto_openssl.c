@@ -2449,14 +2449,16 @@ int crypto_ec_point_to_bin(struct crypto_ec *e,
 	    EC_POINT_get_affine_coordinates(e->group, (EC_POINT *) point,
 					    x_bn, y_bn, e->bnctx)) {
 		if (x) {
-			crypto_bignum_to_bin((struct crypto_bignum *) x_bn,
-					     x, len, len);
+			ret = crypto_bignum_to_bin(
+				(struct crypto_bignum *) x_bn, x, len, len);
 		}
-		if (y) {
-			crypto_bignum_to_bin((struct crypto_bignum *) y_bn,
-					     y, len, len);
+		if (ret >= 0 && y) {
+			ret = crypto_bignum_to_bin(
+				(struct crypto_bignum *) y_bn, y, len, len);
 		}
-		ret = 0;
+
+		if (ret > 0)
+			ret = 0;
 	}
 
 	BN_clear_free(x_bn);
