@@ -218,7 +218,9 @@ typedef struct {
 	} d;
 } AttrOrOID;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 DEFINE_STACK_OF(AttrOrOID)
+#endif
 
 typedef struct {
 	int type;
