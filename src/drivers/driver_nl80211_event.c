@@ -3158,6 +3158,9 @@ static void nl80211_port_authorized(struct wpa_driver_nl80211_data *drv,
 				    struct nlattr **tb)
 {
 	const u8 *addr;
+	union wpa_event_data event;
+
+	os_memset(&event, 0, sizeof(event));
 
 	if (!tb[NL80211_ATTR_MAC] ||
 	    nla_len(tb[NL80211_ATTR_MAC]) != ETH_ALEN) {
@@ -3175,7 +3178,15 @@ static void nl80211_port_authorized(struct wpa_driver_nl80211_data *drv,
 		return;
 	}
 
-	wpa_supplicant_event(drv->ctx, EVENT_PORT_AUTHORIZED, NULL);
+	if (tb[NL80211_ATTR_TD_BITMAP]) {
+		event.port_authorized.td_bitmap_len =
+			nla_len(tb[NL80211_ATTR_TD_BITMAP]);
+		if (event.port_authorized.td_bitmap_len > 0)
+			event.port_authorized.td_bitmap =
+				nla_data(tb[NL80211_ATTR_TD_BITMAP]);
+	}
+
+	wpa_supplicant_event(drv->ctx, EVENT_PORT_AUTHORIZED, &event);
 }
 
 

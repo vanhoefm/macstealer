@@ -6061,6 +6061,15 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		break;
 #endif /* CONFIG_PASN */
 	case EVENT_PORT_AUTHORIZED:
+#ifndef CONFIG_NO_WPA
+		if (data->port_authorized.td_bitmap_len) {
+			wpa_printf(MSG_DEBUG,
+				   "WPA3: Transition Disable bitmap from the driver event: 0x%x",
+				   data->port_authorized.td_bitmap[0]);
+			wpas_transition_disable(
+				wpa_s, data->port_authorized.td_bitmap[0]);
+		}
+#endif /* CONFIG_NO_WPA */
 		wpa_supplicant_event_port_authorized(wpa_s);
 		break;
 	case EVENT_STATION_OPMODE_CHANGED:

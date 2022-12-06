@@ -1282,9 +1282,8 @@ static void disable_wpa_wpa2(struct wpa_ssid *ssid)
 }
 
 
-static void wpa_supplicant_transition_disable(void *_wpa_s, u8 bitmap)
+void wpas_transition_disable(struct wpa_supplicant *wpa_s, u8 bitmap)
 {
-	struct wpa_supplicant *wpa_s = _wpa_s;
 	struct wpa_ssid *ssid;
 	int changed = 0;
 
@@ -1351,6 +1350,13 @@ static void wpa_supplicant_transition_disable(void *_wpa_s, u8 bitmap)
 	    wpa_config_write(wpa_s->confname, wpa_s->conf))
 		wpa_printf(MSG_DEBUG, "Failed to update configuration");
 #endif /* CONFIG_NO_CONFIG_WRITE */
+}
+
+
+static void wpa_supplicant_transition_disable(void *_wpa_s, u8 bitmap)
+{
+	struct wpa_supplicant *wpa_s = _wpa_s;
+	wpas_transition_disable(wpa_s, bitmap);
 }
 
 

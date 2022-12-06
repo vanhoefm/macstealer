@@ -6472,6 +6472,13 @@ union wpa_event_data {
 	 */
 	struct pasn_auth pasn_auth;
 
+	/**
+	 * struct port_authorized - Data for EVENT_PORT_AUTHORIZED
+	 */
+	struct port_authorized {
+		const u8 *td_bitmap;
+		size_t td_bitmap_len;
+	} port_authorized;
 };
 
 /**
