@@ -1849,7 +1849,9 @@ void sme_event_auth(struct wpa_supplicant *wpa_s, union wpa_event_data *data)
 		return;
 	}
 
-	if (os_memcmp(wpa_s->pending_bssid, data->auth.peer, ETH_ALEN) != 0) {
+	if (os_memcmp(wpa_s->pending_bssid, data->auth.peer, ETH_ALEN) != 0 &&
+	    !(wpa_s->valid_links &&
+	      os_memcmp(wpa_s->ap_mld_addr, data->auth.peer, ETH_ALEN) == 0)) {
 		wpa_dbg(wpa_s, MSG_DEBUG, "SME: Ignore authentication with "
 			"unexpected peer " MACSTR,
 			MAC2STR(data->auth.peer));
