@@ -774,6 +774,7 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 	char *confname = NULL;
 	char *bridge_ifname = NULL;
 	bool create_iface = false;
+	u8 *if_addr = NULL;
 	enum wpa_driver_if_type if_type = WPA_IF_STATION;
 
 	dbus_message_iter_init(message, &iter);
@@ -826,6 +827,18 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 				goto error;
 			}
 			wpa_dbus_dict_entry_clear(&entry);
+		} else if (os_strcmp(entry.key, "Address") == 0 &&
+			   entry.type == DBUS_TYPE_STRING) {
+			if_addr = os_malloc(ETH_ALEN);
+			if (if_addr == NULL) {
+				wpa_dbus_dict_entry_clear(&entry);
+				goto oom;
+			}
+			if (hwaddr_aton(entry.str_value, if_addr)) {
+				wpa_dbus_dict_entry_clear(&entry);
+				goto error;
+			}
+			wpa_dbus_dict_entry_clear(&entry);
 		} else {
 			wpa_dbus_dict_entry_clear(&entry);
 			goto error;
@@ -855,7 +868,7 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 				   __func__, ifname);
 			if (!global->ifaces ||
 			    wpa_drv_if_add(global->ifaces, if_type, ifname,
-					   NULL, NULL, NULL, mac_addr,
+					   if_addr, NULL, NULL, mac_addr,
 					   NULL) < 0) {
 				reply = wpas_dbus_error_unknown_error(
 					message,
@@ -895,6 +908,7 @@ out:
 	os_free(ifname);
 	os_free(confname);
 	os_free(bridge_ifname);
+	os_free(if_addr);
 	return reply;
 
 error:

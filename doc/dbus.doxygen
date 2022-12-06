@@ -43,6 +43,7 @@ registered in the bus with fi.w1.wpa_supplicant1 name.
 	      <tr><td>ConfigFile</td><td>s</td><td>Configuration file path</td><td>No</td>
 	      <tr><td>Create</td><td>b</td><td>Whether to create a new interface in the kernel</td><td>No</td>
 	      <tr><td>Type</td><td>s</td><td>Interface type to create (sta or ap)</td><td>No</td>
+	      <tr><td>Address</td><td>s</td><td>MAC address in colon-delimited format to be used in the created interface</td><td>No</td>
 	    </table>
 	  </dd>
 	</dl>
