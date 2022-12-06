@@ -308,7 +308,7 @@ void wpa_supplicant_stop_countermeasures(void *eloop_ctx, void *sock_ctx)
 }
 
 
-static void wpas_reset_mlo_info(struct wpa_supplicant *wpa_s)
+void wpas_reset_mlo_info(struct wpa_supplicant *wpa_s)
 {
 	if (!wpa_s->valid_links)
 		return;

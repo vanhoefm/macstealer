@@ -370,6 +370,188 @@ static void sme_auth_handle_rrm(struct wpa_supplicant *wpa_s,
 }
 
 
+static bool wpas_ml_element(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
+{
+	struct wpabuf *mlbuf;
+	const u8 *rnr_ie, *pos;
+	u8 ml_ie_len, rnr_ie_len;
+	const struct ieee80211_eht_ml *eht_ml;
+	const struct eht_ml_basic_common_info *ml_basic_common_info;
+	u8 i;
+	const u16 control =
+		host_to_le16(MULTI_LINK_CONTROL_TYPE_BASIC |
+			     BASIC_MULTI_LINK_CTRL_PRES_LINK_ID |
+			     BASIC_MULTI_LINK_CTRL_PRES_BSS_PARAM_CH_COUNT |
+			     BASIC_MULTI_LINK_CTRL_PRES_MLD_CAPA);
+	bool ret = false;
+
+	if (!(wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_MLO))
+		return false;
+
+	mlbuf = wpa_bss_defrag_mle(bss, MULTI_LINK_CONTROL_TYPE_BASIC);
+	if (!mlbuf) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "MLD: No ML element");
+		return false;
+	}
+
+	ml_ie_len = wpabuf_len(mlbuf);
+
+	/* control + common info len + MLD address + MLD link information */
+	if (ml_ie_len < 2 + 1 + ETH_ALEN + 1)
+		goto out;
+
+	eht_ml = wpabuf_head(mlbuf);
+	if ((eht_ml->ml_control & control) != control) {
+		wpa_printf(MSG_DEBUG, "MLD: Unexpected ML element control=0x%x",
+			   eht_ml->ml_control);
+		goto out;
+	}
+
+	ml_basic_common_info =
+		(const struct eht_ml_basic_common_info *) eht_ml->variable;
+
+	/* common info length should be valid (self, mld_addr, link_id) */
+	if (ml_basic_common_info->len < 1 + ETH_ALEN + 1)
+		goto out;
+
+	/* get the MLD address and MLD link ID */
+	os_memcpy(wpa_s->ap_mld_addr, ml_basic_common_info->mld_addr,
+		  ETH_ALEN);
+	wpa_s->mlo_assoc_link_id = ml_basic_common_info->variable[0] &
+		EHT_ML_LINK_ID_MSK;
+
+	os_memcpy(wpa_s->links[wpa_s->mlo_assoc_link_id].bssid, bss->bssid,
+		  ETH_ALEN);
+	wpa_s->links[wpa_s->mlo_assoc_link_id].freq = bss->freq;
+
+	wpa_printf(MSG_DEBUG, "MLD: address=" MACSTR ", link ID=%u",
+		   MAC2STR(wpa_s->ap_mld_addr), wpa_s->mlo_assoc_link_id);
+
+	wpa_s->valid_links = BIT(wpa_s->mlo_assoc_link_id);
+
+	rnr_ie = wpa_bss_get_ie(bss, WLAN_EID_REDUCED_NEIGHBOR_REPORT);
+	if (!rnr_ie) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "MLD: No RNR element");
+		ret = true;
+		goto out;
+	}
+
+	rnr_ie_len = rnr_ie[1];
+	pos = rnr_ie + 2;
+
+	while (rnr_ie_len > sizeof(struct ieee80211_neighbor_ap_info)) {
+		const struct ieee80211_neighbor_ap_info *ap_info =
+			(const struct ieee80211_neighbor_ap_info *) pos;
+		const u8 *data = ap_info->data;
+		size_t len = sizeof(struct ieee80211_neighbor_ap_info) +
+			ap_info->tbtt_info_len;
+
+		wpa_printf(MSG_DEBUG, "MLD: op_class=%u, channel=%u",
+			   ap_info->op_class, ap_info->channel);
+
+		if (len > rnr_ie_len)
+			break;
+
+		if (ap_info->tbtt_info_len < 16) {
+			rnr_ie_len -= len;
+			pos += len;
+			continue;
+		}
+
+		data += 13;
+
+		wpa_printf(MSG_DEBUG, "MLD: mld ID=%u, link ID=%u",
+			   *data, *(data + 1) & 0xF);
+
+		if (*data) {
+			wpa_printf(MSG_DEBUG,
+				   "MLD: Reported link not part of MLD");
+		} else {
+			struct wpa_bss *neigh_bss =
+				wpa_bss_get_bssid(wpa_s, ap_info->data + 1);
+			u8 link_id = *(data + 1) & 0xF;
+
+			if (neigh_bss) {
+				if (wpa_scan_res_match(wpa_s, 0, neigh_bss,
+						       wpa_s->current_ssid,
+						       1, 0)) {
+					wpa_s->valid_links |= BIT(link_id);
+					os_memcpy(wpa_s->links[link_id].bssid,
+						  ap_info->data + 1, ETH_ALEN);
+					wpa_s->links[link_id].freq =
+						neigh_bss->freq;
+				} else {
+					wpa_printf(MSG_DEBUG,
+						   "MLD: Neighbor doesn't match current SSID - skip link");
+				}
+			} else {
+				wpa_printf(MSG_DEBUG,
+					   "MLD: Neighbor not found in scan");
+			}
+		}
+
+		rnr_ie_len -= len;
+		pos += len;
+	}
+
+	wpa_printf(MSG_DEBUG, "MLD: valid_links=0x%x", wpa_s->valid_links);
+
+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+		if (!(wpa_s->valid_links & BIT(i)))
+			continue;
+
+		wpa_printf(MSG_DEBUG, "MLD: link=%u, bssid=" MACSTR,
+			   i, MAC2STR(wpa_s->links[i].bssid));
+	}
+
+	ret = true;
+out:
+	wpabuf_free(mlbuf);
+	return ret;
+}
+
+
+static void wpas_sme_ml_auth(struct wpa_supplicant *wpa_s,
+			     union wpa_event_data *data,
+			     int ie_offset)
+{
+	struct ieee802_11_elems elems;
+	const u8 *mld_addr;
+
+	if (!wpa_s->valid_links)
+		return;
+
+	if (ieee802_11_parse_elems(data->auth.ies + ie_offset,
+				   data->auth.ies_len - ie_offset,
+				   &elems, 0) != ParseOK) {
+		wpa_printf(MSG_DEBUG, "MLD: Failed parsing elements");
+		goto out;
+	}
+
+	if (!elems.basic_mle || !elems.basic_mle_len) {
+		wpa_printf(MSG_DEBUG, "MLD: No ML element in authentication");
+		goto out;
+	}
+
+	mld_addr = get_basic_mle_mld_addr(elems.basic_mle, elems.basic_mle_len);
+	if (!mld_addr)
+		goto out;
+
+	wpa_printf(MSG_DEBUG, "MLD: mld_address=" MACSTR, MAC2STR(mld_addr));
+
+	if (os_memcmp(wpa_s->ap_mld_addr, mld_addr, ETH_ALEN) != 0) {
+		wpa_printf(MSG_DEBUG, "MLD: Unexpected MLD address (expected "
+			   MACSTR ")", MAC2STR(wpa_s->ap_mld_addr));
+		goto out;
+	}
+
+	return;
+out:
+	wpa_printf(MSG_DEBUG, "MLD: Authentication - clearing MLD state");
+	wpas_reset_mlo_info(wpa_s);
+}
+
+
 static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 				    struct wpa_bss *bss, struct wpa_ssid *ssid,
 				    int start)
@@ -413,6 +595,13 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 	params.ssid = bss->ssid;
 	params.ssid_len = bss->ssid_len;
 	params.p2p = ssid->p2p_group;
+
+	if (wpas_ml_element(wpa_s, bss)) {
+		wpa_printf(MSG_DEBUG, "MLD: In authentication");
+		params.mld = true;
+		params.mld_link_id = wpa_s->mlo_assoc_link_id;
+		params.ap_mld_addr = wpa_s->ap_mld_addr;
+	}
 
 	if (wpa_s->sme.ssid_len != params.ssid_len ||
 	    os_memcmp(wpa_s->sme.ssid, params.ssid, params.ssid_len) != 0)
@@ -1646,6 +1835,7 @@ void sme_external_auth_mgmt_rx(struct wpa_supplicant *wpa_s,
 void sme_event_auth(struct wpa_supplicant *wpa_s, union wpa_event_data *data)
 {
 	struct wpa_ssid *ssid = wpa_s->current_ssid;
+	int ie_offset = 0;
 
 	if (ssid == NULL) {
 		wpa_dbg(wpa_s, MSG_DEBUG, "SME: Ignore authentication event "
@@ -1681,7 +1871,7 @@ void sme_event_auth(struct wpa_supplicant *wpa_s, union wpa_event_data *data)
 		res = sme_sae_auth(wpa_s, data->auth.auth_transaction,
 				   data->auth.status_code, data->auth.ies,
 				   data->auth.ies_len, 0, data->auth.peer,
-				   NULL);
+				   &ie_offset);
 		if (res < 0) {
 			wpas_connection_failed(wpa_s, wpa_s->pending_bssid);
 			wpa_supplicant_set_state(wpa_s, WPA_DISCONNECTED);
@@ -1817,6 +2007,11 @@ void sme_event_auth(struct wpa_supplicant *wpa_s, union wpa_event_data *data)
 		}
 	}
 #endif /* CONFIG_FILS */
+
+	/* TODO: Support additional auth_type values as well */
+	if (data->auth.auth_type == WLAN_AUTH_OPEN ||
+	    data->auth.auth_type == WLAN_AUTH_SAE)
+		wpas_sme_ml_auth(wpa_s, data, ie_offset);
 
 	sme_associate(wpa_s, ssid->mode, data->auth.peer,
 		      data->auth.auth_type);

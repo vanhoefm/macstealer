@@ -201,4 +201,6 @@ void calculate_update_time(const struct os_reltime *fetch_time,
 			   unsigned int age_ms,
 			   struct os_reltime *update_time);
 
+struct wpabuf * wpa_bss_defrag_mle(const struct wpa_bss *bss, u8 type);
+
 #endif /* BSS_H */

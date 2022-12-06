@@ -1768,6 +1768,7 @@ void wpa_supplicant_update_channel_list(struct wpa_supplicant *wpa_s,
 int wpa_supplicant_need_to_roam_within_ess(struct wpa_supplicant *wpa_s,
 					   struct wpa_bss *current_bss,
 					   struct wpa_bss *seleceted);
+void wpas_reset_mlo_info(struct wpa_supplicant *wpa_s);
 
 /* eap_register.c */
 int eap_register_methods(void);
