@@ -817,12 +817,14 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 			wpa_dbus_dict_entry_clear(&entry);
 		} else if (os_strcmp(entry.key, "Type") == 0 &&
 			   entry.type == DBUS_TYPE_STRING) {
-			if (os_strcmp(entry.str_value, "sta") == 0)
+			if (os_strcmp(entry.str_value, "sta") == 0) {
 				if_type = WPA_IF_STATION;
-			else if (os_strcmp(entry.str_value, "ap") == 0)
+			} else if (os_strcmp(entry.str_value, "ap") == 0) {
 				if_type = WPA_IF_AP_BSS;
-			else
+			} else {
+				wpa_dbus_dict_entry_clear(&entry);
 				goto error;
+			}
 			wpa_dbus_dict_entry_clear(&entry);
 		} else {
 			wpa_dbus_dict_entry_clear(&entry);
