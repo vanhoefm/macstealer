@@ -86,7 +86,9 @@ static int sme_set_sae_group(struct wpa_supplicant *wpa_s, bool external)
 
 static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 						 struct wpa_ssid *ssid,
-						 const u8 *bssid, int external,
+						 const u8 *bssid,
+						 const u8 *mld_addr,
+						 int external,
 						 int reuse, int *ret_use_pt,
 						 bool *ret_use_pk)
 {
@@ -99,6 +101,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	u8 rsnxe_capa = 0;
 	int key_mgmt = external ? wpa_s->sme.ext_auth_key_mgmt :
 		wpa_s->key_mgmt;
+	const u8 *addr = mld_addr ? mld_addr : bssid;
 
 	if (ret_use_pt)
 		*ret_use_pt = 0;
@@ -162,7 +165,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 	}
 
 	if (reuse && wpa_s->sme.sae.tmp &&
-	    os_memcmp(bssid, wpa_s->sme.sae.tmp->bssid, ETH_ALEN) == 0) {
+	    os_memcmp(addr, wpa_s->sme.sae.tmp->bssid, ETH_ALEN) == 0) {
 		wpa_printf(MSG_DEBUG,
 			   "SAE: Reuse previously generated PWE on a retry with the same AP");
 		use_pt = wpa_s->sme.sae.h2e;
@@ -230,7 +233,7 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 
 	if (use_pt &&
 	    sae_prepare_commit_pt(&wpa_s->sme.sae, ssid->pt,
-				  wpa_s->own_addr, bssid,
+				  wpa_s->own_addr, addr,
 				  wpa_s->sme.sae_rejected_groups, NULL) < 0)
 		goto fail;
 	if (!use_pt &&
@@ -241,13 +244,13 @@ static struct wpabuf * sme_auth_build_sae_commit(struct wpa_supplicant *wpa_s,
 		goto fail;
 	}
 	if (wpa_s->sme.sae.tmp) {
-		os_memcpy(wpa_s->sme.sae.tmp->bssid, bssid, ETH_ALEN);
+		os_memcpy(wpa_s->sme.sae.tmp->bssid, addr, ETH_ALEN);
 		if (use_pt && use_pk)
 			wpa_s->sme.sae.pk = 1;
 #ifdef CONFIG_SAE_PK
 		os_memcpy(wpa_s->sme.sae.tmp->own_addr, wpa_s->own_addr,
 			  ETH_ALEN);
-		os_memcpy(wpa_s->sme.sae.tmp->peer_addr, bssid, ETH_ALEN);
+		os_memcpy(wpa_s->sme.sae.tmp->peer_addr, addr, ETH_ALEN);
 		sae_pk_set_password(&wpa_s->sme.sae, password);
 #endif /* CONFIG_SAE_PK */
 	}
@@ -688,7 +691,9 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 		if (wpa_key_mgmt_fils(ssid->key_mgmt))
 			cache_id = wpa_bss_get_fils_cache_id(bss);
 #endif /* CONFIG_FILS */
-		if (pmksa_cache_set_current(wpa_s->wpa, NULL, bss->bssid,
+		if (pmksa_cache_set_current(wpa_s->wpa, NULL,
+					    params.mld ? params.ap_mld_addr :
+					    bss->bssid,
 					    wpa_s->current_ssid,
 					    try_opportunistic, cache_id,
 					    0) == 0)
@@ -990,7 +995,10 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 
 #ifdef CONFIG_SAE
 	if (!skip_auth && params.auth_alg == WPA_AUTH_ALG_SAE &&
-	    pmksa_cache_set_current(wpa_s->wpa, NULL, bss->bssid, ssid, 0,
+	    pmksa_cache_set_current(wpa_s->wpa, NULL,
+				    params.mld ? params.ap_mld_addr :
+				    bss->bssid,
+				    ssid, 0,
 				    NULL,
 				    wpa_key_mgmt_sae(wpa_s->key_mgmt) ?
 				    wpa_s->key_mgmt :
@@ -1005,7 +1013,10 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 	if (!skip_auth && params.auth_alg == WPA_AUTH_ALG_SAE) {
 		if (start)
 			resp = sme_auth_build_sae_commit(wpa_s, ssid,
-							 bss->bssid, 0,
+							 bss->bssid,
+							 params.mld ?
+							 params.ap_mld_addr :
+							 NULL, 0,
 							 start == 2, NULL,
 							 NULL);
 		else
@@ -1084,7 +1095,9 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
 			goto no_fils;
 		}
 
-		if (pmksa_cache_set_current(wpa_s->wpa, NULL, bss->bssid,
+		if (pmksa_cache_set_current(wpa_s->wpa, NULL,
+					    params.mld ? params.ap_mld_addr :
+					    bss->bssid,
 					    ssid, 0,
 					    wpa_bss_get_fils_cache_id(bss),
 					    0) == 0)
@@ -1320,8 +1333,8 @@ static int sme_external_auth_send_sae_commit(struct wpa_supplicant *wpa_s,
 	bool use_pk;
 	u16 status;
 
-	resp = sme_auth_build_sae_commit(wpa_s, ssid, bssid, 1, 0, &use_pt,
-					 &use_pk);
+	resp = sme_auth_build_sae_commit(wpa_s, ssid, bssid, NULL,
+					 1, 0, &use_pt, &use_pk);
 	if (!resp) {
 		wpa_printf(MSG_DEBUG, "SAE: Failed to build SAE commit");
 		return -1;
@@ -1869,7 +1882,9 @@ void sme_event_auth(struct wpa_supplicant *wpa_s, union wpa_event_data *data)
 
 #ifdef CONFIG_SAE
 	if (data->auth.auth_type == WLAN_AUTH_SAE) {
+		const u8 *addr = wpa_s->pending_bssid;
 		int res;
+
 		res = sme_sae_auth(wpa_s, data->auth.auth_transaction,
 				   data->auth.status_code, data->auth.ies,
 				   data->auth.ies_len, 0, data->auth.peer,
@@ -1882,7 +1897,10 @@ void sme_event_auth(struct wpa_supplicant *wpa_s, union wpa_event_data *data)
 		if (res != 1)
 			return;
 
-		if (sme_sae_set_pmk(wpa_s, wpa_s->pending_bssid) < 0)
+		if (wpa_s->valid_links)
+			addr = wpa_s->ap_mld_addr;
+
+		if (sme_sae_set_pmk(wpa_s, addr) < 0)
 			return;
 	}
 #endif /* CONFIG_SAE */
