@@ -13070,8 +13070,11 @@ static int wpa_supplicant_global_iface_add(struct wpa_global *global,
 	return 0;
 
 fail:
-	if (create_iface)
+	if (create_iface) {
+		/* wpa_supplicant does not create multi-BSS AP, so collapse to
+		 * WPA_IF_STATION to avoid unwanted clean up in the driver. */
 		wpa_drv_if_remove(global->ifaces, WPA_IF_STATION, iface.ifname);
+	}
 	return -1;
 }
 
@@ -13093,6 +13096,8 @@ static int wpa_supplicant_global_iface_remove(struct wpa_global *global,
 	if (!ret && delete_iface) {
 		wpa_printf(MSG_DEBUG, "CTRL_IFACE deleting the interface '%s'",
 			   cmd);
+		/* wpa_supplicant does not create multi-BSS AP, so collapse to
+		 * WPA_IF_STATION to avoid unwanted clean up in the driver. */
 		ret = wpa_drv_if_remove(global->ifaces, WPA_IF_STATION, cmd);
 	}
 	return ret;

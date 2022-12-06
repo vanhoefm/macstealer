@@ -888,8 +888,6 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 			const char *path = wpa_s->dbus_new_path;
 
 			wpa_s->added_vif = create_iface;
-			wpa_s->added_vif_type = create_iface ? if_type :
-				WPA_IF_MAX;
 			reply = dbus_message_new_method_return(message);
 			dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH,
 						 &path, DBUS_TYPE_INVALID);
@@ -897,9 +895,13 @@ DBusMessage * wpas_dbus_handler_create_interface(DBusMessage *message,
 			reply = wpas_dbus_error_unknown_error(
 				message,
 				"wpa_supplicant couldn't grab this interface.");
-			if (create_iface)
-				wpa_drv_if_remove(global->ifaces, if_type,
-						  ifname);
+			if (create_iface) {
+				/* wpa_supplicant does not create multi-BSS AP,
+				 * so collapse to WPA_IF_STATION to avoid
+				 * unwanted clean up in the driver. */
+				wpa_drv_if_remove(global->ifaces,
+						  WPA_IF_STATION, ifname);
+			}
 		}
 	}
 
@@ -958,7 +960,9 @@ DBusMessage * wpas_dbus_handler_remove_interface(DBusMessage *message,
 	if (delete_iface) {
 		wpa_printf(MSG_DEBUG, "%s[dbus]: deleting the interface '%s'",
 			   __func__, wpa_s->ifname);
-		if (wpa_drv_if_remove(global->ifaces, wpa_s->added_vif_type,
+		/* wpa_supplicant does not create multi-BSS AP, so collapse to
+		 * WPA_IF_STATION to avoid unwanted clean up in the driver. */
+		if (wpa_drv_if_remove(global->ifaces, WPA_IF_STATION,
 				      wpa_s->ifname)) {
 			reply = wpas_dbus_error_unknown_error(
 				message,

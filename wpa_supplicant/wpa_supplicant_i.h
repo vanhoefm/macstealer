@@ -926,7 +926,6 @@ struct wpa_supplicant {
 	unsigned int connection_he:1;
 	unsigned int connection_eht:1;
 	unsigned int disable_mbo_oce:1;
-	enum wpa_driver_if_type added_vif_type;
 
 	struct os_reltime last_mac_addr_change;
 	int last_mac_addr_style;
