@@ -27,10 +27,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		return 0;
 
 	os_memset(&sae, 0, sizeof(sae));
-	res = sae_parse_commit(&sae, data, size, &token, &token_len, groups, 0);
+	res = sae_parse_commit(&sae, data, size, &token, &token_len, groups, 0,
+			       NULL);
 	wpa_printf(MSG_DEBUG, "sae_parse_commit(0): %u", res);
 	sae_clear_data(&sae);
-	res = sae_parse_commit(&sae, data, size, &token, &token_len, groups, 1);
+	res = sae_parse_commit(&sae, data, size, &token, &token_len, groups, 1,
+			       NULL);
 	wpa_printf(MSG_DEBUG, "sae_parse_commit(1): %u", res);
 	sae_clear_data(&sae);
 	os_program_deinit();

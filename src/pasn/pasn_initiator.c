@@ -108,7 +108,7 @@ static int wpas_pasn_wd_sae_rx(struct pasn_data *pasn, struct wpabuf *wd)
 	}
 
 	res = sae_parse_commit(&pasn->sae, data + 6, len - 6, NULL, 0, groups,
-			       1);
+			       1, NULL);
 	if (res != WLAN_STATUS_SUCCESS) {
 		wpa_printf(MSG_DEBUG, "PASN: SAE failed parsing commit");
 		return -1;
@@ -151,7 +151,7 @@ static int wpas_pasn_wd_sae_rx(struct pasn_data *pasn, struct wpabuf *wd)
 		return -1;
 	}
 
-	res = sae_check_confirm(&pasn->sae, data + 6, len - 6);
+	res = sae_check_confirm(&pasn->sae, data + 6, len - 6, NULL);
 	if (res != WLAN_STATUS_SUCCESS) {
 		wpa_printf(MSG_DEBUG, "PASN: SAE failed checking confirm");
 		return -1;

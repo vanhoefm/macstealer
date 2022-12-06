@@ -1373,7 +1373,8 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
 					mgmt->u.auth.variable, &token,
 					&token_len, groups, status_code ==
 					WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
-					status_code == WLAN_STATUS_SAE_PK);
+					status_code == WLAN_STATUS_SAE_PK,
+					NULL);
 		if (resp == SAE_SILENTLY_DISCARD) {
 			wpa_printf(MSG_DEBUG,
 				   "SAE: Drop commit message from " MACSTR " due to reflection attack",
@@ -1473,7 +1474,8 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
 				return;
 			}
 
-			if (sae_check_confirm(sta->sae, var, var_len) < 0) {
+			if (sae_check_confirm(sta->sae, var, var_len,
+					      NULL) < 0) {
 				resp = WLAN_STATUS_CHALLENGE_FAIL;
 				goto reply;
 			}

@@ -136,9 +136,10 @@ int sae_write_commit(struct sae_data *sae, struct wpabuf *buf,
 		     const struct wpabuf *token, const char *identifier);
 u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
 		     const u8 **token, size_t *token_len, int *allowed_groups,
-		     int h2e);
+		     int h2e, int *ie_offset);
 int sae_write_confirm(struct sae_data *sae, struct wpabuf *buf);
-int sae_check_confirm(struct sae_data *sae, const u8 *data, size_t len);
+int sae_check_confirm(struct sae_data *sae, const u8 *data, size_t len,
+		      int *ie_offset);
 u16 sae_group_allowed(struct sae_data *sae, int *allowed_groups, u16 group);
 const char * sae_state_txt(enum sae_state state);
 size_t sae_ecc_prime_len_2_hash_len(size_t prime_len);

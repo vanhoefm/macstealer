@@ -2157,7 +2157,7 @@ static int sae_parse_akm_suite_selector(struct sae_data *sae,
 
 u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
 		     const u8 **token, size_t *token_len, int *allowed_groups,
-		     int h2e)
+		     int h2e, int *ie_offset)
 {
 	const u8 *pos = data, *end = data + len;
 	u16 res;
@@ -2182,6 +2182,9 @@ u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
 	res = sae_parse_commit_element(sae, &pos, end);
 	if (res != WLAN_STATUS_SUCCESS)
 		return res;
+
+	if (ie_offset)
+		*ie_offset = pos - data;
 
 	/* Optional Password Identifier element */
 	res = sae_parse_password_identifier(sae, &pos, end);
@@ -2376,7 +2379,8 @@ int sae_write_confirm(struct sae_data *sae, struct wpabuf *buf)
 }
 
 
-int sae_check_confirm(struct sae_data *sae, const u8 *data, size_t len)
+int sae_check_confirm(struct sae_data *sae, const u8 *data, size_t len,
+		      int *ie_offset)
 {
 	u8 verifier[SAE_MAX_HASH_LEN];
 	size_t hash_len;
@@ -2431,6 +2435,10 @@ int sae_check_confirm(struct sae_data *sae, const u8 *data, size_t len)
 				 len - 2 - hash_len) < 0)
 		return -1;
 #endif /* CONFIG_SAE_PK */
+
+	/* 2 bytes are for send-confirm, then the hash, followed by IEs */
+	if (ie_offset)
+		*ie_offset = 2 + hash_len;
 
 	return 0;
 }
