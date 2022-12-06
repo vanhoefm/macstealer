@@ -8329,7 +8329,7 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
 	if (!addr &&
 	    (type == WPA_IF_P2P_CLIENT || type == WPA_IF_P2P_GROUP ||
 	     type == WPA_IF_P2P_GO || type == WPA_IF_MESH ||
-	     type == WPA_IF_STATION)) {
+	     type == WPA_IF_STATION || type == WPA_IF_AP_BSS)) {
 		/* Enforce unique address */
 		u8 new_addr[ETH_ALEN];
 
