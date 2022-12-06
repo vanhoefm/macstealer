@@ -2431,6 +2431,31 @@ mscs_fail:
 	else
 		params.uapsd = -1;
 
+	if (wpa_s->valid_links) {
+		unsigned int i;
+
+		wpa_printf(MSG_DEBUG,
+			   "MLD: In association. assoc_link_id=%u, valid_links=0x%x",
+			   wpa_s->mlo_assoc_link_id, wpa_s->valid_links);
+
+		params.mld_params.mld_addr = wpa_s->ap_mld_addr;
+		params.mld_params.valid_links = wpa_s->valid_links;
+		params.mld_params.assoc_link_id = wpa_s->mlo_assoc_link_id;
+		for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+			if (!(wpa_s->valid_links & BIT(i)))
+				continue;
+
+			params.mld_params.mld_links[i].bssid =
+				wpa_s->links[i].bssid;
+			params.mld_params.mld_links[i].freq =
+				wpa_s->links[i].freq;
+
+			wpa_printf(MSG_DEBUG, "MLD: id=%u, freq=%d, " MACSTR,
+				   i, wpa_s->links[i].freq,
+				   MAC2STR(wpa_s->links[i].bssid));
+		}
+	}
+
 	if (wpa_drv_associate(wpa_s, &params) < 0) {
 		wpa_msg(wpa_s, MSG_INFO, "SME: Association request to the "
 			"driver failed");
