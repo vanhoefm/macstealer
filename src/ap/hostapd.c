@@ -559,6 +559,7 @@ void hostapd_cleanup_iface_partial(struct hostapd_iface *iface)
 	iface->current_rates = NULL;
 	os_free(iface->basic_rates);
 	iface->basic_rates = NULL;
+	iface->cac_started = 0;
 	ap_list_deinit(iface);
 	sta_track_deinit(iface);
 	airtime_policy_update_deinit(iface);
