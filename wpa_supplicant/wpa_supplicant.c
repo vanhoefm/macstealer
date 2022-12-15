@@ -2237,15 +2237,24 @@ int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style,
 	u8 addr[ETH_ALEN];
 
 	os_get_reltime(&now);
-	if (wpa_s->last_mac_addr_style == style &&
-	    /* Pregenerated addresses do not expire */
-	    wpa_s->last_mac_addr_style != 3 &&
-	    wpa_s->last_mac_addr_change.sec != 0 &&
-	    !os_reltime_expired(&now, &wpa_s->last_mac_addr_change,
-				wpa_s->conf->rand_addr_lifetime)) {
-		wpa_msg(wpa_s, MSG_DEBUG,
-			"Previously selected random MAC address has not yet expired");
-		return 0;
+	/* Random addresses are valid within a given ESS so check
+	 * expiration/value only when continuing to use the same ESS. */
+	if (wpa_s->last_mac_addr_style == style && wpa_s->reassoc_same_ess) {
+		if (style == 3) {
+			/* Pregenerated addresses do not expire but their value
+			 * might have changed, so let's check that. */
+			if (os_memcmp(wpa_s->own_addr, ssid->mac_value,
+				      ETH_ALEN) == 0)
+				return 0;
+		} else if (wpa_s->last_mac_addr_change.sec != 0 &&
+			   !os_reltime_expired(
+				   &now,
+				   &wpa_s->last_mac_addr_change,
+				   wpa_s->conf->rand_addr_lifetime)) {
+			wpa_msg(wpa_s, MSG_DEBUG,
+				"Previously selected random MAC address has not yet expired");
+			return 0;
+		}
 	}
 
 	switch (style) {
@@ -2289,7 +2298,7 @@ int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style,
 	wpa_msg(wpa_s, MSG_DEBUG, "Using random MAC address " MACSTR,
 		MAC2STR(addr));
 
-	return 0;
+	return 1;
 }
 
 
@@ -2436,10 +2445,13 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 	wpa_s_setup_sae_pt(wpa_s->conf, ssid);
 #endif /* CONFIG_SAE */
 
-	if (rand_style > 0 && !wpa_s->reassoc_same_ess) {
-		if (wpas_update_random_addr(wpa_s, rand_style, ssid) < 0)
+	if (rand_style > 0) {
+		int status = wpas_update_random_addr(wpa_s, rand_style, ssid);
+
+		if (status < 0)
 			return;
-		wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
+		if (status > 0) /* MAC changed */
+			wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
 	} else if (rand_style == 0 && wpa_s->mac_addr_changed) {
 		if (wpas_restore_permanent_mac_addr(wpa_s) < 0)
 			return;
