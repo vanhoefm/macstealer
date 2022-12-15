@@ -2866,6 +2866,29 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_WFC_STATE = 86,
 
+	/* 8-bit unsigned value to configure the driver to enable/disable the
+	 * EHT EML capability in management frame EHT capabilities.
+	 * 1 - Enable, 0 - Disable.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_EHT_EML_CAPABILITY = 87,
+
+	/* 8-bit unsigned value to configure the driver with EHT MLO max
+	 * simultaneous links to be used for MLO connection.
+	 * The range of the value is 0 to 14.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_EHT_MLO_MAX_SIMULTANEOUS_LINKS = 88,
+
+	/* 8-bit unsigned value to configure the driver with EHT MLO maximum
+	 * number of links to be used for MLO connection.
+	 * The range of the value is 1 to 16.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_EHT_MLO_MAX_NUM_LINKS = 89,
+
+	/* 8-bit unsigned value to configure the driver with EHT MLO mode.
+	 * Uses enum qca_wlan_eht_mlo_mode values.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_EHT_MLO_MODE = 90,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
@@ -8446,6 +8469,24 @@ enum eht_mcs_config {
 	EHT_MCS0_9 = 1,
 	EHT_MCS0_11 = 2,
 	EHT_MCS0_13 = 3,
+};
+
+/**
+ * enum qca_wlan_eht_mlo_mode: EHT MLO mode configuration.
+ * @QCA_WLAN_EHT_MODE_INVALID: Invalid.
+ * @QCA_WLAN_EHT_MLSR: Multi-link single radio mode
+ * @QCA_WLAN_EHT_EMLSR: Enhanced multi-link single radio mode.
+ * @QCA_WLAN_EHT_NON_STR_MLMR: Non simultaneous transmit and receive
+ * multi-link multi radio mode.
+ * @QCA_WLAN_EHT_STR_MLMR: Simultaneous transmit and receive
+ * multi-link multi radio mode.
+ */
+enum qca_wlan_eht_mlo_mode {
+	QCA_WLAN_EHT_MODE_INVALID = 0,
+	QCA_WLAN_EHT_MLSR = 1,
+	QCA_WLAN_EHT_EMLSR = 2,
+	QCA_WLAN_EHT_NON_STR_MLMR = 3,
+	QCA_WLAN_EHT_STR_MLMR = 4,
 };
 
 /**
