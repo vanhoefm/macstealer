@@ -1013,6 +1013,7 @@ static int wpas_p2p_group_delete(struct wpa_supplicant *wpa_s,
 	}
 
 	wpa_s->p2p_in_invitation = 0;
+	wpa_s->p2p_retry_limit = 0;
 	eloop_cancel_timeout(wpas_p2p_move_go, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_p2p_reconsider_moving_go, wpa_s, NULL);
 
@@ -1407,6 +1408,7 @@ static void wpas_group_formation_completed(struct wpa_supplicant *wpa_s,
 		wpa_s->p2p_in_provisioning = 0;
 	}
 	wpa_s->p2p_in_invitation = 0;
+	wpa_s->p2p_retry_limit = 0;
 	wpa_s->group_formation_reported = 1;
 
 	if (!success) {
@@ -2423,6 +2425,21 @@ void wpas_p2p_ap_setup_failed(struct wpa_supplicant *wpa_s)
 }
 
 
+bool wpas_p2p_retry_limit_exceeded(struct wpa_supplicant *wpa_s)
+{
+	if (!wpa_s->p2p_in_invitation || !wpa_s->p2p_retry_limit ||
+	    wpa_s->p2p_in_invitation <= wpa_s->p2p_retry_limit)
+		return false;
+
+	wpa_printf(MSG_DEBUG, "P2P: Group join retry limit exceeded");
+	eloop_cancel_timeout(wpas_p2p_group_formation_timeout,
+			     wpa_s->p2pdev, NULL);
+	eloop_register_timeout(0, 0, wpas_p2p_group_formation_timeout,
+			       wpa_s->p2pdev, NULL);
+	return true;
+}
+
+
 static void wpas_go_neg_completed(void *ctx, struct p2p_go_neg_results *res)
 {
 	struct wpa_supplicant *wpa_s = ctx;
@@ -3282,7 +3299,7 @@ static void wpas_invitation_received(void *ctx, const u8 *sa, const u8 *bssid,
 				wpa_s->conf->p2p_go_he,
 				wpa_s->conf->p2p_go_edmg, NULL,
 				go ? P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE : 0,
-				1, is_p2p_allow_6ghz(wpa_s->global->p2p));
+				1, is_p2p_allow_6ghz(wpa_s->global->p2p), 0);
 		} else if (bssid) {
 			wpa_s->user_initiated_pd = 0;
 			wpa_msg_global(wpa_s, MSG_INFO,
@@ -3512,7 +3529,7 @@ static void wpas_invitation_result(void *ctx, int status, const u8 *bssid,
 				      ssid->mode == WPAS_MODE_P2P_GO ?
 				      P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE :
 				      0, 1,
-				      is_p2p_allow_6ghz(wpa_s->global->p2p));
+				      is_p2p_allow_6ghz(wpa_s->global->p2p), 0);
 }
 
 
@@ -4598,7 +4615,7 @@ static void wpas_p2ps_prov_complete(void *ctx, u8 status, const u8 *dev,
 					persistent_go->mode ==
 					WPAS_MODE_P2P_GO ?
 					P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE :
-					0, 0, false);
+					0, 0, false, 0);
 			} else if (response_done) {
 				wpas_p2p_group_add(wpa_s, 1, freq,
 						   0, 0, 0, 0, 0, 0, false);
@@ -4721,7 +4738,7 @@ static int wpas_prov_disc_resp_cb(void *ctx)
 			NULL,
 			persistent_go->mode == WPAS_MODE_P2P_GO ?
 			P2P_MAX_INITIAL_CONN_WAIT_GO_REINVOKE : 0, 0,
-			is_p2p_allow_6ghz(wpa_s->global->p2p));
+			is_p2p_allow_6ghz(wpa_s->global->p2p), 0);
 	} else {
 		wpas_p2p_group_add(wpa_s, 1, freq, 0, 0, 0, 0, 0, 0,
 				   is_p2p_allow_6ghz(wpa_s->global->p2p));
@@ -6894,7 +6911,7 @@ int wpas_p2p_group_add(struct wpa_supplicant *wpa_s, int persistent_group,
 
 static int wpas_start_p2p_client(struct wpa_supplicant *wpa_s,
 				 struct wpa_ssid *params, int addr_allocated,
-				 int freq, int force_scan)
+				 int freq, int force_scan, int retry_limit)
 {
 	struct wpa_ssid *ssid;
 	int other_iface_found = 0;
@@ -6939,6 +6956,7 @@ static int wpas_start_p2p_client(struct wpa_supplicant *wpa_s,
 
 	wpa_s->show_group_started = 1;
 	wpa_s->p2p_in_invitation = 1;
+	wpa_s->p2p_retry_limit = retry_limit;
 	wpa_s->p2p_invite_go_freq = freq;
 	wpa_s->p2p_go_group_formation_completed = 0;
 	wpa_s->global->p2p_group_formation = wpa_s;
@@ -6982,7 +7000,7 @@ int wpas_p2p_group_add_persistent(struct wpa_supplicant *wpa_s,
 				  int edmg,
 				  const struct p2p_channels *channels,
 				  int connection_timeout, int force_scan,
-				  bool allow_6ghz)
+				  bool allow_6ghz, int retry_limit)
 {
 	struct p2p_go_neg_results params;
 	int go = 0, freq;
@@ -7050,7 +7068,7 @@ int wpas_p2p_group_add_persistent(struct wpa_supplicant *wpa_s,
 		}
 
 		return wpas_start_p2p_client(wpa_s, ssid, addr_allocated, freq,
-					     force_scan);
+					     force_scan, retry_limit);
 	} else {
 		return -1;
 	}
@@ -7806,6 +7824,7 @@ void wpas_p2p_completed(struct wpa_supplicant *wpa_s)
 		wpa_s->global->p2p_group_formation = NULL;
 		wpa_s->p2p_in_provisioning = 0;
 		wpa_s->p2p_in_invitation = 0;
+		wpa_s->p2p_retry_limit = 0;
 	}
 
 	os_memset(go_dev_addr, 0, ETH_ALEN);
@@ -8639,6 +8658,7 @@ void wpas_p2p_notify_ap_sta_authorized(struct wpa_supplicant *wpa_s,
 		wpa_s->global->p2p_group_formation = NULL;
 		wpa_s->p2p_in_provisioning = 0;
 		wpa_s->p2p_in_invitation = 0;
+		wpa_s->p2p_retry_limit = 0;
 	}
 	wpa_s->global->p2p_go_wait_client.sec = 0;
 	if (addr == NULL)

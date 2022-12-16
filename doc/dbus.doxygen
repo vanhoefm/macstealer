@@ -1592,6 +1592,7 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 	<tr><td>persistent</td><td>b</td><td>Whether to form a persistent group.</td><td>no</td></tr>
 	<tr><td>persistent_group_object</td><td>o</td><td></td><td>no</td></tr>
 	<tr><td>frequency</td><td>i</td><td>Operating frequency in MHz</td><td>no</td></tr>
+	<tr><td>retry_limit</td><td>i</td><td>Optional limit on the number of scan attempts to join a group</td><td>no</td></tr>
 	</table>
       </dd>
     </dl>

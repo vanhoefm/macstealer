@@ -1051,6 +1051,7 @@ struct wpa_supplicant {
 	int p2p_sd_over_ctrl_iface;
 	int p2p_in_provisioning;
 	int p2p_in_invitation;
+	int p2p_retry_limit;
 	int p2p_invite_go_freq;
 	int pending_invite_ssid_id;
 	int show_group_started;

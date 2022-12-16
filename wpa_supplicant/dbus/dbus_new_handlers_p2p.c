@@ -355,6 +355,7 @@ DBusMessage * wpas_dbus_handler_p2p_group_add(DBusMessage *message,
 	char *pg_object_path = NULL;
 	int persistent_group = 0;
 	int freq = 0;
+	int retry_limit = 0;
 	char *iface = NULL;
 	unsigned int group_id = 0;
 	struct wpa_ssid *ssid;
@@ -375,6 +376,11 @@ DBusMessage * wpas_dbus_handler_p2p_group_add(DBusMessage *message,
 			   entry.type == DBUS_TYPE_INT32) {
 			freq = entry.int32_value;
 			if (freq <= 0)
+				goto inv_args_clear;
+		} else if (os_strcmp(entry.key, "retry_limit") == 0 &&
+			   entry.type == DBUS_TYPE_INT32) {
+			retry_limit = entry.int32_value;
+			if (retry_limit <= 0)
 				goto inv_args_clear;
 		} else if (os_strcmp(entry.key, "persistent_group_object") ==
 			   0 &&
@@ -426,7 +432,7 @@ DBusMessage * wpas_dbus_handler_p2p_group_add(DBusMessage *message,
 
 		if (wpas_p2p_group_add_persistent(wpa_s, ssid, 0, freq, 0, 0, 0,
 						  0, 0, 0, 0, NULL, 0, 0,
-						  false)) {
+						  false, retry_limit)) {
 			reply = wpas_dbus_error_unknown_error(
 				message,
 				"Failed to reinvoke a persistent group");

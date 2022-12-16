@@ -467,6 +467,7 @@ static void wpa_supplicant_optimize_freqs(
 			 */
 			wpa_dbg(wpa_s, MSG_DEBUG, "P2P: Clear p2p_in_invitation");
 			wpa_s->p2p_in_invitation = 0;
+			wpa_s->p2p_retry_limit = 0;
 		}
 	}
 #endif /* CONFIG_P2P */

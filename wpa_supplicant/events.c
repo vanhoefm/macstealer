@@ -2435,6 +2435,9 @@ static int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
 			if (res == 1)
 				return 0;
 
+			if (wpas_p2p_retry_limit_exceeded(wpa_s))
+				return 0;
+
 			if (wpa_s->p2p_in_provisioning ||
 			    wpa_s->show_group_started ||
 			    wpa_s->p2p_in_invitation) {
