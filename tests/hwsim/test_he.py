@@ -313,6 +313,7 @@ def test_he80_params(dev, apdev):
                   "vht_capab": "[MAX-MPDU-11454][RXLDPC][SHORT-GI-80][TX-STBC-2BY1][RX-STBC-1][MAX-A-MPDU-LEN-EXP0]",
                   "vht_oper_centr_freq_seg0_idx": "42",
                   "require_vht": "1",
+                  "require_he": "1",
                   "he_oper_chwidth": "1",
                   "he_oper_centr_freq_seg0_idx": "42",
                   "he_su_beamformer": "1",
@@ -334,6 +335,10 @@ def test_he80_params(dev, apdev):
         if "status_code=104" not in ev:
             raise Exception("Unexpected rejection status code")
         dev[1].request("DISCONNECT")
+        dev[1].request("REMOVE_NETWORK all")
+        dev[1].dump_monitor()
+        dev[1].connect("he", key_mgmt="NONE", scan_freq="5180",
+                       disable_he="1", wait_connect=False)
         hwsim_utils.test_connectivity(dev[0], hapd)
         sta0 = hapd.get_sta(dev[0].own_addr())
         sta2 = hapd.get_sta(dev[2].own_addr())
@@ -343,6 +348,11 @@ def test_he80_params(dev, apdev):
             raise Exception("dev[0] did not support SGI")
         if capab2 & 0x60 != 0:
             raise Exception("dev[2] claimed support for SGI")
+        ev = dev[1].wait_event(["CTRL-EVENT-ASSOC-REJECT"])
+        if ev is None:
+            raise Exception("Association rejection timed out (2)")
+        if "status_code=124" not in ev:
+            raise Exception("Unexpected rejection status code (2): " + ev)
     except Exception as e:
         if isinstance(e, Exception) and str(e) == "AP startup failed":
             if not he_supported():
