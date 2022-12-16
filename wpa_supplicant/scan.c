@@ -451,11 +451,36 @@ static void wpa_supplicant_optimize_freqs(
 		 */
 		if (wpa_s->p2p_in_invitation < 5 &&
 		    wpa_s->p2p_invite_go_freq > 0) {
-			wpa_dbg(wpa_s, MSG_DEBUG, "P2P: Scan only GO preferred frequency %d MHz during invitation",
-				wpa_s->p2p_invite_go_freq);
-			params->freqs = os_calloc(2, sizeof(int));
-			if (params->freqs)
-				params->freqs[0] = wpa_s->p2p_invite_go_freq;
+			if (wpa_s->p2p_invite_go_freq == 2 ||
+			    wpa_s->p2p_invite_go_freq == 5) {
+				enum hostapd_hw_mode mode;
+
+				wpa_dbg(wpa_s, MSG_DEBUG,
+					"P2P: Scan only GO preferred band %d GHz during invitation",
+					wpa_s->p2p_invite_go_freq);
+
+				if (!wpa_s->hw.modes)
+					return;
+				mode = wpa_s->p2p_invite_go_freq == 5 ?
+					HOSTAPD_MODE_IEEE80211A :
+					HOSTAPD_MODE_IEEE80211G;
+				if (wpa_s->p2p_in_invitation <= 2)
+					wpa_add_scan_freqs_list(wpa_s, mode,
+								params, false,
+								false, true);
+				if (!params->freqs || params->freqs[0] == 0)
+					wpa_add_scan_freqs_list(wpa_s, mode,
+								params, false,
+								false, false);
+			} else {
+				wpa_dbg(wpa_s, MSG_DEBUG,
+					"P2P: Scan only GO preferred frequency %d MHz during invitation",
+					wpa_s->p2p_invite_go_freq);
+				params->freqs = os_calloc(2, sizeof(int));
+				if (params->freqs)
+					params->freqs[0] =
+					    wpa_s->p2p_invite_go_freq;
+			}
 		}
 		wpa_s->p2p_in_invitation++;
 		if (wpa_s->p2p_in_invitation > 20) {
@@ -713,7 +738,8 @@ static int non_p2p_network_enabled(struct wpa_supplicant *wpa_s)
 int wpa_add_scan_freqs_list(struct wpa_supplicant *wpa_s,
 			    enum hostapd_hw_mode band,
 			    struct wpa_driver_scan_params *params,
-			    bool is_6ghz, bool only_6ghz_psc)
+			    bool is_6ghz, bool only_6ghz_psc,
+			    bool exclude_radar)
 {
 	/* Include only supported channels for the specified band */
 	struct hostapd_hw_modes *mode;
@@ -738,6 +764,9 @@ int wpa_add_scan_freqs_list(struct wpa_supplicant *wpa_s,
 	for (i = 0; i < mode->num_channels; i++) {
 		if (mode->channels[i].flag & HOSTAPD_CHAN_DISABLED)
 			continue;
+		if (exclude_radar &&
+		    (mode->channels[i].flag & HOSTAPD_CHAN_RADAR))
+			continue;
 
 		if (is_6ghz && only_6ghz_psc &&
 		    !is_6ghz_psc_frequency(mode->channels[i].freq))
@@ -761,13 +790,13 @@ static void wpa_setband_scan_freqs(struct wpa_supplicant *wpa_s,
 
 	if (wpa_s->setband_mask & WPA_SETBAND_5G)
 		wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211A, params,
-					false, false);
+					false, false, false);
 	if (wpa_s->setband_mask & WPA_SETBAND_2G)
 		wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211G, params,
-					false, false);
+					false, false, false);
 	if (wpa_s->setband_mask & WPA_SETBAND_6G)
 		wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211A, params,
-					true, false);
+					true, false, false);
 }
 
 

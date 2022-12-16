@@ -92,6 +92,7 @@ void wpa_supplicant_set_default_scan_ies(struct wpa_supplicant *wpa_s);
 int wpa_add_scan_freqs_list(struct wpa_supplicant *wpa_s,
 			    enum hostapd_hw_mode band,
 			    struct wpa_driver_scan_params *params,
-			    bool is_6ghz, bool only_6ghz_psc);
+			    bool is_6ghz, bool only_6ghz_psc,
+			    bool exclude_radar);
 
 #endif /* SCAN_H */

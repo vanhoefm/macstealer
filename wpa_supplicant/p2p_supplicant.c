@@ -342,15 +342,15 @@ void wpas_p2p_scan_freqs(struct wpa_supplicant *wpa_s,
 			 bool include_6ghz)
 {
 	wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211A,
-				params, false, false);
+				params, false, false, false);
 	wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211G,
-				params, false, false);
+				params, false, false, false);
 	wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211AD,
-				params, false, false);
+				params, false, false, false);
 	if (!wpa_s->conf->p2p_6ghz_disable &&
 	    is_p2p_allow_6ghz(wpa_s->global->p2p) && include_6ghz)
 		wpa_add_scan_freqs_list(wpa_s, HOSTAPD_MODE_IEEE80211A,
-					params, true, true);
+					params, true, true, false);
 }
 
 
