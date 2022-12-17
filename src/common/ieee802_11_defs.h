@@ -2429,11 +2429,14 @@ struct ieee80211_he_mu_edca_parameter_set {
 #define RNR_BSS_PARAM_CO_LOCATED                    BIT(6)
 #define RNR_20_MHZ_PSD_MAX_TXPOWER                  255 /* dBm */
 
-/* IEEE P802.11be/D1.5, 9.4.2.311 - EHT Operation element */
+/* IEEE P802.11be/D2.3, 9.4.2.311 - EHT Operation element */
 
 /* Figure 9-1002b: EHT Operation Parameters field subfields */
 #define EHT_OPER_INFO_PRESENT                          BIT(0)
 #define EHT_OPER_DISABLED_SUBCHAN_BITMAP_PRESENT       BIT(1)
+#define EHT_OPER_DEFAULT_PE_DURATION                   BIT(2)
+#define EHT_OPER_GROUP_ADDR_BU_INDICATION_LIMIT        BIT(3)
+#define EHT_OPER_GROUP_ADDR_BU_INDICATION_EXPONENT     (BIT(4) | BIT(5))
 
 /* Control subfield: Channel Width subfield; see Table 9-401b */
 #define EHT_OPER_CHANNEL_WIDTH_20MHZ                   0
@@ -2453,6 +2456,7 @@ struct ieee80211_eht_oper_info {
 /* Figure 9-1002a: EHT Operation element format */
 struct ieee80211_eht_operation {
 	u8 oper_params; /* EHT Operation Parameters: EHT_OPER_* bits */
+	u8 basic_eht_mcs_nss_set[4];
 	struct ieee80211_eht_oper_info oper_info; /* 0 or 3 or 5 octets */
 } STRUCT_PACKED;
 

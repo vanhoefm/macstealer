@@ -197,16 +197,23 @@ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
 	struct ieee80211_eht_operation *oper;
 	u8 *pos = eid, seg0 = 0, seg1 = 0;
 	enum oper_chan_width chwidth;
+	size_t elen = 1 + 4 + 3;
 
 	if (!hapd->iface->current_mode)
 		return eid;
 
 	*pos++ = WLAN_EID_EXTENSION;
-	*pos++ = 5;
+	*pos++ = 1 + elen;
 	*pos++ = WLAN_EID_EXT_EHT_OPERATION;
 
 	oper = (struct ieee80211_eht_operation *) pos;
 	oper->oper_params = EHT_OPER_INFO_PRESENT;
+
+	/* TODO: Fill in appropriate EHT-MCS max Nss information */
+	oper->basic_eht_mcs_nss_set[0] = 0x11;
+	oper->basic_eht_mcs_nss_set[1] = 0x00;
+	oper->basic_eht_mcs_nss_set[2] = 0x00;
+	oper->basic_eht_mcs_nss_set[3] = 0x00;
 
 	if (is_6ghz_op_class(conf->op_class))
 		chwidth = op_class_to_ch_width(conf->op_class);
@@ -246,7 +253,7 @@ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
 	oper->oper_info.ccfs0 = seg0 ? seg0 : hapd->iconf->channel;
 	oper->oper_info.ccfs1 = seg1;
 
-	return pos + 4;
+	return pos + elen;
 }
 
 
