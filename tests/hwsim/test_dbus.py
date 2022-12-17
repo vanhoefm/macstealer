@@ -2030,7 +2030,8 @@ def _test_dbus_interface(dev, apdev):
     (bus, wpas_obj, path, if_obj) = prepare_dbus(dev[0])
     wpas = dbus.Interface(wpas_obj, WPAS_DBUS_SERVICE)
 
-    params = dbus.Dictionary({'Ifname': 'lo', 'Driver': 'none'},
+    params = dbus.Dictionary({'Ifname': 'lo', 'Driver': 'none', 'Type': 'sta',
+                              'Address': '02:03:11:22:33:44'},
                              signature='sv')
     path = wpas.CreateInterface(params)
     logger.debug("New interface path: " + str(path))
@@ -2069,6 +2070,38 @@ def _test_dbus_interface(dev, apdev):
             raise Exception("Unexpected error message for invalid CreateInterface: " + str(e))
 
     params = dbus.Dictionary({'Driver': 'none'}, signature='sv')
+    try:
+        wpas.CreateInterface(params)
+        raise Exception("Invalid CreateInterface() accepted")
+    except dbus.exceptions.DBusException as e:
+        if "InvalidArgs" not in str(e):
+            raise Exception("Unexpected error message for invalid CreateInterface: " + str(e))
+
+    try:
+        wpas.GetInterface("lo")
+        raise Exception("Invalid GetInterface() accepted")
+    except dbus.exceptions.DBusException as e:
+        if "InterfaceUnknown" not in str(e):
+            raise Exception("Unexpected error message for invalid RemoveInterface: " + str(e))
+
+    params = dbus.Dictionary({'Ifname': 'lo', 'Driver': 'none',
+                              'Type': 'foo'}, signature='sv')
+    try:
+        wpas.CreateInterface(params)
+        raise Exception("Invalid CreateInterface() accepted")
+    except dbus.exceptions.DBusException as e:
+        if "InvalidArgs" not in str(e):
+            raise Exception("Unexpected error message for invalid CreateInterface: " + str(e))
+
+    try:
+        wpas.GetInterface("lo")
+        raise Exception("Invalid GetInterface() accepted")
+    except dbus.exceptions.DBusException as e:
+        if "InterfaceUnknown" not in str(e):
+            raise Exception("Unexpected error message for invalid RemoveInterface: " + str(e))
+
+    params = dbus.Dictionary({'Ifname': 'lo', 'Driver': 'none',
+                              'Address': 'foo'}, signature='sv')
     try:
         wpas.CreateInterface(params)
         raise Exception("Invalid CreateInterface() accepted")
