@@ -884,6 +884,7 @@ wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 		sm->mgmt_frame_prot = 0;
 	else
 		sm->mgmt_frame_prot = 1;
+	sm->mfpr = !!(data.capabilities & WPA_CAPABILITY_MFPR);
 
 	if (sm->mgmt_frame_prot && (ciphers & WPA_CIPHER_TKIP)) {
 		    wpa_printf(MSG_DEBUG,

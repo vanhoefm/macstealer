@@ -4830,11 +4830,13 @@ int wpa_get_mib_sta(struct wpa_state_machine *sm, char *buf, size_t buflen)
 			  "wpa=%d\n"
 			  "AKMSuiteSelector=" RSN_SUITE "\n"
 			  "hostapdWPAPTKState=%d\n"
-			  "hostapdWPAPTKGroupState=%d\n",
+			  "hostapdWPAPTKGroupState=%d\n"
+			  "hostapdMFPR=%d\n",
 			  sm->wpa,
 			  RSN_SUITE_ARG(wpa_akm_to_suite(sm->wpa_key_mgmt)),
 			  sm->wpa_ptk_state,
-			  sm->wpa_ptk_group_state);
+			  sm->wpa_ptk_group_state,
+			  sm->mfpr);
 	if (os_snprintf_error(buflen - len, ret))
 		return len;
 	len += ret;
