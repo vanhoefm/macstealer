@@ -2343,6 +2343,19 @@ def run_dpp_qr_code_hostapd_init_offchannel(dev, apdev, extra):
     wait_auth_success(dev[0], hapd, configurator=dev[0], enrollee=hapd,
                       stop_responder=True)
 
+def test_dpp_qr_code_hostapd_init_offchannel_configurator(dev, apdev):
+    """DPP QR Code and hostapd as initiator/Configurator (offchannel)"""
+    check_dpp_capab(dev[0])
+    hapd = hostapd.add_ap(apdev[0], {"ssid": "unconfigured",
+                                     "channel": "11"})
+    check_dpp_capab(hapd)
+    id0 = dev[0].dpp_bootstrap_gen(chan="81/1")
+    uri0 = dev[0].request("DPP_BOOTSTRAP_GET_URI %d" % id0)
+    dev[0].dpp_listen(2412)
+    conf_id = hapd.dpp_configurator_add()
+    hapd.dpp_auth_init(uri=uri0, configurator=conf_id, conf="sta-dpp")
+    wait_auth_success(dev[0], hapd, configurator=hapd, enrollee=dev[0])
+
 def test_dpp_qr_code_hostapd_ignore_mismatch(dev, apdev):
     """DPP QR Code and hostapd ignoring netaccessKey mismatch"""
     check_dpp_capab(dev[0])
