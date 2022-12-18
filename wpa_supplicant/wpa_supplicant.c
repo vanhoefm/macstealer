@@ -1899,7 +1899,8 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_GROUP, wpa_s->group_cipher);
 
 	if (!(ie.capabilities & WPA_CAPABILITY_MFPC) &&
-	    wpas_get_ssid_pmf(wpa_s, ssid) == MGMT_FRAME_PROTECTION_REQUIRED) {
+	    (wpas_get_ssid_pmf(wpa_s, ssid) == MGMT_FRAME_PROTECTION_REQUIRED ||
+	     (bss && is_6ghz_freq(bss->freq)))) {
 		wpa_msg(wpa_s, MSG_INFO,
 			"RSN: Management frame protection required but the selected AP does not enable it");
 		return -1;
@@ -1932,6 +1933,12 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 			  (!ssid->sae_password && ssid->passphrase &&
 			   sae_pk_valid_password(ssid->passphrase))));
 #endif /* CONFIG_SAE_PK */
+	if (bss && is_6ghz_freq(bss->freq) &&
+	    wpas_get_ssid_pmf(wpa_s, ssid) != MGMT_FRAME_PROTECTION_REQUIRED) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "RSN: Force MFPR=1 on 6 GHz");
+		wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_MFP,
+				 MGMT_FRAME_PROTECTION_REQUIRED);
+	}
 #ifdef CONFIG_TESTING_OPTIONS
 	wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_FT_RSNXE_USED,
 			 wpa_s->ft_rsnxe_used);
