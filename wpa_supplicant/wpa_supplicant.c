@@ -2452,7 +2452,8 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 
 		if (status < 0)
 			return;
-		if (status > 0) /* MAC changed */
+		if (rand_style != WPAS_MAC_ADDR_STYLE_DEDICATED_PER_ESS &&
+		    status > 0) /* MAC changed */
 			wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
 	} else if (rand_style == WPAS_MAC_ADDR_STYLE_PERMANENT &&
 		   wpa_s->mac_addr_changed) {
