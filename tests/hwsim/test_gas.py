@@ -17,7 +17,7 @@ import struct
 import hostapd
 from wpasupplicant import WpaSupplicant
 from tshark import run_tshark
-from utils import alloc_fail, wait_fail_trigger, skip_with_fips, HwsimSkip
+from utils import *
 from hwsim import HWSimRadio
 
 def hs20_ap_params():
@@ -1605,10 +1605,11 @@ def test_gas_failures(dev, apdev):
     wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
     wpas.interface_add("wlan5")
     wpas.scan_for_bss(bssid2, freq="2412")
-    wpas.request("SET preassoc_mac_addr 1111")
-    wpas.request("ANQP_GET " + bssid2 + " 258")
-    ev = wpas.wait_event(["Failed to assign random MAC address for GAS"],
-                         timeout=5)
+    wpas.request("SET preassoc_mac_addr 1")
+    with fail_test(wpas, 1, "random_mac_addr"):
+        wpas.request("ANQP_GET " + bssid2 + " 258")
+        ev = wpas.wait_event(["Failed to assign random MAC address for GAS"],
+                             timeout=5)
     wpas.request("SET preassoc_mac_addr 0")
     if ev is None:
         raise Exception("No random MAC address error seen")
