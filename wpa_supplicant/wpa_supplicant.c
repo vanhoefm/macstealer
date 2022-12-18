@@ -2246,7 +2246,8 @@ int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style,
 			if (os_memcmp(wpa_s->own_addr, ssid->mac_value,
 				      ETH_ALEN) == 0)
 				return 0;
-		} else if (wpa_s->last_mac_addr_change.sec != 0 &&
+		} else if ((wpa_s->last_mac_addr_change.sec != 0 ||
+			    wpa_s->last_mac_addr_change.usec != 0) &&
 			   !os_reltime_expired(
 				   &now,
 				   &wpa_s->last_mac_addr_change,
