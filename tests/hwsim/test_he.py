@@ -1217,6 +1217,58 @@ def test_he_6ghz(dev, apdev):
         dev[0].set("sae_pwe", "0")
         clear_regdom(hapd, dev)
 
+def test_he_6ghz_auto_security(dev, apdev):
+    """HE on 6 GHz and automatic security settings on STA"""
+    try:
+        hapd = None
+        params = {"ssid": "he",
+                  "country_code": "DE",
+                  "op_class": "131",
+                  "channel": "5",
+                  "ieee80211ax": "1",
+                  "wpa": "2",
+                  "ieee80211w": "2",
+                  "rsn_pairwise": "CCMP",
+                  "wpa_key_mgmt": "SAE",
+                  "sae_password": "password"}
+        hapd = hostapd.add_ap(apdev[0], params, set_channel=False)
+        bssid = apdev[0]['bssid']
+
+        dev[0].connect("he", psk="password", key_mgmt="SAE WPA-PSK",
+                       ieee80211w="1", scan_freq="5975")
+        status = dev[0].get_status()
+        if "pmf" not in status:
+            raise Exception("pmf missing from status")
+        if status["pmf"] != "2":
+            raise Exception("Unexpected pmf status value: " + status["pmf"])
+
+        hapd.wait_sta()
+        sta = hapd.get_sta(dev[0].own_addr())
+        if sta["hostapdMFPR"] != "1":
+            raise Exception("STA did not indicate MFPR=1")
+    except Exception as e:
+        if isinstance(e, Exception) and str(e) == "AP startup failed":
+            if not he_supported():
+                raise HwsimSkip("HE 6 GHz channel not supported in regulatory information")
+        raise
+    finally:
+        dev[0].request("DISCONNECT")
+        clear_regdom(hapd, dev)
+
+    params = hostapd.wpa2_params(ssid="he", passphrase="password")
+    hapd = hostapd.add_ap(apdev[1], params)
+    bssid = apdev[1]['bssid']
+    dev[0].scan_for_bss(bssid, freq=2412)
+    dev[0].request("RECONNECT")
+    dev[0].wait_connected()
+    status = dev[0].get_status()
+    if "pmf" in status:
+        raise Exception("Unexpected pmf status value(2): " + status["pmf"])
+    hapd.wait_sta()
+    sta = hapd.get_sta(dev[0].own_addr())
+    if "[MFP]" in sta["flags"]:
+        raise Exception("MFP reported unexpectedly(2)")
+
 def test_he_6ghz_security(dev, apdev):
     """HE AP and 6 GHz security parameter validation"""
     params = {"ssid": "he",
