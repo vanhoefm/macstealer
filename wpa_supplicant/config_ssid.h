@@ -71,6 +71,14 @@ enum sae_pk_mode {
 	SAE_PK_MODE_DISABLED = 2,
 };
 
+enum wpas_mac_addr_style {
+	WPAS_MAC_ADDR_STYLE_NOT_SET = -1,
+	WPAS_MAC_ADDR_STYLE_PERMANENT = 0,
+	WPAS_MAC_ADDR_STYLE_RANDOM = 1,
+	WPAS_MAC_ADDR_STYLE_RANDOM_SAME_OUI = 2,
+	WPAS_MAC_ADDR_STYLE_DEDICATED_PER_ESS = 3,
+};
+
 /**
  * struct wpa_ssid - Network configuration data
  *
@@ -995,7 +1003,7 @@ struct wpa_ssid {
 	 * was not specified in the configuration (i.e., default behavior is
 	 * followed).
 	 */
-	int mac_addr;
+	enum wpas_mac_addr_style mac_addr;
 
 	/**
 	 * mac_value - Specific MAC address to be used

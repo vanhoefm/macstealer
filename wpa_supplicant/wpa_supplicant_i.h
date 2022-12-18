@@ -928,7 +928,7 @@ struct wpa_supplicant {
 	unsigned int disable_mbo_oce:1;
 
 	struct os_reltime last_mac_addr_change;
-	int last_mac_addr_style;
+	enum wpas_mac_addr_style last_mac_addr_style;
 
 	struct ibss_rsn *ibss_rsn;
 

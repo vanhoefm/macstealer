@@ -2372,7 +2372,7 @@ static char * wpa_config_write_mac_value(const struct parse_data *data,
 	char *value;
 	int res;
 
-	if (ssid->mac_addr != 3)
+	if (ssid->mac_addr != WPAS_MAC_ADDR_STYLE_DEDICATED_PER_ESS)
 		return NULL;
 
 	value = os_malloc(size);
@@ -3226,7 +3226,7 @@ void wpa_config_set_network_defaults(struct wpa_ssid *ssid)
 #ifdef CONFIG_MACSEC
 	ssid->mka_priority = DEFAULT_PRIO_NOT_KEY_SERVER;
 #endif /* CONFIG_MACSEC */
-	ssid->mac_addr = -1;
+	ssid->mac_addr = WPAS_MAC_ADDR_STYLE_NOT_SET;
 	ssid->max_oper_chwidth = DEFAULT_MAX_OPER_CHWIDTH;
 }
 
@@ -5437,9 +5437,9 @@ static const struct global_parse_data global_fields[] = {
 	{ STR(osu_dir), 0 },
 	{ STR(wowlan_triggers), CFG_CHANGED_WOWLAN_TRIGGERS },
 	{ INT(p2p_search_delay), 0},
-	{ INT(mac_addr), 0 },
+	{ INT_RANGE(mac_addr, 0, 2), 0 },
 	{ INT(rand_addr_lifetime), 0 },
-	{ INT(preassoc_mac_addr), 0 },
+	{ INT_RANGE(preassoc_mac_addr, 0, 2), 0 },
 	{ INT(key_mgmt_offload), 0},
 	{ INT(passive_scan), 0 },
 	{ INT(reassoc_same_bss_optim), 0 },

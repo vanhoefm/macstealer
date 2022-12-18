@@ -1407,7 +1407,7 @@ struct wpa_config {
 	 * the per-network mac_addr parameter. Global mac_addr=1 can be used to
 	 * change this default behavior.
 	 */
-	int mac_addr;
+	enum wpas_mac_addr_style mac_addr;
 
 	/**
 	 * rand_addr_lifetime - Lifetime of random MAC address in seconds
@@ -1421,7 +1421,7 @@ struct wpa_config {
 	 * 1 = use random MAC address
 	 * 2 = like 1, but maintain OUI (with local admin bit set)
 	 */
-	int preassoc_mac_addr;
+	enum wpas_mac_addr_style preassoc_mac_addr;
 
 	/**
 	 * key_mgmt_offload - Use key management offload
@@ -1623,7 +1623,7 @@ struct wpa_config {
 	 * 1 = use random MAC address
 	 * 2 = like 1, but maintain OUI (with local admin bit set)
 	 */
-	int gas_rand_mac_addr;
+	enum wpas_mac_addr_style gas_rand_mac_addr;
 
 	/**
 	 * dpp_config_processing - How to process DPP configuration

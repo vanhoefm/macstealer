@@ -2230,7 +2230,8 @@ void wpas_connect_work_done(struct wpa_supplicant *wpa_s)
 }
 
 
-int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style,
+int wpas_update_random_addr(struct wpa_supplicant *wpa_s,
+			    enum wpas_mac_addr_style style,
 			    struct wpa_ssid *ssid)
 {
 	struct os_reltime now;
@@ -2240,7 +2241,7 @@ int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style,
 	/* Random addresses are valid within a given ESS so check
 	 * expiration/value only when continuing to use the same ESS. */
 	if (wpa_s->last_mac_addr_style == style && wpa_s->reassoc_same_ess) {
-		if (style == 3) {
+		if (style == WPAS_MAC_ADDR_STYLE_DEDICATED_PER_ESS) {
 			/* Pregenerated addresses do not expire but their value
 			 * might have changed, so let's check that. */
 			if (os_memcmp(wpa_s->own_addr, ssid->mac_value,
@@ -2259,16 +2260,16 @@ int wpas_update_random_addr(struct wpa_supplicant *wpa_s, int style,
 	}
 
 	switch (style) {
-	case 1:
+	case WPAS_MAC_ADDR_STYLE_RANDOM:
 		if (random_mac_addr(addr) < 0)
 			return -1;
 		break;
-	case 2:
+	case WPAS_MAC_ADDR_STYLE_RANDOM_SAME_OUI:
 		os_memcpy(addr, wpa_s->perm_addr, ETH_ALEN);
 		if (random_mac_addr_keep_oui(addr) < 0)
 			return -1;
 		break;
-	case 3:
+	case WPAS_MAC_ADDR_STYLE_DEDICATED_PER_ESS:
 		if (!ssid) {
 			wpa_msg(wpa_s, MSG_INFO,
 				"Invalid 'ssid' for address policy 3");
@@ -2402,7 +2403,7 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 			      struct wpa_bss *bss, struct wpa_ssid *ssid)
 {
 	struct wpa_connect_work *cwork;
-	int rand_style;
+	enum wpas_mac_addr_style rand_style;
 
 	wpa_s->own_disconnect_req = 0;
 	wpa_s->own_reconnect_req = 0;
@@ -2414,7 +2415,7 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 	wpabuf_free(wpa_s->pending_eapol_rx);
 	wpa_s->pending_eapol_rx = NULL;
 
-	if (ssid->mac_addr == -1)
+	if (ssid->mac_addr == WPAS_MAC_ADDR_STYLE_NOT_SET)
 		rand_style = wpa_s->conf->mac_addr;
 	else
 		rand_style = ssid->mac_addr;
@@ -2446,14 +2447,15 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 	wpa_s_setup_sae_pt(wpa_s->conf, ssid);
 #endif /* CONFIG_SAE */
 
-	if (rand_style > 0) {
+	if (rand_style > WPAS_MAC_ADDR_STYLE_PERMANENT) {
 		int status = wpas_update_random_addr(wpa_s, rand_style, ssid);
 
 		if (status < 0)
 			return;
 		if (status > 0) /* MAC changed */
 			wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
-	} else if (rand_style == 0 && wpa_s->mac_addr_changed) {
+	} else if (rand_style == WPAS_MAC_ADDR_STYLE_PERMANENT &&
+		   wpa_s->mac_addr_changed) {
 		if (wpas_restore_permanent_mac_addr(wpa_s) < 0)
 			return;
 	}
