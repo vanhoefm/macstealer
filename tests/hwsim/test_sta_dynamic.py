@@ -224,7 +224,7 @@ def test_sta_dynamic_random_mac_addr(dev, apdev):
     wpas.interface_add("wlan5")
     addr0 = wpas.get_driver_status_field("addr")
     wpas.request("SET preassoc_mac_addr 1")
-    wpas.request("SET rand_addr_lifetime 0")
+    wpas.request("SET rand_addr_lifetime 60")
 
     id = wpas.connect("sta-dynamic", psk="12345678", mac_addr="1",
                       scan_freq="2412")
@@ -323,7 +323,7 @@ def test_sta_dynamic_random_mac_addr_keep_oui(dev, apdev):
     wpas.interface_add("wlan5")
     addr0 = wpas.get_driver_status_field("addr")
     wpas.request("SET preassoc_mac_addr 2")
-    wpas.request("SET rand_addr_lifetime 0")
+    wpas.request("SET rand_addr_lifetime 60")
 
     id = wpas.connect("sta-dynamic", psk="12345678", mac_addr="2",
                       scan_freq="2412")
