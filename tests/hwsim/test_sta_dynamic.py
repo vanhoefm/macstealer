@@ -398,6 +398,55 @@ def test_sta_dynamic_random_mac_addr_per_ess(dev, apdev):
     if addr3 != addr_ess1:
         raise Exception("Pregenerated MAC address not restored")
 
+def test_sta_dynamic_random_mac_addr_per_ess_pmksa_caching(dev, apdev):
+    """Dynamically added wpa_supplicant interface and random MAC address per ESS with PMKSA caching"""
+    params = hostapd.wpa2_params(ssid="sta-dynamic", passphrase="12345678")
+    params['wpa_key_mgmt'] = 'SAE'
+    params['ieee80211w'] = '2'
+    hapd = hostapd.add_ap(apdev[0], params)
+    hapd2 = hostapd.add_ap(apdev[1], params)
+
+    wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
+    wpas.interface_add("wlan5")
+    check_sae_capab(wpas)
+    addr0 = wpas.get_driver_status_field("addr")
+    wpas.set("preassoc_mac_addr", "1")
+    wpas.set("rand_addr_lifetime", "0")
+    wpas.set("sae_groups", "")
+
+    wpas.scan_for_bss(hapd.own_addr(), freq=2412)
+    wpas.scan_for_bss(hapd2.own_addr(), freq=2412)
+
+    addr_ess = "f2:11:22:33:44:55"
+    wpas.connect("sta-dynamic", key_mgmt="SAE", psk="12345678",
+                 ieee80211w="2",
+                 mac_addr="3", mac_value=addr_ess, scan_freq="2412")
+    addr1 = wpas.get_driver_status_field("addr")
+    if addr1 != addr_ess:
+        raise Exception("Pregenerated MAC address not used")
+
+    bssid = wpas.get_status_field("bssid")
+    if bssid == hapd.own_addr():
+        h1 = hapd
+        h2 = hapd2
+    else:
+        h1 = hapd2
+        h2 = hapd
+
+    wpas.roam(h2.own_addr())
+    wpas.dump_monitor()
+
+    h2.request("STOP_AP")
+    ev = wpas.wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=10)
+    if ev is None:
+        raise Exception("Disconnection due to beacon loss not reported")
+    wpas.wait_connected()
+    addr3 = wpas.get_driver_status_field("addr")
+    if addr3 != addr_ess:
+        raise Exception("Pregenerated MAC address not restored")
+    if "sae_group" in wpas.get_status():
+        raise Exception("SAE used without PMKSA caching")
+
 def test_sta_dynamic_random_mac_addr_scan(dev, apdev):
     """Dynamically added wpa_supplicant interface and random MAC address for scan"""
     params = hostapd.wpa2_params(ssid="sta-dynamic", passphrase="12345678")
