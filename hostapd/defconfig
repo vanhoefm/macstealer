@@ -166,10 +166,10 @@ CONFIG_IPV6=y
 #CONFIG_IEEE80211BE=y
 
 # Simultaneous Authentication of Equals (SAE), WPA3-Personal
-#CONFIG_SAE=y
+CONFIG_SAE=y
 
 # SAE Public Key, WPA3-Personal
-#CONFIG_SAE_PK=y
+CONFIG_SAE_PK=y
 
 # Remove debugging code that is printing out debug messages to stdout.
 # This can be used to reduce the size of the hostapd considerably if debugging
@@ -280,7 +280,7 @@ CONFIG_IPV6=y
 # internal = Internal TLSv1 implementation (experimental)
 # linux = Linux kernel AF_ALG and internal TLSv1 implementation (experimental)
 # none = Empty template
-#CONFIG_TLS=openssl
+CONFIG_TLS=openssl
 
 # TLS-based EAP methods require at least TLS v1.0. Newer version of TLS (v1.1)
 # can be enabled to get a stronger construction of messages when block ciphers

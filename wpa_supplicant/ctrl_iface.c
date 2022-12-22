@@ -1,6 +1,7 @@
 /*
  * WPA Supplicant / Control interface (shared code for all backends)
  * Copyright (c) 2004-2020, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2022, Mathy Vanhoef <Mathy.Vanhoef@kuleuven.be>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -64,6 +65,8 @@
 #elif !defined(__CYGWIN__) && !defined(CONFIG_NATIVE_WINDOWS)
 #include <net/ethernet.h>
 #endif
+
+#include <limits.h>
 
 static int wpa_supplicant_global_iface_list(struct wpa_global *global,
 					    char *buf, int len);
@@ -2611,6 +2614,9 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 	struct wpa_bssid_ignore *e;
 	char *pos, *end;
 	int ret;
+#if 1
+	int permanent = 0;
+#endif /* MACSTEALER */
 
 	/* cmd: "BSSID_IGNORE [<BSSID>]" */
 	if (*cmd == '\0') {
@@ -2635,6 +2641,14 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 		return 3;
 	}
 
+#if 1
+	pos = os_strstr(cmd, " permanent");
+	if (pos) {
+		*pos = '\0';
+		permanent = 1;
+	}
+#endif /* MACSTEALER */
+
 	wpa_printf(MSG_DEBUG, "CTRL_IFACE: BSSID_IGNORE bssid='%s'", cmd);
 	if (hwaddr_aton(cmd, bssid)) {
 		wpa_printf(MSG_DEBUG, "CTRL_IFACE: invalid BSSID '%s'", cmd);
@@ -2651,6 +2665,20 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 	ret = wpa_bssid_ignore_add(wpa_s, bssid);
 	if (ret < 0)
 		return -1;
+
+#if 1
+	if (permanent)
+	{
+		// Mathy: the entry will now exist. Make the ignore practically permanent.
+		struct wpa_bssid_ignore *entry = wpa_bssid_ignore_get(wpa_s, bssid);
+		if (entry == NULL)
+			return 1;
+
+		entry->count = INT_MAX;
+		entry->timeout_secs = 365 * 24 * 60 * 60;
+	}
+#endif /* MACSTEALER */
+
 	os_memcpy(buf, "OK\n", 3);
 	return 3;
 }
@@ -3607,6 +3635,9 @@ static int wpa_supplicant_ctrl_iface_update_network(
 	}
 #endif /* CONFIG_BGSCAN */
 
+#if 0
+	// MACSTEALER: Don't remove cached keys even when changing one of
+	// these properties of the network.
 	if (os_strcmp(name, "bssid") != 0 &&
 	    os_strcmp(name, "bssid_hint") != 0 &&
 	    os_strcmp(name, "priority") != 0) {
@@ -3621,6 +3652,7 @@ static int wpa_supplicant_ctrl_iface_update_network(
 			eapol_sm_invalidate_cached_session(wpa_s->eapol);
 		}
 	}
+#endif /* MACSTEALER */
 
 	if ((os_strcmp(name, "psk") == 0 &&
 	     value[0] == '"' && ssid->ssid_len) ||
@@ -3708,7 +3740,13 @@ static int wpa_supplicant_ctrl_iface_get_network(
 		return -1;
 	}
 
+#if 0
 	value = wpa_config_get_no_key(ssid, name);
+#else
+	// MACSTEALER: Make it possible to query the PSK so the python script
+	// can get the PSK to represent the identity we are using to connect.
+	value = wpa_config_get(ssid, name);
+#endif /* MACSTEALER */
 	if (value == NULL) {
 		wpa_printf(MSG_EXCESSIVE, "CTRL_IFACE: Failed to get network "
 			   "variable '%s'", name);
@@ -11911,6 +11949,14 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	char *reply;
 	const int reply_size = 4096;
 	int reply_len;
+#if 1
+	int console = 0;
+
+	if (os_strncmp(buf, "> ", 2) == 0) {
+		console = 1;
+		buf += 2;
+	}
+#endif /* MACSTEALER */
 
 	if (os_strncmp(buf, WPA_CTRL_RSP, os_strlen(WPA_CTRL_RSP)) == 0 ||
 	    os_strncmp(buf, "SET_NETWORK ", 12) == 0 ||
@@ -12934,6 +12980,18 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		os_memcpy(reply, "FAIL\n", 5);
 		reply_len = 5;
 	}
+
+#if 1
+	if (console) {
+		if (reply_len + 2 >= reply_size)
+			reply = os_realloc(reply, reply_size + 2);
+
+		memmove(reply + 2, reply, reply_len);
+		reply[0] = '>';
+		reply[1] = ' ';
+		reply_len += 2;
+	}
+#endif /* MACSTEALER */
 
 	*resp_len = reply_len;
 	return reply;

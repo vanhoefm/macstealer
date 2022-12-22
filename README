@@ -1,3 +1,18 @@
+macstealer
+----------
+
+See research/README.md for documentation on how to use MacStealer.
+
+Copyright of portions of this project are held by Jouni Malinen and
+contributors (see below). Copyright of project MacStealer are held by
+Mathy Vanhoef <Mathy.Vanhoef@kuleuven.be> and contributors. MacStealer
+is based on research by Domien Schepers, Aanjhan Ranganathan, and
+Mathy Vanhoef.
+
+Software of project MacStealer is licensed under the 2-clause BSD
+license (the license below with the 3rd clause removed).
+
+
 wpa_supplicant and hostapd
 --------------------------
 

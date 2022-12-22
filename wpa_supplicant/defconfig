@@ -137,7 +137,7 @@ CONFIG_EAP_OTP=y
 #CONFIG_SIM_SIMULATOR=y
 
 # EAP-PSK (experimental; this is _not_ needed for WPA-PSK)
-#CONFIG_EAP_PSK=y
+CONFIG_EAP_PSK=y
 
 # EAP-pwd (secure authentication using only a password)
 CONFIG_EAP_PWD=y
@@ -183,7 +183,7 @@ CONFIG_WPS=y
 CONFIG_EAP_IKEV2=y
 
 # EAP-EKE
-#CONFIG_EAP_EKE=y
+CONFIG_EAP_EKE=y
 
 # MACsec
 CONFIG_MACSEC=y
@@ -255,7 +255,7 @@ CONFIG_CTRL_IFACE=y
 CONFIG_SAE=y
 
 # SAE Public Key, WPA3-Personal
-#CONFIG_SAE_PK=y
+CONFIG_SAE_PK=y
 
 # Disable scan result processing (ap_scan=1) to save code size by about 1 kB.
 # This can be used if ap_scan=1 mode is never enabled.
@@ -320,7 +320,7 @@ CONFIG_BACKEND=file
 #CONFIG_NO_LINUX_PACKET_SOCKET_WAR=y
 
 # Support Operating Channel Validation
-#CONFIG_OCV=y
+CONFIG_OCV=y
 
 # Select TLS implementation
 # openssl = OpenSSL (default)
@@ -328,21 +328,21 @@ CONFIG_BACKEND=file
 # internal = Internal TLSv1 implementation (experimental)
 # linux = Linux kernel AF_ALG and internal TLSv1 implementation (experimental)
 # none = Empty template
-#CONFIG_TLS=openssl
+CONFIG_TLS=openssl
 
 # TLS-based EAP methods require at least TLS v1.0. Newer version of TLS (v1.1)
 # can be enabled to get a stronger construction of messages when block ciphers
 # are used. It should be noted that some existing TLS v1.0 -based
 # implementation may not be compatible with TLS v1.1 message (ClientHello is
 # sent prior to negotiating which version will be used)
-#CONFIG_TLSV11=y
+CONFIG_TLSV11=y
 
 # TLS-based EAP methods require at least TLS v1.0. Newer version of TLS (v1.2)
 # can be enabled to enable use of stronger crypto algorithms. It should be
 # noted that some existing TLS v1.0 -based implementation may not be compatible
 # with TLS v1.2 message (ClientHello is sent prior to negotiating which version
 # will be used)
-#CONFIG_TLSV12=y
+CONFIG_TLSV12=y
 
 # Select which ciphers to use by default with OpenSSL if the user does not
 # specify them.
@@ -484,7 +484,7 @@ CONFIG_DEBUG_SYSLOG=y
 CONFIG_IEEE80211AC=y
 
 # IEEE 802.11ax HE support (mainly for AP mode)
-CONFIG_IEEE80211AX=y
+#CONFIG_IEEE80211AX=y
 
 # IEEE 802.11be EHT support (mainly for AP mode)
 # CONFIG_IEEE80211AX is mandatory for setting CONFIG_IEEE80211BE.
@@ -652,3 +652,11 @@ CONFIG_DPP2=y
 # design is still subject to change. As such, this should not yet be enabled in
 # production use.
 #CONFIG_PASN=y
+
+# WPA3-Enterprise (SuiteB-192)
+CONFIG_SUITEB=y
+
+CONFIG_SUITEB192=y
+
+# Driver support is also needed for IEEE 802.11w.
+CONFIG_IEEE80211W=y

@@ -1,6 +1,7 @@
 /*
  * WPA Supplicant / Configuration parser and common functions
  * Copyright (c) 2003-2019, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2022, Mathy Vanhoef <Mathy.Vanhoef@kuleuven.be>
  *
  * This software may be distributed under the terms of the BSD license.
  * See README for more details.
@@ -3311,7 +3312,14 @@ int wpa_config_set(struct wpa_ssid *ssid, const char *var, const char *value,
 		}
 		ret = -1;
 	}
+
+
+#if 0
+	// MACSTEALER: If we ignore a BSSID in Python, we want it to stay ignored. Even if we
+	// change properties of the network OR when we use the network for the first time. So
+	// never set this variable to true, this assures all BSSIDs stay ignored.
 	ssid->was_recently_reconfigured = true;
+#endif /** MACSTEALER */
 
 	return ret;
 }
