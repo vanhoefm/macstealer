@@ -1,16 +1,18 @@
-# <div align="center">Wi-Fi MAC Address Stealing Attack</div>
+# <div align="center">MacSteal'ing Wi-Fi Frames</div>
 
 # 1. Introduction
 
-This repo contains **MacStealer**. It can test Wi-Fi networks for MAC address stealing
-attacks (CVE-2022-47522). This vulnerability **affects Wi-Fi networks where users of the**
-**network distrust each other**, meaning client isolation is enabled. The attack is also
-known as the _security context override attack_, see Section 5 of our
+This repo contains **MacStealer**. It can test Wi-Fi networks for **MAC address stealing**
+**attacks (CVE-2022-47522)**. This vulnerability affects Wi-Fi networks that rely client
+isolation to protect users from each other. Our attack **bypasses client isolation** and
+can be used to intercept the traffic of other users. The attack is also known as the
+_security context override attack_, see Section 5 of our
 [USENIX Security '23 paper](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
 Concrete examples of possible affected networks are:
 
-- Enterprise networks where users may distrust each other. For instance, company networks
-  with accounts for both guests and staff, networks such as Eduroam and Govroam, etc.
+- Enterprise networks where users may distrust each other and client isolation is enabled.
+  For instance, company networks with accounts for both guests and staff, networks such as
+  Eduroam and Govroam, etc.
 
 - Public hotspots protected by [Passpoint](https://www.wi-fi.org/discover-wi-fi/passpoint) (formerly Hotspot 2.0).
   These are hotspots that you can automatically and securely connect to. For instance,
