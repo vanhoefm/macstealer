@@ -338,8 +338,13 @@ To test whether client isolation is enabled, you can use the following commands:
 - `./macstealer.py wlan0 --c2c wlan1 --flip`: Same as the above test, but now client-to-client
   traffic from the attacker (`wlan0`) to the victim (`wlan1`) is tested.
 
+By default, MacStealer will try to connect to the same AP/BSS using both interface, so it's
+important that both network cards can see the same networks (i.e. make sure that both network
+interfaces support the same frequency bands and channels). If you want both clients to connect
+to a different AP/BSS then you can use the parameter `--other-bss`.
+
 The MAC address stealing vulnerability should be considered a risk in practice if client-to-client
-traffic is blocked in any of the above two tests (meaning client isolation is enabled).
+traffic is blocked in any of the above two tests (meaning when client isolation is enabled).
 
 
 <a id="id-troubleshooting"></a>
@@ -476,7 +481,7 @@ they both use the same password.
 <a id="id-change-log"></a>
 # 8. Change log
 
-**Version 1.0 (23 December 2022)**:
+**Version 1.0 (3 January 2023)**:
 
 - Prepared initial release for usage during the embargo. The code is based on hostap commit 0f3f9cdcab6a.
 

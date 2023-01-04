@@ -641,19 +641,24 @@ class Client2Client:
 		self.supp2.wait_scan_done()
 
 		# Let both client connects
+		log(STATUS, f"Connecting as {self.supp1.id_victim} using {self.supp1.nic_iface} to the network...", color="green")
 		self.supp1.connect(self.supp1.netid_victim, timeout=60)
 		data = self.supp1.status()
 		bssid = data['bssid']
 
 		# If --other-bss is connect, connect to a different BSSID. Otherwise connect to the same BSSID.
 		if self.options.other_bss:
+			log(STATUS, f"Will now connect to a BSSID different than {bssid}")
 			self.supp2.ignore_bssid(bssid)
 		else:
+			log(STATUS, f"Will now connect to the BSSID {bssid}")
 			self.supp2.set_bssid(bssid)
 
 		if self.options.same_id:
+			log(STATUS, f"Connecting as {self.supp2.id_victim} using {self.supp2.nic_iface} to the network...", color="green")
 			self.supp2.connect(self.supp2.netid_victim, timeout=60)
 		else:
+			log(STATUS, f"Connecting as {self.supp2.id_attacker} using {self.supp2.nic_iface} to the network...", color="green")
 			self.supp2.connect(self.supp2.netid_attacker, timeout=60)
 
 		# Let both clients get an IP address
