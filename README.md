@@ -4,9 +4,9 @@
 
 This repo contains **MacStealer**. It can test Wi-Fi networks for **MAC address stealing**
 **attacks (CVE-2022-47522)**. This vulnerability affects Wi-Fi networks that rely client
-isolation to protect users from each other. Our attack **bypasses client isolation** and
-can be used to intercept the traffic of other users. The attack is also known as the
-_security context override attack_, see Section 5 of our
+isolation to protect users from each other. Our attack **bypasses client isolation** (sometimes
+also called AP isolation) and can be used to intercept the traffic of other users. The attack
+is also known as the _security context override attack_, see Section 5 of our
 [USENIX Security '23 paper](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
 Concrete examples of possible affected networks are:
 
@@ -89,13 +89,17 @@ For extra details on the attack, see the _security context override attack_ (Sec
 [Framing Frames: Bypassing Wi-Fi Encryption by Manipulating Transmit Queues](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
 
 
-# 3. Possible defenses
+# 3. Possible mitigations
+
+<a id="id-prevent-stealing"></a>
+## 3.1. Preventing MAC address stealing
 
 To mitigate our attack, an AP can temporarily prevent clients from connecting if they are using
 a MAC address that was recently connected to the AP. This prevents an adversary from spoofing a
 MAC address and intercepting pending or queued frames towards a victim. When it can be guaranteed
 that the user behind a MAC address has not changed, the client can be allowed to immediately reconnect.
-Note that this check must be done over all APs that are part of the same distribution system.
+Note that this check must be done over all APs that are part of the same distribution system, and
+more specifically, over all APs that clients can roam between while keeping their current IP address.
 
 To securely recognize recently-connected users, an AP can store a mapping between a client’s MAC
 address and their cached security associations (e.g., their cached PMK). A client can be allowed
@@ -128,6 +132,31 @@ victim. To prevent leaks beyond this delay, clients can use end-to-end encryptio
 with the services they communicate with.
 
 
+## 3.2. Management Frame Protection (802.11w)
+
+Using Management Frame Protection (MFP) would make the attack harder but not impossible.
+[In previous work](https://papers.mathyvanhoef.com/wisec2022.pdf), we found some ways
+that clients can be disconnected/deauthenticated even when MFP is being used. Based on that
+experience, there always appears to be some method to forcibly disconnect a client from the
+network, even when MFP is being used. It's non-trivial to completely prevent disconnection
+and deauthentication attacks. That being said, MFP would be extra hurdle to overcome when
+performing the attack in practice, so it can be useful mitigation to make the attack
+harder (but not impossible) in practice.
+
+
+## 3.3. Usage of VLANs
+
+Based on preliminary experiments, the attack does not work across different VLANs. In other
+words, the malicious insider that performs the attack must be in the same VLAN as the victim.
+One mitigation is therefore to put different groups of users in different VLANs. However,
+a malicious insider would still be able to perform the attack (i.e., bypass client isolation)
+against other users in the same VLAN.
+
+Note that when using multi-PSK (a.ka. per-station PSK or identity PSK), you can put clients
+in different VLANs depending on the password that they use. In other words, you can use a VLAN
+for each password.
+
+
 <a id="id-prerequisites"></a>
 # 4. Tool Prerequisites
 
@@ -156,7 +185,7 @@ since the coordinated disclosure started.
 <a id="id-before-every-usage"></a>
 # 5. Before every usage
 
-## 5.1 Execution Environment
+## 5.1 Execution environment
 
 Every time you want to use MacStealer, you first have to load the virtual python3 environment
 as root. This can be done using:
@@ -279,6 +308,12 @@ The following table contains common commands that you will execute when testing 
 along with a short description of what each command does. Below the table the details behind
 each command are explained.
 
+If the network being tested uses Management Frame Protection (802.11w), the tool assumes
+that the adversary can still forcibly disconnect the victim from the network. This assumption
+is based on [recent research](https://papers.mathyvanhoef.com/wisec2022.pdf) that showed that
+disconnections attacks are typically still possible, albeit less straightforward or general,
+when using MFP.
+
 |                  Command                  | Short description
 | ----------------------------------------- | ---------------------------------
 | <div align="center">*[Sanity checks](#id-test-sanity)*</div>
@@ -362,7 +397,6 @@ In case MacStealer doesn't appear to be working, check the following:
 3. Confirm that you are connecting to the correct network. Double-check `client.conf`.
 
 4. If you updated the code using git, execute `./build.sh` and `./pysetup.sh` again (see [Prerequisites](#id-prerequisites)).
-   In case the patched drivers got updated, remember to recompile them as well.
 
 5. If you are using a virtual machine, try to run MacStealer from a native Linux installation instead.
 
@@ -480,6 +514,13 @@ they both use the same password.
 
 <a id="id-change-log"></a>
 # 8. Change log
+
+**Version 1.1 (under progress)**
+
+- Improved README: discussion of MFP, discussion of VLANs as mitigation, clarify over which APs the
+  [identity check](#id-prevent-stealing) must be done.
+
+- Improved output of MacStealer.
 
 **Version 1.0 (3 January 2023)**:
 
