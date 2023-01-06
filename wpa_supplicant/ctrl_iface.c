@@ -2676,6 +2676,11 @@ static int wpa_supplicant_ctrl_iface_bssid_ignore(struct wpa_supplicant *wpa_s,
 
 		entry->count = INT_MAX;
 		entry->timeout_secs = 365 * 24 * 60 * 60;
+
+		wpa_printf(MSG_INFO, "BSSID " MACSTR
+			   " ignore list count incremented to %d, ignoring for %d seconds",
+			   MAC2STR(bssid), entry->count, entry->timeout_secs);
+
 	}
 #endif /* MACSTEALER */
 

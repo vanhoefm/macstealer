@@ -202,7 +202,7 @@ class Supplicant(Daemon):
 			log(ERROR, f"ERROR: Victim and attacker are using the same identity {self.id_victim}.")
 			log(ERROR, f"       You must use different identities for this script to give meaningful results!")
 			if not self.options.no_id_check:
-				log(ERROR, f"       Use the --no-id-check paramater to continue anyway.")
+				log(ERROR, f"       Use the --no-id-check parameter to continue anyway.")
 				quit(1)
 
 		# Sanity check: can't specify the same BSSID for the attacker/victim and then specify --other-bss
@@ -524,7 +524,6 @@ class Supplicant(Daemon):
 
 	def run(self):
 		self.start()
-		self.scan()
 
 		#
 		# Step 1. Initial connect
@@ -537,7 +536,8 @@ class Supplicant(Daemon):
 		elif not self.options.other_bss and self.bssid_attacker != None:
 			self.set_bssid(self.bssid_attacker)
 
-		log(STATUS, f"Scanning for network and connecting as victim user.", color="green")
+		log(STATUS, f"Scanning for network and connecting as victim user...", color="green")
+		self.scan()
 		self.connect(self.netid_victim, timeout=30)
 
 		# Store the BSSID that was used (in case the config didn't explicitly specify it)
