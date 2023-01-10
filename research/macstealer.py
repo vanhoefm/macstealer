@@ -705,7 +705,7 @@ def main():
 	parser = argparse.ArgumentParser(description="Security Context Override ('MAC address stealing') attack test")
 	parser.add_argument("iface", help="Wireless interface to use.")
 	parser.add_argument("--config", default="client.conf", help="Config containing victim and attacker credentials.")
-	parser.add_argument("--server", default="216.58.208.100", help="Server to send TCP SYN to.")
+	parser.add_argument("--server", default="8.8.8.8", help="Server to send TCP SYN to.")
 	parser.add_argument("--ping", default=False, action="store_true", help="Perform ping to test connection.")
 	parser.add_argument("-d", "--debug", action="count", default=0, help="Increase output verbosity.")
 	parser.add_argument("--other-bss", default=False, action="store_true", help="User different BSS=AP for victim/attacker.")
