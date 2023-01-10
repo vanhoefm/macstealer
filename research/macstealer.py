@@ -622,10 +622,10 @@ class Client2Client:
 
 		if b"forward_ip" in raw(eth):
 			self.forward_ip = True
-			log(STATUS, f">>> Client to client IP traffic is allowed ({identities}).", color="red")
+			log(STATUS, f">>> Client to client traffic at IP layer is allowed ({identities}).", color="red")
 		if b"forward_ethernet" in raw(eth):
 			self.forward_ethernet = True
-			log(STATUS, f">>> Client to client Ethernet traffic is allowed ({identities}).", color="red")
+			log(STATUS, f">>> Client to client traffic at Ethernet layer is allowed ({identities}).", color="red")
 
 		if self.forward_ip and self.forward_ethernet:
 			quit(1)
@@ -668,15 +668,15 @@ class Client2Client:
 		# [ Send a packet from one client to another ]
 
 		# Option one: test forwarding at the IP level. send_euth will add Ethernet header.
-		ip = IP(src=self.supp1.clientip, dst=self.supp2.clientip)/UDP()
-		p = Ether(src=self.supp1.mac, dst=self.supp2.routermac)/ip
-		log(STATUS, f"Sending {repr(p)} from victim to attacker")
-		self.supp1.send_eth(p/Raw(b"forward_ip"))
+		ip = IP(src=self.supp1.clientip, dst=self.supp2.clientip)/UDP(sport=53, dport=53)
+		p = Ether(src=self.supp1.mac, dst=self.supp2.routermac)/ip/Raw(b"forward_ip")
+		log(STATUS, f"Sending IP layer packet from victim to attacker:       {repr(p)} (Ethernet destination is the gateway/router)")
+		self.supp1.send_eth(p)
 
 		# Option two: test forwarding at the Ethernet level
-		p = Ether(src=self.supp1.mac, dst=self.supp2.mac)/ip
-		log(STATUS, f"Sending {repr(p)} from victim to attacker")
-		self.supp1.send_eth(p/Raw(b"forward_ethernet"))
+		p = Ether(src=self.supp1.mac, dst=self.supp2.mac)/ip/Raw(b"forward_ethernet")
+		log(STATUS, f"Sending Ethernet layer packet from victim to attacker: {repr(p)} (Ethernet destination is the attacker)")
+		self.supp1.send_eth(p)
 
 		# Let the 2nd client handle ARP requests and monitor for packets
 		self.supp2.set_eth_handler(self.monitor_eth)
@@ -688,11 +688,11 @@ class Client2Client:
 			identities = f"{self.supp2.id_victim} to {self.supp2.id_attacker}"
 
 		if not self.forward_ip and not self.forward_ethernet:
-			log(STATUS, f">>> Client to client traffic appears to be disabled ({identities}).", color="green")
+			log(STATUS, f">>> Client to client traffic appears to be disabled at Ethernet and IP layer ({identities}).", color="green")
 		elif not self.forward_ip:
-			log(STATUS, f">>> Client to client IP traffic appears to be disabled ({identities}).", color="green")
+			log(STATUS, f">>> Client to client traffic at IP layer appears to be disabled ({identities}).", color="green")
 		elif not self.forward_ethernet:
-			log(STATUS, f">>> Client to client Ethernet traffic appears to be disabled ({identities}).", color="green")
+			log(STATUS, f">>> Client to client traffic at Ethernet layer appears to be disabled ({identities}).", color="green")
 
 
 def cleanup():
@@ -725,6 +725,9 @@ def main():
 	if options.ping and (options.other_bss or options.same_id or options.c2c or options.fast):
 		log(ERROR, "The ping options cannot be combined with other-bss, same-id, c2c, or fast parameters.")
 		quit(1)
+
+	if options.no_ssid_check and not options.other_bss:
+		log(WARNING, f"WARNING: When using --no-ssid-check you usually also want to use --other-bss")
 
 	options.port = 443
 	if ":" in options.server:
