@@ -3,30 +3,36 @@
 # 1. Introduction
 
 This repo contains **MacStealer**. It can test Wi-Fi networks for **MAC address stealing**
-**attacks (CVE-2022-47522)**. This vulnerability affects Wi-Fi networks that rely client
-isolation to protect users from each other. Our attack **bypasses client isolation** (sometimes
-also called AP isolation) and can be used to intercept the traffic of other users. The attack
-is also known as the _security context override attack_, see Section 5 of our
+**attacks (CVE-2022-47522)**. This vulnerability affects Wi-Fi networks with malicious insiders,
+where our attack can be used to **bypass client isolation** (sometimes also called AP isolation),
+or to bypass Dynamic ARP inspection (DAI), or to bypass other techniques that prevent clients from
+attacking each other. Our attack can be used to intercept the traffic of other users.
+The attack is also known as the _security context override attack_, see Section 5 of our
 [USENIX Security '23 paper](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
 Concrete examples of possible affected networks are:
 
-- Enterprise networks where users may distrust each other and client isolation is enabled.
-  For instance, company networks with accounts for both guests and staff, networks such as
-  Eduroam and Govroam, etc.
+- Enterprise networks where users may distrust each other, and where techniques such as client isolation
+  or ARP inspection are used to prevent users from attacking each other. For instance, company
+  networks with accounts for both guests and staff, networks such as Eduroam and Govroam, etc.
 
 - Public hotspots protected by [Passpoint](https://www.wi-fi.org/discover-wi-fi/passpoint) (formerly Hotspot 2.0).
   These are hotspots that you can automatically and securely connect to. For instance,
   it can seamlessly authenticate you using your phone's SIM card.
 
-- Home WPA2 networks that have client isolation enabled and where multiple passwords are
-  used to further isolate devices, which is also known as
+- Home WPA2 or WPA3 networks that have client isolation enabled. This includes networks with
+  a separate SSID for guests or for insecure (IoT) devices. It also includes networks where
+  multiple passwords are used to further isolate devices, which is also known as
   [Multi-PSK](https://www.arubanetworks.com/techdocs/central/2.5.1/content/access-points/cfg/security/wpa2_mpsk.htm),
   [Identity PSK](https://www.cisco.com/c/en/us/td/docs/wireless/controller/technotes/8-5/b_Identity_PSK_Feature_Deployment_Guide.html),
-  or [per-station PSK](https://0x72326432.com/posts/perstapsk_en/).
+  [per-station PSK](https://0x72326432.com/posts/perstapsk_en/),
+  or [EasyPSK](https://www.cisco.com/c/en/us/td/docs/wireless/controller/9800/17-6/config-guide/b_wl_17_6_cg/m_epsk.html).
 
 - Public hotspots based on [WPA3 SAE-PK](https://www.wi-fi.org/beacon/thomas-derham-nehru-bhandaru/wi-fi-certified-wpa3-december-2020-update-brings-new-0).
   These are hotspots protected by a shared public password, but where an adversary cannot
   abuse this publicly-known password.
+
+We remark that **our attack cannot bypass VLANs**. In other words, based on current experiments,
+our attack cannot be used to exploit a device in another VLAN.
 
 
 <a id="id-attack"></a>
@@ -270,11 +276,15 @@ Note that it is also possible to edit the network block(s) to test a [specific A
 <a id="id-server-config"></a>
 ## 5.3. Server configuration
 
-By default, MacStealer will send a TCP SYN packet to `8.8.8.8` in all tests, which is a
-DNS server of Google. If you want to use a different server, you can provide one using
+By default, MacStealer will send a TCP SYN packet to `8.8.8.8` at port 443 in all tests, which is a
+DNS server of Google. If you want to use a different server or port, you can provide one using
 the `--server` parameter. For instance:
 
 	./macstealer.py wlan0 --server 208.67.222.222
+
+You can also add the port that must be used in the TCP SYN packets:
+
+	./macstealer.py wlan0 --server 208.67.222.222:80
 
 Replace `wlan0` with the name of your Wi-Fi interface and the IP address with the server
 that you want to use.
@@ -512,13 +522,51 @@ they both use the same password.
 	}
 
 
-<a id="id-change-log"></a>
-# 8. Change log
+<a id="id-threat-model"></a>
+# 8. Threat Model Discussion
 
-**Version 1.1 (under progress)**
+## 8.1. WPA-PSK authentication
+
+In practice, client isolation is also used in networks that are secured using a pre-shared password.
+For instance, several routers have an option to create a network for guests or insecure (IoT) devices,
+where clients in this network are isolated so they cannot attack each other. However, the security
+advantage of using client isolation in this scenario can be questioned. Client isolation is supposed
+to prevent a malicious insider from attacking others. But if the malicious insider knows the
+pre-shared password, they can just create a rogue clone (evil twin), trick victims into connecting to
+this malicious copy of the network, and this still attack other clients! In other words, **using client**
+**isolation in a network secured using a password provides no strong security**.
+
+That being said, it can be argued that creating a rogue clone can be detected by the network administrator,
+meaning client isolation does make attacks harder. Additionally, when a lightweight device is (remotely)
+compromised, it may not have the resources to (easily) act as a rogue clone. This makes it harder, but not
+impossible, to perform attacks when client isolation is used. Overall, although client isolation provides
+no strong security guarantees in a password-protected network, it can be argued that it increases the
+practical difficulty of performing attacks.
+
+Our MacStealing attack is easier to perform than creating a rogue clone. All that the malicious insider
+(e.g., a lightweight compromised IoT devices) needs to do is spoof a MAC address and (re)connect to the
+network. Such an attack is also harder to detect. Based on this observation, our new attack makes the
+situation worse, and therefore one can argue that our attack should also be considered relevant in
+networks protected using a pre-shared password.
+
+**Conclusion: when using client isolation in a password-protected network, you are making the assumption**
+**that a malicious insider will not create a rogue AP. Otherwise, the usage of client isolation is**
+**meaningless from a security perspective. The MacStealing attack can be performed without creating a**
+**rogue AP and therefore makes attacks easier.**
+
+
+<a id="id-change-log"></a>
+# 9. Change log
+
+**Version 1.1 (11 January 2023)**
+
+- By default use `8.8.8.8` as the server instead of `216.58.208.100` (both are Google servers).
+
+- Improved README: updated the types of network that may be affected. Included a discussion of
+  whether password-protected WPA2 or WPA3 networks are affected.
 
 - Improved README: discussion of MFP, discussion of VLANs as mitigation, clarify over which APs the
-  [identity check](#id-prevent-stealing) must be done.
+  [identity check](#id-prevent-stealing) must be done, specifying port of the server, 
 
 - Improved output of MacStealer.
 
