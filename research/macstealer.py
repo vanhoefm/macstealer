@@ -618,97 +618,121 @@ class Supplicant(Daemon):
 
 class Client2Client:
 	def __init__(self, options):
-		self.supp1 = Supplicant(options.iface, options)
-		self.supp2 = Supplicant(options.c2c, options)
+		self.sup_victim = Supplicant(options.iface, options)
+		self.sup_attacker = Supplicant(options.c2c, options)
 		self.forward_ip = False
 		self.forward_ethernet = False
 		self.options = options
 
 
 	def stop(self):
-		self.supp1.stop()
-		self.supp2.stop()
+		self.sup_victim.stop()
+		self.sup_attacker.stop()
 
 
 	def monitor_eth(self, eth):
 		if self.options.same_id:
-			identities = f"{self.supp1.id_victim} to {self.supp1.id_victim}"
+			identities = f"{self.sup_victim.id_victim} to {self.sup_victim.id_victim}"
 		else:
-			identities = f"{self.supp1.id_victim} to {self.supp2.id_attacker}"
+			identities = f"{self.sup_attacker.id_attacker} to {self.sup_victim.id_victim}"
 
 		if b"forward_ip" in raw(eth):
 			self.forward_ip = True
 			log(STATUS, f">>> Client to client traffic at IP layer is allowed ({identities}).", color="red")
-		if b"forward_ethernet" in raw(eth):
+		elif b"forward_ethernet" in raw(eth):
 			self.forward_ethernet = True
 			log(STATUS, f">>> Client to client traffic at Ethernet layer is allowed ({identities}).", color="red")
+		elif ARP in eth and eth[ARP].op == 2 and \
+			eth[ARP].psrc == self.sup_victim.routerip and eth[ARP].pdst == self.sup_victim.clientip and \
+			eth[ARP].hwdst == self.sup_victim.mac and eth[ARP].hwsrc == self.sup_attacker.mac:
+			self.forward_ethernet = True
+			log(STATUS, f">>> Client to client traffic at Ethernet (ARP poisoning) layer is allowed ({identities}).", color="red")
 
-		if self.forward_ip and self.forward_ethernet:
+		if self.forward_ethernet and (not self.options.c2c_ip or self.forward_ip):
 			quit(1)
 
 
 	def run(self):
 		# Start both clients
-		self.supp1.start()
-		self.supp2.start()
-		self.supp1.scan(wait=False)
-		self.supp2.scan(wait=False)
-		self.supp1.wait_scan_done()
-		self.supp2.wait_scan_done()
+		self.sup_victim.start()
+		self.sup_attacker.start()
+		self.sup_victim.scan(wait=False)
+		self.sup_attacker.scan(wait=False)
+		self.sup_victim.wait_scan_done()
+		self.sup_attacker.wait_scan_done()
 
 		# Let both client connects
-		log(STATUS, f"Connecting as {self.supp1.id_victim} using {self.supp1.nic_iface} to the network...", color="green")
-		self.supp1.connect(self.supp1.netid_victim, timeout=60)
-		data = self.supp1.status()
+		log(STATUS, f"Connecting as {self.sup_victim.id_victim} using {self.sup_victim.nic_iface} to the network...", color="green")
+		self.sup_victim.connect(self.sup_victim.netid_victim, timeout=60)
+		data = self.sup_victim.status()
 		bssid = data['bssid']
 
 		# If --other-bss is connect, connect to a different BSSID. Otherwise connect to the same BSSID.
 		if self.options.other_bss:
 			log(STATUS, f"Will now connect to a BSSID different than {bssid}")
-			self.supp2.ignore_bssid(bssid)
+			self.sup_attacker.ignore_bssid(bssid)
 		else:
 			log(STATUS, f"Will now connect to the BSSID {bssid}")
-			self.supp2.set_bssid(bssid)
+			self.sup_attacker.set_bssid(bssid)
 
 		if self.options.same_id:
-			log(STATUS, f"Connecting as {self.supp2.id_victim} using {self.supp2.nic_iface} to the network...", color="green")
-			self.supp2.connect(self.supp2.netid_victim, timeout=60)
+			log(STATUS, f"Connecting as {self.sup_attacker.id_victim} using {self.sup_attacker.nic_iface} to the network...", color="green")
+			self.sup_attacker.connect(self.sup_attacker.netid_victim, timeout=60)
 		else:
-			log(STATUS, f"Connecting as {self.supp2.id_attacker} using {self.supp2.nic_iface} to the network...", color="green")
-			self.supp2.connect(self.supp2.netid_attacker, timeout=60)
+			log(STATUS, f"Connecting as {self.sup_attacker.id_attacker} using {self.sup_attacker.nic_iface} to the network...", color="green")
+			self.sup_attacker.connect(self.sup_attacker.netid_attacker, timeout=60)
 
 		# Let both clients get an IP address
-		self.supp1.get_ip_address()
-		self.supp2.get_ip_address()
+		self.sup_victim.get_ip_address()
+		self.sup_attacker.get_ip_address()
 
-		# [ Send a packet from one client to another ]
+		# [ Send a packet from the attacker to the victim ]
 
-		# Option one: test forwarding at the IP level. send_euth will add Ethernet header.
-		ip = IP(src=self.supp1.clientip, dst=self.supp2.clientip)/UDP(sport=53, dport=53)
-		p = Ether(src=self.supp1.mac, dst=self.supp2.routermac)/ip/Raw(b"forward_ip")
-		log(STATUS, f"Sending IP layer packet from victim to attacker:       {repr(p)} (Ethernet destination is the gateway/router)")
-		self.supp1.send_eth(p)
+		# Option one: test forwarding at the IP level. send_eth will add Ethernet header.
+		if self.options.c2c_ip is not None:
+			ip = IP(src=self.sup_attacker.clientip, dst=self.sup_victim.clientip)/UDP(sport=53, dport=53)
+			p = Ether(src=self.sup_attacker.routermac, dst=self.sup_victim.mac)/ip/Raw(b"forward_ip")
+			log(STATUS, f"Sending IP layer packet from victim to attacker:       {repr(p)} (Ethernet destination is the gateway/router)")
+			self.sup_attacker.send_eth(p)
 
 		# Option two: test forwarding at the Ethernet level
-		p = Ether(src=self.supp1.mac, dst=self.supp2.mac)/ip/Raw(b"forward_ethernet")
-		log(STATUS, f"Sending Ethernet layer packet from victim to attacker: {repr(p)} (Ethernet destination is the attacker)")
-		self.supp1.send_eth(p)
+		if self.options.c2c_eth is not None:
+			# Note: although this is still IP traffic, it is send directly to the MAC address
+			# of the reciever instead of to the MAC address of the gateway/router.
+			ip = IP(src=self.sup_attacker.clientip, dst=self.sup_victim.clientip)/UDP(sport=53, dport=53)
+			p = Ether(src=self.sup_attacker.mac, dst=self.sup_victim.mac)/ip/Raw(b"forward_ethernet")
+		else:
+			# Note: there are different forms of ARP poisoning. We only test for the basic variant,
+			# which is the one most likely to be used/detected. Although scapy can automatically fill
+			# in hwsrc, we do this explicitly ourselves.
+			arp = ARP(op="is-at", psrc=self.sup_victim.routerip, pdst=self.sup_victim.clientip, \
+					hwdst=self.sup_victim.mac, hwsrc=self.sup_attacker.mac)
+			p = Ether(src=self.sup_attacker.mac, dst=self.sup_victim.mac)/arp
+		log(STATUS, f"Sending Ethernet layer packet from attacker to victim: {repr(p)} (Ethernet destination is the victim)")
+		self.sup_attacker.send_eth(p)
 
 		# Let the 2nd client handle ARP requests and monitor for packets
-		self.supp2.set_eth_handler(self.monitor_eth)
-		self.supp2.event_loop(timeout=5)
+		self.sup_victim.set_eth_handler(self.monitor_eth)
+		self.sup_victim.event_loop(timeout=5)
 
+		# Identity output to use
+		identities = f"{self.sup_attacker.id_attacker} to {self.sup_attacker.id_victim}"
 		if self.options.same_id:
-			identities = f"{self.supp1.id_victim} to {self.supp1.id_victim}"
-		else:
-			identities = f"{self.supp2.id_victim} to {self.supp2.id_attacker}"
+			identities = f"{self.sup_victim.id_victim} to {self.sup_victim.id_victim}"
 
-		if not self.forward_ip and not self.forward_ethernet:
-			log(STATUS, f">>> Client to client traffic appears to be disabled at Ethernet and IP layer ({identities}).", color="green")
-		elif not self.forward_ip:
-			log(STATUS, f">>> Client to client traffic at IP layer appears to be disabled ({identities}).", color="green")
+		# Layer output to use
+		layer = "Ethernet (ARP poisoning)"
+		if self.options.c2c_ip is not None:
+			layer = "Ethernet (ARP poisoning) and IP"
+		elif self.options.c2c_eth is not None:
+			layer = "Ethernet"
+
+		if   not self.forward_ethernet and not self.forward_ip:
+			log(STATUS, f">>> Client to client traffic appears to be disabled at {layer} layer ({identities}).", color="green")
 		elif not self.forward_ethernet:
-			log(STATUS, f">>> Client to client traffic at Ethernet layer appears to be disabled ({identities}).", color="green")
+			log(STATUS, f">>> Client to client traffic at {layer} layer appears to be disabled ({identities}).", color="green")
+		elif not self.forward_ip and self.options.c2c_ip is not None:
+			log(STATUS, f">>> Client to client traffic at IP layer appears to be disabled ({identities}).", color="green")
 
 
 def cleanup():
@@ -729,7 +753,9 @@ def main():
 	parser.add_argument("--same-id", default=False, action="store_true", help="Reconnect under the victim identity.")
 	parser.add_argument("--flip-id", default=False, action="store_true", help="Flip the victim/attacker identities.")
 	parser.add_argument("--no-id-check", default=False, action="store_true", help="Allow attack test with same victim/attacker identity.")
-	parser.add_argument("--c2c", help="Second interface to test client-to-client traffic.")
+	parser.add_argument("--c2c", help="Second interface to test client-to-client Ethernet ARP poisoning traffic.")
+	parser.add_argument("--c2c-eth", help="Second interface to test client-to-client Ethernet traffic.")
+	parser.add_argument("--c2c-ip", help="Second interface to test client-to-client Ethernet ARP poisoning and IP layer traffic.")
 	parser.add_argument("--fast", help="Fast override attack using second given interface.")
 	options = parser.parse_args()
 
@@ -744,6 +770,10 @@ def main():
 
 	if options.no_ssid_check and not options.other_bss:
 		log(WARNING, f"WARNING: When using --no-ssid-check you usually also want to use --other-bss")
+
+	# Assure that options.c2c is always set when doing client-to-client tests
+	if options.c2c_eth is not None: options.c2c = options.c2c_eth
+	if options.c2c_ip is not None: options.c2c = options.c2c_ip
 
 	options.port = 443
 	if ":" in options.server:
