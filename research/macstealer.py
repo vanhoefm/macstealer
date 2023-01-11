@@ -11,6 +11,10 @@ from wpaspy import Ctrl
 
 #### Debug output functions ####
 
+# Avoid showing identity warning twice when using --c2c test
+already_warned_identity = False
+already_warned_key_mgmt = set()
+
 class Daemon(metaclass=abc.ABCMeta):
 	def __init__(self, options):
 		self.options = options
@@ -139,20 +143,24 @@ class Supplicant(Daemon):
 			if psk == None:
 				psk = self.wpaspy_command(f"GET_NETWORK {net_id} psk", can_fail=True).strip('"')
 			if is_valid_sae_pk_password(psk):
-				return "SAEPK-" + id_str + "{" + psk + "}"
+				return "SAEPK{" + psk + "}"
 			return key_mgmt + "{" + psk + "}"
 
-		elif "EAP" in key_mgmt or key_mgtm in ["IEEE8021X"]:
+		elif "EAP" in key_mgmt or key_mgmt in ["IEEE8021X"]:
 			return "EAP{" + self.wpaspy_command(f"GET_NETWORK {net_id} identity", can_fail=True).strip('"') + "}"
 
 		else:
-			log(WARNING, f"WARNING: Authentication mechanism {key_mgmt} wasn't tested with this script!")
+			if not key_mgmt in ["NONE"] and key_mgmt not in already_warned_key_mgmt:
+				log(WARNING, f"WARNING: Authentication mechanism {key_mgmt} wasn't tested with this script!")
+				already_warned_key_mgmt.add(key_mgmt)
 			return f"{key_mgmt}-{id_str}"
 
 		return None
 
 
 	def find_netids(self, only_victim=False):
+		global already_warned_identity
+
 		netid = 0
 		while True:
 			id_str = self.wpaspy_command(f"GET_NETWORK {netid} id_str", can_fail=True)
@@ -198,12 +206,20 @@ class Supplicant(Daemon):
 
 		# Sanity check: victim and attacker should be using a different identity, unless SAE-PK is used
 		self.id_attacker = self.get_identity_representation(self.netid_attacker, "attacker")
-		if self.id_victim == self.id_attacker:
-			log(ERROR, f"ERROR: Victim and attacker are using the same identity {self.id_victim}.")
-			log(ERROR, f"       You must use different identities for this script to give meaningful results!")
-			if not self.options.no_id_check:
-				log(ERROR, f"       Use the --no-id-check parameter to continue anyway.")
-				quit(1)
+		if not (self.options.c2c and already_warned_identity) and self.id_victim == self.id_attacker:
+			already_warned_identity = True
+			if self.id_victim.startswith("PSK{"):
+				log(STATUS, f"Note: Victim and attacker are using the same password {self.id_victim}. In this scenario")
+				log(STATUS, f"      the attack may be less damaging, see the Threat Model Discussion in README.md.")
+			elif self.id_victim.startswith("SAEPK{"):
+				pass
+			else:
+				lvl = WARNING if self.options.no_id_check else ERROR
+				log(lvl, f"ERROR: Victim and attacker are using the same identity {self.id_victim}.")
+				log(lvl, f"       You must use different identities for this script to give meaningful results!")
+				if not self.options.no_id_check:
+					log(lvl, f"       Use the --no-id-check parameter to continue anyway.")
+					quit(1)
 
 		# Sanity check: can't specify the same BSSID for the attacker/victim and then specify --other-bss
 		self.bssid_victim = self.wpaspy_command(f"GET_NETWORK {self.netid_victim} bssid", can_fail=True)
