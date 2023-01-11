@@ -578,6 +578,9 @@ networks protected using a pre-shared password.
 
 - By default use `8.8.8.8` as the server instead of `216.58.208.100` (both are Google servers).
 
+- Updated client isolation tests: by default test using ARP poisoning at Ethernet layer. Also provide
+  option to send UDP data with forwarding at Ethernet layer, and a test with forwarding at IP layer.
+
 - Improved README: updated the types of network that may be affected. Included a discussion of
   whether password-protected WPA2 or WPA3 networks are affected. Explanation of different commands
   to test for client-to-client Ethernet or IP layer traffic.
