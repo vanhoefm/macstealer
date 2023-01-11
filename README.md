@@ -332,10 +332,9 @@ when using MFP.
 | <div align="center">*[Vulnerability tests](#id-test-vulnerability)*</div>
 | `./macstealer.py wlan0`                   | Test the default variant of the MAC address stealing attack.
 | `./macstealer.py wlan0 --other-bss`       | Let the attacker connect with a different AP than the victim.
-| <div align="center">*[Client isolation](#id-test-isolation)*</div>
-| `./macstealer.py wlan0 --c2c wlan1`       | Test client-to-client traffic from victim to attacker.
-| `./macstealer.py wlan0 --c2c wlan1 --flip`| Test client-to-client traffic from attacker to victim.
-
+| <div align="center">*[Client isolation: Ethernet layer](#id-test-isolation)*</div>
+| `./macstealer.py wlan0 --c2c wlan1` | Test client-to-client Ethernet layer traffic (ARP poisoning).
+| `./macstealer.py wlan0 --c2c-eth wlan1`| Test client-to-client Ethernet layer traffic (DNS).
 
 <a id="id-test-sanity"></a>
 ## 6.1. Sanity checks
@@ -366,30 +365,33 @@ that MacStealer can connect to the network as both the victim and attacker:
 
 
 <a id="id-test-isolation"></a>
-## 6.3. Client isolation tests
+## 6.3. Client isolation tests (Ethernet layer)
 
-Exploiting the MAC address stealing vulnerability only makes sense if client isolation is enabled.
-Otherwise, if client isolation isn't used, an adversary can use easier attacks such as
-[ARP poisoning](https://en.wikipedia.org/wiki/ARP_spoofing) to intercept traffic. Put differently, it's
-only required to prevent MAC address stealing attacks if client isolation is supported/enabled.
-To test whether client isolation is enabled, you can use the following commands:
+Exploiting the MAC address stealing vulnerability only makes sense if client isolation is enabled
+or when techniques such as ARP inspection is used to prevent clients from attacking each other.
+Otherwise, an adversary can use easier attacks such as [ARP poisoning](https://en.wikipedia.org/wiki/ARP_spoofing)
+to intercept traffic. To test whether client isolation is enabled, or whether ARP inspection is
+used by the network, you can use the following commands:
 
 - `./macstealer.py wlan0 --c2c wlan1`: With these arguments, MacStealer tests whether the network
-  allows client-to-client traffic from the victim (`wlan0`) towards the attacker (`wlan1`). Here
-  `wlan1` is a second wireless network interface. The script will then test whether traffic is allowed
-  between the main interface `wlan0` (which by default uses the victim credentials to connect) and the
-  interface `wlan1` (which by default uses the adversary credentials to connect).
+  allows client-to-client ARP poisoning traffic from the attacker (`wlan1`) towards the victim (`wlan0`).
+  Here `wlan1` is a second wireless network interface. The script will then test whether malicious
+  ARP packets can be sent from the attacker to the victim.
 
-- `./macstealer.py wlan0 --c2c wlan1 --flip`: Same as the above test, but now client-to-client
-  traffic from the attacker (`wlan0`) to the victim (`wlan1`) is tested.
+- `./macstealer.py wlan0 --c2c-eth wlan1`: This is similar to the above test, but instead of sending
+  malicious ARP packets, the attacker will send DNS packets to the victim.
+
+The MAC address stealing vulnerability should be considered a risk in practice if client-to-client
+traffic is blocked in any of the above two tests (meaning when client isolation is enabled or when
+other techniques such as ARP inspection are used to prevent users from attacker each other).
 
 By default, MacStealer will try to connect to the same AP/BSS using both interface, so it's
 important that both network cards can see the same networks (i.e. make sure that both network
 interfaces support the same frequency bands and channels). If you want both clients to connect
 to a different AP/BSS then you can use the parameter `--other-bss`.
 
-The MAC address stealing vulnerability should be considered a risk in practice if client-to-client
-traffic is blocked in any of the above two tests (meaning when client isolation is enabled).
+You can use the `--flip-id` parameter to test whether traffic from the victim (`wlan0`) is allowed
+towards the attacker (`wlan1`).
 
 
 <a id="id-troubleshooting"></a>
@@ -416,7 +418,21 @@ In case MacStealer doesn't appear to be working, check the following:
 
 # 7. Advanced Usage
 
-# 7.1 Testing general network properties
+## 7.1. Testing IP layer client isolation
+
+The default [client isolation tests](id-test-isolation) will check whether traffic at the Ethernet
+layer is allowed between clients. It is also possible to test whether IP layer traffic is allowed
+between clients using the following command:
+
+	./macstealer.py wlan0 --c2c-ip wlan1 [--flip-id]
+
+When IP layer traffic between clients is allowed, it still possible for clients to attack each other.
+For instance, [ICMP redirect attacks](https://www.usenix.org/conference/usenixsecurity22/presentation/feng)
+may then still be possible. Such attacks are more cumbersome than ARP spoofing, but are ideally
+still prevented by also blocking IP layer traffic between clients.
+
+
+# 7.2. Testing general network properties
 
 The following tests can be executed to test general properties of a network. These tests aren't
 directly related to vulnerabilities but can be used to better understand the behaviour of a network.
@@ -445,7 +461,7 @@ directly related to vulnerabilities but can be used to better understand the beh
 
 
 <a id="id-test-bss"></a>
-## 7.2. Testing a specific Access Point / BSS
+## 7.3. Testing a specific Access Point / BSS
 
 By default, MacStealer will automatically select an AP/BSS of the network to connect with and test.
 In case you have a network with multiple APs/BSSes, you can test a specific one by specifying this
@@ -487,7 +503,7 @@ find the specified AP/BSS the tool will quit.
 
 
 <a id="id-sae-pk"></a>
-## 7.3. Testing an SAE-PK network
+## 7.4. Testing an SAE-PK network
 
 You can test an SAE-PK network by using the following configuration file. Notice that for
 SAE-PK networks there is no difference in how the victim and attacker authenticate, i.e.,
@@ -563,7 +579,8 @@ networks protected using a pre-shared password.
 - By default use `8.8.8.8` as the server instead of `216.58.208.100` (both are Google servers).
 
 - Improved README: updated the types of network that may be affected. Included a discussion of
-  whether password-protected WPA2 or WPA3 networks are affected.
+  whether password-protected WPA2 or WPA3 networks are affected. Explanation of different commands
+  to test for client-to-client Ethernet or IP layer traffic.
 
 - Improved README: discussion of MFP, discussion of VLANs as mitigation, clarify over which APs the
   [identity check](#id-prevent-stealing) must be done, specifying port of the server, 
