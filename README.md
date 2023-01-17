@@ -4,10 +4,10 @@
 
 This repo contains **MacStealer**. It can test Wi-Fi networks for **MAC address stealing**
 **attacks (CVE-2022-47522)**. This vulnerability affects Wi-Fi networks with malicious insiders,
-where our attack can be used to **bypass client isolation** (sometimes also called AP isolation),
-or to bypass Dynamic ARP inspection (DAI), or to bypass other techniques that prevent clients from
-attacking each other. Our attack can be used to intercept the traffic of other users.
-The attack is also known as the _security context override attack_, see Section 5 of our
+where our attack can **bypass client isolation**, which is sometimes also known as AP isolation.
+It can also be used to bypass Dynamic ARP inspection (DAI) and similar techniques that prevent
+clients from attacking each other. Our attack can be used to intercept the traffic of
+other users. The attack is also known as the _security context override attack_, see Section 5 of our
 [USENIX Security '23 paper](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
 Concrete examples of possible affected networks are:
 
@@ -26,6 +26,7 @@ Concrete examples of possible affected networks are:
   [Identity PSK](https://www.cisco.com/c/en/us/td/docs/wireless/controller/technotes/8-5/b_Identity_PSK_Feature_Deployment_Guide.html),
   [per-station PSK](https://0x72326432.com/posts/perstapsk_en/),
   or [EasyPSK](https://www.cisco.com/c/en/us/td/docs/wireless/controller/9800/17-6/config-guide/b_wl_17_6_cg/m_epsk.html).
+  See the [threat model discussion](#id-threat-model) for extra info.
 
 - Public hotspots based on [WPA3 SAE-PK](https://www.wi-fi.org/beacon/thomas-derham-nehru-bhandaru/wi-fi-certified-wpa3-december-2020-update-brings-new-0).
   These are hotspots protected by a shared public password, but where an adversary cannot
@@ -144,10 +145,10 @@ Using Management Frame Protection (MFP) would make the attack harder but not imp
 [In previous work](https://papers.mathyvanhoef.com/wisec2022.pdf), we found some ways
 that clients can be disconnected/deauthenticated even when MFP is being used. Based on that
 experience, there always appears to be some method to forcibly disconnect a client from the
-network, even when MFP is being used. It's non-trivial to completely prevent disconnection
-and deauthentication attacks. That being said, MFP would be extra hurdle to overcome when
-performing the attack in practice, so it can be useful mitigation to make the attack
-harder (but not impossible) in practice.
+network, even when MFP is being used. Put differently, it's hard to completely prevent
+disconnection and deauthentication attacks. That being said, MFP would be extra hurdle to
+overcome when performing the attack in practice, so it can be useful mitigation to make the
+attack harder (but not impossible) in practice.
 
 
 ## 3.3. Usage of VLANs
@@ -160,7 +161,7 @@ against other users in the same VLAN.
 
 Note that when using multi-PSK (a.ka. per-station PSK or identity PSK), you can put clients
 in different VLANs depending on the password that they use. In other words, you can use a VLAN
-for each password.
+for each password. This prevents clients with different passwords from attacking each other.
 
 
 <a id="id-prerequisites"></a>
@@ -368,7 +369,7 @@ that MacStealer can connect to the network as both the victim and attacker:
 ## 6.3. Client isolation tests (Ethernet layer)
 
 Exploiting the MAC address stealing vulnerability only makes sense if client isolation is enabled
-or when techniques such as ARP inspection is used to prevent clients from attacking each other.
+or when techniques such as ARP inspection are used to prevent clients from attacking each other.
 Otherwise, an adversary can use easier attacks such as [ARP poisoning](https://en.wikipedia.org/wiki/ARP_spoofing)
 to intercept traffic. To test whether client isolation is enabled, or whether ARP inspection is
 used by the network, you can use the following commands:
@@ -549,18 +550,19 @@ where clients in this network are isolated so they cannot attack each other. How
 advantage of using client isolation in this scenario can be questioned. Client isolation is supposed
 to prevent a malicious insider from attacking others. But if the malicious insider knows the
 pre-shared password, they can just create a rogue clone (evil twin), trick victims into connecting to
-this malicious copy of the network, and this still attack other clients! In other words, **using client**
-**isolation in a network secured using a password provides no strong security**.
+this malicious copy of the network, and then attack other clients! In other words, **using client**
+**isolation in a network secured using a password provides no strong security**, a malicious client
+can create a rogue AP to still attack other clients.
 
-That being said, it can be argued that creating a rogue clone can be detected by the network administrator,
+That being said, it can be argued that creating a rogue AP can be detected by the network administrator,
 meaning client isolation does make attacks harder. Additionally, when a lightweight device is (remotely)
-compromised, it may not have the resources to (easily) act as a rogue clone. This makes it harder, but not
+compromised, it may not have the resources to (easily) act as a rogue AP. This makes it harder, but not
 impossible, to perform attacks when client isolation is used. Overall, although client isolation provides
 no strong security guarantees in a password-protected network, it can be argued that it increases the
 practical difficulty of performing attacks.
 
-Our MacStealing attack is easier to perform than creating a rogue clone. All that the malicious insider
-(e.g., a lightweight compromised IoT devices) needs to do is spoof a MAC address and (re)connect to the
+Our MacStealing attack is easier to perform than creating a rogue AP. All that the malicious insider,
+e.g., a lightweight compromised IoT devices, needs to do is spoof a MAC address and (re)connect to the
 network. Such an attack is also harder to detect. Based on this observation, our new attack makes the
 situation worse, and therefore one can argue that our attack should also be considered relevant in
 networks protected using a pre-shared password.
