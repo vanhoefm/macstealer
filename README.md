@@ -577,7 +577,7 @@ networks protected using a pre-shared password.
 <a id="id-change-log"></a>
 # 9. Change log
 
-**Version 1.1 (11 January 2023)**
+**Version 1.1 (18 January 2023)**
 
 - By default use `8.8.8.8` as the server instead of `216.58.208.100` (both are Google servers).
 
