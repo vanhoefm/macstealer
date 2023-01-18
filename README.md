@@ -5,10 +5,11 @@
 This repo contains **MacStealer**. It can test Wi-Fi networks for **MAC address stealing**
 **attacks (CVE-2022-47522)**. This vulnerability affects Wi-Fi networks with malicious insiders,
 where our attack can **bypass client isolation**, which is sometimes also known as AP isolation.
-It can also be used to bypass Dynamic ARP inspection (DAI) and similar techniques that prevent
-clients from attacking each other. Our attack can be used to intercept the traffic of
-other users. The attack is also known as the _security context override attack_, see Section 5 of our
+Our attack intercepts the traffic of other users. The attack can also be used to bypass Dynamic
+ARP inspection (DAI), and can likely also be used to bypass other methods that prevent clients
+from attacking each other. The attack is also known as the _security context override attack_, see Section 5 of our
 [USENIX Security '23 paper](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
+
 Concrete examples of possible affected networks are:
 
 - Enterprise networks where users may distrust each other, and where techniques such as client isolation
