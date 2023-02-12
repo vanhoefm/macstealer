@@ -641,6 +641,11 @@ enabling an adversary to intercept traffic to another client.
 <a id="id-change-log"></a>
 # 9. Change log
 
+**Version 1.2 (in progress)**
+
+- Improved README: focus intro on bypassing client isolation, update defenses with 802.1X remarks and
+  to prevent stealing the default gateway's MAC address.
+
 **Version 1.1 (18 January 2023)**
 
 - By default use `8.8.8.8` as the server instead of `216.58.208.100` (both are Google servers).
