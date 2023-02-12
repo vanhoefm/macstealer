@@ -580,6 +580,31 @@ networks protected using a pre-shared password.
 **meaningless from a security perspective. The MacStealing attack can be performed without creating a**
 **rogue AP and therefore makes attacks easier.**
 
+<a id="id-misunderstandings"></a>
+## 8.2. Common misunderstandings
+
+- The goal of our attack isn't to bypass MAC address deny/allow lists on Access Points. Spoofing MAC
+  addresses to bypass MAC address filtering is a different and known attack.
+
+- The goal of our attack isn't to hijack someone's paid connection in Wi-Fi hotspots. For instance,
+  some open (or protected) hotspots require the user to pay before being allowed to access the internet.
+  Often a paying subscriber is recognized based on their MAC address, and an adversary can spoof a victim's
+  MAC address to gain access to the Internet. This is not the purpose of our attack; the goal of MacStealer
+  is to bypass client isolation.
+
+- Our attack also affects networks that defend against the Hole 196 vulnerability. For instance,
+  [Passpoint](https://www.wi-fi.org/discover-wi-fi/passpoint) (formerly Hotspot 2.0) networks are required
+  to prevent the Hole 196 vulnerability, but are still vulnerable to our attack.
+
+- Our attack works in networks that defend against ARP spoofing. It badly-secured Wi-Fi networks, an
+  adversary can trivially perform ARP spoofing to intercept a victim's traffic, and our attack is not
+  really practical. However, modern networks, which may have malicious insiders, rely on client isolation
+  or other methods to prevent machine-in-the-middle attacks. Our attacker bypasses all these modern defenses
+  and still enables an adversary to intercept traffic toward a victim.
+
+To summarize, our attack affects Wi-Fi networks where clients are prevented from attacking each other,
+enabling an adversary to intercept traffic to another client.
+
 
 <a id="id-change-log"></a>
 # 9. Change log
