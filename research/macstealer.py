@@ -438,8 +438,14 @@ class Supplicant(Daemon):
 				if self.options.same_id:
 					log(STATUS, f">>> Received TCP SYN/ACK after connecting and reconnecting as {self.id_victim}.", color="green")
 				else:
-					log(STATUS, f">>> Attacker {self.id_attacker} intercepted TCP SYN/ACK reply to victim {self.id_victim}.", color="red")
-					log(STATUS, f">>> This means the network is vulnerable!", color="red")
+					delay = time.time() - self.time_start_reconnect
+					log(STATUS, f">>> Attacker {self.id_attacker} intercepted TCP SYN/ACK reply" \
+							f" to victim {self.id_victim} after {delay:.1f}s.", color="red")
+					if delay < 10:
+						log(STATUS, f">>> This means the network is vulnerable!", color="red")
+					else:
+						log(STATUS, f">>> This means the network is vulnerable, but the {delay:.1f}s " \
+								"delay until interception makes attacks harder.", color="orange")
 				quit(1)
 
 
@@ -575,7 +581,7 @@ class Supplicant(Daemon):
 		# Step 2. Reconnect
 		#
 
-		time_start_reconnect = time.time()
+		self.time_start_reconnect = time.time()
 
 		if self.options.other_bss:
 			# If --other-bss was used, then blacklist the victim BSSID we just used.
@@ -589,6 +595,11 @@ class Supplicant(Daemon):
 			# When not using --other-bss, force reconnecting to the same AP
 			self.set_bssid(self.bssid_victim)
 
+		if self.options.delay != 0:
+			self.disconnect(wait=True)
+			log(STATUS, f"Sleeping for {self.options.delay}s before reconnecting")
+			time.sleep(self.options.delay)
+
 		if self.options.same_id:
 			log(STATUS, f"Reconnecting as the victim...", color="green")
 			self.connect(self.netid_victim, timeout=20)
@@ -600,8 +611,8 @@ class Supplicant(Daemon):
 		log(STATUS, f"Listening for replies to the victim's TCP SYN request...", color="green")
 		self.get_ip_address()
 
-		time_reconnect = time.time() - time_start_reconnect
-		if time_reconnect > 9:
+		time_reconnect = time.time() - self.time_start_reconnect
+		if time_reconnect > self.options.delay + 9:
 			log(WARNING, f"Took {time_reconnect:.1f}s to reconnect & confirm IP." + \
 				" This is slow, may cause test to fail. Options are:")
 			log(WARNING, f"- Assure server still sends SYN/ACKs after this time. If so, this script will still work.")
@@ -747,6 +758,7 @@ def main():
 	parser.add_argument("--config", default="client.conf", help="Config containing victim and attacker credentials.")
 	parser.add_argument("--server", default="8.8.8.8", help="Server to send TCP SYN to.")
 	parser.add_argument("--ping", default=False, action="store_true", help="Perform ping to test connection.")
+	parser.add_argument("--delay", default=0, type=float, help="Time to wait before reconnecting as attacker.")
 	parser.add_argument("-d", "--debug", action="count", default=0, help="Increase output verbosity.")
 	parser.add_argument("--other-bss", default=False, action="store_true", help="User different BSS=AP for victim/attacker.")
 	parser.add_argument("--no-ssid-check", default=False, action="store_true", help="Allow victim and attacker to use different SSIDs.")

@@ -501,8 +501,17 @@ directly related to vulnerabilities but can be used to better understand the beh
   of the victim identity.
 
 
+## 7.3. Other parameters
+
+- `--delay seconds`: You can use the parameter `--delay` to specify a delay, in seconds, before reconnecting as
+                     the attacker.
+
+- `-d` or `-dd`: Adding one of these parameters increases the debug verbosity of the script
+                 and the underlying `wpa_supplicant` instance.
+
+
 <a id="id-test-bss"></a>
-## 7.3. Testing a specific Access Point / BSS
+## 7.4. Testing a specific Access Point / BSS
 
 By default, MacStealer will automatically select an AP/BSS of the network to connect with and test.
 In case you have a network with multiple APs/BSSes, you can test a specific one by specifying this
@@ -544,7 +553,7 @@ find the specified AP/BSS the tool will quit.
 
 
 <a id="id-sae-pk"></a>
-## 7.4. Testing an SAE-PK network
+## 7.5. Testing an SAE-PK network
 
 You can test an SAE-PK network by using the following configuration file. Notice that for
 SAE-PK networks there is no difference in how the victim and attacker authenticate, i.e.,
@@ -645,6 +654,8 @@ enabling an adversary to intercept traffic to another client.
 
 - Improved README: focus intro on bypassing client isolation, update defenses with 802.1X remarks and
   to prevent stealing the default gateway's MAC address.
+
+- Added the `--delay` parameter to specify a delay in seconds before reconnecting as the attacker.
 
 **Version 1.1 (18 January 2023)**
 
