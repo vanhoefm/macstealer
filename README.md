@@ -9,7 +9,7 @@ networks with malicious insiders, where our attack can bypass client isolation, 
 also known as AP isolation. The attack can also be used to bypass Dynamic ARP inspection (DAI),
 and can likely also be used to bypass other methods that prevent clients from attacking each other.
 The attack is also known as the _security context override attack_, see Section 5 of our
-[USENIX Security '23 paper](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
+[USENIX Security '23 paper](https://papers.mathyvanhoef.com/usenix2023-wifi.pdf).
 
 Concrete examples of possible affected networks are:
 
@@ -101,7 +101,7 @@ does not exploit any cryptographic properties of Wi-Fi, but instead abuses how a
 to which client packets should be sent, i.e., routed, to.
 
 For extra details on the attack, see the _security context override attack_ (Section 5) in our paper
-[Framing Frames: Bypassing Wi-Fi Encryption by Manipulating Transmit Queues](https://www.usenix.org/conference/usenixsecurity23/presentation/schepers).
+[Framing Frames: Bypassing Wi-Fi Encryption by Manipulating Transmit Queues](https://papers.mathyvanhoef.com/usenix2023-wifi.pdf).
 
 
 # 3. Possible mitigations
