@@ -15,9 +15,9 @@ Concrete examples of possible affected networks are:
 
 - Enterprise networks where users may distrust each other, and where techniques such as client isolation
   or ARP inspection are used to prevent users from attacking each other. For instance, company
-  networks with accounts for both guests and staff, networks such as Eduroam and Govroam, etc.
+  networks with accounts for both guests and staff, networks such as eduroam and govroam, etc.
 
-- Public hotspots protected by [Passpoint](https://www.wi-fi.org/discover-wi-fi/passpoint) (formerly Hotspot 2.0).
+- Public hotspots protected by [Passpoint](https://www.wi-fi.org/discover-wi-fi/passpoint) (Hotspot 2.0).
   These are hotspots that you can automatically and securely connect to. For instance,
   it can seamlessly authenticate you using your phone's SIM card.
 
