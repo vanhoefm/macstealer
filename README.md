@@ -37,6 +37,8 @@ Concrete examples of possible affected networks are:
 We remark that **our attack cannot bypass VLANs**. In other words, based on current experiments,
 our attack cannot be used to exploit a device in another VLAN.
 
+The [repository of other results in our USENIX Security '23](https://github.com/domienschepers/wifi-framing) is also available.
+
 
 <a id="id-attack"></a>
 # 2. Vulnerability details
