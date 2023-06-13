@@ -3,7 +3,7 @@
 # 1. Introduction
 
 This repo contains MacStealer. It can test Wi-Fi networks for **client isolation bypasses**
-**(CVE-PENDING). Our attack can intercept (steal) traffic toward other clients at the MAC layer**,
+**([CVE-2022-47522](#id-assigned-cve)). Our attack can intercept (steal) traffic toward other clients at the MAC layer**,
 even if clients are prevented from communicating with each other. This vulnerability affects Wi-Fi
 networks with malicious insiders, where our attack can bypass client isolation, which is sometimes
 also known as AP isolation. The attack can also be used to bypass Dynamic ARP inspection (DAI),
@@ -397,7 +397,7 @@ that MacStealer can connect to the network as both the victim and attacker:
 
 
 <a id="id-test-vulnerability"></a>
-## 6.2. Vulnerability tests (CVE-PENDING)
+## 6.2. Vulnerability tests (CVE-2022-47522)
 
 - `./macstealer.py wlan0`: Test the default variant of the MAC address stealer attack. The attacker
   will reconnect to the same AP/BSS as the victim.
@@ -648,17 +648,25 @@ networks protected using a pre-shared password.
 To summarize, our attack affects Wi-Fi networks where clients are prevented from attacking each other,
 enabling an adversary to intercept traffic to another client.
 
+<a id="id-assigned-cve"></a>
+## 8.3. Assigned CVE
+
+Most vendors are using CVE-2022-47522 to refer to the Wi-Fi client isolation bypass vulnerability
+that is discussed in this git repository. This vulnerability corresponds to the attack in Section 5 of
+[our paper](https://papers.mathyvanhoef.com/usenix2023-wifi.pdf).
+
+Unfortunately, other vendors are also using this CVE to refer to the (strictly speaking unrelated)
+vulnerability that is discussed in Section 3 of [our paper](https://papers.mathyvanhoef.com/usenix2023-wifi.pdf).
+In fact, the actual description of the CVE as can be found on MITRE, in our opinion, only describes the
+attack in Section 3 of our paper. In practice, it seems that CVE-2022-47522 is used to refer to all
+attacks in our paper, even though they are technically different.
 
 <a id="id-change-log"></a>
 # 9. Change log
 
 **Version 1.2 (in progress)**
 
-- Improved README: Updated the CVE identifier to a pending one. During the embargo we requested a CVE for the
-  client isolation bypass covered by this tool, and received [CVE-2022-47522](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-47522).
-  However, without our knowledge, this CVE was updated during the embargo to instead refer to a different
-  vulnerability discussed in our paper. In particular, [CVE-2022-47522](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-47522)
-  now refers to the vulnerabilites covered by [Section 3 of the paper](https://papers.mathyvanhoef.com/usenix2023-wifi.pdf)).
+- Improved README: clarified the usage of the CVE identifier.
 
 - Improved README: focus intro on bypassing client isolation, update defenses with 802.1X remarks and
   to prevent stealing the default gateway's MAC address.
