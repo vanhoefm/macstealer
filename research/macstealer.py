@@ -110,6 +110,7 @@ class Supplicant(Daemon):
 		self.bssid_victim=None
 
 		self.mac = get_macaddress(self.nic_iface)
+		self.offered_ip = None
 		self.clientip = None
 		self.routermac = None
 		self.routerip = None
@@ -398,9 +399,14 @@ class Supplicant(Daemon):
 
 		# DHCP Offer
 		if req_type == 2:
-			log(STATUS, f"Received DHCP offer for {p[BOOTP].yiaddr}, sending DHCP request.")
-			self.send_dhcp_request(p)
-			self.dhcp_offer_frame = p
+			offered_ip = p[BOOTP].yiaddr
+			if self.offered_ip != None and self.offered_ip != offered_ip:
+				log(WARNING, f"Ignoring DHCP offer for the different IP address {offered_ip}.")
+			else:
+				log(STATUS, f"Received DHCP offer for {offered_ip}, sending DHCP request.")
+				self.send_dhcp_request(p)
+				self.dhcp_offer_frame = p
+				self.offered_ip = offered_ip
 
 		# DHCP Ack
 		elif req_type == 5:
