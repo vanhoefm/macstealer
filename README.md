@@ -105,7 +105,7 @@ to which client packets should be sent, i.e., routed, to.
 For extra details on the attack, see the _security context override attack_ (Section 5) in our paper
 [Framing Frames: Bypassing Wi-Fi Encryption by Manipulating Transmit Queues](https://papers.mathyvanhoef.com/usenix2023-wifi.pdf).
 
-
+<a id="id-mitigations"></a>
 # 3. Possible mitigations
 
 <a id="id-prevent-stealing"></a>
