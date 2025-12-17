@@ -118,9 +118,11 @@ that the user behind a MAC address has not changed, the client can be allowed to
 Note that this check must be done over all APs that are part of the same distribution system, and
 more specifically, over all APs that clients can roam between while keeping their current IP address.
 
+### 3.1.1. When using shared passphrases
+
 To securely recognize recently-connected users, an AP can store a mapping between a client’s MAC
 address and their cached security associations (e.g., their cached PMK). A client can be allowed
-to immediately (re)connect under a recently-used MAC address by proving that they posses the cached
+to immediately (re)connect under a recently-used MAC address by proving that they possess the cached
 security association linked to this MAC address, e.g., by connecting using the correct cached PMK.
 
 When using multi-PSK, which is also known as [per-station PSK](https://0x72326432.com/posts/perstapsk_en/)
@@ -141,9 +143,10 @@ with the services they communicate with.
 
 
 <a id="id-prevent-8021X"></a>
-## 3.2. 802.1X authentication and RADIUS extensions
+### 3.1.1. When using 802.1X authentication and RADIUS extensions
 
-Another method to securely recognize recently-connected users is based on the EAP identity they
+When using 802.1X EAP-based authentication, an alternative better method to securely
+recognize recently-connected users is based on the EAP identity they
 used during 802.1X authentication. An AP can securely [learn the EAP identity from the RADIUS server](https://www.rfc-editor.org/rfc/rfc2865)
 that authenticated the client, and can keep a mapping of recently connected MAC addresses
 and their corresponding EAP identity. When a client connects, the AP checks whether its MAC address
@@ -166,9 +169,13 @@ another user in the same realm (in the given local network). The RADIUS server w
 to be informed when a client disconnects, so it knows when a MAC address was last being used by
 one of its users, and needs to be informed of the MAC address of any client that is trying to connect.
 
+A last note is that, while this approach of relying on the EAP identity would prevent different
+users from attacking each other, it would not prevent a compromised device from attacking another
+device of that same user. That is, attacks would only be prevented between different users, but
+not between different devices of the same user.
 
 <a id="id-prevent-gateway"></a>
-## 3.3. Protecting the gateway's MAC address
+## 3.2. Protecting the gateway's MAC address
 
 Important to note is that our attack is not limited to intercepting packets going to
 Wi-Fi clients. An adversary could also try to associate with a MAC address of a default
@@ -180,7 +187,7 @@ also in use by other devices in the network.
 
 
 <a id="id-prevent-mfp"></a>
-## 3.4. Management Frame Protection (802.11w)
+## 3.3. Management Frame Protection (802.11w)
 
 Using Management Frame Protection (MFP) would make the attack harder but not impossible.
 [In previous work](https://papers.mathyvanhoef.com/wisec2022.pdf), we found some ways
@@ -193,7 +200,7 @@ attack harder (but not impossible) in practice.
 
 
 <a id="id-prevent-vlan"></a>
-## 3.5. Usage of VLANs
+## 3.4. Usage of VLANs
 
 Based on preliminary experiments, the attack does not work across different VLANs. In other
 words, the malicious insider that performs the attack must be in the same VLAN as the victim.
